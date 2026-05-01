@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "prisma:validate": "prisma validate"
   },
@@ -28,7 +29,8 @@
     "postcss": "8.5.13",
     "prisma": "5.22.0",
     "tailwindcss": "3.4.17",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "vitest": "^3.2.4"
   },
   "overrides": {
     "postcss": "8.5.13"
