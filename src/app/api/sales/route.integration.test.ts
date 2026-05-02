@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { GET, POST } from "./route";
 
 const testProductNamePrefix = "SOLVEN_INTEGRATION_SALE_PRODUCT_";
+const testCustomerNamePrefix = "SOLVEN_INTEGRATION_SALE_CUSTOMER_";
 
 describe("sales API database integration", () => {
   beforeEach(async () => {
@@ -78,6 +79,64 @@ describe("sales API database integration", () => {
     });
   });
 
+  it("creates a credit sale with debt through the API flow", async () => {
+    const product = await createIntegrationProduct("CREDIT", 14, 6);
+    const customer = await createIntegrationCustomer();
+
+    const response = await POST(
+      new Request("http://localhost/api/sales", {
+        method: "POST",
+        body: JSON.stringify({
+          paymentType: "CREDIT",
+          customerId: customer.id,
+          items: [
+            {
+              productId: product.id,
+              quantity: 2
+            }
+          ]
+        })
+      })
+    );
+    const responseBody = await response.json();
+    const updatedProduct = await prisma.product.findUniqueOrThrow({
+      where: {
+        id: product.id
+      }
+    });
+    const debt = await prisma.debt.findFirstOrThrow({
+      where: {
+        customerId: customer.id,
+        totalAmount: responseBody.data.totalAmount
+      }
+    });
+    const cashMovement = await prisma.cashMovement.findFirst({
+      where: {
+        source: "SALE",
+        referenceId: responseBody.data.id
+      }
+    });
+    const inventoryMovement = await prisma.inventoryMovement.findFirstOrThrow({
+      where: {
+        reason: `SALE:${responseBody.data.id}`,
+        productId: product.id
+      }
+    });
+
+    expect(response.status).toBe(201);
+    expect(responseBody.data).toMatchObject({
+      totalAmount: "28"
+    });
+    expect(updatedProduct.stock).toBe(4);
+    expect(debt.remainingAmount.toString()).toBe("28");
+    expect(cashMovement).toBeNull();
+    expect(inventoryMovement).toMatchObject({
+      previousStock: 6,
+      newStock: 4,
+      quantityChange: -2
+    });
+  });
+
   it("lists sales after creation", async () => {
     const product = await createIntegrationProduct("LIST", 9, 4);
 
@@ -126,6 +185,14 @@ async function createIntegrationProduct(
   });
 }
 
+async function createIntegrationCustomer() {
+  return prisma.customer.create({
+    data: {
+      name: `${testCustomerNamePrefix}${Date.now()}`
+    }
+  });
+}
+
 async function deleteIntegrationSaleData() {
   const testProducts = await prisma.product.findMany({
     where: {
@@ -151,6 +218,28 @@ async function deleteIntegrationSaleData() {
   const testSaleIds = [
     ...new Set(testSaleItems.map((saleItem) => saleItem.saleId))
   ];
+  const testCustomers = await prisma.customer.findMany({
+    where: {
+      name: {
+        startsWith: testCustomerNamePrefix
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+  const testCustomerIds = testCustomers.map((customer) => customer.id);
+  const testDebts = await prisma.debt.findMany({
+    where: {
+      customerId: {
+        in: testCustomerIds
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+  const testDebtIds = testDebts.map((debt) => debt.id);
 
   await prisma.inventoryMovement.deleteMany({
     where: {
@@ -164,6 +253,20 @@ async function deleteIntegrationSaleData() {
       source: "SALE",
       referenceId: {
         in: testSaleIds
+      }
+    }
+  });
+  await prisma.debtPayment.deleteMany({
+    where: {
+      debtId: {
+        in: testDebtIds
+      }
+    }
+  });
+  await prisma.debt.deleteMany({
+    where: {
+      id: {
+        in: testDebtIds
       }
     }
   });
@@ -185,6 +288,13 @@ async function deleteIntegrationSaleData() {
     where: {
       id: {
         in: testProductIds
+      }
+    }
+  });
+  await prisma.customer.deleteMany({
+    where: {
+      id: {
+        in: testCustomerIds
       }
     }
   });

@@ -22,6 +22,31 @@ describe("validateCreateSaleInput", () => {
           productId: "product-1",
           quantity: 2
         }
+      ],
+      paymentType: "CASH"
+    });
+  });
+
+  it("accepts valid credit sale input", () => {
+    expect(
+      validateCreateSaleInput({
+        paymentType: "CREDIT",
+        customerId: " customer-1 ",
+        items: [
+          {
+            productId: "product-1",
+            quantity: 2
+          }
+        ]
+      })
+    ).toEqual({
+      paymentType: "CREDIT",
+      customerId: "customer-1",
+      items: [
+        {
+          productId: "product-1",
+          quantity: 2
+        }
       ]
     });
   });
@@ -80,6 +105,34 @@ describe("validateCreateSaleInput", () => {
           {
             productId: "product-1",
             quantity: 1.5
+          }
+        ]
+      })
+    ).toThrow(SaleValidationError);
+  });
+
+  it("rejects invalid payment type", () => {
+    expect(() =>
+      validateCreateSaleInput({
+        paymentType: "CARD" as "CASH",
+        items: [
+          {
+            productId: "product-1",
+            quantity: 1
+          }
+        ]
+      })
+    ).toThrow(SaleValidationError);
+  });
+
+  it("requires customer id for credit sales", () => {
+    expect(() =>
+      validateCreateSaleInput({
+        paymentType: "CREDIT",
+        items: [
+          {
+            productId: "product-1",
+            quantity: 1
           }
         ]
       })

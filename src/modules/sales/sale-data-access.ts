@@ -94,14 +94,28 @@ export async function createSale(
       }))
     });
 
-    await transaction.cashMovement.create({
-      data: {
-        type: "IN",
-        amount: totalAmount,
-        source: "SALE",
-        referenceId: sale.id
-      }
-    });
+    if (validatedSale.paymentType === "CREDIT") {
+      await transaction.debt.create({
+        data: {
+          customer: {
+            connect: {
+              id: validatedSale.customerId
+            }
+          },
+          totalAmount,
+          remainingAmount: totalAmount
+        }
+      });
+    } else {
+      await transaction.cashMovement.create({
+        data: {
+          type: "IN",
+          amount: totalAmount,
+          source: "SALE",
+          referenceId: sale.id
+        }
+      });
+    }
 
     return transaction.sale.findUniqueOrThrow({
       where: {

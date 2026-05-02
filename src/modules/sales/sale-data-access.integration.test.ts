@@ -10,6 +10,7 @@ import {
 } from "./sale-data-access";
 
 const testProductNamePrefix = "SOLVEN_SALE_TEST_PRODUCT_";
+const testCustomerNamePrefix = "SOLVEN_SALE_TEST_CUSTOMER_";
 
 describe("sale data access", () => {
   beforeEach(async () => {
@@ -89,6 +90,58 @@ describe("sale data access", () => {
       source: "SALE",
       referenceId: sale.id
     });
+  });
+
+  it("creates a credit sale with debt and without cash movement", async () => {
+    const product = await createTestProduct("CREDIT", 11, 7);
+    const customer = await createTestCustomer();
+
+    const sale = await createSale({
+      paymentType: "CREDIT",
+      customerId: customer.id,
+      items: [
+        {
+          productId: product.id,
+          quantity: 3
+        }
+      ]
+    });
+
+    const updatedProduct = await prisma.product.findUniqueOrThrow({
+      where: {
+        id: product.id
+      }
+    });
+    const inventoryMovement = await prisma.inventoryMovement.findFirstOrThrow({
+      where: {
+        reason: `SALE:${sale.id}`,
+        productId: product.id
+      }
+    });
+    const debt = await prisma.debt.findFirstOrThrow({
+      where: {
+        customerId: customer.id,
+        totalAmount: sale.totalAmount
+      }
+    });
+    const cashMovement = await prisma.cashMovement.findFirst({
+      where: {
+        source: "SALE",
+        referenceId: sale.id
+      }
+    });
+
+    expect(sale.totalAmount.toString()).toBe("33");
+    expect(updatedProduct.stock).toBe(4);
+    expect(inventoryMovement).toMatchObject({
+      productId: product.id,
+      previousStock: 7,
+      newStock: 4,
+      quantityChange: -3
+    });
+    expect(debt.totalAmount.toString()).toBe("33");
+    expect(debt.remainingAmount.toString()).toBe("33");
+    expect(cashMovement).toBeNull();
   });
 
   it("rejects a sale when a product does not exist", async () => {
@@ -177,6 +230,14 @@ async function createTestProduct(
   });
 }
 
+async function createTestCustomer() {
+  return prisma.customer.create({
+    data: {
+      name: `${testCustomerNamePrefix}${Date.now()}`
+    }
+  });
+}
+
 async function deleteSaleTestData() {
   const testProducts = await prisma.product.findMany({
     where: {
@@ -202,6 +263,28 @@ async function deleteSaleTestData() {
   const testSaleIds = [
     ...new Set(testSaleItems.map((saleItem) => saleItem.saleId))
   ];
+  const testCustomers = await prisma.customer.findMany({
+    where: {
+      name: {
+        startsWith: testCustomerNamePrefix
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+  const testCustomerIds = testCustomers.map((customer) => customer.id);
+  const testDebts = await prisma.debt.findMany({
+    where: {
+      customerId: {
+        in: testCustomerIds
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+  const testDebtIds = testDebts.map((debt) => debt.id);
 
   await prisma.inventoryMovement.deleteMany({
     where: {
@@ -215,6 +298,20 @@ async function deleteSaleTestData() {
       source: "SALE",
       referenceId: {
         in: testSaleIds
+      }
+    }
+  });
+  await prisma.debtPayment.deleteMany({
+    where: {
+      debtId: {
+        in: testDebtIds
+      }
+    }
+  });
+  await prisma.debt.deleteMany({
+    where: {
+      id: {
+        in: testDebtIds
       }
     }
   });
@@ -236,6 +333,13 @@ async function deleteSaleTestData() {
     where: {
       id: {
         in: testProductIds
+      }
+    }
+  });
+  await prisma.customer.deleteMany({
+    where: {
+      id: {
+        in: testCustomerIds
       }
     }
   });
