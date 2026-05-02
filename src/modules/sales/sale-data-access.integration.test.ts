@@ -56,6 +56,12 @@ describe("sale data access", () => {
         productId: "asc"
       }
     });
+    const cashMovement = await prisma.cashMovement.findFirstOrThrow({
+      where: {
+        source: "SALE",
+        referenceId: sale.id
+      }
+    });
 
     expect(sale.totalAmount.toString()).toBe("33.5");
     expect(sale.items).toHaveLength(2);
@@ -77,6 +83,12 @@ describe("sale data access", () => {
         })
       ])
     );
+    expect(cashMovement.amount.toString()).toBe("33.5");
+    expect(cashMovement).toMatchObject({
+      type: "IN",
+      source: "SALE",
+      referenceId: sale.id
+    });
   });
 
   it("rejects a sale when a product does not exist", async () => {
@@ -195,6 +207,14 @@ async function deleteSaleTestData() {
     where: {
       productId: {
         in: testProductIds
+      }
+    }
+  });
+  await prisma.cashMovement.deleteMany({
+    where: {
+      source: "SALE",
+      referenceId: {
+        in: testSaleIds
       }
     }
   });

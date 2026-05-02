@@ -44,6 +44,12 @@ describe("sales API database integration", () => {
         productId: product.id
       }
     });
+    const cashMovement = await prisma.cashMovement.findFirstOrThrow({
+      where: {
+        source: "SALE",
+        referenceId: responseBody.data.id
+      }
+    });
 
     expect(response.status).toBe(201);
     expect(responseBody.data).toMatchObject({
@@ -63,6 +69,12 @@ describe("sales API database integration", () => {
       previousStock: 5,
       newStock: 3,
       quantityChange: -2
+    });
+    expect(cashMovement.amount.toString()).toBe("25");
+    expect(cashMovement).toMatchObject({
+      type: "IN",
+      source: "SALE",
+      referenceId: responseBody.data.id
     });
   });
 
@@ -144,6 +156,14 @@ async function deleteIntegrationSaleData() {
     where: {
       productId: {
         in: testProductIds
+      }
+    }
+  });
+  await prisma.cashMovement.deleteMany({
+    where: {
+      source: "SALE",
+      referenceId: {
+        in: testSaleIds
       }
     }
   });

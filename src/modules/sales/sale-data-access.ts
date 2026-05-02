@@ -94,6 +94,15 @@ export async function createSale(
       }))
     });
 
+    await transaction.cashMovement.create({
+      data: {
+        type: "IN",
+        amount: totalAmount,
+        source: "SALE",
+        referenceId: sale.id
+      }
+    });
+
     return transaction.sale.findUniqueOrThrow({
       where: {
         id: sale.id
