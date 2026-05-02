@@ -38,6 +38,20 @@ describe("expenses API database integration", () => {
       category: "Supplies",
       description: expenseDescription
     });
+
+    const cashMovement = await prisma.cashMovement.findFirstOrThrow({
+      where: {
+        source: "EXPENSE",
+        referenceId: responseBody.data.id
+      }
+    });
+
+    expect(cashMovement.amount.toString()).toBe("25.5");
+    expect(cashMovement).toMatchObject({
+      type: "OUT",
+      source: "EXPENSE",
+      referenceId: responseBody.data.id
+    });
   });
 
   it("lists expenses after creation", async () => {
@@ -71,6 +85,26 @@ describe("expenses API database integration", () => {
 });
 
 async function deleteIntegrationExpenses() {
+  const testExpenses = await prisma.expense.findMany({
+    where: {
+      description: {
+        startsWith: testExpenseDescriptionPrefix
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+  const testExpenseIds = testExpenses.map((expense) => expense.id);
+
+  await prisma.cashMovement.deleteMany({
+    where: {
+      source: "EXPENSE",
+      referenceId: {
+        in: testExpenseIds
+      }
+    }
+  });
   await prisma.expense.deleteMany({
     where: {
       description: {

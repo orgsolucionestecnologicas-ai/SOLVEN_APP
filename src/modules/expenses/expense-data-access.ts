@@ -2,6 +2,7 @@ import type { Expense } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
+import { validateCreateCashMovementInput } from "../cash/cash-movement-validation";
 import {
   type CreateExpenseInput,
   validateCreateExpenseInput
@@ -12,8 +13,22 @@ export async function createExpense(
 ): Promise<Expense> {
   const validatedExpense = validateCreateExpenseInput(expenseInput);
 
-  return prisma.expense.create({
-    data: validatedExpense
+  return prisma.$transaction(async (transaction) => {
+    const expense = await transaction.expense.create({
+      data: validatedExpense
+    });
+    const cashMovement = validateCreateCashMovementInput({
+      type: "OUT",
+      amount: validatedExpense.amount,
+      source: "EXPENSE",
+      referenceId: expense.id
+    });
+
+    await transaction.cashMovement.create({
+      data: cashMovement
+    });
+
+    return expense;
   });
 }
 
