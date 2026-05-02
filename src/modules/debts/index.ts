@@ -1,5 +1,16 @@
 export { createDebt, listDebts } from "./debt-data-access";
 export {
+  DebtPaymentAmountError,
+  listDebtPayments,
+  registerDebtPayment
+} from "./debt-payment-data-access";
+export {
+  DebtPaymentValidationError,
+  type RegisterDebtPaymentInput,
+  type ValidatedDebtPaymentInput,
+  validateRegisterDebtPaymentInput
+} from "./debt-payment-validation";
+export {
   DebtValidationError,
   type CreateDebtInput,
   type ValidatedDebtInput,
