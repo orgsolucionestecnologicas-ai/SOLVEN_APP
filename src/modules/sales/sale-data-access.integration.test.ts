@@ -201,6 +201,74 @@ describe("sale data access", () => {
     expect(inventoryMovements).toHaveLength(0);
   });
 
+  it("prevents concurrent sales from overselling product stock", async () => {
+    const product = await createTestProduct("CONCURRENT", 8, 1);
+
+    const results = await Promise.allSettled([
+      createSale({
+        items: [
+          {
+            productId: product.id,
+            quantity: 1
+          }
+        ]
+      }),
+      createSale({
+        items: [
+          {
+            productId: product.id,
+            quantity: 1
+          }
+        ]
+      })
+    ]);
+
+    const fulfilledResults = results.filter(
+      (result) => result.status === "fulfilled"
+    );
+    const rejectedResults = results.filter(
+      (result) => result.status === "rejected"
+    );
+    const updatedProduct = await prisma.product.findUniqueOrThrow({
+      where: {
+        id: product.id
+      }
+    });
+    const saleItems = await prisma.saleItem.findMany({
+      where: {
+        productId: product.id
+      }
+    });
+    const inventoryMovements = await prisma.inventoryMovement.findMany({
+      where: {
+        productId: product.id
+      }
+    });
+    const cashMovements = await prisma.cashMovement.findMany({
+      where: {
+        source: "SALE",
+        referenceId: {
+          in: saleItems.map((saleItem) => saleItem.saleId)
+        }
+      }
+    });
+
+    expect(fulfilledResults).toHaveLength(1);
+    expect(rejectedResults).toHaveLength(1);
+    expect(rejectedResults[0].reason).toBeInstanceOf(
+      SaleInsufficientStockError
+    );
+    expect(updatedProduct.stock).toBe(0);
+    expect(saleItems).toHaveLength(1);
+    expect(inventoryMovements).toHaveLength(1);
+    expect(inventoryMovements[0]).toMatchObject({
+      previousStock: 1,
+      newStock: 0,
+      quantityChange: -1
+    });
+    expect(cashMovements).toHaveLength(1);
+  });
+
   it("lists sales after creation", async () => {
     const product = await createTestProduct("LIST", 6, 3);
     const sale = await createSale({
