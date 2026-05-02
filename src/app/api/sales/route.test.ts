@@ -155,6 +155,9 @@ describe("sales API route", () => {
 const saleJson = {
   id: "sale-1",
   saleDate: "2026-01-01T00:00:00.000Z",
+  paymentType: "CASH",
+  customerId: null,
+  debtId: null,
   totalAmount: "30.00",
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",

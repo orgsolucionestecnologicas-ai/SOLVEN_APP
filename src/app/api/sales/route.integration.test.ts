@@ -54,6 +54,9 @@ describe("sales API database integration", () => {
 
     expect(response.status).toBe(201);
     expect(responseBody.data).toMatchObject({
+      paymentType: "CASH",
+      customerId: null,
+      debtId: null,
       totalAmount: "25",
       items: [
         expect.objectContaining({
@@ -125,6 +128,9 @@ describe("sales API database integration", () => {
 
     expect(response.status).toBe(201);
     expect(responseBody.data).toMatchObject({
+      paymentType: "CREDIT",
+      customerId: customer.id,
+      debtId: debt.id,
       totalAmount: "28"
     });
     expect(updatedProduct.stock).toBe(4);

@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum SalePaymentType {
+  CASH
+  CREDIT
+}
+
 model Product {
   id                 String              @id @default(cuid())
   name               String
@@ -20,12 +25,19 @@ model Product {
 }
 
 model Sale {
-  id          String     @id @default(cuid())
-  saleDate    DateTime   @default(now())
-  totalAmount Decimal    @db.Decimal(12, 2)
+  id          String          @id @default(cuid())
+  saleDate    DateTime        @default(now())
+  paymentType SalePaymentType @default(CASH)
+  customerId  String?
+  debtId      String?         @unique
+  totalAmount Decimal         @db.Decimal(12, 2)
+  customer    Customer?       @relation(fields: [customerId], references: [id])
+  debt        Debt?           @relation(fields: [debtId], references: [id])
   items       SaleItem[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([customerId])
 }
 
 model SaleItem {
@@ -58,6 +70,7 @@ model Customer {
   id        String   @id @default(cuid())
   name      String
   debts     Debt[]
+  sales     Sale[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -68,6 +81,7 @@ model Debt {
   totalAmount     Decimal       @db.Decimal(12, 2)
   remainingAmount Decimal       @db.Decimal(12, 2)
   customer        Customer      @relation(fields: [customerId], references: [id])
+  sale            Sale?
   payments        DebtPayment[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt

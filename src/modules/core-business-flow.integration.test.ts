@@ -138,6 +138,11 @@ describe("SOLVEN core business flow", () => {
     });
 
     expect(updatedCreditProduct.stock).toBe(4);
+    expect(creditSale).toMatchObject({
+      paymentType: "CREDIT",
+      customerId: customer.id,
+      debtId: creditSaleDebt.id
+    });
     expect(creditSaleInventoryMovement).toMatchObject({
       previousStock: 6,
       newStock: 4,

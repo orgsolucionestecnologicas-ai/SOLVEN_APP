@@ -65,6 +65,11 @@ describe("sale data access", () => {
     });
 
     expect(sale.totalAmount.toString()).toBe("33.5");
+    expect(sale).toMatchObject({
+      paymentType: "CASH",
+      customerId: null,
+      debtId: null
+    });
     expect(sale.items).toHaveLength(2);
     expect(updatedFirstProduct.stock).toBe(3);
     expect(updatedSecondProduct.stock).toBe(5);
@@ -118,10 +123,9 @@ describe("sale data access", () => {
         productId: product.id
       }
     });
-    const debt = await prisma.debt.findFirstOrThrow({
+    const debt = await prisma.debt.findUniqueOrThrow({
       where: {
-        customerId: customer.id,
-        totalAmount: sale.totalAmount
+        id: sale.debtId ?? ""
       }
     });
     const cashMovement = await prisma.cashMovement.findFirst({
@@ -132,6 +136,11 @@ describe("sale data access", () => {
     });
 
     expect(sale.totalAmount.toString()).toBe("33");
+    expect(sale).toMatchObject({
+      paymentType: "CREDIT",
+      customerId: customer.id,
+      debtId: debt.id
+    });
     expect(updatedProduct.stock).toBe(4);
     expect(inventoryMovement).toMatchObject({
       productId: product.id,

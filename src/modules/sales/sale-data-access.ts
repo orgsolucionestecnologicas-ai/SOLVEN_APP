@@ -57,6 +57,15 @@ export async function createSale(
     );
     const sale = await transaction.sale.create({
       data: {
+        paymentType: validatedSale.paymentType,
+        customer:
+          validatedSale.paymentType === "CREDIT"
+            ? {
+                connect: {
+                  id: validatedSale.customerId
+                }
+              }
+            : undefined,
         totalAmount
       }
     });
@@ -95,7 +104,7 @@ export async function createSale(
     });
 
     if (validatedSale.paymentType === "CREDIT") {
-      await transaction.debt.create({
+      const debt = await transaction.debt.create({
         data: {
           customer: {
             connect: {
@@ -104,6 +113,19 @@ export async function createSale(
           },
           totalAmount,
           remainingAmount: totalAmount
+        }
+      });
+
+      await transaction.sale.update({
+        where: {
+          id: sale.id
+        },
+        data: {
+          debt: {
+            connect: {
+              id: debt.id
+            }
+          }
         }
       });
     } else {
