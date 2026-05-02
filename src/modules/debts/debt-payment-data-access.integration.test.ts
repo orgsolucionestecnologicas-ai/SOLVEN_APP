@@ -38,6 +38,20 @@ describe("debt payment data access", () => {
     expect(payment.debtId).toBe(debt.id);
     expect(payment.amount.toString()).toBe("30.25");
     expect(updatedDebt.remainingAmount.toString()).toBe("69.75");
+
+    const cashMovement = await prisma.cashMovement.findFirstOrThrow({
+      where: {
+        source: "DEBT_PAYMENT",
+        referenceId: payment.id
+      }
+    });
+
+    expect(cashMovement.amount.toString()).toBe("30.25");
+    expect(cashMovement).toMatchObject({
+      type: "IN",
+      source: "DEBT_PAYMENT",
+      referenceId: payment.id
+    });
   });
 
   it("rejects a payment that exceeds remaining debt amount", async () => {
@@ -60,9 +74,18 @@ describe("debt payment data access", () => {
         debtId: debt.id
       }
     });
+    const cashMovements = await prisma.cashMovement.findMany({
+      where: {
+        source: "DEBT_PAYMENT",
+        referenceId: {
+          in: payments.map((payment) => payment.id)
+        }
+      }
+    });
 
     expect(updatedDebt.remainingAmount.toString()).toBe("40");
     expect(payments).toHaveLength(0);
+    expect(cashMovements).toHaveLength(0);
   });
 
   it("lists debt payments after registration", async () => {
@@ -121,7 +144,26 @@ async function deleteDebtPaymentTestData() {
     }
   });
   const testDebtIds = testDebts.map((debt) => debt.id);
+  const testPayments = await prisma.debtPayment.findMany({
+    where: {
+      debtId: {
+        in: testDebtIds
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+  const testPaymentIds = testPayments.map((payment) => payment.id);
 
+  await prisma.cashMovement.deleteMany({
+    where: {
+      source: "DEBT_PAYMENT",
+      referenceId: {
+        in: testPaymentIds
+      }
+    }
+  });
   await prisma.debtPayment.deleteMany({
     where: {
       debtId: {

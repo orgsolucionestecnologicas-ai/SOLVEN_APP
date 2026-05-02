@@ -2,6 +2,7 @@ import { Prisma, type DebtPayment } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
+import { validateCreateCashMovementInput } from "../cash/cash-movement-validation";
 import {
   type RegisterDebtPaymentInput,
   validateRegisterDebtPaymentInput
@@ -43,6 +44,12 @@ export async function registerDebtPayment(
         amount: validatedPayment.amount
       }
     });
+    const cashMovement = validateCreateCashMovementInput({
+      type: "IN",
+      amount: validatedPayment.amount,
+      source: "DEBT_PAYMENT",
+      referenceId: debtPayment.id
+    });
 
     await transaction.debt.update({
       where: {
@@ -51,6 +58,9 @@ export async function registerDebtPayment(
       data: {
         remainingAmount
       }
+    });
+    await transaction.cashMovement.create({
+      data: cashMovement
     });
 
     return debtPayment;

@@ -43,6 +43,20 @@ describe("debt payments API database integration", () => {
       amount: "35.5"
     });
     expect(updatedDebt.remainingAmount.toString()).toBe("64.5");
+
+    const cashMovement = await prisma.cashMovement.findFirstOrThrow({
+      where: {
+        source: "DEBT_PAYMENT",
+        referenceId: responseBody.data.id
+      }
+    });
+
+    expect(cashMovement.amount.toString()).toBe("35.5");
+    expect(cashMovement).toMatchObject({
+      type: "IN",
+      source: "DEBT_PAYMENT",
+      referenceId: responseBody.data.id
+    });
   });
 
   it("lists debt payments after registration", async () => {
@@ -95,6 +109,14 @@ describe("debt payments API database integration", () => {
         debtId: debt.id
       }
     });
+    const cashMovements = await prisma.cashMovement.findMany({
+      where: {
+        source: "DEBT_PAYMENT",
+        referenceId: {
+          in: payments.map((payment) => payment.id)
+        }
+      }
+    });
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
@@ -104,6 +126,7 @@ describe("debt payments API database integration", () => {
     });
     expect(updatedDebt.remainingAmount.toString()).toBe("25");
     expect(payments).toHaveLength(0);
+    expect(cashMovements).toHaveLength(0);
   });
 });
 
@@ -143,7 +166,26 @@ async function deleteIntegrationDebtPaymentData() {
     }
   });
   const testDebtIds = testDebts.map((debt) => debt.id);
+  const testPayments = await prisma.debtPayment.findMany({
+    where: {
+      debtId: {
+        in: testDebtIds
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+  const testPaymentIds = testPayments.map((payment) => payment.id);
 
+  await prisma.cashMovement.deleteMany({
+    where: {
+      source: "DEBT_PAYMENT",
+      referenceId: {
+        in: testPaymentIds
+      }
+    }
+  });
   await prisma.debtPayment.deleteMany({
     where: {
       debtId: {
