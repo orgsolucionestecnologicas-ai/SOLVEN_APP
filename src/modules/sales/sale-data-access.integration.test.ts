@@ -1,0 +1,222 @@
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
+
+import { prisma } from "@/lib/prisma";
+
+import {
+  createSale,
+  listSales,
+  SaleInsufficientStockError,
+  SaleProductNotFoundError
+} from "./sale-data-access";
+
+const testProductNamePrefix = "SOLVEN_SALE_TEST_PRODUCT_";
+
+describe("sale data access", () => {
+  beforeEach(async () => {
+    await deleteSaleTestData();
+  });
+
+  afterAll(async () => {
+    await deleteSaleTestData();
+    await prisma.$disconnect();
+  });
+
+  it("creates a sale, sale items, product stock updates, and inventory movements atomically", async () => {
+    const firstProduct = await createTestProduct("RICE", 10, 5);
+    const secondProduct = await createTestProduct("BEANS", 4.5, 8);
+
+    const sale = await createSale({
+      items: [
+        {
+          productId: firstProduct.id,
+          quantity: 2
+        },
+        {
+          productId: secondProduct.id,
+          quantity: 3
+        }
+      ]
+    });
+
+    const updatedFirstProduct = await prisma.product.findUniqueOrThrow({
+      where: {
+        id: firstProduct.id
+      }
+    });
+    const updatedSecondProduct = await prisma.product.findUniqueOrThrow({
+      where: {
+        id: secondProduct.id
+      }
+    });
+    const inventoryMovements = await prisma.inventoryMovement.findMany({
+      where: {
+        reason: `SALE:${sale.id}`
+      },
+      orderBy: {
+        productId: "asc"
+      }
+    });
+
+    expect(sale.totalAmount.toString()).toBe("33.5");
+    expect(sale.items).toHaveLength(2);
+    expect(updatedFirstProduct.stock).toBe(3);
+    expect(updatedSecondProduct.stock).toBe(5);
+    expect(inventoryMovements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: firstProduct.id,
+          previousStock: 5,
+          newStock: 3,
+          quantityChange: -2
+        }),
+        expect.objectContaining({
+          productId: secondProduct.id,
+          previousStock: 8,
+          newStock: 5,
+          quantityChange: -3
+        })
+      ])
+    );
+  });
+
+  it("rejects a sale when a product does not exist", async () => {
+    await expect(
+      createSale({
+        items: [
+          {
+            productId: "missing-product",
+            quantity: 1
+          }
+        ]
+      })
+    ).rejects.toThrow(SaleProductNotFoundError);
+  });
+
+  it("rejects a sale when stock is insufficient and does not create records", async () => {
+    const product = await createTestProduct("LOW_STOCK", 8, 1);
+
+    await expect(
+      createSale({
+        items: [
+          {
+            productId: product.id,
+            quantity: 2
+          }
+        ]
+      })
+    ).rejects.toThrow(SaleInsufficientStockError);
+
+    const updatedProduct = await prisma.product.findUniqueOrThrow({
+      where: {
+        id: product.id
+      }
+    });
+    const saleItems = await prisma.saleItem.findMany({
+      where: {
+        productId: product.id
+      }
+    });
+    const inventoryMovements = await prisma.inventoryMovement.findMany({
+      where: {
+        productId: product.id
+      }
+    });
+
+    expect(updatedProduct.stock).toBe(1);
+    expect(saleItems).toHaveLength(0);
+    expect(inventoryMovements).toHaveLength(0);
+  });
+
+  it("lists sales after creation", async () => {
+    const product = await createTestProduct("LIST", 6, 3);
+    const sale = await createSale({
+      items: [
+        {
+          productId: product.id,
+          quantity: 1
+        }
+      ]
+    });
+
+    const sales = await listSales();
+
+    expect(sales).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: sale.id
+        })
+      ])
+    );
+  });
+});
+
+async function createTestProduct(
+  nameSuffix: string,
+  salePrice: number,
+  stock: number
+) {
+  return prisma.product.create({
+    data: {
+      name: `${testProductNamePrefix}${nameSuffix}_${Date.now()}`,
+      costPrice: 1,
+      salePrice,
+      stock
+    }
+  });
+}
+
+async function deleteSaleTestData() {
+  const testProducts = await prisma.product.findMany({
+    where: {
+      name: {
+        startsWith: testProductNamePrefix
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+  const testProductIds = testProducts.map((product) => product.id);
+  const testSaleItems = await prisma.saleItem.findMany({
+    where: {
+      productId: {
+        in: testProductIds
+      }
+    },
+    select: {
+      saleId: true
+    }
+  });
+  const testSaleIds = [
+    ...new Set(testSaleItems.map((saleItem) => saleItem.saleId))
+  ];
+
+  await prisma.inventoryMovement.deleteMany({
+    where: {
+      productId: {
+        in: testProductIds
+      }
+    }
+  });
+  await prisma.saleItem.deleteMany({
+    where: {
+      productId: {
+        in: testProductIds
+      }
+    }
+  });
+  await prisma.sale.deleteMany({
+    where: {
+      id: {
+        in: testSaleIds
+      }
+    }
+  });
+  await prisma.product.deleteMany({
+    where: {
+      id: {
+        in: testProductIds
+      }
+    }
+  });
+}
