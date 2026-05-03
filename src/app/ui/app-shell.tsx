@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 type AppShellProps = {
-  activeSection: "customers" | "dashboard" | "expenses" | "products";
+  activeSection: "customers" | "dashboard" | "debts" | "expenses" | "products";
   eyebrow: string;
   title: string;
   children: ReactNode;
@@ -28,10 +28,15 @@ const navigationItems = [
     href: "/customers",
     label: "Clientes",
     section: "customers"
+  },
+  {
+    href: "/debts",
+    label: "Deudas",
+    section: "debts"
   }
 ] as const;
 
-const inactiveNavigationItems = ["Ventas", "Deudas"];
+const inactiveNavigationItems = ["Ventas"];
 
 export function AppShell({
   activeSection,
