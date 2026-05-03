@@ -169,3 +169,18 @@ integrity, difficult debugging only.
 • ✗ Break the approved visual design
 • ✗ Create duplicate logic across modules
 • ✗ Use generic names: data, item, thing, temp, x, stuff
+
+## Operational Skills
+Skill files are located in docs/skills/. Read the relevant skill before executing the corresponding task type.
+- Debugging: docs/skills/systematic-debugging.md
+- Commits: docs/skills/commit-work.md
+- Session end: docs/skills/session-handoff.md
+- Code cleanup: docs/skills/reducing-entropy.md
+- Naming review: docs/skills/naming-analyzer.md
+- Debug patterns: docs/skills/debugging-strategies.md
+- Business logic: docs/skills/business-logic-reasoning.md
+- API design: docs/skills/api-design.md
+- Data integrity: docs/skills/data-integrity.md
+- Financial logic: docs/skills/financial-logic.md
+- Test discipline: docs/skills/test-discipline.md
+- Code review: docs/skills/code-review.md
