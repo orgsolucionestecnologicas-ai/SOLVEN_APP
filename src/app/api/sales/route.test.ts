@@ -5,7 +5,9 @@ import {
   createSale,
   listSales,
   SaleInsufficientStockError,
-  SaleProductNotFoundError
+  SaleProductNotFoundError,
+  type SaleWithCustomer,
+  type SaleWithItems
 } from "../../../modules/sales";
 import { SaleValidationError } from "../../../modules/sales/sale-validation";
 import { GET, POST } from "./route";
@@ -202,6 +204,7 @@ const saleJson = {
   totalAmount: "30.00",
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
+  customer: null,
   items: [
     {
       id: "sale-item-1",
@@ -216,7 +219,7 @@ const saleJson = {
   ]
 };
 
-function buildSaleRecord(): Awaited<ReturnType<typeof createSale>> {
+function buildSaleRecord(): SaleWithItems & SaleWithCustomer {
   return {
     ...saleJson,
     saleDate: new Date(saleJson.saleDate),
@@ -227,7 +230,7 @@ function buildSaleRecord(): Awaited<ReturnType<typeof createSale>> {
       createdAt: new Date(saleItem.createdAt),
       updatedAt: new Date(saleItem.updatedAt)
     }))
-  } as unknown as Awaited<ReturnType<typeof createSale>>;
+  } as unknown as SaleWithItems & SaleWithCustomer;
 }
 
 function buildPrismaNotFoundError() {

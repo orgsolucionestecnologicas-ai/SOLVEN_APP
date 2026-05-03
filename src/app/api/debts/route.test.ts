@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createDebt, listDebts } from "../../../modules/debts";
+import { createDebt, type DebtWithCustomer, listDebts } from "../../../modules/debts";
 import { DebtValidationError } from "../../../modules/debts/debt-validation";
 import { GET, POST } from "./route";
 
@@ -115,15 +115,16 @@ const debtJson = {
   totalAmount: "90.00",
   remainingAmount: "90.00",
   createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z"
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  customer: { name: "Test Customer" }
 };
 
-function buildDebtRecord(): Awaited<ReturnType<typeof createDebt>> {
+function buildDebtRecord(): DebtWithCustomer {
   return {
     ...debtJson,
     createdAt: new Date(debtJson.createdAt),
     updatedAt: new Date(debtJson.updatedAt)
-  } as unknown as Awaited<ReturnType<typeof createDebt>>;
+  } as unknown as DebtWithCustomer;
 }
 
 function buildPrismaNotFoundError() {

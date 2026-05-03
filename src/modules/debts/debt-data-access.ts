@@ -7,6 +7,8 @@ import {
   validateCreateDebtInput
 } from "./debt-validation";
 
+export type DebtWithCustomer = Debt & { customer: { name: string } };
+
 export async function createDebt(debtInput: CreateDebtInput): Promise<Debt> {
   const validatedDebt = validateCreateDebtInput(debtInput);
 
@@ -23,10 +25,15 @@ export async function createDebt(debtInput: CreateDebtInput): Promise<Debt> {
   });
 }
 
-export async function listDebts(): Promise<Debt[]> {
+export async function listDebts(): Promise<DebtWithCustomer[]> {
   return prisma.debt.findMany({
     orderBy: {
       createdAt: "desc"
+    },
+    include: {
+      customer: {
+        select: { name: true }
+      }
     }
   });
 }

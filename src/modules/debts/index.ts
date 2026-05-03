@@ -1,4 +1,4 @@
-export { createDebt, listDebts } from "./debt-data-access";
+export { createDebt, listDebts, type DebtWithCustomer } from "./debt-data-access";
 export {
   DebtPaymentAmountError,
   listDebtPayments,
