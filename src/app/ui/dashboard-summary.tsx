@@ -22,56 +22,56 @@ type DashboardSummaryResponse = {
 
 const metricGroups = [
   {
-    title: "Sales",
+    title: "Ventas",
     metrics: [
       {
         key: "totalSalesAmount",
-        label: "Total sales",
+        label: "Ventas totales",
         tone: "emerald"
       },
       {
         key: "totalExpensesAmount",
-        label: "Total expenses",
+        label: "Gastos totales",
         tone: "rose"
       }
     ]
   },
   {
-    title: "Cash",
+    title: "Caja",
     metrics: [
       {
         key: "totalCashIn",
-        label: "Cash in",
+        label: "Entradas de caja",
         tone: "emerald"
       },
       {
         key: "totalCashOut",
-        label: "Cash out",
+        label: "Salidas de caja",
         tone: "amber"
       },
       {
         key: "currentCashBalance",
-        label: "Current balance",
+        label: "Balance actual",
         tone: "slate"
       }
     ]
   },
   {
-    title: "Operations",
+    title: "Operación",
     metrics: [
       {
         key: "totalDebtRemaining",
-        label: "Debt remaining",
+        label: "Deuda pendiente",
         tone: "indigo"
       },
       {
         key: "totalProducts",
-        label: "Products",
+        label: "Productos",
         tone: "slate"
       },
       {
         key: "lowStockProductsCount",
-        label: "Low stock products",
+        label: "Productos con bajo stock",
         tone: "amber"
       }
     ]
@@ -109,9 +109,7 @@ export function DashboardSummary() {
         }
 
         if (!response.ok || !responseBody.data) {
-          setErrorMessage(
-            responseBody.error?.message ?? "Could not load dashboard summary."
-          );
+          setErrorMessage("No se pudo cargar el resumen del negocio.");
           setSummary(null);
           return;
         }
@@ -120,7 +118,7 @@ export function DashboardSummary() {
         setErrorMessage(null);
       } catch {
         if (isActive) {
-          setErrorMessage("Could not load dashboard summary.");
+          setErrorMessage("No se pudo cargar el resumen del negocio.");
           setSummary(null);
         }
       } finally {
@@ -192,13 +190,18 @@ function MetricCard({
 
 function LoadingState() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <div
-          className="h-32 animate-pulse rounded-lg border border-slate-200 bg-slate-50"
-          key={index}
-        />
-      ))}
+    <div>
+      <p className="mb-3 text-sm font-medium text-slate-500">
+        Cargando resumen...
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div
+            className="h-32 animate-pulse rounded-lg border border-slate-200 bg-slate-50"
+            key={index}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -222,12 +225,12 @@ function formatMetricValue(
   return numberFormatter.format(Number(value));
 }
 
-const moneyFormatter = new Intl.NumberFormat("en-US", {
+const moneyFormatter = new Intl.NumberFormat("es-419", {
   maximumFractionDigits: 2,
   minimumFractionDigits: 2
 });
 
-const numberFormatter = new Intl.NumberFormat("en-US", {
+const numberFormatter = new Intl.NumberFormat("es-419", {
   maximumFractionDigits: 0
 });
 

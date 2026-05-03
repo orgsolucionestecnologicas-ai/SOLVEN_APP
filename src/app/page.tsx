@@ -1,12 +1,12 @@
 import { DashboardSummary } from "./ui/dashboard-summary";
 
 const navigationItems = [
-  "Dashboard",
-  "Products",
-  "Sales",
-  "Expenses",
-  "Customers",
-  "Debts"
+  "Panel",
+  "Productos",
+  "Ventas",
+  "Gastos",
+  "Clientes",
+  "Deudas"
 ];
 
 export default function Home() {
@@ -16,10 +16,10 @@ export default function Home() {
         <div className="flex items-center justify-between lg:block">
           <div>
             <p className="text-xl font-semibold tracking-normal">SOLVEN</p>
-            <p className="mt-1 text-sm text-slate-400">Business control</p>
+            <p className="mt-1 text-sm text-slate-400">Control del negocio</p>
           </div>
           <div className="rounded-md bg-emerald-500 px-2.5 py-1 text-xs font-medium text-emerald-950 lg:mt-6 lg:inline-block">
-            MVP
+            Inicial
           </div>
         </div>
 
@@ -27,7 +27,7 @@ export default function Home() {
           {navigationItems.map((item) => (
             <div
               className={
-                item === "Dashboard"
+                item === "Panel"
                   ? "whitespace-nowrap rounded-md bg-white px-3 py-2 text-sm font-medium text-slate-950"
                   : "whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-slate-400"
               }
@@ -41,9 +41,9 @@ export default function Home() {
 
       <main className="min-w-0 flex-1 bg-white">
         <div className="border-b border-slate-200 px-5 py-5 sm:px-8">
-          <p className="text-sm font-medium text-slate-500">Dashboard</p>
+          <p className="text-sm font-medium text-slate-500">Panel</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">
-            Business summary
+            Resumen del negocio
           </h1>
         </div>
 
