@@ -10,4 +10,6 @@ body {
   min-height: 100vh;
   background: #f8fafc;
   color: #111827;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
