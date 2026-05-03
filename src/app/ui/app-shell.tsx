@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 type AppShellProps = {
   activeSection:
     | "customers"
+    | "cashMovements"
     | "dashboard"
     | "debts"
     | "expenses"
@@ -34,6 +35,11 @@ const navigationItems = [
     href: "/expenses",
     label: "Gastos",
     section: "expenses"
+  },
+  {
+    href: "/cash-movements",
+    label: "Caja",
+    section: "cashMovements"
   },
   {
     href: "/customers",
