@@ -32,7 +32,23 @@ export async function registerDebtPayment(
       throw new DebtPaymentAmountError();
     }
 
-    const remainingAmount = debt.remainingAmount.minus(paymentAmount);
+    const debtUpdate = await transaction.debt.updateMany({
+      where: {
+        id: validatedPayment.debtId,
+        remainingAmount: {
+          gte: paymentAmount
+        }
+      },
+      data: {
+        remainingAmount: {
+          decrement: paymentAmount
+        }
+      }
+    });
+
+    if (debtUpdate.count === 0) {
+      throw new DebtPaymentAmountError();
+    }
 
     const debtPayment = await transaction.debtPayment.create({
       data: {
@@ -51,14 +67,6 @@ export async function registerDebtPayment(
       referenceId: debtPayment.id
     });
 
-    await transaction.debt.update({
-      where: {
-        id: validatedPayment.debtId
-      },
-      data: {
-        remainingAmount
-      }
-    });
     await transaction.cashMovement.create({
       data: cashMovement
     });
