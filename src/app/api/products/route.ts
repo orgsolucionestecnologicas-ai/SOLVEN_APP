@@ -1,15 +1,23 @@
-import { NextResponse } from "next/server";
-
 import { createProduct, listProducts } from "../../../modules/products";
 import {
   type CreateProductInput,
   ProductValidationError
 } from "../../../modules/products/product-validation";
+import {
+  errorResponse,
+  invalidJsonResponse,
+  isRequestObject,
+  successResponse
+} from "../_shared/responses";
 
 export async function GET() {
-  const products = await listProducts();
+  try {
+    const products = await listProducts();
 
-  return NextResponse.json({ data: products });
+    return successResponse(products);
+  } catch {
+    return errorResponse("Could not load products.");
+  }
 }
 
 export async function POST(request: Request) {
@@ -18,59 +26,22 @@ export async function POST(request: Request) {
   try {
     requestBody = await request.json();
   } catch {
-    return NextResponse.json(
-      {
-        error: {
-          message: "Request body must be valid JSON."
-        }
-      },
-      { status: 400 }
-    );
+    return invalidJsonResponse();
   }
 
   if (!isRequestObject(requestBody)) {
-    return NextResponse.json(
-      {
-        error: {
-          message: "Product input must be an object."
-        }
-      },
-      { status: 400 }
-    );
+    return errorResponse("Product input must be an object.", 400);
   }
 
   try {
     const product = await createProduct(requestBody as CreateProductInput);
 
-    return NextResponse.json({ data: product }, { status: 201 });
+    return successResponse(product, 201);
   } catch (error) {
     if (error instanceof ProductValidationError) {
-      return NextResponse.json(
-        {
-          error: {
-            message: "Invalid product input.",
-            details: error.reasons
-          }
-        },
-        { status: 400 }
-      );
+      return errorResponse("Invalid product input.", 400, error.reasons);
     }
 
-    return NextResponse.json(
-      {
-        error: {
-          message: "Could not save product."
-        }
-      },
-      { status: 500 }
-    );
+    return errorResponse("Could not save product.");
   }
-}
-
-function isRequestObject(requestBody: unknown) {
-  return (
-    typeof requestBody === "object" &&
-    requestBody !== null &&
-    !Array.isArray(requestBody)
-  );
 }

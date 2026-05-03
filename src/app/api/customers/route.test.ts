@@ -27,6 +27,19 @@ describe("customers API route", () => {
     expect(await response.json()).toEqual({ data: [customerJson] });
   });
 
+  it("returns a server error when customers cannot be listed", async () => {
+    mockedListCustomers.mockRejectedValueOnce(new Error("Database error"));
+
+    const response = await GET();
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: {
+        message: "Could not load customers."
+      }
+    });
+  });
+
   it("creates a customer", async () => {
     const customer = buildCustomerRecord();
     mockedCreateCustomer.mockResolvedValueOnce(customer);

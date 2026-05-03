@@ -27,6 +27,19 @@ describe("expenses API route", () => {
     expect(await response.json()).toEqual({ data: [expenseJson] });
   });
 
+  it("returns a server error when expenses cannot be listed", async () => {
+    mockedListExpenses.mockRejectedValueOnce(new Error("Database error"));
+
+    const response = await GET();
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: {
+        message: "Could not load expenses."
+      }
+    });
+  });
+
   it("creates an expense", async () => {
     const expense = buildExpenseRecord();
     mockedCreateExpense.mockResolvedValueOnce(expense);

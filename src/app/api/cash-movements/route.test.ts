@@ -30,6 +30,19 @@ describe("cash movements API route", () => {
     expect(await response.json()).toEqual({ data: [cashMovementJson] });
   });
 
+  it("returns a server error when cash movements cannot be listed", async () => {
+    mockedListCashMovements.mockRejectedValueOnce(new Error("Database error"));
+
+    const response = await GET();
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: {
+        message: "Could not load cash movements."
+      }
+    });
+  });
+
   it("creates a cash movement", async () => {
     const cashMovement = buildCashMovementRecord();
     mockedCreateCashMovement.mockResolvedValueOnce(cashMovement);

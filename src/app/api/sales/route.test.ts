@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -42,6 +43,19 @@ describe("sales API route", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ data: [saleJson] });
+  });
+
+  it("returns a server error when sales cannot be listed", async () => {
+    mockedListSales.mockRejectedValueOnce(new Error("Database error"));
+
+    const response = await GET();
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: {
+        message: "Could not load sales."
+      }
+    });
   });
 
   it("creates a sale", async () => {
@@ -150,6 +164,33 @@ describe("sales API route", () => {
       }
     });
   });
+
+  it("returns an error when the credit sale customer does not exist", async () => {
+    mockedCreateSale.mockRejectedValueOnce(buildPrismaNotFoundError());
+
+    const response = await POST(
+      new Request("http://localhost/api/sales", {
+        method: "POST",
+        body: JSON.stringify({
+          paymentType: "CREDIT",
+          customerId: "missing-customer",
+          items: [
+            {
+              productId: "product-1",
+              quantity: 1
+            }
+          ]
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        message: "Customer was not found."
+      }
+    });
+  });
 });
 
 const saleJson = {
@@ -187,4 +228,11 @@ function buildSaleRecord(): Awaited<ReturnType<typeof createSale>> {
       updatedAt: new Date(saleItem.updatedAt)
     }))
   } as unknown as Awaited<ReturnType<typeof createSale>>;
+}
+
+function buildPrismaNotFoundError() {
+  return new Prisma.PrismaClientKnownRequestError("Record not found", {
+    code: "P2025",
+    clientVersion: "test"
+  });
 }

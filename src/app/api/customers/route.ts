@@ -1,15 +1,23 @@
-import { NextResponse } from "next/server";
-
 import { createCustomer, listCustomers } from "../../../modules/customers";
 import {
   type CreateCustomerInput,
   CustomerValidationError
 } from "../../../modules/customers/customer-validation";
+import {
+  errorResponse,
+  invalidJsonResponse,
+  isRequestObject,
+  successResponse
+} from "../_shared/responses";
 
 export async function GET() {
-  const customers = await listCustomers();
+  try {
+    const customers = await listCustomers();
 
-  return NextResponse.json({ data: customers });
+    return successResponse(customers);
+  } catch {
+    return errorResponse("Could not load customers.");
+  }
 }
 
 export async function POST(request: Request) {
@@ -18,59 +26,22 @@ export async function POST(request: Request) {
   try {
     requestBody = await request.json();
   } catch {
-    return NextResponse.json(
-      {
-        error: {
-          message: "Request body must be valid JSON."
-        }
-      },
-      { status: 400 }
-    );
+    return invalidJsonResponse();
   }
 
   if (!isRequestObject(requestBody)) {
-    return NextResponse.json(
-      {
-        error: {
-          message: "Customer input must be an object."
-        }
-      },
-      { status: 400 }
-    );
+    return errorResponse("Customer input must be an object.", 400);
   }
 
   try {
     const customer = await createCustomer(requestBody as CreateCustomerInput);
 
-    return NextResponse.json({ data: customer }, { status: 201 });
+    return successResponse(customer, 201);
   } catch (error) {
     if (error instanceof CustomerValidationError) {
-      return NextResponse.json(
-        {
-          error: {
-            message: "Invalid customer input.",
-            details: error.reasons
-          }
-        },
-        { status: 400 }
-      );
+      return errorResponse("Invalid customer input.", 400, error.reasons);
     }
 
-    return NextResponse.json(
-      {
-        error: {
-          message: "Could not save customer."
-        }
-      },
-      { status: 500 }
-    );
+    return errorResponse("Could not save customer.");
   }
-}
-
-function isRequestObject(requestBody: unknown) {
-  return (
-    typeof requestBody === "object" &&
-    requestBody !== null &&
-    !Array.isArray(requestBody)
-  );
 }

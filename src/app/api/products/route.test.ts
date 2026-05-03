@@ -27,6 +27,19 @@ describe("products API route", () => {
     expect(await response.json()).toEqual({ data: [productJson] });
   });
 
+  it("returns a server error when products cannot be listed", async () => {
+    mockedListProducts.mockRejectedValueOnce(new Error("Database error"));
+
+    const response = await GET();
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: {
+        message: "Could not load products."
+      }
+    });
+  });
+
   it("creates a product", async () => {
     const product = buildProductRecord();
     mockedCreateProduct.mockResolvedValueOnce(product);

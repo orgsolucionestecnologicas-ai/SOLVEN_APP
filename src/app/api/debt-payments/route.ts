@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 import {
   DebtPaymentAmountError,
   listDebtPayments,
@@ -9,11 +7,22 @@ import {
   DebtPaymentValidationError,
   type RegisterDebtPaymentInput
 } from "../../../modules/debts/debt-payment-validation";
+import {
+  errorResponse,
+  invalidJsonResponse,
+  isPrismaRecordNotFoundError,
+  isRequestObject,
+  successResponse
+} from "../_shared/responses";
 
 export async function GET() {
-  const debtPayments = await listDebtPayments();
+  try {
+    const debtPayments = await listDebtPayments();
 
-  return NextResponse.json({ data: debtPayments });
+    return successResponse(debtPayments);
+  } catch {
+    return errorResponse("Could not load debt payments.");
+  }
 }
 
 export async function POST(request: Request) {
@@ -22,25 +31,11 @@ export async function POST(request: Request) {
   try {
     requestBody = await request.json();
   } catch {
-    return NextResponse.json(
-      {
-        error: {
-          message: "Request body must be valid JSON."
-        }
-      },
-      { status: 400 }
-    );
+    return invalidJsonResponse();
   }
 
   if (!isRequestObject(requestBody)) {
-    return NextResponse.json(
-      {
-        error: {
-          message: "Debt payment input must be an object."
-        }
-      },
-      { status: 400 }
-    );
+    return errorResponse("Debt payment input must be an object.", 400);
   }
 
   try {
@@ -48,46 +43,20 @@ export async function POST(request: Request) {
       requestBody as RegisterDebtPaymentInput
     );
 
-    return NextResponse.json({ data: debtPayment }, { status: 201 });
+    return successResponse(debtPayment, 201);
   } catch (error) {
     if (error instanceof DebtPaymentValidationError) {
-      return NextResponse.json(
-        {
-          error: {
-            message: "Invalid debt payment input.",
-            details: error.reasons
-          }
-        },
-        { status: 400 }
-      );
+      return errorResponse("Invalid debt payment input.", 400, error.reasons);
     }
 
     if (error instanceof DebtPaymentAmountError) {
-      return NextResponse.json(
-        {
-          error: {
-            message: error.message
-          }
-        },
-        { status: 400 }
-      );
+      return errorResponse(error.message, 400);
     }
 
-    return NextResponse.json(
-      {
-        error: {
-          message: "Could not save debt payment."
-        }
-      },
-      { status: 500 }
-    );
-  }
-}
+    if (isPrismaRecordNotFoundError(error)) {
+      return errorResponse("Debt was not found.", 400);
+    }
 
-function isRequestObject(requestBody: unknown) {
-  return (
-    typeof requestBody === "object" &&
-    requestBody !== null &&
-    !Array.isArray(requestBody)
-  );
+    return errorResponse("Could not save debt payment.");
+  }
 }

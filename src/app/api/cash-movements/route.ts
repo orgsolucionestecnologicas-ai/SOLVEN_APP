@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 import {
   createCashMovement,
   listCashMovements
@@ -8,11 +6,21 @@ import {
   CashMovementValidationError,
   type CreateCashMovementInput
 } from "../../../modules/cash/cash-movement-validation";
+import {
+  errorResponse,
+  invalidJsonResponse,
+  isRequestObject,
+  successResponse
+} from "../_shared/responses";
 
 export async function GET() {
-  const cashMovements = await listCashMovements();
+  try {
+    const cashMovements = await listCashMovements();
 
-  return NextResponse.json({ data: cashMovements });
+    return successResponse(cashMovements);
+  } catch {
+    return errorResponse("Could not load cash movements.");
+  }
 }
 
 export async function POST(request: Request) {
@@ -21,25 +29,11 @@ export async function POST(request: Request) {
   try {
     requestBody = await request.json();
   } catch {
-    return NextResponse.json(
-      {
-        error: {
-          message: "Request body must be valid JSON."
-        }
-      },
-      { status: 400 }
-    );
+    return invalidJsonResponse();
   }
 
   if (!isRequestObject(requestBody)) {
-    return NextResponse.json(
-      {
-        error: {
-          message: "Cash movement input must be an object."
-        }
-      },
-      { status: 400 }
-    );
+    return errorResponse("Cash movement input must be an object.", 400);
   }
 
   try {
@@ -47,35 +41,12 @@ export async function POST(request: Request) {
       requestBody as CreateCashMovementInput
     );
 
-    return NextResponse.json({ data: cashMovement }, { status: 201 });
+    return successResponse(cashMovement, 201);
   } catch (error) {
     if (error instanceof CashMovementValidationError) {
-      return NextResponse.json(
-        {
-          error: {
-            message: "Invalid cash movement input.",
-            details: error.reasons
-          }
-        },
-        { status: 400 }
-      );
+      return errorResponse("Invalid cash movement input.", 400, error.reasons);
     }
 
-    return NextResponse.json(
-      {
-        error: {
-          message: "Could not save cash movement."
-        }
-      },
-      { status: 500 }
-    );
+    return errorResponse("Could not save cash movement.");
   }
-}
-
-function isRequestObject(requestBody: unknown) {
-  return (
-    typeof requestBody === "object" &&
-    requestBody !== null &&
-    !Array.isArray(requestBody)
-  );
 }

@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDebt, listDebts } from "../../../modules/debts";
@@ -25,6 +26,19 @@ describe("debts API route", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ data: [debtJson] });
+  });
+
+  it("returns a server error when debts cannot be listed", async () => {
+    mockedListDebts.mockRejectedValueOnce(new Error("Database error"));
+
+    const response = await GET();
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: {
+        message: "Could not load debts."
+      }
+    });
   });
 
   it("creates a debt", async () => {
@@ -72,6 +86,27 @@ describe("debts API route", () => {
       }
     });
   });
+
+  it("returns an error when the customer does not exist", async () => {
+    mockedCreateDebt.mockRejectedValueOnce(buildPrismaNotFoundError());
+
+    const response = await POST(
+      new Request("http://localhost/api/debts", {
+        method: "POST",
+        body: JSON.stringify({
+          customerId: "missing-customer",
+          totalAmount: 90
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        message: "Customer was not found."
+      }
+    });
+  });
 });
 
 const debtJson = {
@@ -89,4 +124,11 @@ function buildDebtRecord(): Awaited<ReturnType<typeof createDebt>> {
     createdAt: new Date(debtJson.createdAt),
     updatedAt: new Date(debtJson.updatedAt)
   } as unknown as Awaited<ReturnType<typeof createDebt>>;
+}
+
+function buildPrismaNotFoundError() {
+  return new Prisma.PrismaClientKnownRequestError("Record not found", {
+    code: "P2025",
+    clientVersion: "test"
+  });
 }

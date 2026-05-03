@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 import {
   createSale,
   listSales,
@@ -10,11 +8,22 @@ import {
   type CreateSaleInput,
   SaleValidationError
 } from "../../../modules/sales/sale-validation";
+import {
+  errorResponse,
+  invalidJsonResponse,
+  isPrismaRecordNotFoundError,
+  isRequestObject,
+  successResponse
+} from "../_shared/responses";
 
 export async function GET() {
-  const sales = await listSales();
+  try {
+    const sales = await listSales();
 
-  return NextResponse.json({ data: sales });
+    return successResponse(sales);
+  } catch {
+    return errorResponse("Could not load sales.");
+  }
 }
 
 export async function POST(request: Request) {
@@ -23,73 +32,33 @@ export async function POST(request: Request) {
   try {
     requestBody = await request.json();
   } catch {
-    return NextResponse.json(
-      {
-        error: {
-          message: "Request body must be valid JSON."
-        }
-      },
-      { status: 400 }
-    );
+    return invalidJsonResponse();
   }
 
   if (!isRequestObject(requestBody)) {
-    return NextResponse.json(
-      {
-        error: {
-          message: "Sale input must be an object."
-        }
-      },
-      { status: 400 }
-    );
+    return errorResponse("Sale input must be an object.", 400);
   }
 
   try {
     const sale = await createSale(requestBody as CreateSaleInput);
 
-    return NextResponse.json({ data: sale }, { status: 201 });
+    return successResponse(sale, 201);
   } catch (error) {
     if (error instanceof SaleValidationError) {
-      return NextResponse.json(
-        {
-          error: {
-            message: "Invalid sale input.",
-            details: error.reasons
-          }
-        },
-        { status: 400 }
-      );
+      return errorResponse("Invalid sale input.", 400, error.reasons);
     }
 
     if (
       error instanceof SaleProductNotFoundError ||
       error instanceof SaleInsufficientStockError
     ) {
-      return NextResponse.json(
-        {
-          error: {
-            message: error.message
-          }
-        },
-        { status: 400 }
-      );
+      return errorResponse(error.message, 400);
     }
 
-    return NextResponse.json(
-      {
-        error: {
-          message: "Could not save sale."
-        }
-      },
-      { status: 500 }
-    );
-  }
-}
+    if (isPrismaRecordNotFoundError(error)) {
+      return errorResponse("Customer was not found.", 400);
+    }
 
-function isRequestObject(requestBody: unknown) {
-  return (
-    typeof requestBody === "object" &&
-    requestBody !== null &&
-    !Array.isArray(requestBody)
-  );
+    return errorResponse("Could not save sale.");
+  }
 }
