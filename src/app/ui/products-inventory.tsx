@@ -518,6 +518,7 @@ function InventoryTable({ products, onAdjustStock }: InventoryTableProps) {
               <TableHeader>Costo</TableHeader>
               <TableHeader>Precio de venta</TableHeader>
               <TableHeader>Stock</TableHeader>
+              <TableHeader>Estado</TableHeader>
               <TableHeader>Actualizado</TableHeader>
               <TableHeader>Acción</TableHeader>
             </tr>
@@ -536,6 +537,9 @@ function InventoryTable({ products, onAdjustStock }: InventoryTableProps) {
                 </td>
                 <td className="whitespace-nowrap px-5 py-4 text-sm">
                   <StockBadge stock={product.stock} />
+                </td>
+                <td className="whitespace-nowrap px-5 py-4 text-sm">
+                  <StockStatusBadge stock={product.stock} />
                 </td>
                 <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-500">
                   {formatDate(product.updatedAt)}
@@ -578,6 +582,30 @@ function StockBadge({ stock }: { stock: number }) {
       }
     >
       {numberFormatter.format(stock)}
+    </span>
+  );
+}
+
+function StockStatusBadge({ stock }: { stock: number }) {
+  if (stock === 0) {
+    return (
+      <span className="inline-flex rounded-md bg-rose-50 px-2.5 py-1 text-sm font-medium text-rose-800">
+        Sin stock
+      </span>
+    );
+  }
+
+  if (stock <= 5) {
+    return (
+      <span className="inline-flex rounded-md bg-amber-50 px-2.5 py-1 text-sm font-medium text-amber-800">
+        Stock bajo
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex rounded-md bg-emerald-50 px-2.5 py-1 text-sm font-medium text-emerald-800">
+      En stock
     </span>
   );
 }

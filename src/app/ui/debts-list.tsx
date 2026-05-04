@@ -325,9 +325,14 @@ function DebtsTable({ debts, onPayDebt }: DebtsTableProps) {
                         Pagado
                       </span>
                     ) : (
-                      <span className="font-semibold text-amber-700">
-                        {formatMoney(debt.remainingAmount)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-950">
+                          {formatMoney(debt.remainingAmount)}
+                        </span>
+                        <span className="inline-flex rounded-md bg-rose-50 px-2.5 py-1 text-sm font-medium text-rose-800">
+                          Pendiente
+                        </span>
+                      </div>
                     )}
                   </td>
                   <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-500">

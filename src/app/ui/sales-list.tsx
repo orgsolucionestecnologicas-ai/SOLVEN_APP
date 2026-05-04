@@ -627,11 +627,11 @@ function PaymentTypeBadge({ paymentType }: { paymentType: SaleRecord["paymentTyp
     <span
       className={
         isCredit
-          ? "inline-flex rounded-md bg-amber-50 px-2.5 py-1 text-sm font-medium text-amber-800"
+          ? "inline-flex rounded-md bg-blue-50 px-2.5 py-1 text-sm font-medium text-blue-800"
           : "inline-flex rounded-md bg-emerald-50 px-2.5 py-1 text-sm font-medium text-emerald-800"
       }
     >
-      {isCredit ? "Crédito" : "Contado"}
+      {isCredit ? "Fiado" : "Contado"}
     </span>
   );
 }
