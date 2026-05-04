@@ -199,7 +199,7 @@ function MetricSections({ summary }: { summary: DashboardSummaryData }) {
     <div className="space-y-6">
       {metricGroups.map((group) => (
         <section key={group.title}>
-          <h2 className="text-sm font-semibold text-slate-900">{group.title}</h2>
+          <h2 className="text-sm font-semibold text-slate-950">{group.title}</h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {group.metrics.map((metric) => (
               <MetricCard
@@ -222,7 +222,7 @@ function ChartsSection({ sales }: { sales: SaleRecord[] }) {
 
   return (
     <div className="mt-8">
-      <h2 className="text-sm font-semibold text-slate-900">Análisis de ventas</h2>
+      <h2 className="text-sm font-semibold text-slate-950">Análisis de ventas</h2>
       <div className="mt-3 grid gap-6 sm:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="mb-4 text-sm font-medium text-slate-500">Ventas por día</p>
@@ -460,7 +460,7 @@ function PaymentSplitChart({
             <span className="text-slate-600">Contado</span>
           </div>
           <div className="text-right">
-            <span className="font-medium text-slate-900">
+            <span className="font-medium text-slate-950">
               {moneyFormatter.format(cashTotal)}
             </span>
             <span className="ml-2 text-slate-400">
@@ -474,7 +474,7 @@ function PaymentSplitChart({
             <span className="text-slate-600">Fiado</span>
           </div>
           <div className="text-right">
-            <span className="font-medium text-slate-900">
+            <span className="font-medium text-slate-950">
               {moneyFormatter.format(creditTotal)}
             </span>
             <span className="ml-2 text-slate-400">
