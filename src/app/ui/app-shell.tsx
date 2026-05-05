@@ -11,6 +11,7 @@ type AppShellProps = {
     | "expenses"
     | "pos"
     | "products"
+    | "reports"
     | "sales";
   eyebrow: string;
   title: string;
@@ -57,6 +58,11 @@ const navigationItems = [
     href: "/debts",
     label: "Deudas",
     section: "debts"
+  },
+  {
+    href: "/reports",
+    label: "Reportes",
+    section: "reports"
   }
 ] as const;
 
