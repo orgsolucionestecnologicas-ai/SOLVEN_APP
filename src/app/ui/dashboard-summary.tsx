@@ -1,8 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  BarChart2,
+  Bell,
+  Calendar,
+  CreditCard,
+  DollarSign,
+  Package,
+  RefreshCw,
+  ShoppingBag,
+  ShoppingCart,
+  TrendingUp,
+  UserPlus,
+} from "lucide-react";
 
-type DashboardSummaryData = {
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+type Summary = {
   totalSalesAmount: string;
   totalExpensesAmount: string;
   totalCashIn: string;
@@ -13,631 +29,726 @@ type DashboardSummaryData = {
   lowStockProductsCount: number;
 };
 
-type DashboardSummaryResponse = {
-  data?: DashboardSummaryData;
-  error?: {
-    message: string;
-  };
-};
-
-type SaleRecord = {
+type Sale = {
+  id: string;
   saleDate: string;
   paymentType: "CASH" | "CREDIT";
   totalAmount: string;
+  debtId?: string | null;
+  customer?: { name: string } | null;
 };
 
-type SalesResponse = {
-  data?: SaleRecord[];
-  error?: { message: string };
+type CashMovement = {
+  id: string;
+  movementDate: string;
+  type: "IN" | "OUT";
+  amount: string;
+  source: string;
+  referenceId: string;
 };
 
-type DailyPoint = {
-  date: string;
-  amount: number;
+type Product = {
+  id: string;
+  name: string;
+  stock: number;
+  salePrice: string;
 };
 
-const metricGroups = [
-  {
-    title: "Ventas",
-    metrics: [
-      {
-        key: "totalSalesAmount",
-        label: "Ventas totales",
-        tone: "emerald"
-      },
-      {
-        key: "totalExpensesAmount",
-        label: "Gastos totales",
-        tone: "rose"
-      }
-    ]
-  },
-  {
-    title: "Caja",
-    metrics: [
-      {
-        key: "totalCashIn",
-        label: "Entradas de caja",
-        tone: "emerald"
-      },
-      {
-        key: "totalCashOut",
-        label: "Salidas de caja",
-        tone: "amber"
-      },
-      {
-        key: "currentCashBalance",
-        label: "Balance actual",
-        tone: "slate"
-      }
-    ]
-  },
-  {
-    title: "Operación",
-    metrics: [
-      {
-        key: "totalDebtRemaining",
-        label: "Deuda pendiente",
-        tone: "indigo"
-      },
-      {
-        key: "totalProducts",
-        label: "Productos",
-        tone: "slate"
-      },
-      {
-        key: "lowStockProductsCount",
-        label: "Productos con bajo stock",
-        tone: "amber"
-      }
-    ]
-  }
-] as const;
+type Customer = {
+  id: string;
+  name: string;
+};
 
-const currencyMetricKeys = new Set([
-  "totalSalesAmount",
-  "totalExpensesAmount",
-  "totalCashIn",
-  "totalCashOut",
-  "currentCashBalance",
-  "totalDebtRemaining"
-]);
+type Debt = {
+  id: string;
+  customerId: string;
+  totalAmount: string;
+  remainingAmount: string;
+  customer: { name: string };
+};
+
+type DayTotal = { date: string; total: number };
+
+type DashboardState = {
+  summary: Summary | null;
+  sales: Sale[] | null;
+  cashMovements: CashMovement[] | null;
+  products: Product[] | null;
+  customers: Customer[] | null;
+  debts: Debt[] | null;
+  loading: boolean;
+};
+
+// ── Main export ────────────────────────────────────────────────────────────────
 
 export function DashboardSummary() {
-  const [summary, setSummary] = useState<DashboardSummaryData | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [sales, setSales] = useState<SaleRecord[]>([]);
-  const [salesLoaded, setSalesLoaded] = useState(false);
+  const [state, setState] = useState<DashboardState>({
+    summary: null,
+    sales: null,
+    cashMovements: null,
+    products: null,
+    customers: null,
+    debts: null,
+    loading: true,
+  });
 
   useEffect(() => {
-    let isActive = true;
+    let active = true;
 
-    async function loadSummary() {
-      try {
-        const response = await fetch("/api/dashboard/summary", {
-          headers: {
-            Accept: "application/json"
-          }
-        });
-        const responseBody = (await response.json()) as DashboardSummaryResponse;
+    async function load() {
+      const [summaryRes, salesRes, cashRes, productsRes, customersRes, debtsRes] =
+        await Promise.allSettled([
+          fetch("/api/dashboard/summary", { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/sales",             { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/cash-movements",    { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/products",          { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/customers",         { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/debts",             { headers: { Accept: "application/json" } }).then((r) => r.json()),
+        ]);
 
-        if (!isActive) {
-          return;
-        }
+      if (!active) return;
 
-        if (!response.ok || !responseBody.data) {
-          setErrorMessage("No se pudo cargar el resumen del negocio.");
-          setSummary(null);
-          return;
-        }
-
-        setSummary(responseBody.data);
-        setErrorMessage(null);
-      } catch {
-        if (isActive) {
-          setErrorMessage("No se pudo cargar el resumen del negocio.");
-          setSummary(null);
-        }
-      } finally {
-        if (isActive) {
-          setIsLoading(false);
-        }
-      }
+      setState({
+        summary:       summaryRes.status   === "fulfilled" ? (summaryRes.value.data   as Summary        ?? null) : null,
+        sales:         salesRes.status     === "fulfilled" ? (salesRes.value.data     as Sale[]         ?? null) : null,
+        cashMovements: cashRes.status      === "fulfilled" ? (cashRes.value.data      as CashMovement[] ?? null) : null,
+        products:      productsRes.status  === "fulfilled" ? (productsRes.value.data  as Product[]      ?? null) : null,
+        customers:     customersRes.status === "fulfilled" ? (customersRes.value.data as Customer[]     ?? null) : null,
+        debts:         debtsRes.status     === "fulfilled" ? (debtsRes.value.data     as Debt[]         ?? null) : null,
+        loading: false,
+      });
     }
 
-    void loadSummary();
-
-    return () => {
-      isActive = false;
-    };
+    void load();
+    return () => { active = false; };
   }, []);
 
-  useEffect(() => {
-    let isActive = true;
-
-    async function loadSales() {
-      try {
-        const response = await fetch("/api/sales", {
-          headers: { Accept: "application/json" }
-        });
-        const responseBody = (await response.json()) as SalesResponse;
-
-        if (isActive && response.ok && responseBody.data) {
-          setSales(responseBody.data);
-        }
-      } catch {
-        // charts show empty state on error
-      } finally {
-        if (isActive) {
-          setSalesLoaded(true);
-        }
-      }
-    }
-
-    void loadSales();
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
-
-  return (
-    <section className="px-5 py-6 sm:px-8">
-      {isLoading ? <LoadingState /> : null}
-      {!isLoading && errorMessage ? <ErrorState message={errorMessage} /> : null}
-      {!isLoading && summary ? <MetricSections summary={summary} /> : null}
-      {!isLoading && summary && salesLoaded ? (
-        <ChartsSection sales={sales} />
-      ) : null}
-    </section>
-  );
-}
-
-function MetricSections({ summary }: { summary: DashboardSummaryData }) {
-  return (
-    <div className="space-y-6">
-      {metricGroups.map((group) => (
-        <section key={group.title}>
-          <h2 className="text-sm font-semibold text-slate-950">{group.title}</h2>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {group.metrics.map((metric) => (
-              <MetricCard
-                key={metric.key}
-                label={metric.label}
-                tone={metric.tone}
-                value={formatMetricValue(metric.key, summary[metric.key])}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function ChartsSection({ sales }: { sales: SaleRecord[] }) {
-  const dailySales = computeDailySales(sales);
-  const { cashTotal, creditTotal } = computePaymentSplit(sales);
-
-  return (
-    <div className="mt-8">
-      <h2 className="text-sm font-semibold text-slate-950">Análisis de ventas</h2>
-      <div className="mt-3 grid gap-6 sm:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="mb-4 text-sm font-medium text-slate-500">Ventas por día</p>
-          <SalesTrendChart data={dailySales} />
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="mb-4 text-sm font-medium text-slate-500">Contado vs. Fiado</p>
-          <PaymentSplitChart cashTotal={cashTotal} creditTotal={creditTotal} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- Line chart constants ---
-const CHART_W = 400;
-const CHART_H = 160;
-const ML = 52;
-const MR = 12;
-const MT = 10;
-const MB = 36;
-const CW = CHART_W - ML - MR;
-const CH = CHART_H - MT - MB;
-
-function SalesTrendChart({ data }: { data: DailyPoint[] }) {
-  if (data.length === 0) {
-    return (
-      <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-slate-200">
-        <p className="text-sm text-slate-400">Sin ventas registradas</p>
-      </div>
-    );
+  if (state.loading) {
+    return <DashboardSkeleton />;
   }
 
-  const maxAmount = Math.max(...data.map((d) => d.amount));
-  const yMax = niceMax(maxAmount);
-  const n = data.length;
+  // ── Derived values ───────────────────────────────────────────────────────────
 
-  function xOf(i: number) {
-    if (n === 1) return ML + CW / 2;
-    return ML + (i / (n - 1)) * CW;
-  }
+  const now = new Date();
+  const todayStr     = now.toISOString().slice(0, 10);
+  const yesterdayStr = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
+  const monthStr     = todayStr.slice(0, 7);
+  const last7Dates   = Array.from({ length: 7 }, (_, i) =>
+    new Date(now.getTime() - (6 - i) * 86_400_000).toISOString().slice(0, 10)
+  );
 
-  function yOf(amount: number) {
-    return MT + CH - (amount / yMax) * CH;
-  }
+  const allSales = state.sales ?? [];
+  const allCash  = state.cashMovements ?? [];
 
-  const yTicks = [0, 0.25, 0.5, 0.75, 1.0].map((f) => ({
-    value: yMax * f,
-    y: MT + CH - f * CH
+  const todaySalesTotal     = sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === todayStr));
+  const yesterdaySalesTotal = sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === yesterdayStr));
+  const monthSalesTotal     = sumSales(allSales.filter((s) => s.saleDate.slice(0, 7) === monthStr));
+
+  const todayCashOut = allCash
+    .filter((m) => m.movementDate.slice(0, 10) === todayStr && m.type === "OUT")
+    .reduce((s, m) => s + Number(m.amount), 0);
+  const todayProfit = todaySalesTotal - todayCashOut;
+
+  const pendingDebtsCount = (state.debts ?? []).filter((d) => Number(d.remainingAmount) > 0).length;
+
+  const salesByDay: DayTotal[] = last7Dates.map((date) => ({
+    date,
+    total: sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === date)),
   }));
 
-  const xLabelIndices = pickIndices(n, 5);
+  const profitByDay = last7Dates.map((date, i) => {
+    const dayOut = allCash
+      .filter((m) => m.movementDate.slice(0, 10) === date && m.type === "OUT")
+      .reduce((s, m) => s + Number(m.amount), 0);
+    return salesByDay[i].total - dayOut;
+  });
 
-  const polylinePoints = data.map((d, i) => `${xOf(i)},${yOf(d.amount)}`).join(" ");
+  const monthDailyMap: Record<string, number> = {};
+  for (const s of allSales.filter((s) => s.saleDate.slice(0, 7) === monthStr)) {
+    const d = s.saleDate.slice(0, 10);
+    monthDailyMap[d] = (monthDailyMap[d] ?? 0) + Number(s.totalAmount);
+  }
+  const monthSparkData = Object.values(monthDailyMap);
 
-  const bottomY = MT + CH;
-  const areaPath = [
+  const todayVsDiff    = todaySalesTotal - yesterdaySalesTotal;
+  const todayVsLabel   = yesterdaySalesTotal > 0 ? `${todayVsDiff >= 0 ? "▲" : "▼"} ${formatMXN(Math.abs(todayVsDiff))} vs ayer` : null;
+  const todayVsPositive = todayVsDiff >= 0;
+
+  return (
+    <div className="min-h-full bg-slate-50">
+      {/* ── Header ── */}
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Hola, Propietario 👋</h1>
+          <p className="mt-0.5 text-sm text-slate-500">Aquí tienes el resumen de tu negocio</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 text-sm text-slate-500">
+            <Calendar size={15} className="text-slate-400" />
+            <span>{formatFullDate(now)}</span>
+          </div>
+          <div className="relative">
+            <Bell size={20} className="text-slate-500" />
+            {pendingDebtsCount > 0 ? (
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                {pendingDebtsCount > 9 ? "9+" : pendingDebtsCount}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-6 px-6 py-6">
+        {/* ── Metric cards ── */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            title="Ventas del día"
+            value={formatMXN(todaySalesTotal)}
+            IconEl={<DollarSign size={18} />}
+            iconBg="bg-violet-100"
+            iconColor="text-violet-600"
+            trendLabel={todayVsLabel}
+            trendPositive={todayVsPositive}
+            sparkData={salesByDay.map((d) => d.total)}
+            sparkColor="#7c3aed"
+          />
+          <MetricCard
+            title="Ventas del mes"
+            value={formatMXN(monthSalesTotal)}
+            IconEl={<ShoppingBag size={18} />}
+            iconBg="bg-green-100"
+            iconColor="text-green-600"
+            trendLabel={null}
+            trendPositive={true}
+            sparkData={monthSparkData}
+            sparkColor="#16a34a"
+          />
+          <MetricCard
+            title="Ganancia del día"
+            value={formatMXN(todayProfit)}
+            IconEl={<TrendingUp size={18} />}
+            iconBg="bg-blue-100"
+            iconColor="text-blue-600"
+            trendLabel={null}
+            trendPositive={true}
+            sparkData={profitByDay}
+            sparkColor="#2563eb"
+          />
+          {/* Low stock card */}
+          <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Productos bajos</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">
+                  {state.summary?.lowStockProductsCount ?? "—"}
+                </p>
+              </div>
+              <div className="rounded-lg bg-orange-100 p-2">
+                <Package size={18} className="text-orange-600" />
+              </div>
+            </div>
+            <Link
+              href="/products"
+              className="mt-3 inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700"
+            >
+              Ver inventario →
+            </Link>
+          </div>
+        </div>
+
+        {/* ── Chart + Top products ── */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            <MainSalesChart salesByDay={salesByDay} />
+          </div>
+          <div className="lg:col-span-2">
+            <TopProductsPanel />
+          </div>
+        </div>
+
+        {/* ── Bottom row ── */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <CashMovementsPanel cashMovements={state.cashMovements} />
+          <AlertsPanel
+            lowStockCount={state.summary?.lowStockProductsCount ?? 0}
+            pendingDebtsCount={pendingDebtsCount}
+          />
+          <QuickSummaryPanel
+            todaySalesTotal={todaySalesTotal}
+            todayProfit={todayProfit}
+            totalProducts={state.summary?.totalProducts ?? (state.products?.length ?? 0)}
+            totalCustomers={(state.customers ?? []).length}
+            pendingDebtsCount={pendingDebtsCount}
+          />
+        </div>
+
+        {/* ── Quick actions ── */}
+        <QuickActions />
+      </div>
+    </div>
+  );
+}
+
+// ── MetricCard ─────────────────────────────────────────────────────────────────
+
+function MetricCard({
+  title, value, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor,
+}: {
+  title: string;
+  value: string;
+  IconEl: React.ReactNode;
+  iconBg: string;
+  iconColor: string;
+  trendLabel: string | null;
+  trendPositive: boolean;
+  sparkData: number[];
+  sparkColor: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-slate-500">{title}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
+          {trendLabel ? (
+            <p className={`mt-1 text-xs font-medium ${trendPositive ? "text-green-600" : "text-red-500"}`}>
+              {trendLabel}
+            </p>
+          ) : null}
+        </div>
+        <div className={`rounded-lg p-2 ${iconBg}`}>
+          <span className={iconColor}>{IconEl}</span>
+        </div>
+      </div>
+      {sparkData.length > 1 ? (
+        <div className="mt-3">
+          <SparkLine data={sparkData} color={sparkColor} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ── SparkLine ──────────────────────────────────────────────────────────────────
+
+function SparkLine({ data, color }: { data: number[]; color: string }) {
+  const w = 80;
+  const h = 28;
+  const n = data.length;
+  if (n < 2) return null;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const pts = data
+    .map((v, i) => {
+      const x = (i / (n - 1)) * w;
+      const y = h - 2 - ((v - min) / range) * (h - 4);
+      return `${x},${y}`;
+    })
+    .join(" ");
+  return (
+    <svg aria-hidden width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+      <polyline
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        points={pts}
+      />
+    </svg>
+  );
+}
+
+// ── MainSalesChart ─────────────────────────────────────────────────────────────
+
+const CW_MAIN = 480;
+const CH_MAIN = 180;
+const ML_MAIN = 52;
+const MR_MAIN = 16;
+const MT_MAIN = 12;
+const MB_MAIN = 38;
+const PW = CW_MAIN - ML_MAIN - MR_MAIN;
+const PH = CH_MAIN - MT_MAIN - MB_MAIN;
+
+function MainSalesChart({ salesByDay }: { salesByDay: DayTotal[] }) {
+  const hasData = salesByDay.some((d) => d.total > 0);
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm font-semibold text-slate-900">Ventas de los últimos 7 días</p>
+        <span className="text-xs text-slate-400">Últimos 7 días</span>
+      </div>
+      {!hasData ? (
+        <div className="flex h-[180px] items-center justify-center rounded-lg border border-dashed border-slate-200">
+          <p className="text-sm text-slate-400">Sin ventas registradas</p>
+        </div>
+      ) : (
+        <SalesAreaChart data={salesByDay} />
+      )}
+    </div>
+  );
+}
+
+function SalesAreaChart({ data }: { data: DayTotal[] }) {
+  const maxVal = Math.max(...data.map((d) => d.total));
+  const yMax   = niceMax(maxVal);
+  const n      = data.length;
+
+  function xOf(i: number) {
+    if (n <= 1) return ML_MAIN + PW / 2;
+    return ML_MAIN + (i / (n - 1)) * PW;
+  }
+  function yOf(v: number) {
+    return MT_MAIN + PH - (v / yMax) * PH;
+  }
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
+    value: yMax * f,
+    y: MT_MAIN + PH - f * PH,
+  }));
+
+  const bottomY    = MT_MAIN + PH;
+  const polyPts    = data.map((d, i) => `${xOf(i)},${yOf(d.total)}`).join(" ");
+  const areaPath   = [
     `M ${xOf(0)},${bottomY}`,
-    ...data.map((d, i) => `L ${xOf(i)},${yOf(d.amount)}`),
+    ...data.map((d, i) => `L ${xOf(i)},${yOf(d.total)}`),
     `L ${xOf(n - 1)},${bottomY}`,
-    "Z"
+    "Z",
   ].join(" ");
 
   return (
-    <svg aria-hidden className="w-full" viewBox={`0 0 ${CHART_W} ${CHART_H}`}>
+    <svg aria-hidden className="w-full" viewBox={`0 0 ${CW_MAIN} ${CH_MAIN}`}>
       <defs>
-        <linearGradient id="sales-area-fill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#10b981" stopOpacity="0.12" />
-          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+        <linearGradient id="violet-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%"   stopColor="#7c3aed" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="#7c3aed" stopOpacity="0" />
         </linearGradient>
       </defs>
 
-      {yTicks.map((tick) => (
+      {yTicks.map((t) => (
         <line
-          key={tick.value}
-          stroke="#e2e8f0"
-          strokeWidth="1"
-          x1={ML}
-          x2={CHART_W - MR}
-          y1={tick.y}
-          y2={tick.y}
+          key={t.value}
+          x1={ML_MAIN} x2={CW_MAIN - MR_MAIN}
+          y1={t.y}      y2={t.y}
+          stroke="#e2e8f0" strokeWidth="1"
         />
       ))}
-
-      {yTicks.map((tick) => (
+      {yTicks.map((t) => (
         <text
-          dominantBaseline="middle"
-          fill="#94a3b8"
-          fontSize="10"
-          key={tick.value}
-          textAnchor="end"
-          x={ML - 5}
-          y={tick.y}
+          key={t.value}
+          x={ML_MAIN - 5} y={t.y}
+          textAnchor="end" dominantBaseline="middle"
+          fill="#94a3b8" fontSize="10"
         >
-          {formatYLabel(tick.value)}
+          {formatYLabel(t.value)}
         </text>
       ))}
 
-      <path d={areaPath} fill="url(#sales-area-fill)" />
-
+      <path d={areaPath} fill="url(#violet-fill)" />
       <polyline
+        points={polyPts}
         fill="none"
-        points={polylinePoints}
-        stroke="#10b981"
-        strokeLinejoin="round"
+        stroke="#7c3aed"
         strokeWidth="2"
+        strokeLinejoin="round"
       />
-
       {data.map((d, i) => (
         <circle
-          cx={xOf(i)}
-          cy={yOf(d.amount)}
-          fill="#10b981"
           key={d.date}
-          r={n <= 10 ? 3 : 2}
+          cx={xOf(i)} cy={yOf(d.total)}
+          r="3" fill="#7c3aed"
         />
       ))}
 
-      {xLabelIndices.map((i) => (
+      {data.map((d, i) => (
         <text
-          fill="#94a3b8"
-          fontSize="10"
-          key={data[i].date}
-          textAnchor="middle"
-          x={xOf(i)}
-          y={CHART_H - MB + 14}
+          key={d.date}
+          x={xOf(i)} y={CH_MAIN - MB_MAIN + 14}
+          textAnchor="middle" fill="#94a3b8" fontSize="10"
         >
-          {formatDateShort(data[i].date)}
+          {formatXAxisLabel(d.date)}
         </text>
       ))}
     </svg>
   );
 }
 
-// --- Donut chart ---
+// ── TopProductsPanel ───────────────────────────────────────────────────────────
 
-function PaymentSplitChart({
-  cashTotal,
-  creditTotal
-}: {
-  cashTotal: number;
-  creditTotal: number;
-}) {
-  const total = cashTotal + creditTotal;
-
-  if (total === 0) {
-    return (
-      <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-slate-200">
-        <p className="text-sm text-slate-400">Sin ventas registradas</p>
-      </div>
-    );
-  }
-
-  const cx = 90;
-  const cy = 90;
-  const r = 62;
-  const sw = 26;
-  const circumference = 2 * Math.PI * r;
-  const cashArc = (cashTotal / total) * circumference;
-  const creditArc = (creditTotal / total) * circumference;
-
+function TopProductsPanel() {
   return (
-    <div>
-      <svg
-        aria-hidden
-        className="mx-auto w-full max-w-[200px]"
-        viewBox="0 0 180 180"
-      >
-        {/* background track */}
-        <circle
-          cx={cx}
-          cy={cy}
-          fill="none"
-          r={r}
-          stroke="#f1f5f9"
-          strokeWidth={sw}
-        />
-
-        {/* CASH (Contado) — emerald, starts at 12 o'clock */}
-        {cashArc > 0 ? (
-          <circle
-            cx={cx}
-            cy={cy}
-            fill="none"
-            r={r}
-            stroke="#10b981"
-            strokeDasharray={`${cashArc} ${circumference - cashArc}`}
-            strokeWidth={sw}
-            transform={`rotate(-90 ${cx} ${cy})`}
-          />
-        ) : null}
-
-        {/* CREDIT (Fiado) — blue, starts after cashArc */}
-        {creditArc > 0 ? (
-          <circle
-            cx={cx}
-            cy={cy}
-            fill="none"
-            r={r}
-            stroke="#3b82f6"
-            strokeDasharray={`${creditArc} ${circumference - creditArc}`}
-            strokeDashoffset={circumference - cashArc}
-            strokeWidth={sw}
-            transform={`rotate(-90 ${cx} ${cy})`}
-          />
-        ) : null}
-
-        <text
-          dominantBaseline="middle"
-          fill="#64748b"
-          fontSize="11"
-          textAnchor="middle"
-          x={cx}
-          y={cy - 9}
-        >
-          Total
-        </text>
-        <text
-          dominantBaseline="middle"
-          fill="#0f172a"
-          fontSize="13"
-          fontWeight="600"
-          textAnchor="middle"
-          x={cx}
-          y={cy + 9}
-        >
-          {formatYLabel(total)}
-        </text>
-      </svg>
-
-      <div className="mt-3 flex flex-col gap-2 text-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-emerald-500" />
-            <span className="text-slate-600">Contado</span>
-          </div>
-          <div className="text-right">
-            <span className="font-medium text-slate-950">
-              {moneyFormatter.format(cashTotal)}
-            </span>
-            <span className="ml-2 text-slate-400">
-              {percentFormatter.format(cashTotal / total)}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-blue-500" />
-            <span className="text-slate-600">Fiado</span>
-          </div>
-          <div className="text-right">
-            <span className="font-medium text-slate-950">
-              {moneyFormatter.format(creditTotal)}
-            </span>
-            <span className="ml-2 text-slate-400">
-              {percentFormatter.format(creditTotal / total)}
-            </span>
-          </div>
-        </div>
+    <div className="flex h-full flex-col rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm font-semibold text-slate-900">Productos más vendidos</p>
+        <Link href="/products" className="text-xs font-medium text-violet-600 hover:text-violet-700">
+          Ver todos
+        </Link>
+      </div>
+      <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-slate-200">
+        <p className="px-4 text-center text-sm text-slate-400">
+          Datos de líneas de venta próximamente disponibles
+        </p>
       </div>
     </div>
   );
 }
 
-// --- Existing components (unchanged) ---
+// ── CashMovementsPanel ─────────────────────────────────────────────────────────
 
-function MetricCard({
-  label,
-  tone,
-  value
-}: {
-  label: string;
-  tone: "amber" | "emerald" | "indigo" | "rose" | "slate";
-  value: string;
-}) {
+function CashMovementsPanel({ cashMovements }: { cashMovements: CashMovement[] | null }) {
+  const items = (cashMovements ?? []).slice(0, 5);
+
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <div className={`h-2.5 w-2.5 rounded-full ${toneClassNames[tone]}`} />
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm font-semibold text-slate-900">Movimientos de caja</p>
+        <Link href="/cash-movements" className="text-xs font-medium text-violet-600 hover:text-violet-700">
+          Ver todos
+        </Link>
       </div>
-      <p className="mt-4 break-words text-2xl font-semibold tracking-normal text-slate-950">
-        {value}
-      </p>
-    </article>
+      {items.length === 0 ? (
+        <p className="py-4 text-center text-sm text-slate-400">Sin movimientos</p>
+      ) : (
+        <ul className="space-y-3">
+          {items.map((m) => (
+            <li key={m.id} className="flex items-center gap-3">
+              <div
+                className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
+                  m.type === "IN" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-500"
+                }`}
+              >
+                {m.type === "IN" ? "↑" : "↓"}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-slate-700">{sourceLabel(m.source)}</p>
+                <p className="text-[11px] text-slate-400">{formatTime(m.movementDate)}</p>
+              </div>
+              <span
+                className={`flex-shrink-0 text-xs font-semibold ${
+                  m.type === "IN" ? "text-green-600" : "text-red-500"
+                }`}
+              >
+                {m.type === "IN" ? "+" : "-"}{formatMXN(Number(m.amount))}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
-function LoadingState() {
+// ── AlertsPanel ────────────────────────────────────────────────────────────────
+
+function AlertsPanel({
+  lowStockCount,
+  pendingDebtsCount,
+}: {
+  lowStockCount: number;
+  pendingDebtsCount: number;
+}) {
+  const hasAlerts = lowStockCount > 0 || pendingDebtsCount > 0;
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm font-semibold text-slate-900">Alertas importantes</p>
+        <Link href="/products" className="text-xs font-medium text-violet-600 hover:text-violet-700">
+          Ver todas
+        </Link>
+      </div>
+      {!hasAlerts ? (
+        <p className="py-4 text-center text-sm text-slate-400">Sin alertas activas</p>
+      ) : (
+        <ul className="space-y-3">
+          {lowStockCount > 0 ? (
+            <li className="flex items-start gap-3 rounded-lg bg-orange-50 p-3">
+              <span className="mt-0.5 flex-shrink-0 text-orange-500">⚠</span>
+              <div>
+                <p className="text-xs font-semibold text-orange-800">Stock bajo</p>
+                <p className="mt-0.5 text-xs text-orange-600">
+                  {lowStockCount} {lowStockCount === 1 ? "producto" : "productos"} con stock ≤ 5
+                </p>
+              </div>
+            </li>
+          ) : null}
+          {pendingDebtsCount > 0 ? (
+            <li className="flex items-start gap-3 rounded-lg bg-yellow-50 p-3">
+              <span className="mt-0.5 flex-shrink-0 text-yellow-500">!</span>
+              <div>
+                <p className="text-xs font-semibold text-yellow-800">Pagos pendientes</p>
+                <p className="mt-0.5 text-xs text-yellow-600">
+                  {pendingDebtsCount} {pendingDebtsCount === 1 ? "deuda activa" : "deudas activas"} sin saldar
+                </p>
+              </div>
+            </li>
+          ) : null}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── QuickSummaryPanel ──────────────────────────────────────────────────────────
+
+function QuickSummaryPanel({
+  todaySalesTotal,
+  todayProfit,
+  totalProducts,
+  totalCustomers,
+  pendingDebtsCount,
+}: {
+  todaySalesTotal: number;
+  todayProfit: number;
+  totalProducts: number;
+  totalCustomers: number;
+  pendingDebtsCount: number;
+}) {
+  const rows = [
+    { label: "Ventas de hoy",           value: formatMXN(todaySalesTotal), highlight: false },
+    { label: "Ganancia de hoy",         value: formatMXN(todayProfit),     highlight: todayProfit < 0 },
+    { label: "Productos en inventario", value: String(totalProducts),       highlight: false },
+    { label: "Clientes registrados",    value: String(totalCustomers),      highlight: false },
+    { label: "Ventas pendientes",       value: String(pendingDebtsCount),   highlight: pendingDebtsCount > 0 },
+  ];
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      <p className="mb-4 text-sm font-semibold text-slate-900">Resumen rápido</p>
+      <ul className="space-y-2.5">
+        {rows.map((row) => (
+          <li key={row.label} className="flex items-center justify-between gap-2">
+            <span className="text-xs text-slate-500">{row.label}</span>
+            <span
+              className={`text-xs font-semibold ${row.highlight ? "text-red-600" : "text-slate-800"}`}
+            >
+              {row.value}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ── QuickActions ───────────────────────────────────────────────────────────────
+
+const quickActions = [
+  { label: "Nueva venta",     href: "/pos",            Icon: ShoppingCart },
+  { label: "Nuevo producto",  href: "/products",       Icon: Package },
+  { label: "Abrir caja",      href: "/cash-movements", Icon: CreditCard },
+  { label: "Ver reportes",    href: "/reports",        Icon: BarChart2 },
+  { label: "Nuevo cliente",   href: "/customers",      Icon: UserPlus },
+  { label: "Ajuste de stock", href: "/products",       Icon: RefreshCw },
+];
+
+function QuickActions() {
   return (
     <div>
-      <p className="mb-3 text-sm font-medium text-slate-500">
-        Cargando resumen...
-      </p>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div
-            className="h-32 animate-pulse rounded-lg border border-slate-200 bg-slate-50"
-            key={index}
-          />
+      <p className="mb-3 text-sm font-semibold text-slate-900">Acciones rápidas</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {quickActions.map((action) => (
+          <Link
+            key={action.label}
+            href={action.href}
+            className="flex flex-col items-center gap-2 rounded-xl border border-slate-100 bg-white p-4 shadow-sm hover:border-violet-200 hover:bg-violet-50"
+          >
+            <action.Icon size={20} className="text-violet-600" />
+            <span className="text-center text-xs font-medium text-slate-700">{action.label}</span>
+          </Link>
         ))}
       </div>
     </div>
   );
 }
 
-function ErrorState({ message }: { message: string }) {
+// ── DashboardSkeleton ──────────────────────────────────────────────────────────
+
+function DashboardSkeleton() {
   return (
-    <div className="rounded-lg border border-rose-200 bg-rose-50 p-5">
-      <p className="text-sm font-medium text-rose-900">{message}</p>
+    <div className="min-h-full bg-slate-50 px-6 py-6">
+      <div className="mb-6 h-16 animate-pulse rounded-xl bg-white" />
+      <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-28 animate-pulse rounded-xl bg-white" />
+        ))}
+      </div>
+      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="h-64 animate-pulse rounded-xl bg-white lg:col-span-3" />
+        <div className="h-64 animate-pulse rounded-xl bg-white lg:col-span-2" />
+      </div>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-48 animate-pulse rounded-xl bg-white" />
+        ))}
+      </div>
     </div>
   );
 }
 
-// --- Data helpers ---
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-function computeDailySales(sales: SaleRecord[]): DailyPoint[] {
-  const byDate = new Map<string, number>();
-
-  for (const sale of sales) {
-    const date = sale.saleDate.slice(0, 10);
-    byDate.set(date, (byDate.get(date) ?? 0) + Number(sale.totalAmount));
-  }
-
-  return Array.from(byDate.entries())
-    .map(([date, amount]) => ({ date, amount }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
-function computePaymentSplit(sales: SaleRecord[]) {
-  let cashTotal = 0;
-  let creditTotal = 0;
-
-  for (const sale of sales) {
-    if (sale.paymentType === "CASH") {
-      cashTotal += Number(sale.totalAmount);
-    } else {
-      creditTotal += Number(sale.totalAmount);
-    }
-  }
-
-  return { cashTotal, creditTotal };
+function sumSales(sales: Sale[]): number {
+  return sales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
 }
 
 function niceMax(value: number): number {
   if (value <= 0) return 100;
-  const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
-  const normalized = value / magnitude;
-  if (normalized <= 1) return magnitude;
-  if (normalized <= 2) return 2 * magnitude;
-  if (normalized <= 5) return 5 * magnitude;
-  return 10 * magnitude;
+  const mag = Math.pow(10, Math.floor(Math.log10(value)));
+  const n   = value / mag;
+  if (n <= 1) return mag;
+  if (n <= 2) return 2 * mag;
+  if (n <= 5) return 5 * mag;
+  return 10 * mag;
 }
 
-function pickIndices(n: number, maxCount: number): number[] {
-  if (n === 0) return [];
-  if (n <= maxCount) return Array.from({ length: n }, (_, i) => i);
-  const result: number[] = [];
-  for (let i = 0; i < maxCount; i++) {
-    result.push(Math.round((i / (maxCount - 1)) * (n - 1)));
-  }
-  return [...new Set(result)];
+function formatMXN(value: number): string {
+  return new Intl.NumberFormat("es-419", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
-// --- Format helpers ---
+function formatFullDate(date: Date): string {
+  const weekday = new Intl.DateTimeFormat("es-419", { weekday: "long" }).format(date);
+  const day     = date.getDate();
+  const month   = new Intl.DateTimeFormat("es-419", { month: "long" }).format(date);
+  const year    = date.getFullYear();
+  const capitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  return `${capitalized}, ${day} ${month} ${year}`;
+}
 
-function formatMetricValue(
-  key: keyof DashboardSummaryData,
-  value: DashboardSummaryData[keyof DashboardSummaryData]
-) {
-  if (currencyMetricKeys.has(key)) {
-    return moneyFormatter.format(Number(value));
-  }
-
-  return numberFormatter.format(Number(value));
+function formatXAxisLabel(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date      = new Date(y, m - 1, d);
+  const abbr      = new Intl.DateTimeFormat("es-419", { weekday: "short" }).format(date);
+  const clean     = abbr.replace(".", "").slice(0, 3);
+  return `${clean.charAt(0).toUpperCase()}${clean.slice(1)} ${d}`;
 }
 
 function formatYLabel(value: number): string {
-  if (value === 0) return "0";
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 10_000) return `${Math.round(value / 1_000)}K`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
-  return String(Math.round(value));
+  if (value === 0) return "$0";
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 10_000)    return `$${Math.round(value / 1_000)}K`;
+  if (value >= 1_000)     return `$${(value / 1_000).toFixed(1)}K`;
+  return `$${Math.round(value)}`;
 }
 
-function formatDateShort(dateStr: string): string {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  return shortDateFormatter.format(new Date(year, month - 1, day));
+function formatTime(dateStr: string): string {
+  return new Intl.DateTimeFormat("es-419", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(dateStr));
 }
 
-// --- Formatters ---
-
-const moneyFormatter = new Intl.NumberFormat("es-419", {
-  maximumFractionDigits: 2,
-  minimumFractionDigits: 2
-});
-
-const numberFormatter = new Intl.NumberFormat("es-419", {
-  maximumFractionDigits: 0
-});
-
-const percentFormatter = new Intl.NumberFormat("es-419", {
-  style: "percent",
-  maximumFractionDigits: 1
-});
-
-const shortDateFormatter = new Intl.DateTimeFormat("es-419", {
-  day: "numeric",
-  month: "short"
-});
-
-const toneClassNames = {
-  amber: "bg-amber-500",
-  emerald: "bg-emerald-500",
-  indigo: "bg-indigo-500",
-  rose: "bg-rose-500",
-  slate: "bg-slate-500"
-};
+function sourceLabel(source: string): string {
+  switch (source) {
+    case "SALE":         return "Venta";
+    case "DEBT_PAYMENT": return "Pago de deuda";
+    case "EXPENSE":      return "Gasto";
+    default:             return source;
+  }
+}
