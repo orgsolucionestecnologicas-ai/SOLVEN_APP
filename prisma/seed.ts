@@ -15,6 +15,8 @@ type CustomerSeed = {
   name: string;
 };
 
+type SaleItemSeed = { productId: string; qty: number; price: number };
+
 const products: ProductSeed[] = [
   // Lácteos
   { id: "seed_prod_01", name: "Leche entera 1L",           costPrice: 18, salePrice: 23, stock: 45 },
@@ -96,6 +98,440 @@ const customers: CustomerSeed[] = [
   { id: "seed_cust_15", name: "Patricia Elena Soto Miranda" },
 ];
 
+async function seedOperations(stock: Map<string, number>) {
+  const existingCount = await prisma.sale.count();
+  if (existingCount > 0) {
+    console.log(`Operations already seeded (${existingCount} sales found), skipping.`);
+    return;
+  }
+
+  const now = new Date();
+  const day = (n: number) => new Date(now.getTime() - n * 86_400_000);
+
+  async function cashSale(id: string, date: Date, items: SaleItemSeed[]) {
+    const total = items.reduce((s, i) => s + i.qty * i.price, 0);
+    await prisma.$transaction(async (tx) => {
+      const sale = await tx.sale.create({
+        data: { id, saleDate: date, paymentType: "CASH", totalAmount: total },
+      });
+      await tx.saleItem.createMany({
+        data: items.map((i) => ({
+          saleId: sale.id,
+          productId: i.productId,
+          quantity: i.qty,
+          unitPrice: i.price,
+          total: i.qty * i.price,
+        })),
+      });
+      for (const i of items) {
+        const prev = stock.get(i.productId)!;
+        const next = prev - i.qty;
+        await tx.product.update({ where: { id: i.productId }, data: { stock: next } });
+        await tx.inventoryMovement.create({
+          data: {
+            productId: i.productId,
+            movementDate: date,
+            reason: `SALE:${sale.id}`,
+            previousStock: prev,
+            newStock: next,
+            quantityChange: -i.qty,
+          },
+        });
+        stock.set(i.productId, next);
+      }
+      await tx.cashMovement.create({
+        data: { movementDate: date, type: "IN", amount: total, source: "SALE", referenceId: sale.id },
+      });
+    });
+  }
+
+  async function creditSale(
+    saleId: string,
+    debtId: string,
+    date: Date,
+    customerId: string,
+    items: SaleItemSeed[]
+  ) {
+    const total = items.reduce((s, i) => s + i.qty * i.price, 0);
+    await prisma.$transaction(async (tx) => {
+      const debt = await tx.debt.create({
+        data: { id: debtId, customerId, totalAmount: total, remainingAmount: total },
+      });
+      await tx.sale.create({
+        data: {
+          id: saleId,
+          saleDate: date,
+          paymentType: "CREDIT",
+          customerId,
+          totalAmount: total,
+          debtId: debt.id,
+        },
+      });
+      await tx.saleItem.createMany({
+        data: items.map((i) => ({
+          saleId,
+          productId: i.productId,
+          quantity: i.qty,
+          unitPrice: i.price,
+          total: i.qty * i.price,
+        })),
+      });
+      for (const i of items) {
+        const prev = stock.get(i.productId)!;
+        const next = prev - i.qty;
+        await tx.product.update({ where: { id: i.productId }, data: { stock: next } });
+        await tx.inventoryMovement.create({
+          data: {
+            productId: i.productId,
+            movementDate: date,
+            reason: `SALE:${saleId}`,
+            previousStock: prev,
+            newStock: next,
+            quantityChange: -i.qty,
+          },
+        });
+        stock.set(i.productId, next);
+      }
+    });
+  }
+
+  // ── DAY 1 (today − 6) ──────────────────────────────────────────────────────
+  const d1 = day(6);
+  await cashSale("seed_sale_01", d1, [
+    { productId: "seed_prod_01", qty: 1, price: 23 },
+    { productId: "seed_prod_09", qty: 2, price: 18 },
+    { productId: "seed_prod_23", qty: 3, price: 16 },
+  ]);
+  await cashSale("seed_sale_02", d1, [
+    { productId: "seed_prod_17", qty: 2, price: 30 },
+    { productId: "seed_prod_18", qty: 1, price: 38 },
+    { productId: "seed_prod_39", qty: 1, price: 26 },
+  ]);
+  await cashSale("seed_sale_03", d1, [
+    { productId: "seed_prod_10", qty: 3, price: 14 },
+    { productId: "seed_prod_24", qty: 2, price: 22 },
+  ]);
+  await cashSale("seed_sale_04", d1, [
+    { productId: "seed_prod_48", qty: 2, price: 16 },
+    { productId: "seed_prod_50", qty: 1, price: 42 },
+    { productId: "seed_prod_49", qty: 1, price: 34 },
+  ]);
+  await creditSale("seed_sale_05", "seed_debt_01", d1, "seed_cust_01", [
+    { productId: "seed_prod_33", qty: 2, price: 88 },
+    { productId: "seed_prod_41", qty: 1, price: 45 },
+    { productId: "seed_prod_42", qty: 1, price: 46 },
+  ]);
+  await prisma.expense.create({
+    data: { id: "seed_exp_01", expenseDate: d1, category: "Servicios", description: "Pago de luz", amount: 350 },
+  });
+  await prisma.expense.create({
+    data: { id: "seed_exp_02", expenseDate: d1, category: "Insumos", description: "Bolsas de plástico", amount: 85 },
+  });
+
+  // ── DAY 2 (today − 5) ──────────────────────────────────────────────────────
+  const d2 = day(5);
+  await cashSale("seed_sale_06", d2, [
+    { productId: "seed_prod_01", qty: 2, price: 23 },
+    { productId: "seed_prod_03", qty: 1, price: 36 },
+    { productId: "seed_prod_37", qty: 1, price: 40 },
+  ]);
+  await cashSale("seed_sale_07", d2, [
+    { productId: "seed_prod_09", qty: 3, price: 18 },
+    { productId: "seed_prod_10", qty: 2, price: 14 },
+  ]);
+  await cashSale("seed_sale_08", d2, [
+    { productId: "seed_prod_45", qty: 1, price: 22 },
+    { productId: "seed_prod_44", qty: 2, price: 26 },
+    { productId: "seed_prod_47", qty: 1, price: 24 },
+  ]);
+  await creditSale("seed_sale_09", "seed_debt_02", d2, "seed_cust_02", [
+    { productId: "seed_prod_28", qty: 1, price: 58 },
+    { productId: "seed_prod_29", qty: 2, price: 14 },
+    { productId: "seed_prod_30", qty: 1, price: 26 },
+  ]);
+  await creditSale("seed_sale_10", "seed_debt_03", d2, "seed_cust_03", [
+    { productId: "seed_prod_17", qty: 2, price: 30 },
+    { productId: "seed_prod_18", qty: 2, price: 38 },
+    { productId: "seed_prod_21", qty: 2, price: 20 },
+  ]);
+  await prisma.expense.create({
+    data: { id: "seed_exp_03", expenseDate: d2, category: "Mantenimiento", description: "Reparación de refrigerador", amount: 450 },
+  });
+  // Stock adjustment: Azúcar 1→8 (physical count correction)
+  {
+    const prev = stock.get("seed_prod_43")!;
+    const next = 8;
+    await prisma.$transaction(async (tx) => {
+      await tx.product.update({ where: { id: "seed_prod_43" }, data: { stock: next } });
+      await tx.inventoryMovement.create({
+        data: {
+          id: "seed_im_adj_01",
+          productId: "seed_prod_43",
+          movementDate: d2,
+          reason: "Conteo físico de inventario",
+          previousStock: prev,
+          newStock: next,
+          quantityChange: next - prev,
+        },
+      });
+    });
+    stock.set("seed_prod_43", next);
+  }
+
+  // ── DAY 3 (today − 4) ──────────────────────────────────────────────────────
+  const d3 = day(4);
+  await cashSale("seed_sale_11", d3, [
+    { productId: "seed_prod_01", qty: 1, price: 23 },
+    { productId: "seed_prod_04", qty: 1, price: 72 },
+    { productId: "seed_prod_39", qty: 2, price: 26 },
+  ]);
+  await cashSale("seed_sale_12", d3, [
+    { productId: "seed_prod_23", qty: 4, price: 16 },
+    { productId: "seed_prod_24", qty: 3, price: 22 },
+    { productId: "seed_prod_25", qty: 2, price: 14 },
+  ]);
+  await cashSale("seed_sale_13", d3, [
+    { productId: "seed_prod_11", qty: 2, price: 30 },
+    { productId: "seed_prod_12", qty: 3, price: 12 },
+  ]);
+  await cashSale("seed_sale_14", d3, [
+    { productId: "seed_prod_34", qty: 1, price: 115 },
+    { productId: "seed_prod_35", qty: 1, price: 40 },
+  ]);
+  await cashSale("seed_sale_15", d3, [
+    { productId: "seed_prod_42", qty: 1, price: 46 },
+    { productId: "seed_prod_43", qty: 2, price: 28 },
+    { productId: "seed_prod_40", qty: 2, price: 24 },
+  ]);
+  await creditSale("seed_sale_16", "seed_debt_04", d3, "seed_cust_04", [
+    { productId: "seed_prod_33", qty: 3, price: 88 },
+    { productId: "seed_prod_41", qty: 1, price: 45 },
+  ]);
+  await prisma.expense.create({
+    data: { id: "seed_exp_04", expenseDate: d3, category: "Servicios", description: "Pago de agua", amount: 120 },
+  });
+  await prisma.expense.create({
+    data: { id: "seed_exp_05", expenseDate: d3, category: "Insumos", description: "Etiquetas de precio", amount: 65 },
+  });
+  // Debt payment: seed_cust_01 pays 100 on seed_debt_01 (267 → 167 remaining)
+  await prisma.$transaction(async (tx) => {
+    await tx.debtPayment.create({
+      data: { id: "seed_dpay_01", debtId: "seed_debt_01", amount: 100, paymentDate: d3 },
+    });
+    await tx.debt.update({ where: { id: "seed_debt_01" }, data: { remainingAmount: 167 } });
+    await tx.cashMovement.create({
+      data: { movementDate: d3, type: "IN", amount: 100, source: "DEBT_PAYMENT", referenceId: "seed_dpay_01" },
+    });
+  });
+
+  // ── DAY 4 (today − 3) ──────────────────────────────────────────────────────
+  const d4 = day(3);
+  await cashSale("seed_sale_17", d4, [
+    { productId: "seed_prod_01", qty: 3, price: 23 },
+    { productId: "seed_prod_02", qty: 2, price: 25 },
+  ]);
+  await cashSale("seed_sale_18", d4, [
+    { productId: "seed_prod_19", qty: 2, price: 26 },
+    { productId: "seed_prod_20", qty: 1, price: 44 },
+  ]);
+  await cashSale("seed_sale_19", d4, [
+    { productId: "seed_prod_46", qty: 3, price: 18 },
+    { productId: "seed_prod_45", qty: 1, price: 22 },
+    { productId: "seed_prod_44", qty: 1, price: 26 },
+  ]);
+  await creditSale("seed_sale_20", "seed_debt_05", d4, "seed_cust_05", [
+    { productId: "seed_prod_24", qty: 5, price: 22 },
+    { productId: "seed_prod_23", qty: 5, price: 16 },
+    { productId: "seed_prod_25", qty: 3, price: 14 },
+  ]);
+  await creditSale("seed_sale_21", "seed_debt_06", d4, "seed_cust_06", [
+    { productId: "seed_prod_09", qty: 5, price: 18 },
+    { productId: "seed_prod_10", qty: 4, price: 14 },
+  ]);
+  await creditSale("seed_sale_22", "seed_debt_07", d4, "seed_cust_07", [
+    { productId: "seed_prod_37", qty: 2, price: 40 },
+    { productId: "seed_prod_39", qty: 3, price: 26 },
+    { productId: "seed_prod_07", qty: 1, price: 30 },
+  ]);
+  await prisma.expense.create({
+    data: { id: "seed_exp_06", expenseDate: d4, category: "Servicios", description: "Internet del negocio", amount: 200 },
+  });
+  // Debt payment: seed_cust_02 pays 112 on seed_debt_02 (fully paid)
+  await prisma.$transaction(async (tx) => {
+    await tx.debtPayment.create({
+      data: { id: "seed_dpay_02", debtId: "seed_debt_02", amount: 112, paymentDate: d4 },
+    });
+    await tx.debt.update({ where: { id: "seed_debt_02" }, data: { remainingAmount: 0 } });
+    await tx.cashMovement.create({
+      data: { movementDate: d4, type: "IN", amount: 112, source: "DEBT_PAYMENT", referenceId: "seed_dpay_02" },
+    });
+  });
+
+  // ── DAY 5 (today − 2) ──────────────────────────────────────────────────────
+  const d5 = day(2);
+  await cashSale("seed_sale_23", d5, [
+    { productId: "seed_prod_04", qty: 1, price: 72 },
+    { productId: "seed_prod_37", qty: 1, price: 40 },
+    { productId: "seed_prod_01", qty: 2, price: 23 },
+  ]);
+  await cashSale("seed_sale_24", d5, [
+    { productId: "seed_prod_28", qty: 1, price: 58 },
+    { productId: "seed_prod_29", qty: 2, price: 14 },
+    { productId: "seed_prod_50", qty: 2, price: 42 },
+  ]);
+  await cashSale("seed_sale_25", d5, [
+    { productId: "seed_prod_17", qty: 1, price: 30 },
+    { productId: "seed_prod_18", qty: 1, price: 38 },
+    { productId: "seed_prod_22", qty: 1, price: 28 },
+  ]);
+  await cashSale("seed_sale_26", d5, [
+    { productId: "seed_prod_10", qty: 4, price: 14 },
+    { productId: "seed_prod_11", qty: 2, price: 30 },
+  ]);
+  await creditSale("seed_sale_27", "seed_debt_08", d5, "seed_cust_08", [
+    { productId: "seed_prod_33", qty: 2, price: 88 },
+    { productId: "seed_prod_34", qty: 1, price: 115 },
+  ]);
+  await prisma.expense.create({
+    data: { id: "seed_exp_07", expenseDate: d5, category: "Proveedores", description: "Reabastecimiento de lácteos", amount: 800 },
+  });
+  await prisma.expense.create({
+    data: { id: "seed_exp_08", expenseDate: d5, category: "Servicios", description: "Gasolina para surtido", amount: 250 },
+  });
+  // Stock adjustment: Refresco Cola damaged in warehouse (50 → 47)
+  {
+    const prev = stock.get("seed_prod_09")!;
+    const next = prev - 3;
+    await prisma.$transaction(async (tx) => {
+      await tx.product.update({ where: { id: "seed_prod_09" }, data: { stock: next } });
+      await tx.inventoryMovement.create({
+        data: {
+          id: "seed_im_adj_02",
+          productId: "seed_prod_09",
+          movementDate: d5,
+          reason: "Producto dañado en almacén",
+          previousStock: prev,
+          newStock: next,
+          quantityChange: -3,
+        },
+      });
+    });
+    stock.set("seed_prod_09", next);
+  }
+  // Debt payment: seed_cust_01 pays remaining 167 on seed_debt_01 (fully paid)
+  await prisma.$transaction(async (tx) => {
+    await tx.debtPayment.create({
+      data: { id: "seed_dpay_03", debtId: "seed_debt_01", amount: 167, paymentDate: d5 },
+    });
+    await tx.debt.update({ where: { id: "seed_debt_01" }, data: { remainingAmount: 0 } });
+    await tx.cashMovement.create({
+      data: { movementDate: d5, type: "IN", amount: 167, source: "DEBT_PAYMENT", referenceId: "seed_dpay_03" },
+    });
+  });
+  // Debt payment: seed_cust_03 pays 100 on seed_debt_03 (176 → 76 remaining)
+  await prisma.$transaction(async (tx) => {
+    await tx.debtPayment.create({
+      data: { id: "seed_dpay_04", debtId: "seed_debt_03", amount: 100, paymentDate: d5 },
+    });
+    await tx.debt.update({ where: { id: "seed_debt_03" }, data: { remainingAmount: 76 } });
+    await tx.cashMovement.create({
+      data: { movementDate: d5, type: "IN", amount: 100, source: "DEBT_PAYMENT", referenceId: "seed_dpay_04" },
+    });
+  });
+
+  // ── DAY 6 (today − 1) ──────────────────────────────────────────────────────
+  const d6 = day(1);
+  await cashSale("seed_sale_28", d6, [
+    { productId: "seed_prod_01", qty: 2, price: 23 },
+    { productId: "seed_prod_03", qty: 1, price: 36 },
+    { productId: "seed_prod_04", qty: 1, price: 72 },
+  ]);
+  await cashSale("seed_sale_29", d6, [
+    { productId: "seed_prod_23", qty: 5, price: 16 },
+    { productId: "seed_prod_24", qty: 3, price: 22 },
+    { productId: "seed_prod_26", qty: 2, price: 18 },
+  ]);
+  await cashSale("seed_sale_30", d6, [
+    { productId: "seed_prod_09", qty: 4, price: 18 },
+    { productId: "seed_prod_12", qty: 5, price: 12 },
+  ]);
+  await cashSale("seed_sale_31", d6, [
+    { productId: "seed_prod_39", qty: 2, price: 26 },
+    { productId: "seed_prod_37", qty: 1, price: 40 },
+    { productId: "seed_prod_42", qty: 1, price: 46 },
+  ]);
+  await cashSale("seed_sale_32", d6, [
+    { productId: "seed_prod_48", qty: 3, price: 16 },
+    { productId: "seed_prod_50", qty: 2, price: 42 },
+  ]);
+  await cashSale("seed_sale_33", d6, [
+    { productId: "seed_prod_45", qty: 2, price: 22 },
+    { productId: "seed_prod_44", qty: 2, price: 26 },
+    { productId: "seed_prod_46", qty: 2, price: 18 },
+    { productId: "seed_prod_47", qty: 2, price: 24 },
+  ]);
+  await creditSale("seed_sale_34", "seed_debt_09", d6, "seed_cust_09", [
+    { productId: "seed_prod_17", qty: 3, price: 30 },
+    { productId: "seed_prod_18", qty: 2, price: 38 },
+    { productId: "seed_prod_21", qty: 3, price: 20 },
+  ]);
+  await creditSale("seed_sale_35", "seed_debt_10", d6, "seed_cust_10", [
+    { productId: "seed_prod_28", qty: 2, price: 58 },
+    { productId: "seed_prod_30", qty: 2, price: 26 },
+    { productId: "seed_prod_29", qty: 3, price: 14 },
+  ]);
+  await prisma.expense.create({
+    data: { id: "seed_exp_09", expenseDate: d6, category: "Insumos", description: "Rollos de recibo", amount: 120 },
+  });
+  // Debt payment: seed_cust_04 pays 150 on seed_debt_04 (309 → 159 remaining)
+  await prisma.$transaction(async (tx) => {
+    await tx.debtPayment.create({
+      data: { id: "seed_dpay_05", debtId: "seed_debt_04", amount: 150, paymentDate: d6 },
+    });
+    await tx.debt.update({ where: { id: "seed_debt_04" }, data: { remainingAmount: 159 } });
+    await tx.cashMovement.create({
+      data: { movementDate: d6, type: "IN", amount: 150, source: "DEBT_PAYMENT", referenceId: "seed_dpay_05" },
+    });
+  });
+
+  // ── DAY 7 (today) ──────────────────────────────────────────────────────────
+  const d7 = day(0);
+  await cashSale("seed_sale_36", d7, [
+    { productId: "seed_prod_01", qty: 3, price: 23 },
+    { productId: "seed_prod_02", qty: 1, price: 25 },
+    { productId: "seed_prod_03", qty: 1, price: 36 },
+  ]);
+  await cashSale("seed_sale_37", d7, [
+    { productId: "seed_prod_23", qty: 3, price: 16 },
+    { productId: "seed_prod_24", qty: 4, price: 22 },
+    { productId: "seed_prod_25", qty: 2, price: 14 },
+  ]);
+  await cashSale("seed_sale_38", d7, [
+    { productId: "seed_prod_10", qty: 5, price: 14 },
+    { productId: "seed_prod_09", qty: 3, price: 18 },
+  ]);
+  await creditSale("seed_sale_39", "seed_debt_11", d7, "seed_cust_11", [
+    { productId: "seed_prod_33", qty: 2, price: 88 },
+    { productId: "seed_prod_42", qty: 1, price: 46 },
+    { productId: "seed_prod_41", qty: 1, price: 45 },
+  ]);
+  await prisma.expense.create({
+    data: { id: "seed_exp_10", expenseDate: d7, category: "Servicios", description: "Pago de renta", amount: 3500 },
+  });
+  // Debt payment: seed_cust_03 pays remaining 76 on seed_debt_03 (fully paid)
+  await prisma.$transaction(async (tx) => {
+    await tx.debtPayment.create({
+      data: { id: "seed_dpay_06", debtId: "seed_debt_03", amount: 76, paymentDate: d7 },
+    });
+    await tx.debt.update({ where: { id: "seed_debt_03" }, data: { remainingAmount: 0 } });
+    await tx.cashMovement.create({
+      data: { movementDate: d7, type: "IN", amount: 76, source: "DEBT_PAYMENT", referenceId: "seed_dpay_06" },
+    });
+  });
+
+  console.log("7 days of operations seeded.");
+}
+
 async function main() {
   console.log("Seeding products...");
   for (const product of products) {
@@ -125,6 +561,10 @@ async function main() {
     });
   }
   console.log(`${customers.length} customers ready.`);
+
+  console.log("Seeding operations...");
+  const stock = new Map<string, number>(products.map((p) => [p.id, p.stock]));
+  await seedOperations(stock);
 }
 
 main()
