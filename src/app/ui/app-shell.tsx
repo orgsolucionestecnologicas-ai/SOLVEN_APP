@@ -12,7 +12,8 @@ type AppShellProps = {
     | "pos"
     | "products"
     | "reports"
-    | "sales";
+    | "sales"
+    | "settings";
   eyebrow: string;
   title: string;
   children: ReactNode;
@@ -111,7 +112,17 @@ export function AppShell({
           ))}
         </nav>
 
-        <div className="mt-auto hidden pt-6 lg:block">
+        <div className="mt-auto hidden space-y-1 pt-6 lg:block">
+          <Link
+            className={
+              activeSection === "settings"
+                ? "block whitespace-nowrap rounded-md bg-white px-3 py-2 text-sm font-medium text-slate-950"
+                : "block whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-white"
+            }
+            href="/settings"
+          >
+            Configuración
+          </Link>
           <LogoutButton />
         </div>
       </aside>
