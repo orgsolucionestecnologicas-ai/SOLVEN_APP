@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { LogoutButton } from "./logout-button";
 
 type AppShellProps = {
   activeSection:
@@ -69,7 +70,7 @@ export function AppShell({
 }: AppShellProps) {
   return (
     <div className="min-h-screen bg-slate-100 lg:flex">
-      <aside className="bg-slate-950 px-5 py-5 text-white lg:min-h-screen lg:w-64 lg:shrink-0">
+      <aside className="bg-slate-950 px-5 py-5 text-white lg:flex lg:min-h-screen lg:w-64 lg:shrink-0 lg:flex-col">
         <div className="flex items-center justify-between lg:block">
           <div>
             <p className="text-xl font-semibold tracking-normal">SOLVEN</p>
@@ -103,6 +104,10 @@ export function AppShell({
             </div>
           ))}
         </nav>
+
+        <div className="mt-auto hidden pt-6 lg:block">
+          <LogoutButton />
+        </div>
       </aside>
 
       <main className="min-w-0 flex-1 bg-white">
