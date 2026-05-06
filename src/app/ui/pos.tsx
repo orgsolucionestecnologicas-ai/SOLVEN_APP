@@ -365,9 +365,9 @@ export function Pos() {
       {activeTab === "Historial" ? (
         <SalesList />
       ) : (
-        <div className="flex divide-x divide-slate-200">
+        <div className="flex h-[calc(100vh-49px)] divide-x divide-slate-200">
           {/* ── LEFT PANEL ── */}
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
 
             {/* 1. Page header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
@@ -565,7 +565,12 @@ export function Pos() {
                             type="button"
                           >
                             <div className="mb-1.5 flex items-start justify-between">
-                              <ProductStockBadge stock={product.stock} />
+                              <div>
+                                <ProductStockBadge stock={product.stock} />
+                                <p className="mt-0.5 text-[9px] text-slate-400">
+                                  #{product.id.slice(-6).toUpperCase()}
+                                </p>
+                              </div>
                               {inCartQty > 0 ? (
                                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-[10px] font-bold text-white">
                                   {inCartQty}
@@ -608,6 +613,9 @@ export function Pos() {
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-medium text-slate-950">
                                 {product.name}
+                              </p>
+                              <p className="text-[9px] text-slate-400">
+                                #{product.id.slice(-6).toUpperCase()}
                               </p>
                             </div>
                             <ProductStockBadge stock={product.stock} />
@@ -685,10 +693,10 @@ export function Pos() {
           </div>
 
           {/* ── RIGHT PANEL ── */}
-          <div className="flex w-80 flex-shrink-0 flex-col bg-white lg:w-96">
+          <div className="flex h-full w-80 flex-shrink-0 flex-col bg-white lg:w-96">
 
             {/* Cart header */}
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+            <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-5 py-3">
               <h2 className="text-sm font-semibold text-slate-950">
                 Venta actual
                 {cartItemCount > 0 ? (
@@ -724,7 +732,7 @@ export function Pos() {
             ) : (
               <>
                 {/* Column headers */}
-                <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-1.5">
+                <div className="flex flex-shrink-0 items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-1.5">
                   <div className="w-8 flex-shrink-0" />
                   <div className="flex-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     Producto
@@ -742,7 +750,7 @@ export function Pos() {
                 </div>
 
                 {/* Cart rows */}
-                <div className="divide-y divide-slate-100">
+                <div className="flex-1 divide-y divide-slate-100 overflow-y-auto">
                   {cartItems.map((item) => (
                     <div
                       className="flex items-center gap-2 px-4 py-2.5"
@@ -818,7 +826,7 @@ export function Pos() {
 
             {/* Payment form */}
             <form
-              className="space-y-3 border-t border-slate-200 px-5 py-4"
+              className="flex-shrink-0 space-y-3 border-t border-slate-200 px-5 py-4"
               onSubmit={handleSubmit}
             >
               {/* Totals */}
