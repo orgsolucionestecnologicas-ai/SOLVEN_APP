@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ChevronLeft,
@@ -67,6 +67,8 @@ type ActiveTab = "Venta actual" | "Historial";
 
 type CashPaymentCard = { method: CashPaymentMethod; Icon: LucideIcon };
 
+const DRAFT_KEY = "solven_draft";
+
 const CATEGORIES = [
   "Todos",
   "Alimentos",
@@ -104,6 +106,17 @@ function getProductCategory(name: string): string {
   return "Otros";
 }
 
+function readDraft(): CartItem[] | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CartItem[];
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function Pos() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("Venta actual");
 
@@ -124,11 +137,36 @@ export function Pos() {
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [customersLoading, setCustomersLoading] = useState(false);
   const [customersLoaded, setCustomersLoaded] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerRecord | null>(null);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [cotizacionOpen, setCotizacionOpen] = useState(false);
+  const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
+
+  const moreDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (readDraft()) setShowDraftBanner(true);
+  }, []);
+
+  useEffect(() => {
+    if (!moreDropdownOpen) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (moreDropdownRef.current && !moreDropdownRef.current.contains(e.target as Node)) {
+        setMoreDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [moreDropdownOpen]);
 
   useEffect(() => {
     let isActive = true;
@@ -180,12 +218,9 @@ export function Pos() {
 
         if (isActive && response.ok && body.data) {
           setCustomers(body.data);
-          if (body.data.length > 0) {
-            setSelectedCustomerId(body.data[0].id);
-          }
         }
       } catch {
-        // customer selector shows empty state
+        // customer search shows empty state
       } finally {
         if (isActive) {
           setCustomersLoading(false);
@@ -220,20 +255,68 @@ export function Pos() {
     currentPage * PRODUCTS_PER_PAGE
   );
 
+  const filteredCustomers = customers.filter((c) =>
+    c.name.toLowerCase().includes(customerSearch.toLowerCase())
+  );
+
   const cartTotal = cartItems.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
     0
   );
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cashReceivedNum = Number(cashReceived) || 0;
+  const selectedCustomerId = selectedCustomer?.id ?? "";
 
-  function handleNewSale() {
+  function clearSale() {
     setCartItems([]);
     setPaymentMethod("Efectivo");
     setCashReceived("");
-    setSelectedCustomerId("");
+    setSelectedCustomer(null);
+    setCustomerSearch("");
     setSubmitError(null);
     setSuccessMessage(null);
+  }
+
+  function handleNewSale() {
+    const draft = readDraft();
+    if (draft) {
+      setShowDraftBanner(true);
+      return;
+    }
+    clearSale();
+  }
+
+  function handleSuspend() {
+    if (cartItems.length === 0) return;
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(cartItems));
+    } catch {
+      // ignore storage errors
+    }
+    clearSale();
+    setSuccessMessage("Venta suspendida — puedes recuperarla con Nueva venta");
+    setTimeout(() => setSuccessMessage(null), 4000);
+  }
+
+  function handleRecoverDraft() {
+    const draft = readDraft();
+    if (draft) {
+      setCartItems(draft);
+      localStorage.removeItem(DRAFT_KEY);
+    }
+    setShowDraftBanner(false);
+  }
+
+  function handleDiscardDraft() {
+    localStorage.removeItem(DRAFT_KEY);
+    setShowDraftBanner(false);
+    clearSale();
+  }
+
+  function handleLimpiarVenta() {
+    if (window.confirm("¿Limpiar la venta actual?")) {
+      clearSale();
+    }
   }
 
   function addToCart(product: ProductRecord) {
@@ -329,7 +412,8 @@ export function Pos() {
       setCartItems([]);
       setPaymentMethod("Efectivo");
       setCashReceived("");
-      setSelectedCustomerId("");
+      setSelectedCustomer(null);
+      setCustomerSearch("");
       setProductsRefreshKey((k) => k + 1);
       setSuccessMessage("Venta registrada exitosamente.");
       setTimeout(() => setSuccessMessage(null), 4000);
@@ -388,6 +472,7 @@ export function Pos() {
                 </button>
                 <button
                   className="flex items-center gap-1.5 rounded-lg border border-orange-300 px-3 py-2 text-xs font-semibold text-orange-600 hover:bg-orange-50"
+                  onClick={handleSuspend}
                   type="button"
                 >
                   <PauseCircle size={13} />
@@ -683,17 +768,64 @@ export function Pos() {
 
               {/* 4. Quick actions bar */}
               <div className="mt-5 flex items-center gap-1 overflow-x-auto border-t border-slate-100 pt-4">
-                <QuickActionButton Icon={Users} label="Buscar cliente" />
-                <QuickActionButton Icon={FileText} label="Nota / Observación" />
-                <QuickActionButton Icon={FileText} label="Cotización" />
-                <QuickActionButton Icon={PauseCircle} label="Suspender" />
-                <QuickActionButton Icon={Trash2} label="Limpiar venta" danger />
+                <QuickActionButton
+                  Icon={Users}
+                  label="Buscar cliente"
+                  onClick={() => setPaymentMethod("Fiado")}
+                />
+                <QuickActionButton
+                  Icon={FileText}
+                  indicator={!!noteText}
+                  label="Nota / Observación"
+                  onClick={() => setNoteModalOpen(true)}
+                />
+                <QuickActionButton
+                  Icon={FileText}
+                  label="Cotización"
+                  onClick={() => setCotizacionOpen(true)}
+                />
+                <QuickActionButton
+                  Icon={PauseCircle}
+                  label="Suspender"
+                  onClick={handleSuspend}
+                />
+                <QuickActionButton
+                  danger
+                  Icon={Trash2}
+                  label="Limpiar venta"
+                  onClick={handleLimpiarVenta}
+                />
               </div>
             </div>
           </div>
 
           {/* ── RIGHT PANEL ── */}
           <div className="flex h-full w-80 flex-shrink-0 flex-col bg-white lg:w-96">
+
+            {/* Draft recovery banner */}
+            {showDraftBanner ? (
+              <div className="flex-shrink-0 border-b border-amber-100 bg-amber-50 px-5 py-3">
+                <p className="mb-2 text-xs font-semibold text-amber-800">
+                  Tienes una venta suspendida
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    className="rounded-lg bg-amber-500 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-600"
+                    onClick={handleRecoverDraft}
+                    type="button"
+                  >
+                    Recuperar
+                  </button>
+                  <button
+                    className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                    onClick={handleDiscardDraft}
+                    type="button"
+                  >
+                    Descartar
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {/* Cart header */}
             <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-5 py-3">
@@ -877,7 +1009,8 @@ export function Pos() {
                       }
                       onClick={() => {
                         setPaymentMethod(method);
-                        setSelectedCustomerId("");
+                        setSelectedCustomer(null);
+                        setCustomerSearch("");
                       }}
                       type="button"
                     >
@@ -955,7 +1088,7 @@ export function Pos() {
                 </div>
               ) : null}
 
-              {/* Customer selector — Fiado only */}
+              {/* Customer search — Fiado only */}
               {isFiado ? (
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -963,22 +1096,63 @@ export function Pos() {
                   </label>
                   {customersLoading ? (
                     <p className="text-sm text-slate-500">Cargando clientes...</p>
-                  ) : customers.length === 0 ? (
-                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                      No hay clientes registrados. Creá un cliente primero.
-                    </p>
+                  ) : selectedCustomer ? (
+                    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
+                      <span className="text-sm font-medium text-slate-950">
+                        {selectedCustomer.name}
+                      </span>
+                      <button
+                        className="text-slate-400 hover:text-slate-600"
+                        onClick={() => {
+                          setSelectedCustomer(null);
+                          setCustomerSearch("");
+                        }}
+                        type="button"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
                   ) : (
-                    <select
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
-                      onChange={(e) => setSelectedCustomerId(e.target.value)}
-                      value={selectedCustomerId}
-                    >
-                      {customers.map((customer) => (
-                        <option key={customer.id} value={customer.id}>
-                          {customer.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <input
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                        onBlur={() =>
+                          setTimeout(() => setCustomerSearchOpen(false), 150)
+                        }
+                        onChange={(e) => {
+                          setCustomerSearch(e.target.value);
+                          setCustomerSearchOpen(true);
+                        }}
+                        onFocus={() => setCustomerSearchOpen(true)}
+                        placeholder="Buscar cliente..."
+                        type="text"
+                        value={customerSearch}
+                      />
+                      {customerSearchOpen ? (
+                        <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                          {filteredCustomers.length === 0 ? (
+                            <p className="px-3 py-2.5 text-xs text-slate-500">
+                              No hay clientes. Crea uno primero.
+                            </p>
+                          ) : (
+                            filteredCustomers.map((customer) => (
+                              <button
+                                className="flex w-full items-center px-3 py-2.5 text-left text-sm text-slate-950 hover:bg-violet-50"
+                                key={customer.id}
+                                onClick={() => {
+                                  setSelectedCustomer(customer);
+                                  setCustomerSearch("");
+                                  setCustomerSearchOpen(false);
+                                }}
+                                type="button"
+                              >
+                                {customer.name}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
                   )}
                 </div>
               ) : null}
@@ -1011,23 +1185,204 @@ export function Pos() {
                 </button>
                 <button
                   className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                  onClick={() => setCotizacionOpen(true)}
                   title="Imprimir"
                   type="button"
                 >
                   <Printer size={15} />
                 </button>
-                <button
-                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
-                  title="Más opciones"
-                  type="button"
-                >
-                  <MoreHorizontal size={15} />
-                </button>
+                <div className="relative" ref={moreDropdownRef}>
+                  <button
+                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                    onClick={() => setMoreDropdownOpen((v) => !v)}
+                    title="Más opciones"
+                    type="button"
+                  >
+                    <MoreHorizontal size={15} />
+                  </button>
+                  {moreDropdownOpen ? (
+                    <div className="absolute bottom-full right-0 mb-1 w-52 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                      <button
+                        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                        onClick={() => {
+                          handleSuspend();
+                          setMoreDropdownOpen(false);
+                        }}
+                        type="button"
+                      >
+                        <PauseCircle size={14} className="text-slate-400" />
+                        Guardar como borrador
+                      </button>
+                      <button
+                        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                        onClick={() => {
+                          setCotizacionOpen(true);
+                          setMoreDropdownOpen(false);
+                        }}
+                        type="button"
+                      >
+                        <Printer size={14} className="text-slate-400" />
+                        Imprimir presupuesto
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Nota / Observación modal */}
+      {noteModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+          onClick={() => setNoteModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <h3 className="text-sm font-semibold text-slate-950">
+                Nota de la venta
+              </h3>
+              <button
+                className="text-slate-400 hover:text-slate-600"
+                onClick={() => setNoteModalOpen(false)}
+                type="button"
+              >
+                <X size={15} />
+              </button>
+            </div>
+            <div className="px-5 py-4">
+              <textarea
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="Escribe una nota u observación para esta venta..."
+                rows={4}
+                value={noteText}
+              />
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3">
+              <button
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                onClick={() => setNoteModalOpen(false)}
+                type="button"
+              >
+                Cancelar
+              </button>
+              <button
+                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+                onClick={() => setNoteModalOpen(false)}
+                type="button"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Cotización modal */}
+      {cotizacionOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+          onClick={() => setCotizacionOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <h3 className="text-sm font-semibold text-slate-950">
+                Cotización
+              </h3>
+              <button
+                className="text-slate-400 hover:text-slate-600"
+                onClick={() => setCotizacionOpen(false)}
+                type="button"
+              >
+                <X size={15} />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              {cartItems.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No hay productos en la venta.
+                </p>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200">
+                      <th className="pb-2 text-left text-xs font-semibold uppercase text-slate-500">
+                        Producto
+                      </th>
+                      <th className="pb-2 text-center text-xs font-semibold uppercase text-slate-500">
+                        Cant.
+                      </th>
+                      <th className="pb-2 text-right text-xs font-semibold uppercase text-slate-500">
+                        Precio
+                      </th>
+                      <th className="pb-2 text-right text-xs font-semibold uppercase text-slate-500">
+                        Subtotal
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {cartItems.map((item) => (
+                      <tr key={item.productId}>
+                        <td className="py-2 text-sm text-slate-950">
+                          {item.productName}
+                        </td>
+                        <td className="py-2 text-center text-sm text-slate-700">
+                          {item.quantity}
+                        </td>
+                        <td className="py-2 text-right tabular-nums text-sm text-slate-700">
+                          {formatMoneyNum(item.unitPrice)}
+                        </td>
+                        <td className="py-2 text-right tabular-nums text-sm font-semibold text-slate-950">
+                          {formatMoneyNum(item.unitPrice * item.quantity)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-slate-200">
+                      <td
+                        className="pt-3 text-sm font-bold text-slate-950"
+                        colSpan={3}
+                      >
+                        Total
+                      </td>
+                      <td className="pt-3 text-right tabular-nums text-sm font-bold text-slate-950">
+                        {formatMoneyNum(cartTotal)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-3">
+              <button
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                onClick={() => setCotizacionOpen(false)}
+                type="button"
+              >
+                Cerrar
+              </button>
+              <button
+                className="flex items-center gap-1.5 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                onClick={() => window.print()}
+                type="button"
+              >
+                <Printer size={14} />
+                Imprimir cotización
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -1036,9 +1391,17 @@ type QuickActionButtonProps = {
   Icon: LucideIcon;
   label: string;
   danger?: boolean;
+  indicator?: boolean;
+  onClick?: () => void;
 };
 
-function QuickActionButton({ Icon, label, danger = false }: QuickActionButtonProps) {
+function QuickActionButton({
+  Icon,
+  label,
+  danger = false,
+  indicator = false,
+  onClick,
+}: QuickActionButtonProps) {
   return (
     <button
       className={
@@ -1046,9 +1409,15 @@ function QuickActionButton({ Icon, label, danger = false }: QuickActionButtonPro
           ? "flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-500 hover:bg-rose-50"
           : "flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
       }
+      onClick={onClick}
       type="button"
     >
-      <Icon size={13} />
+      <span className="relative">
+        <Icon size={13} />
+        {indicator ? (
+          <span className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full bg-violet-500" />
+        ) : null}
+      </span>
       {label}
     </button>
   );
