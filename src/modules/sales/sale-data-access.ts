@@ -14,6 +14,11 @@ export type SaleWithItems = Sale & {
 
 export type SaleWithCustomer = Sale & { customer: { name: string } | null };
 
+export type SaleListRecord = Sale & {
+  customer: { name: string } | null;
+  items: (SaleItem & { product: { name: string } })[];
+};
+
 export class SaleProductNotFoundError extends Error {
   constructor(productId: string) {
     super(`Product ${productId} was not found.`);
@@ -153,7 +158,7 @@ export async function createSale(
   });
 }
 
-export async function listSales(): Promise<SaleWithCustomer[]> {
+export async function listSales(): Promise<SaleListRecord[]> {
   return prisma.sale.findMany({
     orderBy: {
       saleDate: "desc"
@@ -161,6 +166,13 @@ export async function listSales(): Promise<SaleWithCustomer[]> {
     include: {
       customer: {
         select: { name: true }
+      },
+      items: {
+        include: {
+          product: {
+            select: { name: true }
+          }
+        }
       }
     }
   });

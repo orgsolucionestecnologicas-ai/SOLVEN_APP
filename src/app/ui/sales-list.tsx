@@ -1,6 +1,19 @@
 "use client";
 
+import { Eye, Printer, RotateCcw } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
+
+type SaleItemRecord = {
+  id: string;
+  saleId: string;
+  productId: string;
+  quantity: number;
+  unitPrice: string;
+  total: string;
+  product: { name: string };
+  createdAt: string;
+  updatedAt: string;
+};
 
 type SaleRecord = {
   id: string;
@@ -10,6 +23,7 @@ type SaleRecord = {
   debtId: string | null;
   totalAmount: string;
   customer: { name: string } | null;
+  items: SaleItemRecord[];
   createdAt: string;
   updatedAt: string;
 };
@@ -58,6 +72,20 @@ type SaleLineItem = {
   unitPrice: number;
 };
 
+type ReturnResponse = {
+  data?: { saleId: string; returnedItems: number; totalReturned: string };
+  error?: { message: string };
+};
+
+type ReturnItemState = {
+  productId: string;
+  productName: string;
+  maxQuantity: number;
+  unitPrice: string;
+  selected: boolean;
+  returnQuantity: number;
+};
+
 export function SalesList() {
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -65,6 +93,8 @@ export function SalesList() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [viewingSale, setViewingSale] = useState<SaleRecord | null>(null);
+  const [returningSale, setReturningSale] = useState<SaleRecord | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -117,6 +147,13 @@ export function SalesList() {
     setTimeout(() => setSuccessMessage(null), 4000);
   }
 
+  function handleReturnSuccess() {
+    setReturningSale(null);
+    setRefreshKey((k) => k + 1);
+    setSuccessMessage("Devolución procesada exitosamente.");
+    setTimeout(() => setSuccessMessage(null), 4000);
+  }
+
   return (
     <section className="px-5 py-6 sm:px-8">
       <div className="mb-4 flex justify-end">
@@ -139,7 +176,11 @@ export function SalesList() {
       {!isLoading && loadError ? <ErrorState message={loadError} /> : null}
       {!isLoading && !loadError && sales.length === 0 ? <EmptyState /> : null}
       {!isLoading && !loadError && sales.length > 0 ? (
-        <SalesTable sales={sales} />
+        <SaleCards
+          onReturn={setReturningSale}
+          onView={setViewingSale}
+          sales={sales}
+        />
       ) : null}
 
       {isModalOpen ? (
@@ -148,7 +189,428 @@ export function SalesList() {
           onSuccess={handleSaleCreated}
         />
       ) : null}
+
+      {viewingSale ? (
+        <SaleDetailModal
+          onClose={() => setViewingSale(null)}
+          sale={viewingSale}
+        />
+      ) : null}
+
+      {returningSale ? (
+        <ReturnModal
+          onClose={() => setReturningSale(null)}
+          onSuccess={handleReturnSuccess}
+          sale={returningSale}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function SaleCards({
+  sales,
+  onView,
+  onReturn
+}: {
+  sales: SaleRecord[];
+  onView: (sale: SaleRecord) => void;
+  onReturn: (sale: SaleRecord) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {sales.map((sale) => (
+        <SaleCard key={sale.id} onReturn={onReturn} onView={onView} sale={sale} />
+      ))}
+    </div>
+  );
+}
+
+function SaleCard({
+  sale,
+  onView,
+  onReturn
+}: {
+  sale: SaleRecord;
+  onView: (sale: SaleRecord) => void;
+  onReturn: (sale: SaleRecord) => void;
+}) {
+  const productSummary =
+    sale.items.length > 0
+      ? sale.items.map((i) => `${i.product.name} ×${i.quantity}`).join(" · ")
+      : "Sin ítems";
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-semibold text-slate-950">
+          Venta #{sale.id.slice(-6).toUpperCase()}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">
+            {formatDateTime(sale.saleDate)}
+          </span>
+          <PaymentTypeBadge paymentType={sale.paymentType} />
+        </div>
+      </div>
+
+      {sale.customer ? (
+        <p className="mt-1 text-xs text-slate-500">{sale.customer.name}</p>
+      ) : null}
+
+      <p className="mt-2 truncate text-xs text-slate-600">{productSummary}</p>
+
+      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+        <span className="text-sm font-bold text-slate-950">
+          {formatMoney(sale.totalAmount)}
+        </span>
+        <div className="flex items-center gap-1">
+          <button
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+            onClick={() => onView(sale)}
+            type="button"
+          >
+            <Eye size={12} />
+            Ver
+          </button>
+          <button
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+            onClick={() => window.print()}
+            type="button"
+          >
+            <Printer size={12} />
+            Imprimir
+          </button>
+          <button
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+            onClick={() => onReturn(sale)}
+            type="button"
+          >
+            <RotateCcw size={12} />
+            Devolver
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SaleDetailModal({
+  sale,
+  onClose
+}: {
+  sale: SaleRecord;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">
+            Venta #{sale.id.slice(-6).toUpperCase()}
+          </h2>
+          <button
+            className="text-slate-400 hover:text-slate-700"
+            onClick={onClose}
+            type="button"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="space-y-4 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-500">
+              {formatDateTime(sale.saleDate)}
+            </span>
+            <PaymentTypeBadge paymentType={sale.paymentType} />
+          </div>
+
+          {sale.customer ? (
+            <div>
+              <p className="text-xs font-medium uppercase text-slate-400">
+                Cliente
+              </p>
+              <p className="mt-0.5 text-sm text-slate-950">
+                {sale.customer.name}
+              </p>
+            </div>
+          ) : null}
+
+          {sale.items.length > 0 ? (
+            <div className="rounded-lg border border-slate-200">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-slate-500">
+                      Producto
+                    </th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
+                      Cant.
+                    </th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
+                      Precio unit.
+                    </th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {sale.items.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-4 py-3 text-sm text-slate-950">
+                        {item.product.name}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-slate-700">
+                        {numberFormatter.format(item.quantity)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-slate-700">
+                        {formatMoney(item.unitPrice)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-medium text-slate-950">
+                        {formatMoney(item.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="flex justify-end border-t border-slate-200 px-4 py-3">
+                <p className="text-sm font-semibold text-slate-950">
+                  Total:{" "}
+                  <span className="text-emerald-700">
+                    {formatMoney(sale.totalAmount)}
+                  </span>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">Sin ítems registrados.</p>
+          )}
+        </div>
+
+        <div className="flex justify-end border-t border-slate-200 px-6 py-4">
+          <button
+            className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            onClick={onClose}
+            type="button"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReturnModal({
+  sale,
+  onClose,
+  onSuccess
+}: {
+  sale: SaleRecord;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [returnItems, setReturnItems] = useState<ReturnItemState[]>(
+    sale.items.map((item) => ({
+      productId: item.productId,
+      productName: item.product.name,
+      maxQuantity: item.quantity,
+      unitPrice: item.unitPrice,
+      selected: false,
+      returnQuantity: item.quantity
+    }))
+  );
+  const [returnMethod, setReturnMethod] = useState<
+    "Efectivo" | "Crédito a cuenta"
+  >("Efectivo");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const selectedItems = returnItems.filter((i) => i.selected);
+
+  function toggleItem(productId: string) {
+    setReturnItems((prev) =>
+      prev.map((i) =>
+        i.productId === productId ? { ...i, selected: !i.selected } : i
+      )
+    );
+  }
+
+  function updateQuantity(productId: string, quantity: number) {
+    setReturnItems((prev) =>
+      prev.map((i) =>
+        i.productId === productId
+          ? {
+              ...i,
+              returnQuantity: Math.max(1, Math.min(i.maxQuantity, quantity))
+            }
+          : i
+      )
+    );
+  }
+
+  async function handleConfirm() {
+    if (selectedItems.length === 0) {
+      setSubmitError("Seleccioná al menos un producto para devolver.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch("/api/returns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          saleId: sale.id,
+          items: selectedItems.map((i) => ({
+            productId: i.productId,
+            quantity: i.returnQuantity
+          }))
+        })
+      });
+      const responseBody = (await response.json()) as ReturnResponse;
+
+      if (!response.ok || !responseBody.data) {
+        setSubmitError(
+          responseBody.error?.message ?? "No se pudo procesar la devolución."
+        );
+        return;
+      }
+
+      onSuccess();
+    } catch {
+      setSubmitError("No se pudo procesar la devolución.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">
+            Devolución — Venta #{sale.id.slice(-6).toUpperCase()}
+          </h2>
+          <button
+            className="text-slate-400 hover:text-slate-700"
+            onClick={onClose}
+            type="button"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="space-y-4 px-6 py-5">
+          {sale.items.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              Esta venta no tiene ítems para devolver.
+            </p>
+          ) : (
+            <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+              {returnItems.map((item) => (
+                <div
+                  className="flex items-center gap-3 px-4 py-3"
+                  key={item.productId}
+                >
+                  <input
+                    checked={item.selected}
+                    className="h-4 w-4 rounded border-slate-300 accent-slate-950"
+                    onChange={() => toggleItem(item.productId)}
+                    type="checkbox"
+                  />
+                  <span className="flex-1 text-sm text-slate-950">
+                    {item.productName}
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    Vendido: {numberFormatter.format(item.maxQuantity)}
+                  </span>
+                  <input
+                    className="w-16 rounded-md border border-slate-300 px-2 py-1 text-center text-sm text-slate-950 focus:border-slate-500 focus:outline-none disabled:opacity-40"
+                    disabled={!item.selected || isSubmitting}
+                    max={item.maxQuantity}
+                    min={1}
+                    onChange={(e) =>
+                      updateQuantity(
+                        item.productId,
+                        parseInt(e.target.value, 10)
+                      )
+                    }
+                    step={1}
+                    type="number"
+                    value={item.returnQuantity}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">
+              Método de devolución
+            </p>
+            <div className="flex rounded-lg border border-slate-200 p-0.5">
+              {(["Efectivo", "Crédito a cuenta"] as const).map((method) => (
+                <button
+                  className={
+                    returnMethod === method
+                      ? "flex-1 rounded-md px-4 py-1.5 text-sm font-medium bg-slate-950 text-white"
+                      : "flex-1 rounded-md px-4 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-950"
+                  }
+                  disabled={isSubmitting}
+                  key={method}
+                  onClick={() => setReturnMethod(method)}
+                  type="button"
+                >
+                  {method}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {submitError ? (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+              <p className="text-sm font-medium text-rose-900">{submitError}</p>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+          <button
+            className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            disabled={isSubmitting}
+            onClick={onClose}
+            type="button"
+          >
+            Cancelar
+          </button>
+          <button
+            className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+            disabled={isSubmitting || selectedItems.length === 0}
+            onClick={handleConfirm}
+            type="button"
+          >
+            {isSubmitting ? "Procesando..." : "Confirmar devolución"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -161,10 +623,14 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
   const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT">("CASH");
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const [productsLoadError, setProductsLoadError] = useState<string | null>(null);
+  const [productsLoadError, setProductsLoadError] = useState<string | null>(
+    null
+  );
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
-  const [customersLoadError, setCustomersLoadError] = useState<string | null>(null);
+  const [customersLoadError, setCustomersLoadError] = useState<string | null>(
+    null
+  );
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [quantityInput, setQuantityInput] = useState("1");
@@ -386,9 +852,13 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
 
             {paymentType === "CREDIT" ? (
               <div>
-                <p className="mb-2 text-sm font-medium text-slate-700">Cliente</p>
+                <p className="mb-2 text-sm font-medium text-slate-700">
+                  Cliente
+                </p>
                 {isLoadingCustomers ? (
-                  <p className="text-sm text-slate-500">Cargando clientes...</p>
+                  <p className="text-sm text-slate-500">
+                    Cargando clientes...
+                  </p>
                 ) : customersLoadError ? (
                   <p className="text-sm text-rose-700">{customersLoadError}</p>
                 ) : customers.length === 0 ? (
@@ -418,7 +888,9 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
               </p>
 
               {isLoadingProducts ? (
-                <p className="text-sm text-slate-500">Cargando productos...</p>
+                <p className="text-sm text-slate-500">
+                  Cargando productos...
+                </p>
               ) : productsLoadError ? (
                 <p className="text-sm text-rose-700">{productsLoadError}</p>
               ) : products.length === 0 ? (
@@ -464,7 +936,9 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
 
               {selectedProduct ? (
                 <p className="mt-1.5 text-xs text-slate-500">
-                  Precio de venta: {formatMoney(selectedProduct.salePrice)} · Stock disponible: {numberFormatter.format(selectedProduct.stock)}
+                  Precio de venta: {formatMoney(selectedProduct.salePrice)} ·
+                  Stock disponible:{" "}
+                  {numberFormatter.format(selectedProduct.stock)}
                 </p>
               ) : null}
             </div>
@@ -531,14 +1005,17 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
             ) : (
               <div className="rounded-lg border border-dashed border-slate-300 p-5 text-center">
                 <p className="text-sm text-slate-500">
-                  No hay productos en la venta. Seleccioná un producto y hacé clic en Agregar.
+                  No hay productos en la venta. Seleccioná un producto y hacé
+                  clic en Agregar.
                 </p>
               </div>
             )}
 
             {submitError ? (
               <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
-                <p className="text-sm font-medium text-rose-900">{submitError}</p>
+                <p className="text-sm font-medium text-rose-900">
+                  {submitError}
+                </p>
               </div>
             ) : null}
           </div>
@@ -566,81 +1043,23 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
   );
 }
 
-function SalesTable({ sales }: { sales: SaleRecord[] }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 px-5 py-4">
-        <h2 className="text-sm font-semibold text-slate-950">
-          Ventas registradas
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Consulta de ventas, tipo de pago y referencias relacionadas.
-        </p>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr>
-              <TableHeader>Referencia</TableHeader>
-              <TableHeader>Total</TableHeader>
-              <TableHeader>Pago</TableHeader>
-              <TableHeader>Cliente</TableHeader>
-              <TableHeader>Deuda</TableHeader>
-              <TableHeader>Fecha</TableHeader>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
-            {sales.map((sale) => (
-              <tr key={sale.id}>
-                <td className="whitespace-nowrap px-5 py-4 text-sm font-medium text-slate-950">
-                  {formatSaleReference(sale.id)}
-                </td>
-                <td className="whitespace-nowrap px-5 py-4 text-sm font-semibold text-emerald-700">
-                  {formatMoney(sale.totalAmount)}
-                </td>
-                <td className="whitespace-nowrap px-5 py-4 text-sm">
-                  <PaymentTypeBadge paymentType={sale.paymentType} />
-                </td>
-                <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
-                  {sale.customer?.name ?? "Sin cliente"}
-                </td>
-                <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
-                  {sale.debtId ?? "Sin deuda"}
-                </td>
-                <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-500">
-                  {formatDate(sale.saleDate)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function PaymentTypeBadge({ paymentType }: { paymentType: SaleRecord["paymentType"] }) {
+function PaymentTypeBadge({
+  paymentType
+}: {
+  paymentType: SaleRecord["paymentType"];
+}) {
   const isCredit = paymentType === "CREDIT";
 
   return (
     <span
       className={
         isCredit
-          ? "inline-flex rounded-md bg-blue-50 px-2.5 py-1 text-sm font-medium text-blue-800"
-          : "inline-flex rounded-md bg-emerald-50 px-2.5 py-1 text-sm font-medium text-emerald-800"
+          ? "inline-flex rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800"
+          : "inline-flex rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800"
       }
     >
       {isCredit ? "Fiado" : "Contado"}
     </span>
-  );
-}
-
-function TableHeader({ children }: { children: string }) {
-  return (
-    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-slate-500">
-      {children}
-    </th>
   );
 }
 
@@ -683,16 +1102,12 @@ function EmptyState() {
   );
 }
 
-function formatSaleReference(id: string) {
-  return `Venta ${id.slice(0, 8)}`;
-}
-
 function formatMoney(value: string) {
   return moneyFormatter.format(Number(value));
 }
 
-function formatDate(value: string) {
-  return dateFormatter.format(new Date(value));
+function formatDateTime(value: string) {
+  return dateTimeFormatter.format(new Date(value));
 }
 
 const moneyFormatter = new Intl.NumberFormat("es-419", {
@@ -704,8 +1119,11 @@ const numberFormatter = new Intl.NumberFormat("es-419", {
   maximumFractionDigits: 0
 });
 
-const dateFormatter = new Intl.DateTimeFormat("es-419", {
+const dateTimeFormatter = new Intl.DateTimeFormat("es-419", {
   day: "2-digit",
   month: "short",
-  year: "numeric"
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false
 });

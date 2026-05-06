@@ -3,6 +3,7 @@ export {
   listSales,
   SaleInsufficientStockError,
   SaleProductNotFoundError,
+  type SaleListRecord,
   type SaleWithCustomer,
   type SaleWithItems
 } from "./sale-data-access";

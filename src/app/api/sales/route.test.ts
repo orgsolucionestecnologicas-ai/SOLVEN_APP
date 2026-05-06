@@ -6,7 +6,7 @@ import {
   listSales,
   SaleInsufficientStockError,
   SaleProductNotFoundError,
-  type SaleWithCustomer,
+  type SaleListRecord,
   type SaleWithItems
 } from "../../../modules/sales";
 import { SaleValidationError } from "../../../modules/sales/sale-validation";
@@ -213,13 +213,14 @@ const saleJson = {
       quantity: 2,
       unitPrice: "15.00",
       total: "30.00",
+      product: { name: "Producto test" },
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z"
     }
   ]
 };
 
-function buildSaleRecord(): SaleWithItems & SaleWithCustomer {
+function buildSaleRecord(): SaleListRecord & SaleWithItems {
   return {
     ...saleJson,
     saleDate: new Date(saleJson.saleDate),
@@ -230,7 +231,7 @@ function buildSaleRecord(): SaleWithItems & SaleWithCustomer {
       createdAt: new Date(saleItem.createdAt),
       updatedAt: new Date(saleItem.updatedAt)
     }))
-  } as unknown as SaleWithItems & SaleWithCustomer;
+  } as unknown as SaleListRecord & SaleWithItems;
 }
 
 function buildPrismaNotFoundError() {
