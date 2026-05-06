@@ -54,7 +54,7 @@ type NavItem = NavLinkItem | NavDisabledItem;
 
 const navItems: NavItem[] = [
   { type: "link",     href: "/",               label: "Inicio",        section: "dashboard",     Icon: Home },
-  { type: "link",     href: "/sales",           label: "Ventas",        section: "sales",         Icon: ShoppingCart },
+  { type: "link",     href: "/pos",             label: "Ventas",        section: "pos",           Icon: ShoppingCart },
   { type: "link",     href: "/products",        label: "Productos",     section: "products",      Icon: Package },
   { type: "link",     href: "/products",        label: "Inventario",    section: "inventory",     Icon: Layers },
   { type: "link",     href: "/customers",       label: "Clientes",      section: "customers",     Icon: Users },

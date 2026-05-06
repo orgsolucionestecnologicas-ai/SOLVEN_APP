@@ -3,7 +3,7 @@ import { Pos } from "../ui/pos";
 
 export default function PosPage() {
   return (
-    <AppShell activeSection="pos" eyebrow="Punto de venta" title="POS">
+    <AppShell activeSection="pos">
       <Pos />
     </AppShell>
   );
