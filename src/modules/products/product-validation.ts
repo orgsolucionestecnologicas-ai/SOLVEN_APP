@@ -57,3 +57,48 @@ export function validateCreateProductInput(
 function isValidNonNegativeNumber(value: number) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
+
+export type UpdateProductInput = {
+  name?: string;
+  costPrice?: number;
+  salePrice?: number;
+};
+
+export function validateUpdateProductInput(
+  input: UpdateProductInput
+): { name?: string; costPrice?: number; salePrice?: number } {
+  const errors: string[] = [];
+  const result: { name?: string; costPrice?: number; salePrice?: number } = {};
+
+  if (input.name !== undefined) {
+    const name = typeof input.name === "string" ? input.name.trim() : "";
+
+    if (name.length === 0) {
+      errors.push("Product name is required.");
+    } else {
+      result.name = name;
+    }
+  }
+
+  if (input.costPrice !== undefined) {
+    if (!isValidNonNegativeNumber(input.costPrice)) {
+      errors.push("Cost price must be a non-negative number.");
+    } else {
+      result.costPrice = input.costPrice;
+    }
+  }
+
+  if (input.salePrice !== undefined) {
+    if (!isValidNonNegativeNumber(input.salePrice)) {
+      errors.push("Sale price must be a non-negative number.");
+    } else {
+      result.salePrice = input.salePrice;
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new ProductValidationError(errors);
+  }
+
+  return result;
+}

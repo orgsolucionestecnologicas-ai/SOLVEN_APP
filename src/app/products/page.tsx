@@ -3,11 +3,7 @@ import { ProductsInventory } from "../ui/products-inventory";
 
 export default function ProductsPage() {
   return (
-    <AppShell
-      activeSection="products"
-      eyebrow="Productos"
-      title="Inventario"
-    >
+    <AppShell activeSection="products">
       <ProductsInventory />
     </AppShell>
   );

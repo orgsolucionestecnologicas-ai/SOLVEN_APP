@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 
 import {
   type CreateProductInput,
-  validateCreateProductInput
+  type UpdateProductInput,
+  validateCreateProductInput,
+  validateUpdateProductInput
 } from "./product-validation";
 
 export async function createProduct(
@@ -22,5 +24,17 @@ export async function listProducts(): Promise<Product[]> {
     orderBy: {
       name: "asc"
     }
+  });
+}
+
+export async function updateProduct(
+  id: string,
+  input: UpdateProductInput
+): Promise<Product> {
+  const data = validateUpdateProductInput(input);
+
+  return prisma.product.update({
+    where: { id },
+    data
   });
 }

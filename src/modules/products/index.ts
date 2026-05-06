@@ -1,10 +1,13 @@
 export {
   createProduct,
-  listProducts
+  listProducts,
+  updateProduct
 } from "./product-data-access";
 export {
   ProductValidationError,
   type CreateProductInput,
+  type UpdateProductInput,
   type ValidatedProductInput,
-  validateCreateProductInput
+  validateCreateProductInput,
+  validateUpdateProductInput
 } from "./product-validation";
