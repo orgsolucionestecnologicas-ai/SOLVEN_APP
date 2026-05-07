@@ -46,6 +46,14 @@ type CustomerRecord = {
   createdAt: string;
 };
 
+type ProductRecord = {
+  id: string;
+  name: string;
+  costPrice: string;
+  salePrice: string;
+  stock: number;
+};
+
 type ApiResponse<T> = { data?: T };
 
 type Tab =
@@ -196,6 +204,7 @@ export function Reports() {
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
+  const [products, setProducts] = useState<ProductRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("Resumen general");
 
@@ -203,12 +212,12 @@ export function Reports() {
     let isActive = true;
 
     async function load() {
-      const [salesRes, expensesRes, customersRes] = await Promise.allSettled([
+      const [salesRes, expensesRes, customersRes, , productsRes] = await Promise.allSettled([
         fetchData<SaleRecord[]>("/api/sales"),
         fetchData<ExpenseRecord[]>("/api/expenses"),
         fetchData<CustomerRecord[]>("/api/customers"),
         fetchData<unknown>("/api/cash-movements"),
-        fetchData<unknown>("/api/products"),
+        fetchData<ProductRecord[]>("/api/products"),
         fetchData<unknown>("/api/debts"),
         fetchData<unknown>("/api/dashboard/summary"),
       ]);
@@ -218,6 +227,7 @@ export function Reports() {
       setSales(salesRes.status === "fulfilled" && salesRes.value ? salesRes.value : []);
       setExpenses(expensesRes.status === "fulfilled" && expensesRes.value ? expensesRes.value : []);
       setCustomers(customersRes.status === "fulfilled" && customersRes.value ? customersRes.value : []);
+      setProducts(productsRes.status === "fulfilled" && productsRes.value ? productsRes.value : []);
       setIsLoading(false);
     }
 
@@ -454,6 +464,18 @@ export function Reports() {
             previousSales={previousSales}
             sales={sales}
           />
+        ) : activeTab === "Ventas" ? (
+          <VentasTab sales={sales} />
+        ) : activeTab === "Productos" ? (
+          <ProductosTab products={products} sales={sales} />
+        ) : activeTab === "Clientes" ? (
+          <ClientesTab customers={customers} sales={sales} />
+        ) : activeTab === "Inventario" ? (
+          <InventarioTab products={products} />
+        ) : activeTab === "Crecimiento" ? (
+          <CrecimientoTab sales={sales} />
+        ) : activeTab === "Rentabilidad" ? (
+          <RentabilidadTab expenses={expenses} sales={sales} />
         ) : (
           <ProximamenteTab tab={activeTab} />
         )}
@@ -558,6 +580,14 @@ function ResumenGeneralTab({
         <TopProductsPanel sales={sales} />
         <TopCustomersPanel customers={customers} sales={sales} />
         <ProfitabilityPanel metrics={metrics} previousSales={previousSales} />
+      </div>
+      {/* Row 3 */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="col-span-2">
+          <SalesHeatmapPanel sales={sales} />
+        </div>
+        <MonthlyComparisonPanel sales={sales} />
+        <KeyIndicatorsPanel sales={sales} />
       </div>
     </div>
   );
@@ -1023,6 +1053,1001 @@ function ProfitabilityPanel({
           <a className="text-xs font-medium text-violet-600 hover:text-violet-800" href="/reports">
             Ver análisis de rentabilidad →
           </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SalesHeatmapPanel ────────────────────────────────────────────────────────
+
+const WEEKDAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const HOURS = [6, 8, 10, 12, 14, 16, 18, 20];
+
+function SalesHeatmapPanel({ sales }: { sales: SaleRecord[] }) {
+  const grid = useMemo(() => {
+    const counts: number[][] = Array.from({ length: HOURS.length }, () => Array(7).fill(0));
+    for (const sale of sales) {
+      const d = new Date(sale.saleDate);
+      const hour = d.getHours();
+      const dow = d.getDay();
+      const hi = HOURS.findIndex((h, i) => h <= hour && (HOURS[i + 1] === undefined || HOURS[i + 1] > hour));
+      if (hi !== -1) counts[hi][dow]++;
+    }
+    return counts;
+  }, [sales]);
+
+  const maxCount = Math.max(...grid.flat(), 1);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="mb-3 text-sm font-semibold text-slate-950">Mapa de calor de ventas</h3>
+      <div className="overflow-x-auto">
+        <div className="min-w-max">
+          <div className="flex gap-0.5 pl-8 mb-0.5">
+            {WEEKDAYS.map((d) => (
+              <div className="w-8 text-center text-[10px] text-slate-400" key={d}>{d}</div>
+            ))}
+          </div>
+          {HOURS.map((h, hi) => (
+            <div className="flex items-center gap-0.5 mb-0.5" key={h}>
+              <div className="w-7 flex-shrink-0 text-right pr-1 text-[10px] text-slate-400">{h}h</div>
+              {WEEKDAYS.map((_, dow) => {
+                const val = grid[hi][dow];
+                const intensity = val / maxCount;
+                const bg =
+                  intensity === 0
+                    ? "#f8fafc"
+                    : intensity < 0.25
+                    ? "#ede9fe"
+                    : intensity < 0.5
+                    ? "#c4b5fd"
+                    : intensity < 0.75
+                    ? "#7c3aed"
+                    : "#4c1d95";
+                return (
+                  <div
+                    className="flex h-8 w-8 items-center justify-center rounded text-[9px] font-medium"
+                    key={dow}
+                    style={{ background: bg, color: intensity > 0.4 ? "#fff" : "#6d28d9" }}
+                    title={`${WEEKDAYS[dow]} ${h}h: ${val} venta${val !== 1 ? "s" : ""}`}
+                  >
+                    {val > 0 ? val : ""}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+          <div className="mt-2 flex items-center gap-1 pl-8">
+            <span className="text-[10px] text-slate-400 mr-1">Menos</span>
+            {["#f8fafc", "#ede9fe", "#c4b5fd", "#7c3aed", "#4c1d95"].map((c) => (
+              <div className="h-3 w-5 rounded-sm" key={c} style={{ background: c }} />
+            ))}
+            <span className="text-[10px] text-slate-400 ml-1">Más</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MonthlyComparisonPanel ───────────────────────────────────────────────────
+
+function MonthlyComparisonPanel({ sales }: { sales: SaleRecord[] }) {
+  const data = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const offset = i - 11;
+      const { start, end } = getMonthRange(offset);
+      const monthSales = sales.filter((s) => {
+        const d = new Date(s.saleDate);
+        return d >= start && d <= end;
+      });
+      const curr = monthSales.reduce((s, x) => s + Number(x.totalAmount), 0);
+      const label = new Intl.DateTimeFormat("es-419", { month: "short" }).format(start);
+      const isCurrent = offset === 0;
+      return { label, curr, isCurrent };
+    });
+  }, [sales]);
+
+  const maxVal = Math.max(...data.map((d) => d.curr), 1);
+
+  const svgW = 300;
+  const svgH = 120;
+  const pLeft = 8;
+  const pRight = 8;
+  const pTop = 8;
+  const pBottom = 28;
+  const barW = (svgW - pLeft - pRight) / 12 - 2;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="mb-3 text-sm font-semibold text-slate-950">Comparación mensual</h3>
+      <svg className="w-full" viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
+        {data.map((d, i) => {
+          const x = pLeft + i * ((svgW - pLeft - pRight) / 12);
+          const barH = ((svgH - pTop - pBottom) * d.curr) / maxVal;
+          const y = pTop + (svgH - pTop - pBottom) - barH;
+          return (
+            <g key={i}>
+              <rect
+                fill={d.isCurrent ? "#7c3aed" : "#e2e8f0"}
+                height={Math.max(barH, 2)}
+                rx="2"
+                width={barW}
+                x={x + 1}
+                y={y}
+              />
+              <text
+                dominantBaseline="hanging"
+                fill={d.isCurrent ? "#7c3aed" : "#94a3b8"}
+                fontSize="8"
+                fontWeight={d.isCurrent ? "700" : "400"}
+                textAnchor="middle"
+                x={x + barW / 2 + 1}
+                y={svgH - pBottom + 4}
+              >
+                {d.label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="flex items-center gap-3 text-xs text-slate-500">
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-3 rounded-sm bg-violet-600" />
+          Mes actual
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-3 rounded-sm bg-slate-200" />
+          Meses anteriores
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── KeyIndicatorsPanel ───────────────────────────────────────────────────────
+
+function KeyIndicatorsPanel({ sales }: { sales: SaleRecord[] }) {
+  const indicators = useMemo(() => {
+    if (sales.length === 0) return null;
+
+    const byDay = new Map<string, number>();
+    const byHour: number[] = Array(24).fill(0);
+    const byCat: Record<string, number> = {};
+
+    for (const sale of sales) {
+      const d = new Date(sale.saleDate);
+      const dayKey = d.toLocaleDateString("es-419", { weekday: "long" });
+      byDay.set(dayKey, (byDay.get(dayKey) ?? 0) + Number(sale.totalAmount));
+      byHour[d.getHours()] += Number(sale.totalAmount);
+      for (const item of sale.items) {
+        const cat = getProductCategory(item.product.name);
+        byCat[cat] = (byCat[cat] ?? 0) + Number(item.total);
+      }
+    }
+
+    const bestDay = [...byDay.entries()].sort((a, b) => b[1] - a[1])[0];
+    const peakHour = byHour.reduce((best, v, i) => (v > byHour[best] ? i : best), 0);
+    const sortedCats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+    const bestCat = sortedCats[0];
+    const worstCat = sortedCats[sortedCats.length - 1];
+
+    return { bestDay, peakHour, bestCat, worstCat };
+  }, [sales]);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="mb-3 text-sm font-semibold text-slate-950">Indicadores clave</h3>
+      {!indicators ? (
+        <p className="py-4 text-center text-xs text-slate-400">Sin datos</p>
+      ) : (
+        <div className="space-y-3">
+          <div className="rounded-lg bg-violet-50 p-2.5">
+            <p className="text-[10px] font-medium text-violet-500 uppercase tracking-wide">Mejor día</p>
+            <p className="mt-0.5 text-sm font-bold text-violet-900 capitalize">{indicators.bestDay?.[0] ?? "—"}</p>
+            <p className="text-xs text-violet-600">{formatMoney(indicators.bestDay?.[1] ?? 0)}</p>
+          </div>
+          <div className="rounded-lg bg-emerald-50 p-2.5">
+            <p className="text-[10px] font-medium text-emerald-500 uppercase tracking-wide">Hora pico</p>
+            <p className="mt-0.5 text-sm font-bold text-emerald-900">
+              {indicators.peakHour}:00 – {indicators.peakHour + 1}:00
+            </p>
+          </div>
+          <div className="rounded-lg bg-blue-50 p-2.5">
+            <p className="text-[10px] font-medium text-blue-500 uppercase tracking-wide">Mejor categoría</p>
+            <p className="mt-0.5 text-sm font-bold text-blue-900">{indicators.bestCat?.[0] ?? "—"}</p>
+            <p className="text-xs text-blue-600">{formatMoney(indicators.bestCat?.[1] ?? 0)}</p>
+          </div>
+          {indicators.worstCat && indicators.worstCat[0] !== indicators.bestCat?.[0] && (
+            <div className="rounded-lg bg-rose-50 p-2.5">
+              <p className="text-[10px] font-medium text-rose-500 uppercase tracking-wide">Menor categoría</p>
+              <p className="mt-0.5 text-sm font-bold text-rose-900">{indicators.worstCat[0]}</p>
+              <p className="text-xs text-rose-600">{formatMoney(indicators.worstCat[1])}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── VentasTab ────────────────────────────────────────────────────────────────
+
+function VentasTab({ sales }: { sales: SaleRecord[] }) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return sales
+      .slice()
+      .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
+      .filter((s) => {
+        if (!q) return true;
+        const folio = s.id.slice(-6).toUpperCase();
+        return folio.includes(q.toUpperCase()) || (s.customer?.name.toLowerCase().includes(q) ?? false);
+      });
+  }, [sales, search]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  const last30 = useMemo(() => getLastNDays(30), []);
+  const dailyRevenue = useMemo(
+    () =>
+      last30.map((day) =>
+        sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)
+      ),
+    [sales, last30]
+  );
+
+  const maxRev = Math.max(...dailyRevenue, 1);
+  const svgW = 600;
+  const svgH = 140;
+  const pL = 44;
+  const pR = 12;
+  const pT = 12;
+  const pB = 28;
+  const cW = svgW - pL - pR;
+  const cH = svgH - pT - pB;
+
+  const linePath = dailyRevenue
+    .map((v, i) => {
+      const x = pL + (i / 29) * cW;
+      const y = pT + cH * (1 - v / maxRev);
+      return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-slate-950">Evolución de ventas — últimos 30 días</h3>
+        <svg className="w-full" viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
+          {[0, 0.25, 0.5, 0.75, 1].map((f, i) => {
+            const y = pT + cH * (1 - f);
+            return (
+              <g key={i}>
+                <line stroke="#f1f5f9" strokeWidth="1" x1={pL} x2={pL + cW} y1={y} y2={y} />
+                <text dominantBaseline="middle" fill="#94a3b8" fontSize="9" textAnchor="end" x={pL - 4} y={y}>
+                  {formatShortMoney(maxRev * f)}
+                </text>
+              </g>
+            );
+          })}
+          <path d={linePath} fill="none" stroke="#7c3aed" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+          {last30
+            .filter((_, i) => i % 6 === 0 || i === 29)
+            .map((day, _, arr) => {
+              const i = last30.indexOf(day);
+              const x = pL + (i / 29) * cW;
+              return (
+                <text dominantBaseline="hanging" fill="#94a3b8" fontSize="9" key={i} textAnchor="middle" x={x} y={pT + cH + 6}>
+                  {formatDateAbbrev(day)}
+                </text>
+              );
+            })}
+        </svg>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <h3 className="text-sm font-semibold text-slate-950">Historial de ventas</h3>
+          <input
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+            placeholder="Buscar por folio o cliente…"
+            type="text"
+            value={search}
+          />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Folio</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Fecha</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Cliente</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Productos</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Pago</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Total</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginated.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-8 text-center text-xs text-slate-400" colSpan={7}>
+                    {search ? "Sin resultados" : "Sin ventas registradas"}
+                  </td>
+                </tr>
+              ) : (
+                paginated.map((sale) => (
+                  <tr className="border-b border-slate-50 hover:bg-slate-50" key={sale.id}>
+                    <td className="px-4 py-2.5 font-mono text-xs text-slate-600">
+                      #{sale.id.slice(-6).toUpperCase()}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-slate-600">
+                      {new Date(sale.saleDate).toLocaleDateString("es-419", { day: "2-digit", month: "short", year: "numeric" })}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-slate-700">
+                      {sale.customer?.name ?? <span className="text-slate-400">Sin cliente</span>}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-slate-500">
+                      {sale.items.length} ítem{sale.items.length !== 1 ? "s" : ""}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-slate-600">
+                      {sale.paymentType === "CASH" ? "Efectivo" : "Fiado"}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-900">
+                      {formatMoney(sale.totalAmount)}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                        Completada
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+            <p className="text-xs text-slate-500">
+              {filtered.length} ventas · página {page + 1} de {totalPages}
+            </p>
+            <div className="flex gap-1">
+              <button
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                disabled={page === 0}
+                onClick={() => setPage((p) => p - 1)}
+                type="button"
+              >
+                Anterior
+              </button>
+              <button
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage((p) => p + 1)}
+                type="button"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── ProductosTab ─────────────────────────────────────────────────────────────
+
+function ProductosTab({ sales, products }: { sales: SaleRecord[]; products: ProductRecord[] }) {
+  const productStats = useMemo(() => {
+    const byName = new Map<string, { name: string; category: string; units: number; revenue: number }>();
+    for (const sale of sales) {
+      for (const item of sale.items) {
+        const name = item.product.name;
+        const category = getProductCategory(name);
+        const existing = byName.get(name) ?? { name, category, units: 0, revenue: 0 };
+        byName.set(name, {
+          name,
+          category,
+          units: existing.units + item.quantity,
+          revenue: existing.revenue + Number(item.total),
+        });
+      }
+    }
+    return [...byName.values()].sort((a, b) => b.revenue - a.revenue);
+  }, [sales]);
+
+  const totalRevenue = productStats.reduce((s, p) => s + p.revenue, 0);
+  const totalUnits = productStats.reduce((s, p) => s + p.units, 0);
+
+  const catColors: Record<string, string> = Object.fromEntries(CHART_ENTRIES);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Productos en catálogo</p>
+          <p className="mt-1 text-2xl font-bold text-slate-950">{products.length}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Unidades vendidas</p>
+          <p className="mt-1 text-2xl font-bold text-slate-950">{totalUnits}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Ingresos totales</p>
+          <p className="mt-1 text-2xl font-bold text-slate-950">{formatMoney(totalRevenue)}</p>
+        </div>
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-4 py-3">
+          <h3 className="text-sm font-semibold text-slate-950">Rendimiento por producto</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">#</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Producto</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Categoría</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Unidades</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Ingresos</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">% del total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {productStats.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-8 text-center text-xs text-slate-400" colSpan={6}>Sin ventas registradas</td>
+                </tr>
+              ) : (
+                productStats.map((prod, i) => {
+                  const color = catColors[prod.category] ?? "#94a3b8";
+                  return (
+                    <tr className="border-b border-slate-50 hover:bg-slate-50" key={prod.name}>
+                      <td className="px-4 py-2.5 text-xs font-bold text-slate-400">{i + 1}</td>
+                      <td className="px-4 py-2.5 text-xs font-medium text-slate-800">{prod.name}</td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                          style={{ background: `${color}20`, color }}
+                        >
+                          {prod.category}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-xs text-slate-700">{prod.units}</td>
+                      <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-900">{formatMoney(prod.revenue)}</td>
+                      <td className="px-4 py-2.5 text-right text-xs text-slate-500">
+                        {totalRevenue > 0 ? ((prod.revenue / totalRevenue) * 100).toFixed(1) : "0"}%
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ClientesTab ──────────────────────────────────────────────────────────────
+
+function ClientesTab({ sales, customers }: { sales: SaleRecord[]; customers: CustomerRecord[] }) {
+  const customerStats = useMemo(() => {
+    const byId = new Map<string, { name: string; purchases: number; total: number; lastDate: Date }>();
+    for (const sale of sales) {
+      if (!sale.customerId || !sale.customer) continue;
+      const existing = byId.get(sale.customerId) ?? {
+        name: sale.customer.name,
+        purchases: 0,
+        total: 0,
+        lastDate: new Date(0),
+      };
+      const saleDate = new Date(sale.saleDate);
+      byId.set(sale.customerId, {
+        name: sale.customer.name,
+        purchases: existing.purchases + 1,
+        total: existing.total + Number(sale.totalAmount),
+        lastDate: saleDate > existing.lastDate ? saleDate : existing.lastDate,
+      });
+    }
+    return [...byId.values()].sort((a, b) => b.total - a.total);
+  }, [sales]);
+
+  function getSegment(purchases: number): { label: string; color: string } {
+    if (purchases >= 10) return { label: "VIP", color: "#7c3aed" };
+    if (purchases >= 5) return { label: "Frecuente", color: "#3b82f6" };
+    if (purchases >= 2) return { label: "Regular", color: "#10b981" };
+    return { label: "Nuevo", color: "#f97316" };
+  }
+
+  const totalSpent = customerStats.reduce((s, c) => s + c.total, 0);
+  const totalPurchases = customerStats.reduce((s, c) => s + c.purchases, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Clientes registrados</p>
+          <p className="mt-1 text-2xl font-bold text-slate-950">{customers.length}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Total compras</p>
+          <p className="mt-1 text-2xl font-bold text-slate-950">{totalPurchases}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Ingresos de clientes</p>
+          <p className="mt-1 text-2xl font-bold text-slate-950">{formatMoney(totalSpent)}</p>
+        </div>
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-4 py-3">
+          <h3 className="text-sm font-semibold text-slate-950">Clientes por valor</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">#</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Cliente</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Segmento</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Compras</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Total gastado</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Última compra</th>
+              </tr>
+            </thead>
+            <tbody>
+              {customerStats.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-8 text-center text-xs text-slate-400" colSpan={6}>Sin ventas con cliente asignado</td>
+                </tr>
+              ) : (
+                customerStats.map((cust, i) => {
+                  const seg = getSegment(cust.purchases);
+                  return (
+                    <tr className="border-b border-slate-50 hover:bg-slate-50" key={cust.name}>
+                      <td className="px-4 py-2.5 text-xs font-bold text-slate-400">{i + 1}</td>
+                      <td className="px-4 py-2.5 text-xs font-medium text-slate-800">{cust.name}</td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                          style={{ background: `${seg.color}20`, color: seg.color }}
+                        >
+                          {seg.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-xs text-slate-700">{cust.purchases}</td>
+                      <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-900">{formatMoney(cust.total)}</td>
+                      <td className="px-4 py-2.5 text-xs text-slate-500">
+                        {cust.lastDate.getTime() > 0
+                          ? cust.lastDate.toLocaleDateString("es-419", { day: "2-digit", month: "short", year: "numeric" })
+                          : "—"}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── InventarioTab ────────────────────────────────────────────────────────────
+
+function InventarioTab({ products }: { products: ProductRecord[] }) {
+  const rows = useMemo(
+    () =>
+      products
+        .map((p) => {
+          const category = getProductCategory(p.name);
+          const cost = Number(p.costPrice);
+          const sale = Number(p.salePrice);
+          const value = cost * p.stock;
+          const status =
+            p.stock === 0
+              ? { label: "Agotado", color: "#ef4444" }
+              : p.stock < 5
+              ? { label: "Bajo", color: "#f97316" }
+              : { label: "Normal", color: "#10b981" };
+          return { ...p, category, cost, sale, value, status };
+        })
+        .sort((a, b) => a.stock - b.stock),
+    [products]
+  );
+
+  const totalValue = rows.reduce((s, r) => s + r.value, 0);
+  const lowStock = rows.filter((r) => r.stock < 5).length;
+  const outOfStock = rows.filter((r) => r.stock === 0).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Valor del inventario</p>
+          <p className="mt-1 text-2xl font-bold text-slate-950">{formatMoney(totalValue)}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Stock bajo</p>
+          <p className={`mt-1 text-2xl font-bold ${lowStock > 0 ? "text-orange-600" : "text-slate-950"}`}>{lowStock}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Sin stock</p>
+          <p className={`mt-1 text-2xl font-bold ${outOfStock > 0 ? "text-rose-600" : "text-slate-950"}`}>{outOfStock}</p>
+        </div>
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-4 py-3">
+          <h3 className="text-sm font-semibold text-slate-950">Estado del inventario</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Producto</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Categoría</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Stock</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Costo</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Precio</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Valor total</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-8 text-center text-xs text-slate-400" colSpan={7}>Sin productos registrados</td>
+                </tr>
+              ) : (
+                rows.map((row) => (
+                  <tr className="border-b border-slate-50 hover:bg-slate-50" key={row.id}>
+                    <td className="px-4 py-2.5 text-xs font-medium text-slate-800">{row.name}</td>
+                    <td className="px-4 py-2.5 text-xs text-slate-500">{row.category}</td>
+                    <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-900">{row.stock}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-slate-600">{formatMoney(row.cost)}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-slate-600">{formatMoney(row.sale)}</td>
+                    <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-900">{formatMoney(row.value)}</td>
+                    <td className="px-4 py-2.5">
+                      <span
+                        className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                        style={{ background: `${row.status.color}20`, color: row.status.color }}
+                      >
+                        {row.status.label}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── CrecimientoTab ───────────────────────────────────────────────────────────
+
+function CrecimientoTab({ sales }: { sales: SaleRecord[] }) {
+  const last30 = useMemo(() => getLastNDays(30), []);
+
+  const { cumulative, daily } = useMemo(() => {
+    const d = last30.map((day) =>
+      sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)
+    );
+    let acc = 0;
+    const c = d.map((v) => { acc += v; return acc; });
+    return { daily: d, cumulative: c };
+  }, [sales, last30]);
+
+  const prev30 = useMemo(() => {
+    const days = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (59 - i));
+      d.setHours(0, 0, 0, 0);
+      return d;
+    });
+    return days.map((day) =>
+      sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)
+    );
+  }, [sales]);
+
+  const currTotal = daily.reduce((s, v) => s + v, 0);
+  const prevTotal = prev30.reduce((s, v) => s + v, 0);
+  const growthPct = pctChange(currTotal, prevTotal);
+  const bestDay = Math.max(...daily, 0);
+  const avgDay = daily.length > 0 ? currTotal / daily.length : 0;
+  const activeDays = daily.filter((v) => v > 0).length;
+
+  const maxCumul = Math.max(...cumulative, 1);
+  const svgW = 600;
+  const svgH = 160;
+  const pL = 52;
+  const pR = 12;
+  const pT = 12;
+  const pB = 28;
+  const cW = svgW - pL - pR;
+  const cH = svgH - pT - pB;
+
+  const linePath = cumulative
+    .map((v, i) => {
+      const x = pL + (i / 29) * cW;
+      const y = pT + cH * (1 - v / maxCumul);
+      return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  const kpis = [
+    { label: "Ingresos 30 días", value: formatMoney(currTotal), delta: formatPct(growthPct), pos: growthPct >= 0 },
+    { label: "Mejor día", value: formatMoney(bestDay), delta: null, pos: true },
+    { label: "Promedio diario", value: formatMoney(avgDay), delta: null, pos: true },
+    { label: "Días activos", value: `${activeDays} / 30`, delta: null, pos: true },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-3">
+        {kpis.map((k) => (
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm" key={k.label}>
+            <p className="text-xs font-medium text-slate-500">{k.label}</p>
+            <p className="mt-1 text-xl font-bold text-slate-950">{k.value}</p>
+            {k.delta && (
+              <p className={`mt-1 text-xs font-medium ${k.pos ? "text-emerald-600" : "text-rose-600"}`}>{k.delta} vs período ant.</p>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-slate-950">Ventas acumuladas — últimos 30 días</h3>
+        <svg className="w-full" viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
+          {[0, 0.25, 0.5, 0.75, 1].map((f, i) => {
+            const y = pT + cH * (1 - f);
+            return (
+              <g key={i}>
+                <line stroke="#f1f5f9" strokeWidth="1" x1={pL} x2={pL + cW} y1={y} y2={y} />
+                <text dominantBaseline="middle" fill="#94a3b8" fontSize="9" textAnchor="end" x={pL - 4} y={y}>
+                  {formatShortMoney(maxCumul * f)}
+                </text>
+              </g>
+            );
+          })}
+          <path d={linePath} fill="none" stroke="#7c3aed" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+          {last30
+            .filter((_, i) => i % 6 === 0 || i === 29)
+            .map((day) => {
+              const i = last30.indexOf(day);
+              const x = pL + (i / 29) * cW;
+              return (
+                <text dominantBaseline="hanging" fill="#94a3b8" fontSize="9" key={i} textAnchor="middle" x={x} y={pT + cH + 6}>
+                  {formatDateAbbrev(day)}
+                </text>
+              );
+            })}
+        </svg>
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-slate-950">Métricas de crecimiento</h3>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { label: "Crecimiento vs mes anterior", value: growthPct, isPercent: true },
+            { label: "Variación en ingresos", value: currTotal - prevTotal, isMoney: true },
+          ].map((m) => (
+            <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2.5" key={m.label}>
+              <span className="text-xs text-slate-600">{m.label}</span>
+              <span
+                className={`text-sm font-bold ${
+                  "value" in m && m.value >= 0 ? "text-emerald-600" : "text-rose-600"
+                }`}
+              >
+                {"isPercent" in m && m.isPercent ? formatPct(m.value) : formatMoney(m.value)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── RentabilidadTab ──────────────────────────────────────────────────────────
+
+function RentabilidadTab({ sales, expenses }: { sales: SaleRecord[]; expenses: ExpenseRecord[] }) {
+  const { start: currStart, end: currEnd } = useMemo(() => getMonthRange(0), []);
+
+  const currRevenue = useMemo(
+    () =>
+      sales
+        .filter((s) => { const d = new Date(s.saleDate); return d >= currStart && d <= currEnd; })
+        .reduce((s, x) => s + Number(x.totalAmount), 0),
+    [sales, currStart, currEnd]
+  );
+
+  const currExpenses = useMemo(
+    () =>
+      expenses
+        .filter((e) => { const d = new Date(e.expenseDate); return d >= currStart && d <= currEnd; })
+        .reduce((s, e) => s + Number(e.amount), 0),
+    [expenses, currStart, currEnd]
+  );
+
+  const profit = currRevenue - currExpenses;
+  const margin = currRevenue > 0 ? (profit / currRevenue) * 100 : 0;
+
+  const donutData = [
+    { label: "Ganancia", value: Math.max(profit, 0), color: "#7c3aed" },
+    { label: "Gastos", value: currExpenses, color: "#f1f5f9" },
+  ];
+  const donutSegments = buildDonutSegments(donutData.filter((d) => d.value > 0));
+
+  const catRevenue = useMemo(() => {
+    const byCat: Record<string, number> = {};
+    for (const sale of sales) {
+      const d = new Date(sale.saleDate);
+      if (d < currStart || d > currEnd) continue;
+      for (const item of sale.items) {
+        const cat = getChartCategory(getProductCategory(item.product.name));
+        byCat[cat] = (byCat[cat] ?? 0) + Number(item.total);
+      }
+    }
+    return Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  }, [sales, currStart, currEnd]);
+
+  const expByCategory = useMemo(() => {
+    const byCat: Record<string, number> = {};
+    for (const exp of expenses) {
+      const d = new Date(exp.expenseDate);
+      if (d < currStart || d > currEnd) continue;
+      byCat[exp.category] = (byCat[exp.category] ?? 0) + Number(exp.amount);
+    }
+    return Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  }, [expenses, currStart, currEnd]);
+
+  const paymentBreakdown = useMemo(() => {
+    const cash = sales
+      .filter((s) => { const d = new Date(s.saleDate); return d >= currStart && d <= currEnd && s.paymentType === "CASH"; })
+      .reduce((s, x) => s + Number(x.totalAmount), 0);
+    const credit = sales
+      .filter((s) => { const d = new Date(s.saleDate); return d >= currStart && d <= currEnd && s.paymentType === "CREDIT"; })
+      .reduce((s, x) => s + Number(x.totalAmount), 0);
+    return { cash, credit };
+  }, [sales, currStart, currEnd]);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-4">
+        <div className="col-span-1 flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Ganancia bruta</p>
+          <p className={`mt-1 text-3xl font-bold ${profit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+            {formatMoney(profit)}
+          </p>
+          <p className={`mt-1 text-sm font-medium ${margin >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+            Margen: {margin.toFixed(1)}%
+          </p>
+          <div className="mt-4 space-y-1.5 w-full">
+            <div className="flex justify-between text-xs">
+              <span className="text-slate-500">Ingresos</span>
+              <span className="font-semibold text-slate-900">{formatMoney(currRevenue)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-slate-500">Gastos</span>
+              <span className="font-semibold text-rose-700">{formatMoney(currExpenses)}</span>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-slate-950">Ganancia vs Gastos</h3>
+          <div className="flex items-center justify-center">
+            <svg height="100" viewBox="0 0 100 100" width="100" xmlns="http://www.w3.org/2000/svg">
+              <circle cx={50} cy={50} fill="none" r={36} stroke="#f1f5f9" strokeWidth={14} />
+              {donutSegments.map((seg, i) => (
+                <circle
+                  key={i}
+                  cx={50}
+                  cy={50}
+                  fill="none"
+                  r={seg.r}
+                  stroke={seg.color}
+                  strokeDasharray={`${seg.pct * seg.circ} ${seg.circ}`}
+                  strokeDashoffset={`${-(seg.offset * seg.circ)}`}
+                  strokeWidth={14}
+                  transform="rotate(-90 50 50)"
+                />
+              ))}
+              <text dominantBaseline="middle" fill="#94a3b8" fontSize="7" textAnchor="middle" x={50} y={46}>Margen</text>
+              <text dominantBaseline="middle" fill="#0f172a" fontSize="9" fontWeight="bold" textAnchor="middle" x={50} y={56}>
+                {margin.toFixed(0)}%
+              </text>
+            </svg>
+          </div>
+          <div className="mt-2 space-y-1">
+            {donutData.map((d) => (
+              <div className="flex items-center justify-between text-xs" key={d.label}>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full" style={{ background: d.color }} />
+                  <span className="text-slate-600">{d.label}</span>
+                </div>
+                <span className="font-semibold text-slate-700">{formatMoney(d.value)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-slate-950">Ingresos por categoría</h3>
+          {catRevenue.length === 0 ? (
+            <p className="py-4 text-center text-xs text-slate-400">Sin datos</p>
+          ) : (
+            <div className="space-y-2">
+              {catRevenue.slice(0, 6).map(([cat, rev]) => {
+                const color = Object.fromEntries(CHART_ENTRIES)[cat] ?? "#94a3b8";
+                const pct = currRevenue > 0 ? (rev / currRevenue) * 100 : 0;
+                return (
+                  <div key={cat}>
+                    <div className="flex justify-between text-xs mb-0.5">
+                      <span className="text-slate-600">{cat}</span>
+                      <span className="font-semibold text-slate-800">{pct.toFixed(0)}%</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-slate-100">
+                      <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, background: color }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-slate-950">Desglose de cobro</h3>
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-xs mb-0.5">
+                <span className="text-slate-600">Efectivo</span>
+                <span className="font-semibold text-slate-800">{formatMoney(paymentBreakdown.cash)}</span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-slate-100">
+                <div
+                  className="h-1.5 rounded-full bg-violet-500"
+                  style={{ width: `${currRevenue > 0 ? (paymentBreakdown.cash / currRevenue) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-0.5">
+                <span className="text-slate-600">Fiado</span>
+                <span className="font-semibold text-slate-800">{formatMoney(paymentBreakdown.credit)}</span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-slate-100">
+                <div
+                  className="h-1.5 rounded-full bg-blue-500"
+                  style={{ width: `${currRevenue > 0 ? (paymentBreakdown.credit / currRevenue) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          {expByCategory.length > 0 && (
+            <div className="mt-4 border-t border-slate-100 pt-3">
+              <p className="mb-2 text-xs font-semibold text-slate-700">Gastos por categoría</p>
+              <div className="space-y-1">
+                {expByCategory.slice(0, 4).map(([cat, amt]) => (
+                  <div className="flex justify-between text-xs" key={cat}>
+                    <span className="truncate text-slate-500">{cat}</span>
+                    <span className="ml-2 flex-shrink-0 font-medium text-slate-700">{formatMoney(amt)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
