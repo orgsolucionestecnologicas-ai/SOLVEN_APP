@@ -3,7 +3,7 @@ import { CashMovementsList } from "../ui/cash-movements-list";
 
 export default function CashMovementsPage() {
   return (
-    <AppShell activeSection="cashMovements" eyebrow="Caja" title="Movimientos de caja">
+    <AppShell activeSection="cashMovements">
       <CashMovementsList />
     </AppShell>
   );
