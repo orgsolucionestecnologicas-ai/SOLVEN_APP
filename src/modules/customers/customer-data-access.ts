@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 
 import {
   type CreateCustomerInput,
-  validateCreateCustomerInput
+  type UpdateCustomerInput,
+  validateCreateCustomerInput,
+  validateUpdateCustomerInput
 } from "./customer-validation";
 
 export async function createCustomer(
@@ -23,4 +25,12 @@ export async function listCustomers(): Promise<Customer[]> {
       name: "asc"
     }
   });
+}
+
+export async function updateCustomer(
+  id: string,
+  input: UpdateCustomerInput
+): Promise<Customer> {
+  const data = validateUpdateCustomerInput(input);
+  return prisma.customer.update({ where: { id }, data });
 }

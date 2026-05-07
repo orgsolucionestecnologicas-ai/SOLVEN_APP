@@ -3,7 +3,7 @@ import { CustomersList } from "../ui/customers-list";
 
 export default function CustomersPage() {
   return (
-    <AppShell activeSection="customers" eyebrow="Clientes" title="Clientes">
+    <AppShell activeSection="customers">
       <CustomersList />
     </AppShell>
   );

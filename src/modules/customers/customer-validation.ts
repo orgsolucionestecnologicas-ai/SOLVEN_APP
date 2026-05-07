@@ -13,6 +13,10 @@ export class CustomerValidationError extends Error {
   }
 }
 
+export type UpdateCustomerInput = {
+  name?: string;
+};
+
 export function validateCreateCustomerInput(
   customerInput: CreateCustomerInput
 ): ValidatedCustomerInput {
@@ -31,4 +35,26 @@ export function validateCreateCustomerInput(
   return {
     name
   };
+}
+
+export function validateUpdateCustomerInput(
+  input: UpdateCustomerInput
+): { name?: string } {
+  const validationErrors: string[] = [];
+  const result: { name?: string } = {};
+
+  if (input.name !== undefined) {
+    const name = typeof input.name === "string" ? input.name.trim() : "";
+    if (name.length === 0) {
+      validationErrors.push("Customer name cannot be empty.");
+    } else {
+      result.name = name;
+    }
+  }
+
+  if (validationErrors.length > 0) {
+    throw new CustomerValidationError(validationErrors);
+  }
+
+  return result;
 }
