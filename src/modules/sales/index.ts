@@ -1,5 +1,6 @@
 export {
   createSale,
+  type CreateSaleWithPromotionsInput,
   listSales,
   SaleInsufficientStockError,
   SaleProductNotFoundError,

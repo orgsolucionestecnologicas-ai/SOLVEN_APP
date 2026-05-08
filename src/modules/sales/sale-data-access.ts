@@ -8,6 +8,11 @@ import {
   validateCreateSaleInput
 } from "./sale-validation";
 
+export type CreateSaleWithPromotionsInput = CreateSaleInput & {
+  promotionIds?: string[];
+  discountAmount?: number;
+};
+
 export type SaleWithItems = Sale & {
   items: SaleItem[];
 };
@@ -34,9 +39,16 @@ export class SaleInsufficientStockError extends Error {
 }
 
 export async function createSale(
-  saleInput: CreateSaleInput
+  saleInput: CreateSaleWithPromotionsInput
 ): Promise<SaleWithItems> {
   const validatedSale = validateCreateSaleInput(saleInput);
+  const promotionIds = Array.isArray(saleInput.promotionIds)
+    ? saleInput.promotionIds.filter((id) => typeof id === "string" && id.trim())
+    : [];
+  const discountAmount =
+    typeof saleInput.discountAmount === "number" && saleInput.discountAmount >= 0
+      ? new Prisma.Decimal(saleInput.discountAmount)
+      : new Prisma.Decimal(0);
 
   return prisma.$transaction(async (transaction) => {
     const productIds = [
@@ -71,7 +83,8 @@ export async function createSale(
                 }
               }
             : undefined,
-        totalAmount
+        totalAmount,
+        discountAmount
       }
     });
 
@@ -144,6 +157,24 @@ export async function createSale(
           source: "SALE",
           referenceId: sale.id
         }
+      });
+    }
+
+    if (promotionIds.length > 0) {
+      const perPromotionDiscount =
+        promotionIds.length > 0
+          ? discountAmount.div(promotionIds.length)
+          : new Prisma.Decimal(0);
+
+      await transaction.promotionUsage.createMany({
+        data: promotionIds.map((promotionId) => ({
+          promotionId,
+          saleId: sale.id,
+          customerId: validatedSale.paymentType === "CREDIT"
+            ? validatedSale.customerId
+            : null,
+          discountAmount: perPromotionDiscount
+        }))
       });
     }
 

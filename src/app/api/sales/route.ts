@@ -1,13 +1,11 @@
 import {
   createSale,
+  type CreateSaleWithPromotionsInput,
   listSales,
   SaleInsufficientStockError,
   SaleProductNotFoundError
 } from "../../../modules/sales";
-import {
-  type CreateSaleInput,
-  SaleValidationError
-} from "../../../modules/sales/sale-validation";
+import { SaleValidationError } from "../../../modules/sales/sale-validation";
 import {
   errorResponse,
   invalidJsonResponse,
@@ -40,7 +38,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const sale = await createSale(requestBody as CreateSaleInput);
+    const sale = await createSale(requestBody as CreateSaleWithPromotionsInput);
 
     return successResponse(sale, 201);
   } catch (error) {
