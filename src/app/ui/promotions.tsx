@@ -1000,7 +1000,7 @@ function PromotionRow({
         ) : (
           <div>
             <p className="text-xs font-medium text-slate-700">Ventas $0.00</p>
-            <p className="text-xs text-slate-400">Usos {promo._count.usages}</p>
+            <p className="text-xs text-slate-400">Usos {promo._count?.usages ?? 0}</p>
           </div>
         )}
       </td>
