@@ -445,7 +445,7 @@ export function PromotionsList() {
 
     switch (sortBy) {
       case "most_used":
-        result.sort((a, b) => b._count.usages - a._count.usages);
+        result.sort((a, b) => (b._count?.usages ?? 0) - (a._count?.usages ?? 0));
         break;
       case "expiring":
         result.sort(
@@ -1165,7 +1165,7 @@ function PromotionSidebar({
 
   const miniStats = [
     { label: "Ventas generadas", value: "$0.00" },
-    { label: "Usos totales", value: String(promotion._count.usages) },
+    { label: "Usos totales", value: String(promotion._count?.usages ?? 0) },
     { label: "Ticket promedio", value: "—" },
     { label: "ROI estimado", value: "—" },
   ];
