@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   ChevronLeft,
   ChevronRight,
+  Copy,
   CreditCard,
   FileText,
   Grid3X3,
@@ -24,6 +25,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { SalesList } from "./sales-list";
 
 type ProductRecord = {
@@ -87,6 +89,27 @@ type ApplyResponse = {
   error?: { message: string };
 };
 
+type ActivePromotion = {
+  id: string;
+  name: string;
+  code: string | null;
+  type: string;
+  discountValue: string;
+  application: string;
+  categoryName: string | null;
+  activationType: string;
+  startsAt: string;
+  endsAt: string;
+  minimumAmount: string | null;
+  fixedPrice: string | null;
+  productBDiscount: string | null;
+};
+
+type ActivePromotionsResponse = {
+  data?: ActivePromotion[];
+  error?: { message: string };
+};
+
 type CashPaymentMethod = "Efectivo" | "Tarjeta" | "Transferencia" | "Otro";
 type PaymentMethod = CashPaymentMethod | "Fiado";
 type ActiveTab = "Venta actual" | "Historial";
@@ -123,6 +146,53 @@ const CASH_PAYMENT_CARDS: CashPaymentCard[] = [
   { method: "Transferencia", Icon: Landmark },
   { method: "Otro", Icon: MoreHorizontal },
 ];
+
+const PROMO_TYPE_LABEL: Record<string, string> = {
+  PERCENTAGE: "Porcentaje",
+  FIXED_AMOUNT: "Monto fijo",
+  TWO_FOR_ONE: "2×1",
+  THREE_FOR_TWO: "3×2",
+  MINIMUM_PURCHASE: "Compra mínima",
+  SPECIAL_PRICE: "Precio especial",
+  BUNDLED_PRODUCTS: "Paquete",
+};
+
+function formatPromoDiscount(promo: ActivePromotion): string {
+  const val = parseFloat(promo.discountValue);
+  switch (promo.type) {
+    case "PERCENTAGE":
+      return `${val}%`;
+    case "FIXED_AMOUNT":
+      return `-$${val.toFixed(2)}`;
+    case "TWO_FOR_ONE":
+      return "2 por 1";
+    case "THREE_FOR_TWO":
+      return "3 por 2";
+    case "MINIMUM_PURCHASE":
+      return `${val}% desde $${parseFloat(promo.minimumAmount ?? "0").toFixed(0)}`;
+    case "SPECIAL_PRICE":
+      return `Precio: $${parseFloat(promo.fixedPrice ?? "0").toFixed(2)}`;
+    case "BUNDLED_PRODUCTS":
+      return `${parseFloat(promo.productBDiscount ?? "0")}% prod B`;
+    default:
+      return promo.discountValue;
+  }
+}
+
+function formatPromoApplication(promo: ActivePromotion): string {
+  switch (promo.application) {
+    case "ALL_PRODUCTS":
+      return "Todos los productos";
+    case "CATEGORY":
+      return `Categoría: ${promo.categoryName ?? "—"}`;
+    case "SPECIFIC_PRODUCT":
+      return "Producto específico";
+    case "BUNDLED":
+      return "Productos en paquete";
+    default:
+      return promo.application;
+  }
+}
 
 function getProductCategory(name: string): string {
   const lower = name.toLowerCase();
@@ -183,6 +253,12 @@ export function Pos() {
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [promoCodeOpen, setPromoCodeOpen] = useState(false);
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+
+  const [promosPanelOpen, setPromosPanelOpen] = useState(false);
+  const [activePromos, setActivePromos] = useState<ActivePromotion[]>([]);
+  const [activePromosLoading, setActivePromosLoading] = useState(false);
+  const [promoPanelSearch, setPromoPanelSearch] = useState("");
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const moreDropdownRef = useRef<HTMLDivElement>(null);
   const applyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -332,6 +408,27 @@ export function Pos() {
     };
   }, [cartItems, manualCodes]);
 
+  useEffect(() => {
+    if (!promosPanelOpen) return;
+    let isActive = true;
+    setActivePromosLoading(true);
+
+    async function fetchActivePromos() {
+      try {
+        const response = await fetch("/api/promotions/active");
+        const body = (await response.json()) as ActivePromotionsResponse;
+        if (isActive && response.ok && body.data) setActivePromos(body.data);
+      } catch {
+        // panel shows empty state on error
+      } finally {
+        if (isActive) setActivePromosLoading(false);
+      }
+    }
+
+    void fetchActivePromos();
+    return () => { isActive = false; };
+  }, [promosPanelOpen]);
+
   const displayedAppliedPromotions = useMemo(() => {
     if (!applyResult) return [];
     return applyResult.appliedPromotions.filter(
@@ -463,6 +560,15 @@ export function Pos() {
     } catch {
       setPromoCodeError("Código no válido");
     }
+  }
+
+  function handleApplyActivePromotion(promo: ActivePromotion) {
+    if (promo.code) {
+      setManualCodes((prev) =>
+        prev.includes(promo.code!) ? prev : [...prev, promo.code!]
+      );
+    }
+    setPromosPanelOpen(false);
   }
 
   function addToCart(product: ProductRecord) {
@@ -995,15 +1101,28 @@ export function Pos() {
                   </span>
                 ) : null}
               </h2>
-              {cartItems.length > 0 ? (
+              <div className="flex items-center gap-1.5">
                 <button
-                  className="rounded-md p-1.5 text-rose-400 hover:bg-rose-50 hover:text-rose-600"
-                  onClick={() => setCartItems([])}
+                  className="flex items-center gap-1 rounded-lg border border-violet-300 px-2 py-1.5 text-xs font-medium text-violet-600 hover:bg-violet-50"
+                  onClick={() => {
+                    setPromoPanelSearch("");
+                    setPromosPanelOpen(true);
+                  }}
                   type="button"
                 >
-                  <Trash2 size={14} />
+                  <Tag size={12} />
+                  Promociones
                 </button>
-              ) : null}
+                {cartItems.length > 0 ? (
+                  <button
+                    className="rounded-md p-1.5 text-rose-400 hover:bg-rose-50 hover:text-rose-600"
+                    onClick={() => setCartItems([])}
+                    type="button"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             {/* Cart table */}
@@ -1647,6 +1766,170 @@ export function Pos() {
                 <Printer size={14} />
                 Imprimir cotización
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Promotions panel */}
+      {promosPanelOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex justify-end bg-slate-950/40"
+          onClick={() => setPromosPanelOpen(false)}
+        >
+          <div
+            className="flex h-full w-full max-w-md flex-col bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Panel header */}
+            <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+              <h3 className="text-sm font-semibold text-slate-950">
+                Promociones disponibles
+              </h3>
+              <button
+                className="text-slate-400 hover:text-slate-600"
+                onClick={() => setPromosPanelOpen(false)}
+                type="button"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="flex-shrink-0 border-b border-slate-100 px-4 py-3">
+              <div className="relative">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-100"
+                  onChange={(e) => setPromoPanelSearch(e.target.value)}
+                  placeholder="Buscar por nombre o código..."
+                  type="text"
+                  value={promoPanelSearch}
+                />
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              {activePromosLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      className="h-20 animate-pulse rounded-xl border border-slate-200 bg-slate-100"
+                      key={i}
+                    />
+                  ))}
+                </div>
+              ) : null}
+
+              {!activePromosLoading &&
+              activePromos.filter((p) => {
+                const q = promoPanelSearch.trim().toLowerCase();
+                return (
+                  !q ||
+                  p.name.toLowerCase().includes(q) ||
+                  (p.code?.toLowerCase().includes(q) ?? false)
+                );
+              }).length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+                    <Tag size={20} className="text-slate-400" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-500">
+                    No hay promociones activas
+                  </p>
+                </div>
+              ) : null}
+
+              {!activePromosLoading ? (
+                <div className="space-y-2">
+                  {activePromos
+                    .filter((p) => {
+                      const q = promoPanelSearch.trim().toLowerCase();
+                      return (
+                        !q ||
+                        p.name.toLowerCase().includes(q) ||
+                        (p.code?.toLowerCase().includes(q) ?? false)
+                      );
+                    })
+                    .map((promo) => (
+                      <div
+                        key={promo.id}
+                        className="rounded-xl border border-slate-200 bg-white p-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-slate-950">
+                              {promo.name}
+                            </p>
+                            <div className="mt-0.5 flex items-center gap-1.5">
+                              <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">
+                                {PROMO_TYPE_LABEL[promo.type] ?? promo.type}
+                              </span>
+                              <span className="text-xs font-semibold text-emerald-700">
+                                {formatPromoDiscount(promo)}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-[10px] text-slate-400">
+                              {formatPromoApplication(promo)} · Vence{" "}
+                              {new Date(promo.endsAt).toLocaleDateString(
+                                "es-419",
+                                { day: "numeric", month: "short", year: "numeric" }
+                              )}
+                            </p>
+                            {(promo.activationType === "MANUAL_CODE" ||
+                              promo.activationType === "BOTH") &&
+                            promo.code ? (
+                              <div className="mt-1.5 flex items-center gap-1.5">
+                                <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">
+                                  {promo.code}
+                                </span>
+                                <button
+                                  className="flex items-center gap-0.5 text-[10px] text-slate-500 hover:text-violet-600"
+                                  onClick={() => {
+                                    void navigator.clipboard.writeText(promo.code!);
+                                    setCopiedCode(promo.code!);
+                                    setTimeout(() => setCopiedCode(null), 2000);
+                                  }}
+                                  type="button"
+                                >
+                                  <Copy size={11} />
+                                  {copiedCode === promo.code
+                                    ? "¡Copiado!"
+                                    : "Copiar código"}
+                                </button>
+                              </div>
+                            ) : null}
+                          </div>
+                          {promo.activationType === "AUTOMATIC" ||
+                          promo.activationType === "BOTH" ? (
+                            <button
+                              className="flex-shrink-0 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+                              onClick={() => handleApplyActivePromotion(promo)}
+                              type="button"
+                            >
+                              Aplicar
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              ) : null}
+            </div>
+
+            {/* Footer */}
+            <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3">
+              <Link
+                className="text-sm font-medium text-violet-600 hover:text-violet-700"
+                href="/promotions"
+                onClick={() => setPromosPanelOpen(false)}
+              >
+                Gestionar promociones →
+              </Link>
             </div>
           </div>
         </div>
