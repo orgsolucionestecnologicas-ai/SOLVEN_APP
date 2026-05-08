@@ -25,6 +25,7 @@ type ActiveSection =
   | "inventory"
   | "pos"
   | "products"
+  | "promotions"
   | "reports"
   | "sales"
   | "settings";
@@ -60,7 +61,7 @@ const navItems: NavItem[] = [
   { type: "link",     href: "/customers",       label: "Clientes",      section: "customers",     Icon: Users },
   { type: "link",     href: "/cash-movements",  label: "Caja",          section: "cashMovements", Icon: CreditCard },
   { type: "link",     href: "/reports",         label: "Reportes",      section: "reports",       Icon: BarChart2 },
-  { type: "disabled",                           label: "Promociones",                             Icon: Tag },
+  { type: "link",     href: "/promotions",      label: "Promociones",   section: "promotions",    Icon: Tag },
   { type: "link",     href: "/settings",        label: "Configuración", section: "settings",      Icon: Settings },
   { type: "disabled",                           label: "Licencia",                                Icon: Shield },
 ];
