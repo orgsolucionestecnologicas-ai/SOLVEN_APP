@@ -61,6 +61,32 @@ type CreateSaleResponse = {
   error?: { message: string; details?: string[] };
 };
 
+type RawDiscountedItem = {
+  productId: string;
+  quantity: number;
+  unitPrice: string;
+  finalPrice: string;
+  discountAmount: string;
+  promotionId?: string;
+};
+
+type RawAppliedPromotion = {
+  promotionId: string;
+  name: string;
+  discountAmount: string;
+};
+
+type ApplyResultData = {
+  discountedItems: RawDiscountedItem[];
+  appliedPromotions: RawAppliedPromotion[];
+  totalDiscount: string;
+};
+
+type ApplyResponse = {
+  data?: ApplyResultData;
+  error?: { message: string };
+};
+
 type CashPaymentMethod = "Efectivo" | "Tarjeta" | "Transferencia" | "Otro";
 type PaymentMethod = CashPaymentMethod | "Fiado";
 type ActiveTab = "Venta actual" | "Historial";
@@ -151,7 +177,15 @@ export function Pos() {
   const [cotizacionOpen, setCotizacionOpen] = useState(false);
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
 
+  const [applyResult, setApplyResult] = useState<ApplyResultData | null>(null);
+  const [manualCodes, setManualCodes] = useState<string[]>([]);
+  const [excludedPromotionIds, setExcludedPromotionIds] = useState<Set<string>>(new Set());
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [promoCodeOpen, setPromoCodeOpen] = useState(false);
+  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+
   const moreDropdownRef = useRef<HTMLDivElement>(null);
+  const applyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (readDraft()) setShowDraftBanner(true);
@@ -259,6 +293,62 @@ export function Pos() {
     c.name.toLowerCase().includes(customerSearch.toLowerCase())
   );
 
+  useEffect(() => {
+    if (applyDebounceRef.current) clearTimeout(applyDebounceRef.current);
+
+    if (cartItems.length === 0) {
+      setApplyResult(null);
+      return;
+    }
+
+    applyDebounceRef.current = setTimeout(() => {
+      async function run() {
+        try {
+          const response = await fetch("/api/promotions/apply", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              cartItems: cartItems.map((item) => ({
+                productId: item.productId,
+                productName: item.productName,
+                categoryName: getProductCategory(item.productName),
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+              })),
+              ...(manualCodes.length > 0 ? { promotionCodes: manualCodes } : {}),
+            }),
+          });
+          const body = (await response.json()) as ApplyResponse;
+          if (response.ok && body.data) setApplyResult(body.data);
+        } catch {
+          // promotions are non-blocking
+        }
+      }
+      void run();
+    }, 400);
+
+    return () => {
+      if (applyDebounceRef.current) clearTimeout(applyDebounceRef.current);
+    };
+  }, [cartItems, manualCodes]);
+
+  const displayedAppliedPromotions = useMemo(() => {
+    if (!applyResult) return [];
+    return applyResult.appliedPromotions.filter(
+      (p) => !excludedPromotionIds.has(p.promotionId)
+    );
+  }, [applyResult, excludedPromotionIds]);
+
+  const totalDiscount = useMemo(
+    () => displayedAppliedPromotions.reduce((sum, p) => sum + parseFloat(p.discountAmount), 0),
+    [displayedAppliedPromotions]
+  );
+
+  const discountedItemsMap = useMemo(() => {
+    if (!applyResult) return new Map<string, RawDiscountedItem>();
+    return new Map(applyResult.discountedItems.map((item) => [item.productId, item]));
+  }, [applyResult]);
+
   const cartTotal = cartItems.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
     0
@@ -275,6 +365,12 @@ export function Pos() {
     setCustomerSearch("");
     setSubmitError(null);
     setSuccessMessage(null);
+    setApplyResult(null);
+    setManualCodes([]);
+    setExcludedPromotionIds(new Set());
+    setPromoCodeInput("");
+    setPromoCodeOpen(false);
+    setPromoCodeError(null);
   }
 
   function handleNewSale() {
@@ -316,6 +412,56 @@ export function Pos() {
   function handleLimpiarVenta() {
     if (window.confirm("¿Limpiar la venta actual?")) {
       clearSale();
+    }
+  }
+
+  async function handleApplyPromoCode() {
+    const code = promoCodeInput.trim().toUpperCase();
+    if (!code) return;
+    if (manualCodes.includes(code)) {
+      setPromoCodeInput("");
+      setPromoCodeOpen(false);
+      return;
+    }
+
+    const newCodes = [...manualCodes, code];
+
+    try {
+      const response = await fetch("/api/promotions/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cartItems: cartItems.map((item) => ({
+            productId: item.productId,
+            productName: item.productName,
+            categoryName: getProductCategory(item.productName),
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+          })),
+          promotionCodes: newCodes,
+        }),
+      });
+
+      const body = (await response.json()) as ApplyResponse;
+      if (response.ok && body.data) {
+        const currentIds = new Set(applyResult?.appliedPromotions.map((p) => p.promotionId) ?? []);
+        const hasNew = body.data.appliedPromotions.some((p) => !currentIds.has(p.promotionId));
+
+        if (!hasNew) {
+          setPromoCodeError("Código no válido");
+          return;
+        }
+
+        setManualCodes(newCodes);
+        setApplyResult(body.data);
+        setPromoCodeInput("");
+        setPromoCodeOpen(false);
+        setPromoCodeError(null);
+      } else {
+        setPromoCodeError("Código no válido");
+      }
+    } catch {
+      setPromoCodeError("Código no válido");
     }
   }
 
@@ -396,6 +542,12 @@ export function Pos() {
             productId: item.productId,
             quantity: item.quantity,
           })),
+          ...(displayedAppliedPromotions.length > 0
+            ? {
+                promotionIds: displayedAppliedPromotions.map((p) => p.promotionId),
+                discountAmount: totalDiscount,
+              }
+            : {}),
         }),
       });
       const body = (await response.json()) as CreateSaleResponse;
@@ -414,6 +566,12 @@ export function Pos() {
       setCashReceived("");
       setSelectedCustomer(null);
       setCustomerSearch("");
+      setApplyResult(null);
+      setManualCodes([]);
+      setExcludedPromotionIds(new Set());
+      setPromoCodeInput("");
+      setPromoCodeOpen(false);
+      setPromoCodeError(null);
       setProductsRefreshKey((k) => k + 1);
       setSuccessMessage("Venta registrada exitosamente.");
       setTimeout(() => setSuccessMessage(null), 4000);
@@ -883,7 +1041,22 @@ export function Pos() {
 
                 {/* Cart rows */}
                 <div className="flex-1 divide-y divide-slate-100 overflow-y-auto">
-                  {cartItems.map((item) => (
+                  {cartItems.map((item) => {
+                    const discountedItem = discountedItemsMap.get(item.productId);
+                    const isDiscounted =
+                      discountedItem !== undefined &&
+                      parseFloat(discountedItem.discountAmount) > 0 &&
+                      !excludedPromotionIds.has(discountedItem.promotionId ?? "");
+                    const displayPrice = isDiscounted
+                      ? parseFloat(discountedItem.finalPrice)
+                      : item.unitPrice;
+                    const promoName = isDiscounted
+                      ? (displayedAppliedPromotions.find(
+                          (p) => p.promotionId === discountedItem?.promotionId
+                        )?.name ?? displayedAppliedPromotions[0]?.name)
+                      : undefined;
+
+                    return (
                     <div
                       className="flex items-center gap-2 px-4 py-2.5"
                       key={item.productId}
@@ -895,9 +1068,27 @@ export function Pos() {
                         <p className="truncate text-xs font-medium text-slate-950">
                           {item.productName}
                         </p>
+                        {promoName ? (
+                          <p className="truncate text-[9px] font-medium text-violet-600">
+                            {promoName}
+                          </p>
+                        ) : null}
                       </div>
-                      <div className="w-12 text-right text-xs tabular-nums text-slate-500">
-                        {formatMoneyNum(item.unitPrice)}
+                      <div className="w-12 text-right text-xs tabular-nums">
+                        {isDiscounted ? (
+                          <>
+                            <span className="block text-[10px] text-slate-400 line-through">
+                              {formatMoneyNum(item.unitPrice)}
+                            </span>
+                            <span className="block font-semibold text-emerald-600">
+                              {formatMoneyNum(displayPrice)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-slate-500">
+                            {formatMoneyNum(item.unitPrice)}
+                          </span>
+                        )}
                       </div>
                       <div className="flex w-[68px] items-center justify-center gap-0.5">
                         <button
@@ -928,7 +1119,7 @@ export function Pos() {
                         </button>
                       </div>
                       <div className="w-14 text-right text-xs font-semibold tabular-nums text-slate-950">
-                        {formatMoneyNum(item.unitPrice * item.quantity)}
+                        {formatMoneyNum(displayPrice * item.quantity)}
                       </div>
                       <button
                         className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-slate-300 hover:text-rose-500"
@@ -938,21 +1129,98 @@ export function Pos() {
                         <X size={11} />
                       </button>
                     </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Agregar descuento row */}
-                  <div className="flex items-center gap-2 px-4 py-2.5">
-                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-violet-50">
-                      <Tag size={13} className="text-violet-500" />
+                  <div className="flex flex-col gap-1 px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-violet-50">
+                        <Tag size={13} className="text-violet-500" />
+                      </div>
+                      {promoCodeOpen ? (
+                        <>
+                          <input
+                            autoFocus
+                            className="flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                            onChange={(e) => {
+                              setPromoCodeInput(e.target.value);
+                              setPromoCodeError(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") void handleApplyPromoCode();
+                            }}
+                            placeholder="Código de promoción"
+                            type="text"
+                            value={promoCodeInput}
+                          />
+                          <button
+                            className="rounded-lg bg-violet-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-violet-700"
+                            onClick={() => void handleApplyPromoCode()}
+                            type="button"
+                          >
+                            Aplicar
+                          </button>
+                          <button
+                            className="flex-shrink-0 text-slate-400 hover:text-slate-600"
+                            onClick={() => {
+                              setPromoCodeOpen(false);
+                              setPromoCodeInput("");
+                              setPromoCodeError(null);
+                            }}
+                            type="button"
+                          >
+                            <X size={13} />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          className="text-xs font-medium text-violet-600 hover:text-violet-700"
+                          onClick={() => setPromoCodeOpen(true)}
+                          type="button"
+                        >
+                          Agregar descuento
+                        </button>
+                      )}
                     </div>
-                    <button
-                      className="text-xs font-medium text-violet-600 hover:text-violet-700"
-                      type="button"
-                    >
-                      Agregar descuento
-                    </button>
+                    {promoCodeError ? (
+                      <p className="pl-10 text-xs font-medium text-rose-600">
+                        {promoCodeError}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
+
+                {/* Applied promotions panel */}
+                {displayedAppliedPromotions.length > 0 ? (
+                  <div className="flex-shrink-0 border-t border-violet-100 bg-violet-50/60 px-4 py-2.5">
+                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600">
+                      Promociones aplicadas
+                    </p>
+                    <div className="space-y-1">
+                      {displayedAppliedPromotions.map((promo) => (
+                        <div key={promo.promotionId} className="flex items-center gap-2">
+                          <Tag size={11} className="flex-shrink-0 text-violet-500" />
+                          <span className="min-w-0 flex-1 truncate text-xs text-violet-700">
+                            {promo.name}
+                          </span>
+                          <span className="tabular-nums text-xs font-semibold text-emerald-600">
+                            -{formatMoneyNum(parseFloat(promo.discountAmount))}
+                          </span>
+                          <button
+                            className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-violet-400 hover:bg-violet-200 hover:text-violet-600"
+                            onClick={() =>
+                              setExcludedPromotionIds((prev) => new Set([...prev, promo.promotionId]))
+                            }
+                            type="button"
+                          >
+                            <X size={9} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </>
             )}
 
@@ -972,7 +1240,7 @@ export function Pos() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-500">Descuento</span>
                   <span className="tabular-nums text-xs font-medium text-emerald-600">
-                    -{formatMoneyNum(0)}
+                    -{formatMoneyNum(totalDiscount)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -987,7 +1255,7 @@ export function Pos() {
                       Total a pagar
                     </span>
                     <span className="tabular-nums text-lg font-bold text-slate-950">
-                      {formatMoneyNum(cartTotal)}
+                      {formatMoneyNum(cartTotal - totalDiscount)}
                     </span>
                   </div>
                 </div>
@@ -1074,14 +1342,14 @@ export function Pos() {
                       </span>
                       <span
                         className={
-                          cashReceivedNum >= cartTotal
+                          cashReceivedNum >= cartTotal - totalDiscount
                             ? "tabular-nums text-sm font-semibold text-emerald-600"
                             : "tabular-nums text-sm font-semibold text-rose-600"
                         }
                       >
-                        {cashReceivedNum >= cartTotal
-                          ? formatMoneyNum(cashReceivedNum - cartTotal)
-                          : `-${formatMoneyNum(cartTotal - cashReceivedNum)}`}
+                        {cashReceivedNum >= cartTotal - totalDiscount
+                          ? formatMoneyNum(cashReceivedNum - (cartTotal - totalDiscount))
+                          : `-${formatMoneyNum((cartTotal - totalDiscount) - cashReceivedNum)}`}
                       </span>
                     </div>
                   ) : null}
@@ -1180,7 +1448,7 @@ export function Pos() {
                   {isSubmitting
                     ? "Procesando..."
                     : cartItems.length > 0
-                      ? `Cobrar ${formatMoneyNum(cartTotal)}`
+                      ? `Cobrar ${formatMoneyNum(cartTotal - totalDiscount)}`
                       : "Cobrar"}
                 </button>
                 <button
