@@ -35,6 +35,11 @@ enum PromotionActivation {
   BOTH
 }
 
+enum CashRegisterStatus {
+  OPEN
+  CLOSED
+}
+
 model Product {
   id                 String              @id @default(cuid())
   name               String
@@ -176,6 +181,26 @@ model PromotionUsage {
 
   @@index([promotionId])
   @@index([saleId])
+}
+
+model CashRegisterSession {
+  id                String             @id @default(cuid())
+  status            CashRegisterStatus @default(OPEN)
+  cashierName       String
+  branchName        String             @default("Tienda Principal")
+  shift             String?
+  openedAt          DateTime           @default(now())
+  closedAt          DateTime?
+  openingAmount     Decimal            @db.Decimal(10, 2)
+  closingAmount     Decimal?           @db.Decimal(10, 2)
+  expectedAmount    Decimal?           @db.Decimal(10, 2)
+  difference        Decimal?           @db.Decimal(10, 2)
+  openingNotes      String?
+  closingNotes      String?
+  openingBreakdown  Json?
+  closingBreakdown  Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model InventoryMovement {
