@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  Lock,
   Minus,
   Plus,
   Search,
@@ -17,6 +18,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { CashRegisterClose } from "./cash-register-close";
+import { CashRegisterOpen } from "./cash-register-open";
 
 type CashMovementRecord = {
   id: string;
@@ -33,6 +36,16 @@ type Tab = "all" | "in" | "out";
 type DateFilter = "today" | "week" | "month" | "all";
 type SourceFilter = "all" | "SALE" | "EXPENSE" | "DEBT_PAYMENT" | "MANUAL";
 type ApiResponse<T> = { data?: T; error?: { message: string; details?: string[] } };
+
+type SessionRecord = {
+  id: string;
+  cashierName: string;
+  branchName: string;
+  shift: string | null;
+  openedAt: string;
+  openingAmount: string;
+  status: "OPEN" | "CLOSED";
+};
 
 const SOURCE_LABELS: Record<string, string> = {
   SALE: "Venta en efectivo",
@@ -113,6 +126,13 @@ export function CashMovementsList() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const [sessionStatus, setSessionStatus] = useState<"loading" | "noSession" | "open">(
+    "loading"
+  );
+  const [currentSession, setCurrentSession] = useState<SessionRecord | null>(null);
+  const [sessionRefreshKey, setSessionRefreshKey] = useState(0);
+  const [view, setView] = useState<"movements" | "closing">("movements");
+
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
@@ -157,6 +177,38 @@ export function CashMovementsList() {
       isActive = false;
     };
   }, [refreshKey]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadSession() {
+      try {
+        const res = await fetch("/api/cash-register", {
+          headers: { Accept: "application/json" },
+        });
+        const body = (await res.json()) as ApiResponse<SessionRecord | null>;
+        if (!isActive) return;
+        if (res.ok && body.data !== undefined) {
+          if (body.data === null) {
+            setSessionStatus("noSession");
+            setCurrentSession(null);
+          } else {
+            setSessionStatus("open");
+            setCurrentSession(body.data);
+          }
+        } else {
+          setSessionStatus("noSession");
+        }
+      } catch {
+        if (isActive) setSessionStatus("noSession");
+      }
+    }
+
+    void loadSession();
+    return () => {
+      isActive = false;
+    };
+  }, [sessionRefreshKey]);
 
   const metrics = useMemo(() => {
     const now = new Date();
@@ -254,6 +306,36 @@ export function CashMovementsList() {
     out: movements.filter((m) => m.type === "OUT").length,
   };
 
+  function reloadSession() {
+    setSessionRefreshKey((k) => k + 1);
+    setView("movements");
+  }
+
+  if (sessionStatus === "loading") {
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center">
+        <div className="text-sm text-slate-500">Cargando sesión de caja...</div>
+      </div>
+    );
+  }
+
+  if (sessionStatus === "noSession") {
+    return <CashRegisterOpen onOpened={reloadSession} />;
+  }
+
+  if (view === "closing" && currentSession) {
+    return (
+      <CashRegisterClose
+        onBack={() => setView("movements")}
+        onClosed={() => {
+          setSessionRefreshKey((k) => k + 1);
+          setView("movements");
+        }}
+        session={currentSession}
+      />
+    );
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Header */}
@@ -268,6 +350,14 @@ export function CashMovementsList() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+              onClick={() => setView("closing")}
+              type="button"
+            >
+              <Lock size={15} />
+              Cierre de caja
+            </button>
+            <button
+              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100"
               onClick={() => setShowCreateModal(true)}
               type="button"
             >
