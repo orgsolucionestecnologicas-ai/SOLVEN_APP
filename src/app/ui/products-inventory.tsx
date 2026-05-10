@@ -21,6 +21,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type ProductRecord = {
   id: string;
@@ -101,6 +102,7 @@ function getPageNumbers(current: number, total: number): (number | "...")[] {
 }
 
 export function ProductsInventory() {
+  const router = useRouter();
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -272,7 +274,7 @@ export function ProductsInventory() {
           </button>
           <button
             className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => router.push("/products/new")}
             type="button"
           >
             <Plus size={14} />
