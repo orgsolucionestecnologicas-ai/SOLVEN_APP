@@ -2,7 +2,9 @@
 
 import {
   ArrowLeft,
+  CreditCard,
   Mail,
+  MapPin,
   Phone,
   Save,
   User,
@@ -43,6 +45,8 @@ export function CustomerNewForm() {
   const router = useRouter();
 
   const [name, setName] = useState("");
+  const [cedula, setCedula] = useState("");
+  const [direccion, setDireccion] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -152,6 +156,52 @@ export function CustomerNewForm() {
                   />
                 </div>
 
+                {/* Cédula / RNC */}
+                <div>
+                  <label
+                    className="mb-1.5 block text-sm font-medium text-slate-700"
+                    htmlFor="customer-cedula"
+                  >
+                    Cédula / RNC
+                    <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+                  </label>
+                  <div className="relative">
+                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                    <input
+                      className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                      disabled={isSubmitting}
+                      id="customer-cedula"
+                      onChange={(e) => setCedula(e.target.value)}
+                      placeholder="000-0000000-0"
+                      type="text"
+                      value={cedula}
+                    />
+                  </div>
+                </div>
+
+                {/* Dirección */}
+                <div>
+                  <label
+                    className="mb-1.5 block text-sm font-medium text-slate-700"
+                    htmlFor="customer-direccion"
+                  >
+                    Dirección
+                    <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                    <input
+                      className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                      disabled={isSubmitting}
+                      id="customer-direccion"
+                      onChange={(e) => setDireccion(e.target.value)}
+                      placeholder="Av. Principal #123..."
+                      type="text"
+                      value={direccion}
+                    />
+                  </div>
+                </div>
+
                 {/* Phone — visual only */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="customer-phone">
@@ -217,6 +267,18 @@ export function CustomerNewForm() {
               </span>
             </div>
             <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+              {cedula.trim() ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Cédula / RNC</span>
+                  <span className="text-xs font-semibold text-slate-950">{cedula.trim()}</span>
+                </div>
+              ) : null}
+              {direccion.trim() ? (
+                <div className="flex items-start justify-between gap-2">
+                  <span className="shrink-0 text-xs text-slate-500">Dirección</span>
+                  <span className="text-right text-xs font-semibold text-slate-950">{direccion.trim()}</span>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-500">Deuda actual</span>
                 <span className="text-xs font-semibold text-slate-400">RD$ 0.00</span>
