@@ -408,14 +408,13 @@ export function CustomersList() {
             <Upload size={14} />
             Importar clientes
           </button>
-          <button
+          <Link
             className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700"
-            onClick={() => setIsCreateModalOpen(true)}
-            type="button"
+            href="/customers/new"
           >
             <Plus size={14} />
             Nuevo cliente
-          </button>
+          </Link>
           <button
             className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
             type="button"
@@ -1113,7 +1112,13 @@ function QuickActionsBar({
         <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
           Acciones rápidas
         </span>
-        <QuickActionButton Icon={Users} label="Nuevo cliente" onClick={onNewCustomer} />
+        <Link
+          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          href="/customers/new"
+        >
+          <Users size={13} />
+          Nuevo cliente
+        </Link>
         <Link
           className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
           href="/pos"
