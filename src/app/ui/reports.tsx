@@ -1,14 +1,24 @@
 "use client";
 
 import {
+  AlertCircle,
+  AlertTriangle,
+  BarChart2,
   Calendar,
   ChevronDown,
+  ChevronRight,
+  Clock,
   CreditCard as CreditCardIcon,
   DollarSign,
   Download,
+  FileText,
   Filter,
+  Lightbulb,
   Package,
+  PieChart,
   ShoppingBag,
+  Star,
+  TrendingUp,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -64,7 +74,10 @@ type Tab =
   | "Clientes"
   | "Inventario"
   | "Crecimiento"
-  | "Rentabilidad";
+  | "Rentabilidad"
+  | "Reporte mensual"
+  | "Top productos"
+  | "Recomendaciones";
 
 const TABS: Tab[] = [
   "Resumen general",
@@ -74,6 +87,9 @@ const TABS: Tab[] = [
   "Inventario",
   "Crecimiento",
   "Rentabilidad",
+  "Reporte mensual",
+  "Top productos",
+  "Recomendaciones",
 ];
 
 type PeriodMetric = { curr: number; prev: number; pct: number };
@@ -477,6 +493,19 @@ export function Reports() {
           <CrecimientoTab sales={sales} />
         ) : activeTab === "Rentabilidad" ? (
           <RentabilidadTab expenses={expenses} sales={sales} />
+        ) : activeTab === "Reporte mensual" ? (
+          <ReporteMensualTab
+            currentExpenses={currentExpenses}
+            currentSales={currentSales}
+            customers={customers}
+            previousExpenses={previousExpenses}
+            previousSales={previousSales}
+            sales={sales}
+          />
+        ) : activeTab === "Top productos" ? (
+          <TopProductosTab products={products} sales={sales} />
+        ) : activeTab === "Recomendaciones" ? (
+          <RecomendacionesTab products={products} sales={sales} />
         ) : (
           <ProximamenteTab tab={activeTab} />
         )}
@@ -2068,3 +2097,937 @@ function ProximamenteTab({ tab }: { tab: string }) {
     </div>
   );
 }
+
+// ─── ReporteMensualTab ────────────────────────────────────────────────────────
+
+function ReporteMensualTab({
+  sales,
+  currentSales,
+  previousSales,
+  currentExpenses,
+  previousExpenses,
+  customers,
+}: {
+  sales: SaleRecord[];
+  currentSales: SaleRecord[];
+  previousSales: SaleRecord[];
+  currentExpenses: ExpenseRecord[];
+  previousExpenses: ExpenseRecord[];
+  customers: CustomerRecord[];
+}) {
+  const { start: monthStart } = getMonthRange(0);
+
+  const totalAmount = useMemo(() => currentSales.reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
+  const cashAmount = useMemo(() => currentSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
+  const creditAmount = useMemo(() => currentSales.filter((s) => s.paymentType === "CREDIT").reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
+  const expensesTotal = useMemo(() => currentExpenses.reduce((s, e) => s + Number(e.amount), 0), [currentExpenses]);
+  const grossProfit = totalAmount - expensesTotal;
+  const grossMargin = totalAmount > 0 ? (grossProfit / totalAmount) * 100 : 0;
+
+  const prevTotal = useMemo(() => previousSales.reduce((s, x) => s + Number(x.totalAmount), 0), [previousSales]);
+  const prevCash = useMemo(() => previousSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + Number(x.totalAmount), 0), [previousSales]);
+  const prevCredit = useMemo(() => previousSales.filter((s) => s.paymentType === "CREDIT").reduce((s, x) => s + Number(x.totalAmount), 0), [previousSales]);
+  const prevExpensesTotal = useMemo(() => previousExpenses.reduce((s, e) => s + Number(e.amount), 0), [previousExpenses]);
+  const prevGrossProfit = prevTotal - prevExpensesTotal;
+
+  const daysInMonth = useMemo(() => {
+    const now = new Date();
+    const days: Date[] = [];
+    const d = new Date(monthStart);
+    while (d <= now) {
+      days.push(new Date(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return days;
+  }, [monthStart]);
+
+  const dailyTotals = useMemo(
+    () => daysInMonth.map((day) => currentSales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)),
+    [daysInMonth, currentSales]
+  );
+  const dailyCash = useMemo(
+    () => daysInMonth.map((day) => currentSales.filter((s) => s.paymentType === "CASH" && isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)),
+    [daysInMonth, currentSales]
+  );
+
+  const top10Products = useMemo(() => {
+    const byName = new Map<string, { name: string; units: number; total: number }>();
+    for (const sale of currentSales) {
+      for (const item of sale.items) {
+        const name = item.product.name;
+        const e = byName.get(name) ?? { name, units: 0, total: 0 };
+        byName.set(name, { name, units: e.units + item.quantity, total: e.total + Number(item.total) });
+      }
+    }
+    return [...byName.values()].sort((a, b) => b.units - a.units).slice(0, 10);
+  }, [currentSales]);
+
+  const top10TotalRevenue = top10Products.reduce((s, p) => s + p.total, 0);
+
+  const now = new Date();
+  const newCustomers = useMemo(
+    () => customers.filter((c) => { const d = new Date(c.createdAt); return d >= monthStart && d <= now; }).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [customers, monthStart]
+  );
+  const customersWithPurchases = useMemo(
+    () => new Set(currentSales.filter((s) => s.customerId).map((s) => s.customerId!)).size,
+    [currentSales]
+  );
+  const creditCustomers = useMemo(
+    () => new Set(currentSales.filter((s) => s.paymentType === "CREDIT" && s.customerId).map((s) => s.customerId!)).size,
+    [currentSales]
+  );
+
+  const paymentDonutData = useMemo(() => [
+    { label: "Efectivo", value: cashAmount, color: "#7c3aed" },
+    { label: "Crédito (fiado)", value: creditAmount, color: "#3b82f6" },
+    { label: "Tarjeta", value: 0, color: "#10b981" },
+    { label: "Transferencia", value: 0, color: "#f97316" },
+  ], [cashAmount, creditAmount]);
+
+  const paymentSegments = useMemo(
+    () => buildDonutSegments(paymentDonutData.filter((d) => d.value > 0)),
+    [paymentDonutData]
+  );
+
+  const yMax = Math.max(Math.ceil(Math.max(...dailyTotals, 1) / 500) * 500, 500);
+  const svgW = 580;
+  const svgH = 180;
+  const pL = 52;
+  const pR = 12;
+  const pT = 12;
+  const pB = 36;
+  const cW = svgW - pL - pR;
+  const cH = svgH - pT - pB;
+  const n = daysInMonth.length;
+  const xOf = (i: number) => pL + (n > 1 ? (i / (n - 1)) * cW : cW / 2);
+  const yOf = (v: number) => pT + cH * (1 - v / yMax);
+  const totalPath = dailyTotals.map((v, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yOf(v).toFixed(1)}`).join(" ");
+  const cashPath = dailyCash.map((v, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yOf(v).toFixed(1)}`).join(" ");
+
+  const prevMonthShort = new Intl.DateTimeFormat("es-419", { month: "short" }).format(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  const avgTicket = currentSales.length > 0 ? totalAmount / currentSales.length : 0;
+  const prevAvgTicket = previousSales.length > 0 ? prevTotal / previousSales.length : 0;
+  const avgItemsPerSale = currentSales.length > 0
+    ? currentSales.reduce((s, x) => s + x.items.reduce((si, it) => si + it.quantity, 0), 0) / currentSales.length
+    : 0;
+  const avgDailySales = daysInMonth.length > 0 ? totalAmount / daysInMonth.length : 0;
+
+  type MonthCard = { Icon: LucideIcon; iconColor: string; iconBg: string; label: string; value: string; pct: number; sub: string };
+  const cards: MonthCard[] = [
+    { Icon: ShoppingBag, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", label: "Ventas totales", value: formatMoney(totalAmount), pct: pctChange(totalAmount, prevTotal), sub: `${currentSales.length} ventas` },
+    { Icon: CreditCardIcon, iconColor: "text-blue-600", iconBg: "bg-blue-50", label: "Ventas al contado", value: formatMoney(cashAmount), pct: pctChange(cashAmount, prevCash), sub: `${currentSales.filter((s) => s.paymentType === "CASH").length} ventas (${totalAmount > 0 ? ((cashAmount / totalAmount) * 100).toFixed(0) : "0"}%)` },
+    { Icon: FileText, iconColor: "text-orange-600", iconBg: "bg-orange-50", label: "Ventas a crédito (fiado)", value: formatMoney(creditAmount), pct: pctChange(creditAmount, prevCredit), sub: `${currentSales.filter((s) => s.paymentType === "CREDIT").length} ventas (${totalAmount > 0 ? ((creditAmount / totalAmount) * 100).toFixed(0) : "0"}%)` },
+    { Icon: TrendingUp, iconColor: "text-violet-600", iconBg: "bg-violet-50", label: "Ganancia bruta", value: formatMoney(grossProfit), pct: pctChange(grossProfit, prevGrossProfit), sub: `Margen: ${grossMargin.toFixed(1)}%` },
+    { Icon: AlertCircle, iconColor: "text-rose-600", iconBg: "bg-rose-50", label: "Gastos y retiros", value: formatMoney(expensesTotal), pct: pctChange(expensesTotal, prevExpensesTotal), sub: `${currentExpenses.length} registros` },
+    { Icon: DollarSign, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", label: "Ganancia neta", value: formatMoney(grossProfit), pct: pctChange(grossProfit, prevGrossProfit), sub: `Margen: ${grossMargin.toFixed(1)}%` },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <button className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50" type="button">
+          <Calendar className="text-slate-400" size={14} />
+          {formatMonthLabel(0)}
+          <ChevronDown className="text-slate-400" size={13} />
+        </button>
+        <button className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 hover:bg-slate-50" type="button">
+          <BarChart2 className="text-slate-400" size={14} />
+          Comparar con período anterior
+        </button>
+        <button className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700" onClick={() => window.print()} type="button">
+          <Download size={14} />
+          Exportar
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+        {cards.map((card) => (
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm" key={card.label}>
+            <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-lg ${card.iconBg}`}>
+              <card.Icon className={card.iconColor} size={16} />
+            </div>
+            <p className="text-xs font-medium text-slate-500">{card.label}</p>
+            <p className="mt-0.5 text-lg font-bold text-slate-950">{card.value}</p>
+            <p className={`mt-0.5 text-xs font-medium ${card.pct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+              {formatPct(card.pct)} vs {prevMonthShort}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-400">{card.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-4">
+        <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-950">Evolución de ventas</h3>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 text-xs text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-0.5 w-5 rounded-full bg-violet-500" />
+                  Ventas totales
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-0.5 w-5 rounded-full bg-emerald-500" />
+                  Ventas al contado
+                </span>
+              </div>
+              <button className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50" type="button">
+                Diario
+                <ChevronDown className="ml-1 inline" size={11} />
+              </button>
+            </div>
+          </div>
+          {n < 2 ? (
+            <p className="py-8 text-center text-xs text-slate-400">Sin datos suficientes para el gráfico</p>
+          ) : (
+            <svg className="w-full" viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
+              {[0, 0.25, 0.5, 0.75, 1].map((f, i) => {
+                const y = yOf(yMax * f);
+                return (
+                  <g key={i}>
+                    <line stroke="#f1f5f9" strokeWidth="1" x1={pL} x2={pL + cW} y1={y} y2={y} />
+                    <text dominantBaseline="middle" fill="#94a3b8" fontSize="9" textAnchor="end" x={pL - 4} y={y}>
+                      {formatShortMoney(yMax * f)}
+                    </text>
+                  </g>
+                );
+              })}
+              <path d={cashPath} fill="none" stroke="#10b981" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+              <path d={totalPath} fill="none" stroke="#7c3aed" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+              {daysInMonth
+                .filter((_, i) => n <= 10 ? true : i % Math.ceil(n / 8) === 0 || i === n - 1)
+                .map((day) => {
+                  const i = daysInMonth.indexOf(day);
+                  return (
+                    <text dominantBaseline="hanging" fill="#94a3b8" fontSize="9" key={i} textAnchor="middle" x={xOf(i)} y={pT + cH + 6}>
+                      {day.getDate()}
+                    </text>
+                  );
+                })}
+            </svg>
+          )}
+        </div>
+
+        <div className="w-72 shrink-0 space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-slate-950">Ventas por método de pago</h3>
+            {totalAmount === 0 ? (
+              <p className="py-4 text-center text-xs text-slate-400">Sin ventas este período</p>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <svg height="90" viewBox="0 0 100 100" width="90" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx={50} cy={50} fill="none" r={36} stroke="#f1f5f9" strokeWidth={14} />
+                  {paymentSegments.map((seg, i) => (
+                    <circle key={i} cx={50} cy={50} fill="none" r={seg.r} stroke={seg.color}
+                      strokeDasharray={`${seg.pct * seg.circ} ${seg.circ}`}
+                      strokeDashoffset={`${-(seg.offset * seg.circ)}`}
+                      strokeWidth={14} transform="rotate(-90 50 50)"
+                    />
+                  ))}
+                  <text dominantBaseline="middle" fill="#94a3b8" fontSize="7" textAnchor="middle" x={50} y={46}>Total</text>
+                  <text dominantBaseline="middle" fill="#0f172a" fontSize="9" fontWeight="bold" textAnchor="middle" x={50} y={56}>
+                    {formatShortMoney(totalAmount)}
+                  </text>
+                </svg>
+                <div className="w-full space-y-1.5">
+                  {paymentDonutData.map((d) => (
+                    <div className="flex items-center justify-between text-xs" key={d.label}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: d.color }} />
+                        <span className="text-slate-600">{d.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-700">{formatMoney(d.value)}</span>
+                        <span className="w-8 text-right text-slate-400">
+                          {totalAmount > 0 ? ((d.value / totalAmount) * 100).toFixed(0) : "0"}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="mt-1 border-t border-slate-100 pt-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-700">Total</span>
+                      <span className="font-bold text-slate-900">{formatMoney(totalAmount)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-slate-950">Resumen de caja</h3>
+            <div className="space-y-2 text-xs">
+              {[
+                { label: "Total ingresos (efectivo)", value: formatMoney(cashAmount), color: "text-emerald-600" },
+                { label: "Total salidas (gastos)", value: formatMoney(expensesTotal), color: "text-rose-600" },
+                { label: "Balance estimado", value: formatMoney(cashAmount - expensesTotal), color: cashAmount - expensesTotal >= 0 ? "text-emerald-700" : "text-rose-700" },
+              ].map((row) => (
+                <div className="flex items-center justify-between" key={row.label}>
+                  <span className="text-slate-500">{row.label}</span>
+                  <span className={`font-semibold ${row.color}`}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+            <Link className="mt-3 block text-xs font-medium text-violet-600 hover:text-violet-800" href="/cash-movements">
+              Ver detalle de caja →
+            </Link>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-slate-950">Indicadores generales</h3>
+            <div className="space-y-2.5">
+              {[
+                { label: "Ticket promedio", value: formatMoney(avgTicket), pct: pctChange(avgTicket, prevAvgTicket) },
+                { label: "Ventas por día (promedio)", value: formatMoney(avgDailySales), pct: 0 },
+                { label: "Productos por venta", value: avgItemsPerSale.toFixed(1), pct: 0 },
+                { label: "Devoluciones", value: "0", pct: 0 },
+              ].map((row) => (
+                <div className="flex items-center justify-between text-xs" key={row.label}>
+                  <span className="text-slate-600">{row.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-900">{row.value}</span>
+                    <span className={row.pct >= 0 ? "text-emerald-600" : "text-rose-600"}>{formatPct(row.pct)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-4">
+        <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h3 className="text-sm font-semibold text-slate-950">Top 10 productos más vendidos</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">#</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Producto</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">Cantidad</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">Ventas (RD$)</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">% del total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {top10Products.length === 0 ? (
+                  <tr><td className="px-4 py-8 text-center text-xs text-slate-400" colSpan={5}>Sin ventas este período</td></tr>
+                ) : (
+                  top10Products.map((prod, i) => (
+                    <tr className="border-b border-slate-50 hover:bg-slate-50" key={prod.name}>
+                      <td className="px-3 py-2.5 text-xs font-bold text-slate-400">{i + 1}</td>
+                      <td className="px-3 py-2.5 text-xs font-medium text-slate-800">{prod.name}</td>
+                      <td className="px-3 py-2.5 text-right text-xs text-slate-700">{prod.units} uds.</td>
+                      <td className="px-3 py-2.5 text-right text-xs font-semibold text-slate-900">{formatMoney(prod.total)}</td>
+                      <td className="px-3 py-2.5 text-right text-xs text-slate-500">
+                        {top10TotalRevenue > 0 ? ((prod.total / top10TotalRevenue) * 100).toFixed(1) : "0"}%
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-4 py-3">
+            <Link className="text-xs font-medium text-violet-600 hover:text-violet-800" href="/reports">
+              Ver todos los productos →
+            </Link>
+          </div>
+        </div>
+
+        <div className="w-72 shrink-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-slate-950">Resumen de clientes</h3>
+          <div className="space-y-2.5">
+            {[
+              { label: "Total clientes", value: String(customers.length) },
+              { label: "Clientes nuevos", value: String(newCustomers) },
+              { label: "Compras a crédito", value: String(creditCustomers) },
+              { label: "Clientes que compraron", value: String(customersWithPurchases) },
+              { label: "Clientes con deuda", value: String(creditCustomers) },
+              { label: "Promedio de compra", value: customersWithPurchases > 0 ? formatMoney(totalAmount / customersWithPurchases) : formatMoney(0) },
+            ].map((row) => (
+              <div className="flex items-center justify-between text-xs" key={row.label}>
+                <span className="text-slate-600">{row.label}</span>
+                <span className="font-semibold text-slate-900">{row.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+        <AlertCircle className="shrink-0 text-slate-400" size={14} />
+        <p className="text-xs text-slate-500">Los datos de este reporte se actualizan cada 30 minutos.</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── TopProductosTab ──────────────────────────────────────────────────────────
+
+function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: ProductRecord[] }) {
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
+
+  const productStats = useMemo(() => {
+    const productMap = new Map<string, ProductRecord>();
+    for (const p of products) productMap.set(p.name, p);
+
+    const byName = new Map<string, { name: string; category: string; units: number; revenue: number; costTotal: number }>();
+    for (const sale of sales) {
+      for (const item of sale.items) {
+        const name = item.product.name;
+        const prod = productMap.get(name);
+        const category = getProductCategory(name);
+        const e = byName.get(name) ?? { name, category, units: 0, revenue: 0, costTotal: 0 };
+        const costPerUnit = prod ? Number(prod.costPrice) : 0;
+        byName.set(name, { name, category, units: e.units + item.quantity, revenue: e.revenue + Number(item.total), costTotal: e.costTotal + costPerUnit * item.quantity });
+      }
+    }
+
+    return [...byName.values()]
+      .map((p) => {
+        const gross = p.revenue - p.costTotal;
+        const margin = p.revenue > 0 ? (gross / p.revenue) * 100 : 0;
+        const prod = productMap.get(p.name);
+        const stock = prod ? prod.stock : 0;
+        return { ...p, gross, margin, stock };
+      })
+      .sort((a, b) => b.units - a.units);
+  }, [sales, products]);
+
+  const totalRevenue = productStats.reduce((s, p) => s + p.revenue, 0);
+  const totalUnits = productStats.reduce((s, p) => s + p.units, 0);
+  const avgUnits = productStats.length > 0 ? totalUnits / productStats.length : 0;
+
+  const topByUnits = productStats[0];
+  const topByGross = [...productStats].sort((a, b) => b.gross - a.gross)[0];
+  const bottomByUnits = productStats[productStats.length - 1];
+  const top5Revenue = productStats.slice(0, 5).reduce((s, p) => s + p.revenue, 0);
+  const top5Pct = totalRevenue > 0 ? (top5Revenue / totalRevenue) * 100 : 0;
+
+  const top10 = productStats.slice(0, 10);
+  const barMaxRevenue = Math.max(...top10.map((p) => p.revenue), 1);
+  const svgW = 540;
+  const svgH = 160;
+  const pL = 12;
+  const pR = 12;
+  const pT = 24;
+  const pB = 40;
+  const cW = svgW - pL - pR;
+  const cH = svgH - pT - pB;
+  const barW = top10.length > 0 ? cW / top10.length - 4 : 40;
+
+  function stockStatus(units: number): { label: string; color: string; bg: string } {
+    if (units > avgUnits * 1.5) return { label: "Alto", color: "#10b981", bg: "#dcfce7" };
+    if (units > avgUnits * 0.5) return { label: "Medio", color: "#f97316", bg: "#ffedd5" };
+    return { label: "Bajo", color: "#ef4444", bg: "#fee2e2" };
+  }
+
+  const catColors: Record<string, string> = Object.fromEntries(CHART_ENTRIES);
+  const totalPages = Math.ceil(productStats.length / PAGE_SIZE);
+  const paginated = productStats.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <button className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50" type="button">
+          <Calendar className="text-slate-400" size={14} />
+          {formatMonthLabel(0)}
+          <ChevronDown className="text-slate-400" size={13} />
+        </button>
+        <button className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700" onClick={() => window.print()} type="button">
+          <Download size={14} />
+          Exportar
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
+            <Star className="text-amber-600" size={16} />
+          </div>
+          <p className="text-xs font-medium text-slate-500">Producto más vendido</p>
+          <p className="mt-0.5 max-w-full truncate text-base font-bold text-slate-950">{topByUnits?.name ?? "—"}</p>
+          <p className="mt-0.5 text-xs text-slate-500">{topByUnits ? `${topByUnits.units} unidades` : "Sin datos"}</p>
+          <p className="text-xs font-semibold text-emerald-600">{topByUnits ? formatMoney(topByUnits.revenue) : ""}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+            <TrendingUp className="text-emerald-600" size={16} />
+          </div>
+          <p className="text-xs font-medium text-slate-500">Mayor ganancia</p>
+          <p className="mt-0.5 max-w-full truncate text-base font-bold text-slate-950">{topByGross?.name ?? "—"}</p>
+          <p className="mt-0.5 text-xs font-semibold text-emerald-600">{topByGross ? formatMoney(topByGross.gross) : "Sin datos"}</p>
+          <p className="text-xs text-slate-400">{topByGross ? `Margen: ${topByGross.margin.toFixed(1)}%` : ""}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
+            <Clock className="text-slate-500" size={16} />
+          </div>
+          <p className="text-xs font-medium text-slate-500">Menor rotación</p>
+          <p className="mt-0.5 max-w-full truncate text-base font-bold text-slate-950">{bottomByUnits?.name ?? "—"}</p>
+          <p className="mt-0.5 text-xs text-slate-500">{bottomByUnits ? `${bottomByUnits.units} unidades` : "Sin datos"}</p>
+          <p className="text-xs font-medium text-orange-500">Rotación baja</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
+            <PieChart className="text-violet-600" size={16} />
+          </div>
+          <p className="text-xs font-medium text-slate-500">% de ventas (Top 5)</p>
+          <p className="mt-0.5 text-2xl font-bold text-slate-950">{top5Pct.toFixed(1)}%</p>
+          <p className="mt-0.5 text-xs text-slate-500">de las ventas totales</p>
+        </div>
+      </div>
+
+      <div className="flex gap-4">
+        <div className="min-w-0 flex-1 space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+              <h3 className="text-sm font-semibold text-slate-950">Lista de productos</h3>
+              <p className="text-xs text-slate-400">
+                Mostrando {productStats.length === 0 ? 0 : Math.min(page * PAGE_SIZE + 1, productStats.length)} a {Math.min((page + 1) * PAGE_SIZE, productStats.length)} de {productStats.length} productos
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">#</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">Producto</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">Categoría</th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-slate-500">Vendidos</th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-slate-500">Ingresos</th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-slate-500">Ganancia</th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-slate-500">Margen %</th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-slate-500">Stock</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.length === 0 ? (
+                    <tr><td className="px-4 py-8 text-center text-xs text-slate-400" colSpan={9}>Sin ventas registradas</td></tr>
+                  ) : (
+                    paginated.map((prod, i) => {
+                      const color = catColors[prod.category] ?? "#94a3b8";
+                      const status = stockStatus(prod.units);
+                      return (
+                        <tr className="border-b border-slate-50 hover:bg-slate-50" key={prod.name}>
+                          <td className="px-3 py-2.5 text-xs font-bold text-slate-400">{page * PAGE_SIZE + i + 1}</td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-violet-100 text-xs font-bold text-violet-700">
+                                {prod.name.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="max-w-[120px] truncate text-xs font-medium text-slate-800">{prod.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: `${color}20`, color }}>
+                              {prod.category}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-xs text-slate-700">{prod.units}</td>
+                          <td className="px-3 py-2.5 text-right text-xs font-semibold text-slate-900">{formatMoney(prod.revenue)}</td>
+                          <td className="px-3 py-2.5 text-right text-xs font-semibold text-emerald-600">{formatMoney(prod.gross)}</td>
+                          <td className="px-3 py-2.5 text-right text-xs text-slate-600">{prod.margin.toFixed(1)}%</td>
+                          <td className="px-3 py-2.5 text-right text-xs text-slate-600">{prod.stock}</td>
+                          <td className="px-3 py-2.5">
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: status.bg, color: status.color }}>
+                              {status.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+                <p className="text-xs text-slate-500">{productStats.length} productos · página {page + 1} de {totalPages}</p>
+                <div className="flex gap-1">
+                  <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40" disabled={page === 0} onClick={() => setPage((p) => p - 1)} type="button">Anterior</button>
+                  <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)} type="button">Siguiente</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-slate-950">Ventas por producto (Top 10)</h3>
+            {top10.length === 0 ? (
+              <p className="py-8 text-center text-xs text-slate-400">Sin datos de ventas</p>
+            ) : (
+              <svg className="w-full" viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
+                {top10.map((prod, i) => {
+                  const x = pL + i * (cW / top10.length) + 2;
+                  const barH = (prod.revenue / barMaxRevenue) * cH;
+                  const y = pT + cH - barH;
+                  return (
+                    <g key={prod.name}>
+                      <rect fill="#7c3aed" height={Math.max(barH, 2)} rx="2" width={barW} x={x} y={y} />
+                      <text dominantBaseline="auto" fill="#7c3aed" fontSize="8" fontWeight="600" textAnchor="middle" x={x + barW / 2} y={y - 3}>
+                        {formatShortMoney(prod.revenue)}
+                      </text>
+                      <text dominantBaseline="hanging" fill="#94a3b8" fontSize="7.5" textAnchor="middle" x={x + barW / 2} y={pT + cH + 6}>
+                        {prod.name.length > 8 ? `${prod.name.slice(0, 7)}…` : prod.name}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
+          </div>
+        </div>
+
+        <div className="w-72 shrink-0 space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-slate-950">Top 5 por ventas</h3>
+            {productStats.slice(0, 5).map((prod, i) => (
+              <div className="mb-2 flex items-center justify-between text-xs" key={prod.name}>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="w-4 flex-shrink-0 font-bold text-slate-400">{i + 1}</span>
+                  <span className="truncate font-medium text-slate-700">{prod.name}</span>
+                </div>
+                <span className="ml-2 flex-shrink-0 font-semibold text-slate-900">{formatMoney(prod.revenue)}</span>
+              </div>
+            ))}
+            <Link className="mt-1 block text-xs font-medium text-violet-600 hover:text-violet-800" href="/reports">
+              Ver todos los productos →
+            </Link>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-slate-950">Productos de bajo rendimiento</h3>
+            {productStats.length === 0 ? (
+              <p className="text-xs text-slate-400">Sin datos</p>
+            ) : (
+              [...productStats].sort((a, b) => a.units - b.units).slice(0, 3).map((prod) => (
+                <div className="mb-2.5" key={prod.name}>
+                  <p className="truncate text-xs font-medium text-rose-600">{prod.name}</p>
+                  <p className="text-xs text-slate-500">{prod.units} unidades · <span className="text-slate-400">Rotación baja</span></p>
+                </div>
+              ))
+            )}
+            <button className="mt-1 text-xs font-medium text-violet-600 hover:text-violet-800" type="button">
+              Ver todos los de bajo rendimiento →
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-violet-100 bg-violet-50 p-4">
+            <div className="flex items-start gap-2">
+              <Lightbulb className="mt-0.5 shrink-0 text-violet-500" size={15} />
+              <div>
+                <p className="text-xs font-semibold text-violet-800">Insight del mes</p>
+                <p className="mt-1 text-xs text-violet-700">
+                  El {top5Pct.toFixed(0)}% de tus ventas proviene de solo 5 productos. Enfócate en mantener su stock siempre disponible.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+        <AlertCircle className="shrink-0 text-slate-400" size={14} />
+        <p className="text-xs text-slate-500">Los datos de este reporte se actualizan cada 30 minutos.</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── RecomendacionesTab ───────────────────────────────────────────────────────
+
+function RecomendacionesTab({
+  sales,
+  products,
+}: {
+  sales: SaleRecord[];
+  products: ProductRecord[];
+}) {
+  type Rec = {
+    id: string;
+    icon: LucideIcon;
+    iconColor: string;
+    title: string;
+    subtitle: string;
+    tipo: string;
+    tipoColor: string;
+    prioridad: "Alta" | "Media" | "Baja";
+    impacto: number;
+  };
+
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
+
+  const { start: monthStart, end: monthEnd } = useMemo(() => getMonthRange(0), []);
+
+  const currentSales = useMemo(
+    () => sales.filter((s) => { const d = new Date(s.saleDate); return d >= monthStart && d <= monthEnd; }),
+    [sales, monthStart, monthEnd]
+  );
+
+  const productSalesMap = useMemo(() => {
+    const m = new Map<string, { units: number; revenue: number }>();
+    for (const sale of currentSales) {
+      for (const item of sale.items) {
+        const e = m.get(item.product.name) ?? { units: 0, revenue: 0 };
+        m.set(item.product.name, { units: e.units + item.quantity, revenue: e.revenue + Number(item.total) });
+      }
+    }
+    return m;
+  }, [currentSales]);
+
+  const totalRevenue = useMemo(() => currentSales.reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
+  const cashRevenue = useMemo(() => currentSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
+  const avgSalePrice = currentSales.length > 0 ? totalRevenue / currentSales.length : 0;
+
+  const recommendations = useMemo<Rec[]>(() => {
+    const recs: Rec[] = [];
+
+    const lowStockTopSellers = products.filter((p) => { const sold = productSalesMap.get(p.name); return p.stock <= 5 && sold && sold.units > 0; });
+    if (lowStockTopSellers.length > 0) {
+      recs.push({ id: "low-stock", icon: Package, iconColor: "text-violet-600", title: "Aumenta el stock de tus productos más vendidos", subtitle: `${lowStockTopSellers.length} producto${lowStockTopSellers.length !== 1 ? "s" : ""} con stock bajo y alta demanda`, tipo: "Inventario", tipoColor: "#7c3aed", prioridad: "Alta", impacto: lowStockTopSellers.length * avgSalePrice });
+    }
+
+    const lowMarginProducts = products.filter((p) => { const cost = Number(p.costPrice); const sale = Number(p.salePrice); return sale > 0 && ((sale - cost) / sale) * 100 < 20; });
+    if (lowMarginProducts.length > 0) {
+      recs.push({ id: "low-margin", icon: TrendingUp, iconColor: "text-orange-600", title: "Revisa los precios de estos productos", subtitle: `${lowMarginProducts.length} producto${lowMarginProducts.length !== 1 ? "s" : ""} con margen menor al 20%`, tipo: "Precios", tipoColor: "#f97316", prioridad: "Media", impacto: lowMarginProducts.reduce((s, p) => s + Number(p.salePrice) * 0.05, 0) });
+    }
+
+    const last7 = getLastNDays(7);
+    const last7Names = new Set<string>();
+    for (const sale of sales) {
+      if (last7.some((day) => isSameLocalDay(new Date(sale.saleDate), day))) {
+        for (const item of sale.items) last7Names.add(item.product.name);
+      }
+    }
+    const noRecentSales = products.filter((p) => !last7Names.has(p.name) && p.stock > 0);
+    if (noRecentSales.length > 0) {
+      recs.push({ id: "no-recent-sales", icon: AlertCircle, iconColor: "text-rose-600", title: "Activa promociones en productos de baja rotación", subtitle: `${noRecentSales.length} producto${noRecentSales.length !== 1 ? "s" : ""} sin ventas en los últimos 7 días`, tipo: "Ventas", tipoColor: "#ef4444", prioridad: "Alta", impacto: noRecentSales.slice(0, 5).reduce((s, p) => s + Number(p.salePrice), 0) });
+    }
+
+    const customerRevMap = new Map<string, number>();
+    for (const sale of currentSales) {
+      if (!sale.customerId) continue;
+      customerRevMap.set(sale.customerId, (customerRevMap.get(sale.customerId) ?? 0) + Number(sale.totalAmount));
+    }
+    const top10CustRev = [...customerRevMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).reduce((s, [, v]) => s + v, 0);
+    if (totalRevenue > 0 && top10CustRev / totalRevenue > 0.6) {
+      recs.push({ id: "customer-concentration", icon: Users, iconColor: "text-blue-600", title: "Enfócate en tus mejores clientes", subtitle: "El 60%+ de tus ventas proviene de 10 clientes — fidelízalos con descuentos y atención personalizada", tipo: "Clientes", tipoColor: "#3b82f6", prioridad: "Media", impacto: top10CustRev * 0.1 });
+    }
+
+    const negMarginProducts = products.filter((p) => Number(p.salePrice) > 0 && Number(p.salePrice) < Number(p.costPrice));
+    if (negMarginProducts.length > 0) {
+      recs.push({ id: "negative-margin", icon: AlertTriangle, iconColor: "text-rose-600", title: "Reduce productos de baja rentabilidad", subtitle: `${negMarginProducts.length} producto${negMarginProducts.length !== 1 ? "s" : ""} se venden a pérdida`, tipo: "Productos", tipoColor: "#ef4444", prioridad: "Alta", impacto: negMarginProducts.reduce((s, p) => s + (Number(p.costPrice) - Number(p.salePrice)), 0) });
+    }
+
+    if (totalRevenue > 0 && cashRevenue / totalRevenue > 0.8) {
+      recs.push({ id: "payment-diversity", icon: CreditCardIcon, iconColor: "text-slate-600", title: "Ofrece más opciones de pago digital", subtitle: "Más del 80% de tus ventas son en efectivo — diversificar puede atraer más clientes", tipo: "Pagos", tipoColor: "#64748b", prioridad: "Baja", impacto: totalRevenue * 0.05 });
+    }
+
+    const overstockLowSales = products.filter((p) => { const sold = productSalesMap.get(p.name); return p.stock > 50 && (!sold || sold.units < 5); });
+    if (overstockLowSales.length > 0) {
+      recs.push({ id: "overstock", icon: Package, iconColor: "text-amber-600", title: "Compra más inteligente", subtitle: `${overstockLowSales.length} producto${overstockLowSales.length !== 1 ? "s" : ""} con exceso de stock y ventas bajas`, tipo: "Compras", tipoColor: "#d97706", prioridad: "Media", impacto: overstockLowSales.reduce((s, p) => s + Number(p.costPrice) * Math.max(0, p.stock - 20), 0) });
+    }
+
+    recs.push({ id: "combos", icon: ShoppingBag, iconColor: "text-emerald-600", title: "Crea combos con productos relacionados", subtitle: "Combina tus productos más vendidos con complementarios para aumentar el ticket promedio", tipo: "Ventas", tipoColor: "#10b981", prioridad: "Baja", impacto: avgSalePrice * 0.15 * currentSales.length });
+
+    return recs;
+  }, [products, productSalesMap, totalRevenue, cashRevenue, avgSalePrice, currentSales, sales]);
+
+  const totalImpact = recommendations.reduce((s, r) => s + r.impacto, 0);
+  const highPriorityCount = recommendations.filter((r) => r.prioridad === "Alta").length;
+  const overallPriority = highPriorityCount >= 3 ? "Alto" : highPriorityCount >= 1 ? "Medio" : "Bajo";
+
+  const categoryImpact = useMemo(() => {
+    const m: Record<string, number> = { Inventario: 0, Precios: 0, Ventas: 0, Clientes: 0, Otros: 0 };
+    for (const r of recommendations) {
+      const key = ["Inventario", "Precios", "Ventas", "Clientes"].includes(r.tipo) ? r.tipo : "Otros";
+      m[key] += r.impacto;
+    }
+    return m;
+  }, [recommendations]);
+
+  const maxCatImpact = Math.max(...Object.values(categoryImpact), 1);
+  const lowStockCount = products.filter((p) => p.stock <= 5).length;
+  const negMarginCount = products.filter((p) => Number(p.salePrice) > 0 && Number(p.salePrice) < Number(p.costPrice)).length;
+  const lowRotationCount = products.filter((p) => { const sold = productSalesMap.get(p.name); return !sold || sold.units < 3; }).length;
+
+  const totalPages = Math.ceil(recommendations.length / PAGE_SIZE);
+  const paginated = recommendations.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  const prioColors: Record<string, string> = { Alta: "#ef4444", Media: "#f97316", Baja: "#10b981" };
+  const catBarColors: Record<string, string> = { Inventario: "#7c3aed", Precios: "#f97316", Ventas: "#10b981", Clientes: "#3b82f6", Otros: "#94a3b8" };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <button className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50" type="button">
+          <Calendar className="text-slate-400" size={14} />
+          {formatMonthLabel(0)}
+          <ChevronDown className="text-slate-400" size={13} />
+        </button>
+        <button className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700" onClick={() => window.print()} type="button">
+          <Download size={14} />
+          Exportar
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+            <Lightbulb className="text-emerald-600" size={16} />
+          </div>
+          <p className="text-xs font-medium text-slate-500">Oportunidades detectadas</p>
+          <p className="mt-0.5 text-2xl font-bold text-slate-950">{recommendations.length}</p>
+          <p className="mt-0.5 text-xs text-slate-400">Recomendaciones generadas</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50">
+            <TrendingUp className="text-orange-600" size={16} />
+          </div>
+          <p className="text-xs font-medium text-slate-500">Impacto potencial</p>
+          <p className="mt-0.5 text-xl font-bold text-slate-950">{formatMoney(totalImpact)}</p>
+          <p className="mt-0.5 text-xs text-emerald-600">Aumento estimado en ganancias</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
+            <Package className="text-violet-600" size={16} />
+          </div>
+          <p className="text-xs font-medium text-slate-500">Productos a mejorar</p>
+          <p className="mt-0.5 text-2xl font-bold text-slate-950">{lowStockCount + negMarginCount}</p>
+          <p className="mt-0.5 text-xs text-slate-400">Con bajo rendimiento</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50">
+            <AlertTriangle className="text-rose-600" size={16} />
+          </div>
+          <p className="text-xs font-medium text-slate-500">Nivel de prioridad</p>
+          <p className="mt-0.5 text-2xl font-bold text-slate-950">{overallPriority}</p>
+          <p className="mt-0.5 text-xs text-slate-400">Basado en el análisis de tu negocio</p>
+        </div>
+      </div>
+
+      <div className="flex gap-4">
+        <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h3 className="text-sm font-semibold text-slate-950">Lista de recomendaciones</h3>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {paginated.length === 0 ? (
+              <div className="px-4 py-8 text-center text-xs text-slate-400">Sin recomendaciones generadas</div>
+            ) : (
+              paginated.map((rec) => (
+                <div className="flex items-center gap-4 px-4 py-3 hover:bg-slate-50" key={rec.id}>
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100">
+                    <rec.icon className={rec.iconColor} size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-900">{rec.title}</p>
+                    <p className="text-xs text-slate-500">{rec.subtitle}</p>
+                  </div>
+                  <span className="flex-shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: `${rec.tipoColor}20`, color: rec.tipoColor }}>
+                    {rec.tipo}
+                  </span>
+                  <div className="flex flex-shrink-0 items-center gap-1.5">
+                    <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: prioColors[rec.prioridad] }} />
+                    <span className="text-xs font-medium text-slate-700">{rec.prioridad}</span>
+                  </div>
+                  <span className="w-24 flex-shrink-0 text-right text-xs font-semibold text-emerald-600">{formatMoney(rec.impacto)}</span>
+                  <ChevronRight className="flex-shrink-0 text-slate-300" size={16} />
+                </div>
+              ))
+            )}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+              <p className="text-xs text-slate-500">{recommendations.length} recomendaciones · página {page + 1} de {totalPages}</p>
+              <div className="flex gap-1">
+                <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40" disabled={page === 0} onClick={() => setPage((p) => p - 1)} type="button">Anterior</button>
+                <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)} type="button">Siguiente</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="w-72 shrink-0 space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-slate-950">Impacto por categoría</h3>
+            <div className="space-y-2.5">
+              {Object.entries(categoryImpact).map(([cat, amt]) => (
+                <div key={cat}>
+                  <div className="mb-0.5 flex items-center justify-between text-xs">
+                    <span className="text-slate-600">{cat}</span>
+                    <span className="font-semibold text-slate-800">{formatMoney(amt)}</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-slate-100">
+                    <div className="h-1.5 rounded-full" style={{ width: `${(amt / maxCatImpact) * 100}%`, background: catBarColors[cat] ?? "#94a3b8" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-xs">
+              <span className="font-semibold text-slate-700">Total</span>
+              <span className="font-bold text-slate-900">{formatMoney(totalImpact)}</span>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-slate-950">Áreas que necesitan atención</h3>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-3 rounded-lg border border-rose-100 bg-rose-50 p-2.5">
+                <AlertCircle className="shrink-0 text-rose-500" size={14} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-rose-800">Productos con baja rotación</p>
+                  <p className="text-xs text-rose-600">{lowRotationCount} producto{lowRotationCount !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border border-orange-100 bg-orange-50 p-2.5">
+                <Package className="shrink-0 text-orange-500" size={14} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-orange-800">Stock bajo en productos clave</p>
+                  <p className="text-xs text-orange-600">{lowStockCount} producto{lowStockCount !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border border-violet-100 bg-violet-50 p-2.5">
+                <TrendingUp className="shrink-0 text-violet-500" size={14} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-violet-800">Margen por debajo del promedio</p>
+                  <p className="text-xs text-violet-600">{negMarginCount} producto{negMarginCount !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-violet-100 bg-violet-50 p-4">
+            <div className="flex items-start gap-2">
+              <Lightbulb className="mt-0.5 shrink-0 text-violet-500" size={15} />
+              <div>
+                <p className="text-xs font-semibold text-violet-800">Consejo del mes</p>
+                <p className="mt-1 text-xs text-violet-700">
+                  {recommendations.length > 0
+                    ? "Enfócate en los productos que más venden y elimina o ajusta los que no generan ganancias."
+                    : "Tu negocio está funcionando bien. Mantén el control del inventario y los precios para seguir creciendo."}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+        <AlertCircle className="shrink-0 text-slate-400" size={14} />
+        <p className="text-xs text-slate-500">Estas recomendaciones se generan automáticamente con base en el análisis de tus datos del período seleccionado.</p>
+      </div>
+    </div>
+  );
+}
+
