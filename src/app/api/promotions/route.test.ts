@@ -124,6 +124,7 @@ function buildPromotionRecord(): PromotionWithUsageCount {
     productBId: null,
     productBDiscount: null,
     minimumAmount: null,
+    minimumPurchaseDiscountType: null,
     fixedPrice: null,
     activationType: "AUTOMATIC",
     startsAt: new Date("2026-01-01"),

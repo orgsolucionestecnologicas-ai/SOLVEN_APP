@@ -24,6 +24,7 @@ export type EnginePromotion = {
   productBId: string | null;
   productBDiscount: Prisma.Decimal | null;
   minimumAmount: Prisma.Decimal | null;
+  minimumPurchaseDiscountType: string | null;
   fixedPrice: Prisma.Decimal | null;
   activationType: PromotionActivation;
   startsAt: Date;
@@ -236,6 +237,8 @@ function applyNForMPromotion(
   let totalDiscount = ZERO;
 
   for (const item of eligibleItems) {
+    item.appliedTypes.add(type);
+
     const freeCount = freeCountByProduct.get(item.productId) ?? 0;
     if (freeCount === 0) continue;
 
@@ -246,7 +249,6 @@ function applyNForMPromotion(
 
     totalDiscount = totalDiscount.plus(discount);
     item.currentUnitPrice = clampToZero(newEffectivePrice);
-    item.appliedTypes.add(type);
     item.lastPromotionId = id;
   }
 
@@ -270,7 +272,7 @@ function applyMinimumPurchasePromotion(
   const alreadyApplied = workingItems.some((i) => i.appliedTypes.has(type));
   if (alreadyApplied) return ZERO;
 
-  const isPercentage = promotion.discountValue.lessThanOrEqualTo(100);
+  const isPercentage = (promotion.minimumPurchaseDiscountType ?? "PERCENTAGE") === "PERCENTAGE";
   let totalDiscount = ZERO;
 
   for (const item of workingItems) {

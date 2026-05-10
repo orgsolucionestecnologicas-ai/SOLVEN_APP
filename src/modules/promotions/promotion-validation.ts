@@ -15,6 +15,7 @@ export type CreatePromotionInput = {
   productBId?: string;
   productBDiscount?: number;
   minimumAmount?: number;
+  minimumPurchaseDiscountType?: string;
   fixedPrice?: number;
   activationType: string;
   startsAt: string;
@@ -38,6 +39,7 @@ export type ValidatedCreatePromotionInput = {
   productBId?: string;
   productBDiscount?: number;
   minimumAmount?: number;
+  minimumPurchaseDiscountType?: string;
   fixedPrice?: number;
   activationType: PromotionActivation;
   startsAt: Date;
@@ -156,6 +158,13 @@ export function validateCreatePromotion(
         "El monto mínimo es requerido y debe ser mayor a cero para este tipo de promoción."
       );
     }
+    if (
+      input.minimumPurchaseDiscountType !== undefined &&
+      input.minimumPurchaseDiscountType !== "PERCENTAGE" &&
+      input.minimumPurchaseDiscountType !== "FIXED_AMOUNT"
+    ) {
+      errors.push("El tipo de descuento debe ser PERCENTAGE o FIXED_AMOUNT.");
+    }
   }
 
   if (type === "BUNDLED_PRODUCTS") {
@@ -214,6 +223,8 @@ export function validateCreatePromotion(
   if (input.productBDiscount !== undefined)
     result.productBDiscount = input.productBDiscount;
   if (input.minimumAmount !== undefined) result.minimumAmount = input.minimumAmount;
+  if (input.minimumPurchaseDiscountType !== undefined)
+    result.minimumPurchaseDiscountType = input.minimumPurchaseDiscountType;
   if (input.fixedPrice !== undefined) result.fixedPrice = input.fixedPrice;
   if (input.daysOfWeek?.trim()) result.daysOfWeek = input.daysOfWeek.trim();
   if (input.maxUsages !== undefined) result.maxUsages = input.maxUsages;
@@ -306,6 +317,8 @@ export function validateUpdatePromotion(
   if (input.fixedPrice !== undefined) result.fixedPrice = input.fixedPrice;
   if (input.minimumAmount !== undefined)
     result.minimumAmount = input.minimumAmount;
+  if (input.minimumPurchaseDiscountType !== undefined)
+    result.minimumPurchaseDiscountType = input.minimumPurchaseDiscountType;
   if (input.productAId !== undefined)
     result.productAId = input.productAId?.trim() || undefined;
   if (input.productBId !== undefined)

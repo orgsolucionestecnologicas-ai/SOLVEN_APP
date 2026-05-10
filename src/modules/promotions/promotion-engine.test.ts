@@ -24,6 +24,7 @@ function makePromotion(
     productBId: null,
     productBDiscount: null,
     minimumAmount: null,
+    minimumPurchaseDiscountType: null,
     fixedPrice: null,
     activationType: "AUTOMATIC",
     startsAt: PAST,

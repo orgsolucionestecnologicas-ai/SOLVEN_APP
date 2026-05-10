@@ -16,6 +16,7 @@ describe("validateCreateProductInput", () => {
       })
     ).toEqual({
       name: "Rice",
+      categoryName: "Otros",
       costPrice: 10,
       salePrice: 15,
       stock: 20

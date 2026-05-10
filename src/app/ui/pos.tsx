@@ -31,6 +31,7 @@ import { SalesList } from "./sales-list";
 type ProductRecord = {
   id: string;
   name: string;
+  categoryName: string;
   salePrice: string;
   stock: number;
 };
@@ -53,6 +54,7 @@ type CustomersResponse = {
 type CartItem = {
   productId: string;
   productName: string;
+  categoryName: string;
   quantity: number;
   unitPrice: number;
   maxStock: number;
@@ -387,7 +389,7 @@ export function Pos() {
               cartItems: cartItems.map((item) => ({
                 productId: item.productId,
                 productName: item.productName,
-                categoryName: getProductCategory(item.productName),
+                categoryName: item.categoryName,
                 quantity: item.quantity,
                 unitPrice: item.unitPrice,
               })),
@@ -604,6 +606,7 @@ export function Pos() {
         {
           productId: product.id,
           productName: product.name,
+          categoryName: product.categoryName,
           quantity: 1,
           unitPrice: Number(product.salePrice),
           maxStock: product.stock,

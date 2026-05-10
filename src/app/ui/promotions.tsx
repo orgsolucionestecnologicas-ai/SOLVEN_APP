@@ -49,6 +49,7 @@ type PromotionRecord = {
   productBId: string | null;
   productBDiscount: string | null;
   minimumAmount: string | null;
+  minimumPurchaseDiscountType: string | null;
   fixedPrice: string | null;
   activationType: PromotionActivation;
   startsAt: string;
@@ -84,6 +85,7 @@ type PromotionFormData = {
   productBSearch: string;
   productBDiscount: string;
   minimumAmount: string;
+  minimumPurchaseDiscountType: string;
   fixedPrice: string;
   activationType: string;
   startsAt: string;
@@ -98,16 +100,15 @@ type PromotionFormData = {
 const PAGE_SIZE = 10;
 
 const PRODUCT_CATEGORIES = [
-  "Abarrotes",
+  "Alimentos",
   "Bebidas",
   "Lácteos",
-  "Carnes",
   "Limpieza",
   "Cuidado Personal",
   "Hogar",
   "Panadería",
-  "Congelados",
   "Snacks",
+  "Otros",
 ];
 
 type TypeStyle = {
@@ -156,6 +157,7 @@ const EMPTY_FORM: PromotionFormData = {
   productBSearch: "",
   productBDiscount: "",
   minimumAmount: "",
+  minimumPurchaseDiscountType: "PERCENTAGE",
   fixedPrice: "",
   activationType: "AUTOMATIC",
   startsAt: "",
@@ -255,6 +257,7 @@ function promotionToForm(promo: PromotionRecord, products: ProductRecord[]): Pro
     productBSearch: findProductName(promo.productBId),
     productBDiscount: promo.productBDiscount ? String(Number(promo.productBDiscount)) : "",
     minimumAmount: promo.minimumAmount ? String(Number(promo.minimumAmount)) : "",
+    minimumPurchaseDiscountType: promo.minimumPurchaseDiscountType ?? "PERCENTAGE",
     fixedPrice: promo.fixedPrice ? String(Number(promo.fixedPrice)) : "",
     activationType: promo.activationType,
     startsAt: formatDateInput(promo.startsAt),
@@ -292,6 +295,7 @@ function buildSubmitPayload(form: PromotionFormData): Record<string, unknown> {
   }
   if (form.type === "MINIMUM_PURCHASE" && form.minimumAmount) {
     payload.minimumAmount = Number(form.minimumAmount);
+    payload.minimumPurchaseDiscountType = form.minimumPurchaseDiscountType || "PERCENTAGE";
   }
   if (form.type === "BUNDLED_PRODUCTS") {
     payload.application = "BUNDLED";
@@ -1542,16 +1546,47 @@ function PromotionModal({
                     </div>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-700">
-                        Descuento (%) <span className="text-rose-500">*</span>
+                        Tipo de descuento <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                          <input
+                            checked={form.minimumPurchaseDiscountType === "PERCENTAGE"}
+                            className="accent-violet-600"
+                            name="minimumPurchaseDiscountType"
+                            onChange={() => set("minimumPurchaseDiscountType", "PERCENTAGE")}
+                            type="radio"
+                            value="PERCENTAGE"
+                          />
+                          % Porcentaje
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                          <input
+                            checked={form.minimumPurchaseDiscountType === "FIXED_AMOUNT"}
+                            className="accent-violet-600"
+                            name="minimumPurchaseDiscountType"
+                            onChange={() => set("minimumPurchaseDiscountType", "FIXED_AMOUNT")}
+                            type="radio"
+                            value="FIXED_AMOUNT"
+                          />
+                          $ Monto fijo
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-700">
+                        {form.minimumPurchaseDiscountType === "FIXED_AMOUNT" ? "Descuento ($)" : "Descuento (%)"} <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">%</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
+                          {form.minimumPurchaseDiscountType === "FIXED_AMOUNT" ? "$" : "%"}
+                        </span>
                         <input
                           className="w-full rounded-lg border border-slate-200 py-2 pl-8 pr-3 text-sm focus:border-violet-500 focus:outline-none"
                           min={0}
-                          max={100}
+                          max={form.minimumPurchaseDiscountType === "PERCENTAGE" ? 100 : undefined}
                           onChange={(e) => set("discountValue", e.target.value)}
-                          placeholder="5"
+                          placeholder={form.minimumPurchaseDiscountType === "FIXED_AMOUNT" ? "50.00" : "5"}
                           required
                           step="any"
                           type="number"

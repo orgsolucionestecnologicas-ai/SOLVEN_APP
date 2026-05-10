@@ -64,12 +64,19 @@ export async function getPromotionById(
 export async function getPromotionByCode(
   code: string
 ): Promise<PromotionWithUsages | null> {
-  return prisma.promotion.findUnique({
+  const now = new Date();
+  const promotion = await prisma.promotion.findUnique({
     where: { code },
     include: {
       usages: { select: { id: true, customerId: true } }
     }
   });
+
+  if (!promotion) return null;
+  if (!promotion.isActive) return null;
+  if (promotion.startsAt > now || promotion.endsAt < now) return null;
+
+  return promotion;
 }
 
 export async function updatePromotion(

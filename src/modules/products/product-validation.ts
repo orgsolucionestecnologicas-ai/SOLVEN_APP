@@ -1,5 +1,20 @@
+export const PRODUCT_CATEGORIES = [
+  "Alimentos",
+  "Bebidas",
+  "Lácteos",
+  "Limpieza",
+  "Cuidado Personal",
+  "Hogar",
+  "Panadería",
+  "Snacks",
+  "Otros",
+] as const;
+
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+
 export type CreateProductInput = {
   name: string;
+  categoryName?: string;
   costPrice: number;
   salePrice: number;
   stock: number;
@@ -7,6 +22,7 @@ export type CreateProductInput = {
 
 export type ValidatedProductInput = {
   name: string;
+  categoryName: string;
   costPrice: number;
   salePrice: number;
   stock: number;
@@ -42,12 +58,19 @@ export function validateCreateProductInput(
     validationErrors.push("Stock must be a non-negative integer.");
   }
 
+  const categoryName =
+    typeof productInput.categoryName === "string" &&
+    (PRODUCT_CATEGORIES as readonly string[]).includes(productInput.categoryName)
+      ? productInput.categoryName
+      : "Otros";
+
   if (validationErrors.length > 0) {
     throw new ProductValidationError(validationErrors);
   }
 
   return {
     name,
+    categoryName,
     costPrice: productInput.costPrice,
     salePrice: productInput.salePrice,
     stock: productInput.stock
@@ -60,15 +83,16 @@ function isValidNonNegativeNumber(value: number) {
 
 export type UpdateProductInput = {
   name?: string;
+  categoryName?: string;
   costPrice?: number;
   salePrice?: number;
 };
 
 export function validateUpdateProductInput(
   input: UpdateProductInput
-): { name?: string; costPrice?: number; salePrice?: number } {
+): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number } {
   const errors: string[] = [];
-  const result: { name?: string; costPrice?: number; salePrice?: number } = {};
+  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -94,6 +118,12 @@ export function validateUpdateProductInput(
     } else {
       result.salePrice = input.salePrice;
     }
+  }
+
+  if (input.categoryName !== undefined) {
+    result.categoryName = (PRODUCT_CATEGORIES as readonly string[]).includes(input.categoryName)
+      ? input.categoryName
+      : "Otros";
   }
 
   if (errors.length > 0) {

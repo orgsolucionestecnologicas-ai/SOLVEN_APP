@@ -25,6 +25,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 type ProductRecord = {
   id: string;
   name: string;
+  categoryName: string;
   costPrice: string;
   salePrice: string;
   stock: number;
@@ -57,68 +58,30 @@ type StockRangeFilter = "Todos" | "0" | "1-5" | "6-20" | "20+";
 
 const PRODUCT_CATEGORY_LIST = [
   "Todas",
-  "Abarrotes",
+  "Alimentos",
   "Bebidas",
   "Lácteos",
-  "Carnes",
   "Limpieza",
   "Cuidado Personal",
   "Hogar",
   "Panadería",
-  "Congelados",
   "Snacks",
   "Otros"
 ] as const;
 
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  Abarrotes: [
-    "arroz",
-    "azúcar",
-    "aceite",
-    "café",
-    "harina",
-    "frijol",
-    "sal",
-    "sopa",
-    "pasta",
-    "cereal",
-    "galleta",
-    "maíz",
-    "lentejas",
-    "atún"
-  ],
-  Bebidas: ["agua", "refresco", "jugo", "gaseosa", "bebida", "cerveza", "vino", "soda", "té"],
-  Lácteos: ["leche", "queso", "yogur", "mantequilla", "crema de leche", "manteca"],
-  Carnes: ["pollo", "carne", "res", "cerdo", "pescado", "jamón", "salchicha", "chorizo", "camarón"],
-  Limpieza: ["jabón", "detergente", "cloro", "limpiador", "escoba", "trapeador", "desinfectante"],
-  "Cuidado Personal": ["shampoo", "pasta dental", "desodorante", "loción", "gel capilar", "pañal"],
-  Hogar: ["papel", "servilleta", "bolsa", "foco", "pilas", "vela", "foil"],
-  Panadería: ["pan", "bizcocho", "torta", "rosca", "dona"],
-  Congelados: ["helado", "hielo", "congelado", "paleta"],
-  Snacks: ["papas", "chips", "cacahuate", "pistache", "nuez", "maní", "palomitas", "frituras"]
-};
+const SELECTABLE_CATEGORIES = PRODUCT_CATEGORY_LIST.filter((c) => c !== "Todas");
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Abarrotes: "bg-amber-100 text-amber-800",
+  Alimentos: "bg-amber-100 text-amber-800",
   Bebidas: "bg-blue-100 text-blue-800",
   Lácteos: "bg-sky-100 text-sky-800",
-  Carnes: "bg-rose-100 text-rose-800",
   Limpieza: "bg-teal-100 text-teal-800",
   "Cuidado Personal": "bg-purple-100 text-purple-800",
   Hogar: "bg-orange-100 text-orange-800",
   Panadería: "bg-yellow-100 text-yellow-800",
-  Congelados: "bg-cyan-100 text-cyan-800",
   Snacks: "bg-emerald-100 text-emerald-800",
   Otros: "bg-slate-100 text-slate-700"
 };
-
-function getProductCategory(name: string): string {
-  const lower = name.toLowerCase();
-  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((kw) => lower.includes(kw))) return cat;
-  }
-  return "Otros";
-}
 
 function getProductPresentation(name: string): string {
   const lower = name.toLowerCase();
@@ -194,7 +157,7 @@ export function ProductsInventory() {
     const counts: Record<string, number> = { Todas: products.length };
     for (const cat of PRODUCT_CATEGORY_LIST) {
       if (cat !== "Todas") {
-        counts[cat] = products.filter((p) => getProductCategory(p.name) === cat).length;
+        counts[cat] = products.filter((p) => p.categoryName === cat).length;
       }
     }
     return counts;
@@ -213,7 +176,7 @@ export function ProductsInventory() {
     }
 
     if (categoryFilter !== "Todas") {
-      result = result.filter((p) => getProductCategory(p.name) === categoryFilter);
+      result = result.filter((p) => p.categoryName === categoryFilter);
     }
 
     if (statusFilter === "Con stock") {
@@ -780,7 +743,7 @@ function ProductRow({
   onEdit,
   onAdjustStock
 }: ProductRowProps) {
-  const category = getProductCategory(product.name);
+  const category = product.categoryName;
   const presentation = getProductPresentation(product.name);
   const categoryColor = CATEGORY_COLORS[category] ?? CATEGORY_COLORS["Otros"];
 
@@ -933,6 +896,7 @@ type CreateProductModalProps = {
 
 function CreateProductModal({ onClose, onSuccess }: CreateProductModalProps) {
   const [name, setName] = useState("");
+  const [categoryName, setCategoryName] = useState("Otros");
   const [costPrice, setCostPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [stock, setStock] = useState("");
@@ -950,6 +914,7 @@ function CreateProductModal({ onClose, onSuccess }: CreateProductModalProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
+          categoryName,
           costPrice: Number(costPrice),
           salePrice: Number(salePrice),
           stock: Number(stock)
@@ -1009,6 +974,21 @@ function CreateProductModal({ onClose, onSuccess }: CreateProductModalProps) {
               type="text"
               value={name}
             />
+          </FormField>
+
+          <FormField htmlFor="product-category" label="Categoría">
+            <select
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="product-category"
+              onChange={(e) => setCategoryName(e.target.value)}
+              required
+              value={categoryName}
+            >
+              {SELECTABLE_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
           </FormField>
 
           <FormField htmlFor="product-cost-price" label="Precio de costo">
@@ -1093,6 +1073,7 @@ type EditProductModalProps = {
 
 function EditProductModal({ product, onClose, onSuccess }: EditProductModalProps) {
   const [name, setName] = useState(product.name);
+  const [categoryName, setCategoryName] = useState(product.categoryName);
   const [costPrice, setCostPrice] = useState(product.costPrice);
   const [salePrice, setSalePrice] = useState(product.salePrice);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1109,6 +1090,7 @@ function EditProductModal({ product, onClose, onSuccess }: EditProductModalProps
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
+          categoryName,
           costPrice: Number(costPrice),
           salePrice: Number(salePrice)
         })
@@ -1166,6 +1148,21 @@ function EditProductModal({ product, onClose, onSuccess }: EditProductModalProps
               type="text"
               value={name}
             />
+          </FormField>
+
+          <FormField htmlFor="edit-product-category" label="Categoría">
+            <select
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="edit-product-category"
+              onChange={(e) => setCategoryName(e.target.value)}
+              required
+              value={categoryName}
+            >
+              {SELECTABLE_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
           </FormField>
 
           <FormField htmlFor="edit-product-cost-price" label="Precio de costo">
