@@ -269,6 +269,13 @@ export function CashMovementsList() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-100"
+            onClick={() => setView("closing")}
+            type="button"
+          >
+            Cierre de caja
+          </button>
+          <button
             className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
             onClick={() => window.print()}
             type="button"
@@ -304,13 +311,6 @@ export function CashMovementsList() {
             label="Apertura de caja"
             value={`${fmtTime(currentSession.openedAt)} · Monto inicial: ${fmtMoney(currentSession.openingAmount)}`}
           />
-          <button
-            className="ml-auto flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-            onClick={() => setView("closing")}
-            type="button"
-          >
-            Cierre de caja
-          </button>
         </div>
       ) : null}
 
