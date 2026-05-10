@@ -12,6 +12,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1002,9 +1003,9 @@ function TopCustomersPanel({
               </div>
             ))}
           </div>
-          <a className="mt-3 block text-xs font-medium text-violet-600 hover:text-violet-800" href="/customers">
+          <Link className="mt-3 block text-xs font-medium text-violet-600 hover:text-violet-800" href="/customers">
             Ver todos los clientes →
-          </a>
+          </Link>
         </>
       )}
     </div>

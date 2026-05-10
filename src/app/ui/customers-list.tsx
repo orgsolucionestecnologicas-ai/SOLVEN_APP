@@ -872,14 +872,13 @@ function CustomerRow({
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-1">
-          <button
+          <Link
             className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            onClick={onDetail}
+            href={`/customers/${customer.id}`}
             title="Ver detalle"
-            type="button"
           >
             <Eye size={13} />
-          </button>
+          </Link>
           <button
             className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             onClick={onEdit}
