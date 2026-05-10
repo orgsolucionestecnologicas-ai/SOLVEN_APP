@@ -392,6 +392,7 @@ export function Pos() {
                 unitPrice: item.unitPrice,
               })),
               ...(manualCodes.length > 0 ? { promotionCodes: manualCodes } : {}),
+              ...(selectedCustomer?.id ? { customerId: selectedCustomer.id } : {}),
             }),
           });
           const body = (await response.json()) as ApplyResponse;
@@ -406,7 +407,7 @@ export function Pos() {
     return () => {
       if (applyDebounceRef.current) clearTimeout(applyDebounceRef.current);
     };
-  }, [cartItems, manualCodes]);
+  }, [cartItems, manualCodes, selectedCustomer]);
 
   useEffect(() => {
     if (!promosPanelOpen) return;
@@ -443,7 +444,14 @@ export function Pos() {
 
   const discountedItemsMap = useMemo(() => {
     if (!applyResult) return new Map<string, RawDiscountedItem>();
-    return new Map(applyResult.discountedItems.map((item) => [item.productId, item]));
+    const map = new Map<string, RawDiscountedItem>();
+    for (const item of applyResult.discountedItems) {
+      const existing = map.get(item.productId);
+      if (!existing || parseFloat(item.finalPrice) < parseFloat(existing.finalPrice)) {
+        map.set(item.productId, item);
+      }
+    }
+    return map;
   }, [applyResult]);
 
   const cartTotal = cartItems.reduce(
@@ -536,6 +544,7 @@ export function Pos() {
             unitPrice: item.unitPrice,
           })),
           promotionCodes: newCodes,
+          ...(selectedCustomer?.id ? { customerId: selectedCustomer.id } : {}),
         }),
       });
 
@@ -567,6 +576,9 @@ export function Pos() {
       setManualCodes((prev) =>
         prev.includes(promo.code!) ? prev : [...prev, promo.code!]
       );
+    } else {
+      setSuccessMessage("Promoción aplicada automáticamente");
+      setTimeout(() => setSuccessMessage(null), 4000);
     }
     setPromosPanelOpen(false);
   }
@@ -1904,14 +1916,17 @@ export function Pos() {
                               </div>
                             ) : null}
                           </div>
-                          {promo.activationType === "AUTOMATIC" ||
-                          promo.activationType === "BOTH" ? (
+                          {promo.activationType === "AUTOMATIC" ? (
+                            <span className="flex-shrink-0 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                              ✓ Se aplica automáticamente
+                            </span>
+                          ) : promo.activationType === "BOTH" ? (
                             <button
                               className="flex-shrink-0 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
                               onClick={() => handleApplyActivePromotion(promo)}
                               type="button"
                             >
-                              Aplicar
+                              Aplicar código
                             </button>
                           ) : null}
                         </div>

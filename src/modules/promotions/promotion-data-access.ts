@@ -111,7 +111,8 @@ export async function getActivePromotions(): Promise<PromotionWithUsages[]> {
     where: {
       isActive: true,
       startsAt: { lte: now },
-      endsAt: { gte: now }
+      endsAt: { gte: now },
+      activationType: { in: ["AUTOMATIC", "BOTH"] }
     },
     include: {
       usages: { select: { id: true, customerId: true } }
