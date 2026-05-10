@@ -15,6 +15,7 @@ import {
   Users,
   type LucideIcon
 } from "lucide-react";
+import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 type DebtRecord = {
@@ -351,7 +352,12 @@ export function DebtsList() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               <CustomerAvatar name={debt.customer.name} />
-                              <p className="max-w-[150px] truncate text-sm font-semibold text-slate-950">{debt.customer.name}</p>
+                              <Link
+                                className="max-w-[150px] truncate text-sm font-semibold text-slate-950 hover:text-violet-600 hover:underline"
+                                href={`/customers/${debt.customerId}`}
+                              >
+                                {debt.customer.name}
+                              </Link>
                             </div>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-700">{formatMoney(Number(debt.totalAmount))}</td>
