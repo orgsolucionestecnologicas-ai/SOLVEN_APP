@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   BarChart2,
-  Bell,
   Calendar,
   CreditCard,
   DollarSign,
@@ -171,7 +170,7 @@ export function DashboardSummary() {
   const monthSparkData = Object.values(monthDailyMap);
 
   const todayVsDiff    = todaySalesTotal - yesterdaySalesTotal;
-  const todayVsLabel   = yesterdaySalesTotal > 0 ? `${todayVsDiff >= 0 ? "▲" : "▼"} ${formatMXN(Math.abs(todayVsDiff))} vs ayer` : null;
+  const todayVsLabel   = yesterdaySalesTotal > 0 ? `${todayVsDiff >= 0 ? "▲" : "▼"} ${formatCompact(Math.abs(todayVsDiff))} vs ayer` : null;
   const todayVsPositive = todayVsDiff >= 0;
 
   return (
@@ -186,14 +185,6 @@ export function DashboardSummary() {
           <div className="flex items-center gap-1.5 text-sm text-slate-500">
             <Calendar size={15} className="text-slate-400" />
             <span>{formatFullDate(now)}</span>
-          </div>
-          <div className="relative">
-            <Bell size={20} className="text-slate-500" />
-            {pendingDebtsCount > 0 ? (
-              <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                {pendingDebtsCount > 9 ? "9+" : pendingDebtsCount}
-              </span>
-            ) : null}
           </div>
         </div>
       </div>
@@ -376,9 +367,8 @@ function MainSalesChart({ salesByDay }: { salesByDay: DayTotal[] }) {
 
   return (
     <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4">
         <p className="text-sm font-semibold text-slate-900">Ventas de los últimos 7 días</p>
-        <span className="text-xs text-slate-400">Últimos 7 días</span>
       </div>
       {!hasData ? (
         <div className="flex h-[180px] items-center justify-center rounded-lg border border-dashed border-slate-200">
@@ -702,6 +692,12 @@ function niceMax(value: number): number {
   if (n <= 2) return 2 * mag;
   if (n <= 5) return 5 * mag;
   return 10 * mag;
+}
+
+function formatCompact(value: number): string {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000)     return `$${(value / 1_000).toFixed(1)}K`;
+  return `$${Math.round(value)}`;
 }
 
 function formatMXN(value: number): string {
