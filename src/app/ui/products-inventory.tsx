@@ -1,12 +1,10 @@
 "use client";
 
 import {
-  AlertTriangle,
   BarChart2,
   Barcode,
   ChevronLeft,
   ChevronRight,
-  Columns,
   Filter,
   LayoutGrid,
   LayoutList,
@@ -15,10 +13,7 @@ import {
   Pencil,
   Plus,
   RotateCcw,
-  ShoppingBag,
   Upload,
-  XCircle,
-  type LucideIcon
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -57,8 +52,7 @@ type StockAdjustmentResponse = {
 type StatusFilter = "Todos" | "Con stock" | "Stock bajo" | "Sin stock";
 type StockRangeFilter = "Todos" | "0" | "1-5" | "6-20" | "20+";
 
-const PRODUCT_CATEGORY_LIST = [
-  "Todas",
+const DEFAULT_PRODUCT_CATEGORIES = [
   "Alimentos",
   "Bebidas",
   "Lácteos",
@@ -67,10 +61,8 @@ const PRODUCT_CATEGORY_LIST = [
   "Hogar",
   "Panadería",
   "Snacks",
-  "Otros"
-] as const;
-
-const SELECTABLE_CATEGORIES = PRODUCT_CATEGORY_LIST.filter((c) => c !== "Todas");
+  "Otros",
+];
 
 const CATEGORY_COLORS: Record<string, string> = {
   Alimentos: "bg-amber-100 text-amber-800",
@@ -119,6 +111,8 @@ export function ProductsInventory() {
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null);
   const [adjustingProduct, setAdjustingProduct] = useState<ProductRecord | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
 
   useEffect(() => {
     let isActive = true;
@@ -155,15 +149,39 @@ export function ProductsInventory() {
     return () => { isActive = false; };
   }, [refreshKey]);
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("solven_categories");
+      if (saved) {
+        const parsed = JSON.parse(saved) as string[];
+        if (Array.isArray(parsed)) setCustomCategories(parsed);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("solven_categories", JSON.stringify(customCategories));
+  }, [customCategories]);
+
+  const allCategories = useMemo(
+    () => ["Todas", ...DEFAULT_PRODUCT_CATEGORIES, ...customCategories],
+    [customCategories]
+  );
+
+  const selectableCategories = useMemo(
+    () => [...DEFAULT_PRODUCT_CATEGORIES, ...customCategories],
+    [customCategories]
+  );
+
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { Todas: products.length };
-    for (const cat of PRODUCT_CATEGORY_LIST) {
+    for (const cat of allCategories) {
       if (cat !== "Todas") {
         counts[cat] = products.filter((p) => p.categoryName === cat).length;
       }
     }
     return counts;
-  }, [products]);
+  }, [products, allCategories]);
 
   const filteredProducts = useMemo(() => {
     let result = products;
@@ -208,16 +226,6 @@ export function ProductsInventory() {
     (safePage - 1) * pageSize,
     safePage * pageSize
   );
-
-  const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
-  const inStockCount = products.filter((p) => p.stock > 0).length;
-  const lowStockCount = products.filter((p) => p.stock > 0 && p.stock <= 5).length;
-  const outOfStockCount = products.filter((p) => p.stock === 0).length;
-  const newThisWeek = products.filter(
-    (p) => Date.now() - new Date(p.createdAt).getTime() < ONE_WEEK
-  ).length;
-  const stockPercentage =
-    products.length > 0 ? Math.round((inStockCount / products.length) * 100) : 0;
 
   function showSuccess(message: string) {
     setSuccessMessage(message);
@@ -280,12 +288,6 @@ export function ProductsInventory() {
             <Plus size={14} />
             Nuevo producto
           </button>
-          <button
-            className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50"
-            type="button"
-          >
-            <MoreHorizontal size={16} />
-          </button>
         </div>
       </div>
 
@@ -294,44 +296,6 @@ export function ProductsInventory() {
           <p className="text-sm font-medium text-emerald-800">{successMessage}</p>
         </div>
       ) : null}
-
-      {/* Metric cards */}
-      <div className="grid grid-cols-2 gap-4 px-6 py-5 lg:grid-cols-4">
-        <MetricCard
-          Icon={Package}
-          iconClass="bg-violet-100 text-violet-600"
-          subtitle={`+ ${newThisWeek} nuevos esta semana`}
-          subtitleClass="text-slate-500"
-          title="Total productos"
-          value={products.length}
-        />
-        <MetricCard
-          Icon={ShoppingBag}
-          iconClass="bg-emerald-100 text-emerald-600"
-          subtitle={`${stockPercentage}% del total`}
-          subtitleClass="text-slate-500"
-          title="Con stock"
-          value={inStockCount}
-        />
-        <MetricCard
-          Icon={AlertTriangle}
-          iconClass="bg-orange-100 text-orange-600"
-          onSubtitleClick={() => { setStatusFilter("Stock bajo"); setCurrentPage(1); }}
-          subtitle="Ver productos →"
-          subtitleClass="cursor-pointer text-orange-600 hover:text-orange-800"
-          title="Stock bajo"
-          value={lowStockCount}
-        />
-        <MetricCard
-          Icon={XCircle}
-          iconClass="bg-rose-100 text-rose-600"
-          onSubtitleClick={() => { setStatusFilter("Sin stock"); setCurrentPage(1); }}
-          subtitle="Ver productos →"
-          subtitleClass="cursor-pointer text-rose-600 hover:text-rose-800"
-          title="Sin stock"
-          value={outOfStockCount}
-        />
-      </div>
 
       {/* Body */}
       <div className="flex border-t border-slate-200">
@@ -343,6 +307,7 @@ export function ProductsInventory() {
             </span>
             <button
               className="text-xs font-medium text-violet-600 hover:text-violet-800"
+              onClick={() => setShowCategoryManager(true)}
               type="button"
             >
               + Nueva
@@ -350,7 +315,7 @@ export function ProductsInventory() {
           </div>
 
           <ul className="space-y-0.5">
-            {PRODUCT_CATEGORY_LIST.map((cat) => {
+            {allCategories.map((cat) => {
               const isActive = cat === categoryFilter;
               const label = cat === "Todas" ? "Todas las categorías" : cat;
               const count = categoryCounts[cat] ?? 0;
@@ -397,6 +362,7 @@ export function ProductsInventory() {
             </p>
             <button
               className="mt-2 text-xs font-medium text-violet-600 hover:text-violet-800"
+              onClick={() => setShowCategoryManager(true)}
               type="button"
             >
               Gestionar categorías →
@@ -432,13 +398,6 @@ export function ProductsInventory() {
               >
                 <Filter size={13} />
                 Filtros
-              </button>
-              <button
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                type="button"
-              >
-                <Columns size={13} />
-                Columnas
               </button>
               <div className="flex rounded-lg border border-slate-200 p-0.5">
                 <button
@@ -493,7 +452,7 @@ export function ProductsInventory() {
                   }}
                   value={categoryFilter}
                 >
-                  {PRODUCT_CATEGORY_LIST.map((cat) => (
+                  {allCategories.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat === "Todas" ? "Categoría: Todas" : cat}
                     </option>
@@ -664,6 +623,7 @@ export function ProductsInventory() {
       {/* Modals */}
       {isCreateModalOpen ? (
         <CreateProductModal
+          categories={selectableCategories}
           onClose={() => setIsCreateModalOpen(false)}
           onSuccess={handleProductCreated}
         />
@@ -671,6 +631,7 @@ export function ProductsInventory() {
 
       {editingProduct ? (
         <EditProductModal
+          categories={selectableCategories}
           onClose={() => setEditingProduct(null)}
           onSuccess={handleProductEdited}
           product={editingProduct}
@@ -684,48 +645,20 @@ export function ProductsInventory() {
           product={adjustingProduct}
         />
       ) : null}
-    </div>
-  );
-}
 
-type MetricCardProps = {
-  Icon: LucideIcon;
-  iconClass: string;
-  title: string;
-  value: number;
-  subtitle: string;
-  subtitleClass: string;
-  onSubtitleClick?: () => void;
-};
-
-function MetricCard({
-  Icon,
-  iconClass,
-  title,
-  value,
-  subtitle,
-  subtitleClass,
-  onSubtitleClick
-}: MetricCardProps) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-500">{title}</p>
-          <p className="mt-1 text-2xl font-bold text-slate-950">
-            {numberFormatter.format(value)}
-          </p>
-        </div>
-        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconClass}`}>
-          <Icon size={18} />
-        </div>
-      </div>
-      <p
-        className={`mt-2 text-xs ${subtitleClass}`}
-        onClick={onSubtitleClick}
-      >
-        {subtitle}
-      </p>
+      {showCategoryManager ? (
+        <CategoryManagerModal
+          customCategories={customCategories}
+          onAddCategory={(name) =>
+            setCustomCategories((prev) => [...prev, name])
+          }
+          onClose={() => setShowCategoryManager(false)}
+          onDeleteCategory={(name) =>
+            setCustomCategories((prev) => prev.filter((c) => c !== name))
+          }
+          products={products}
+        />
+      ) : null}
     </div>
   );
 }
@@ -894,11 +827,12 @@ function StockStatusBadge({ stock }: { stock: number }) {
 type CreateProductModalProps = {
   onClose: () => void;
   onSuccess: () => void;
+  categories: string[];
 };
 
-function CreateProductModal({ onClose, onSuccess }: CreateProductModalProps) {
+function CreateProductModal({ onClose, onSuccess, categories }: CreateProductModalProps) {
   const [name, setName] = useState("");
-  const [categoryName, setCategoryName] = useState("Otros");
+  const [categoryName, setCategoryName] = useState(categories[0] ?? "Otros");
   const [costPrice, setCostPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [stock, setStock] = useState("");
@@ -987,7 +921,7 @@ function CreateProductModal({ onClose, onSuccess }: CreateProductModalProps) {
               required
               value={categoryName}
             >
-              {SELECTABLE_CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
@@ -1071,9 +1005,10 @@ type EditProductModalProps = {
   product: ProductRecord;
   onClose: () => void;
   onSuccess: () => void;
+  categories: string[];
 };
 
-function EditProductModal({ product, onClose, onSuccess }: EditProductModalProps) {
+function EditProductModal({ product, onClose, onSuccess, categories }: EditProductModalProps) {
   const [name, setName] = useState(product.name);
   const [categoryName, setCategoryName] = useState(product.categoryName);
   const [costPrice, setCostPrice] = useState(product.costPrice);
@@ -1161,7 +1096,7 @@ function EditProductModal({ product, onClose, onSuccess }: EditProductModalProps
               required
               value={categoryName}
             >
-              {SELECTABLE_CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
@@ -1401,6 +1336,165 @@ function AdjustStockModal({ product, onClose, onSuccess }: AdjustStockModalProps
   );
 }
 
+type CategoryManagerModalProps = {
+  customCategories: string[];
+  products: ProductRecord[];
+  onAddCategory: (name: string) => void;
+  onDeleteCategory: (name: string) => void;
+  onClose: () => void;
+};
+
+function CategoryManagerModal({
+  customCategories,
+  products,
+  onAddCategory,
+  onDeleteCategory,
+  onClose
+}: CategoryManagerModalProps) {
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const allExisting = [...DEFAULT_PRODUCT_CATEGORIES, ...customCategories];
+
+  function handleAdd() {
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) {
+      setAddError("El nombre no puede estar vacío.");
+      return;
+    }
+    if (allExisting.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      setAddError("Ya existe una categoría con ese nombre.");
+      return;
+    }
+    onAddCategory(trimmed);
+    setNewCategoryName("");
+    setAddError(null);
+  }
+
+  function handleDelete(cat: string) {
+    const usedBy = products.filter((p) => p.categoryName === cat).length;
+    if (usedBy > 0) {
+      setDeleteError(
+        `No se puede eliminar: ${usedBy} ${usedBy === 1 ? "producto usa" : "productos usan"} esta categoría.`
+      );
+      return;
+    }
+    onDeleteCategory(cat);
+    setDeleteError(null);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">
+            Gestionar categorías
+          </h2>
+          <button
+            className="text-slate-400 hover:text-slate-700"
+            onClick={onClose}
+            type="button"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Predeterminadas
+          </p>
+          <ul className="mb-5 space-y-0.5">
+            {DEFAULT_PRODUCT_CATEGORIES.map((cat) => (
+              <li
+                className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-700"
+                key={cat}
+              >
+                <span>{cat}</span>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                  Predeterminada
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          {customCategories.length > 0 ? (
+            <>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Personalizadas
+              </p>
+              <ul className="mb-4 space-y-0.5">
+                {customCategories.map((cat) => (
+                  <li
+                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    key={cat}
+                  >
+                    <span>{cat}</span>
+                    <button
+                      className="text-xs font-medium text-rose-500 hover:text-rose-700"
+                      onClick={() => handleDelete(cat)}
+                      type="button"
+                    >
+                      Eliminar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+
+          {deleteError ? (
+            <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-3">
+              <p className="text-xs font-medium text-rose-900">{deleteError}</p>
+            </div>
+          ) : null}
+
+          <div className="border-t border-slate-100 pt-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Nueva categoría
+            </p>
+            <div className="flex gap-2">
+              <input
+                autoFocus
+                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
+                onChange={(e) => {
+                  setNewCategoryName(e.target.value);
+                  setAddError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAdd();
+                  }
+                }}
+                placeholder="Ej. Mascotas"
+                type="text"
+                value={newCategoryName}
+              />
+              <button
+                className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
+                onClick={handleAdd}
+                type="button"
+              >
+                Agregar
+              </button>
+            </div>
+            {addError ? (
+              <p className="mt-1.5 text-xs text-rose-600">{addError}</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type FormFieldProps = {
   label: string;
   htmlFor: string;
@@ -1467,7 +1561,9 @@ function formatMoney(value: string) {
   return moneyFormatter.format(Number(value));
 }
 
-const moneyFormatter = new Intl.NumberFormat("es-419", {
+const moneyFormatter = new Intl.NumberFormat("es-AR", {
+  style: "currency",
+  currency: "ARS",
   maximumFractionDigits: 2,
   minimumFractionDigits: 2
 });
