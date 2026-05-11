@@ -8,8 +8,13 @@ import {
   CreditCard,
   DollarSign,
   FileText,
+  Lock,
+  Mail,
+  MapPin,
   MoreHorizontal,
   Pencil,
+  Phone,
+  ShoppingCart,
   TrendingUp,
   Wallet
 } from "lucide-react";
@@ -316,6 +321,13 @@ export function CustomerDetail() {
             <Pencil size={13} />
             Editar cliente
           </button>
+          <Link
+            className="flex items-center gap-1.5 rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            href={`/pos?customerId=${customerId}`}
+          >
+            <ShoppingCart size={13} />
+            Nueva venta
+          </Link>
           <Link
             className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700"
             href={`/customers/${customerId}/payment`}
@@ -937,6 +949,29 @@ function DocumentosTab() {
   );
 }
 
+type CustomerExtra = {
+  phone: string;
+  email: string;
+  ciudad: string;
+  postal: string;
+  direccion: string;
+  cedula: string;
+};
+
+function readCustomerExtra(id: string): CustomerExtra {
+  try {
+    const raw = localStorage.getItem(`solven_customer_${id}_extra`);
+    if (raw) return JSON.parse(raw) as CustomerExtra;
+  } catch {}
+  return { phone: "", email: "", ciudad: "", postal: "", direccion: "", cedula: "" };
+}
+
+function saveCustomerExtra(id: string, extra: CustomerExtra): void {
+  try {
+    localStorage.setItem(`solven_customer_${id}_extra`, JSON.stringify(extra));
+  } catch {}
+}
+
 function EditCustomerModal({
   customer,
   onClose,
@@ -947,8 +982,26 @@ function EditCustomerModal({
   onSuccess: () => void;
 }) {
   const [name, setName] = useState(customer.name);
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [ciudad, setCiudad] = useState("");
+  const [postal, setPostal] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [cedulaDisplay, setCedulaDisplay] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const extra = readCustomerExtra(customer.id);
+    setPhone(extra.phone);
+    setEmail(extra.email);
+    setCiudad(extra.ciudad);
+    setPostal(extra.postal);
+    setDireccion(extra.direccion);
+    setCedulaDisplay(
+      extra.cedula || `001-${customer.id.slice(-7, -3)}-${customer.id.slice(-3)}`
+    );
+  }, [customer.id]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -965,6 +1018,7 @@ function EditCustomerModal({
         setSubmitError(body.error?.details?.[0] ?? body.error?.message ?? "No se pudo actualizar el cliente.");
         return;
       }
+      saveCustomerExtra(customer.id, { phone, email, ciudad, postal, direccion, cedula: cedulaDisplay });
       onSuccess();
     } catch {
       setSubmitError("No se pudo actualizar el cliente.");
@@ -975,7 +1029,7 @@ function EditCustomerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h2 className="text-sm font-semibold text-slate-950">Editar cliente</h2>
           <button className="text-slate-400 hover:text-slate-700" onClick={onClose} type="button">✕</button>
@@ -983,7 +1037,7 @@ function EditCustomerModal({
         <form className="space-y-4 px-6 py-5" onSubmit={handleSubmit}>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-name">
-              Nombre
+              Nombre <span className="text-rose-500">*</span>
             </label>
             <input
               autoFocus
@@ -996,6 +1050,113 @@ function EditCustomerModal({
               value={name}
             />
           </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-phone">
+              Teléfono
+              <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+            </label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+              <input
+                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                disabled={isSubmitting}
+                id="edit-phone"
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="809-000-0000"
+                type="tel"
+                value={phone}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-email">
+              Correo electrónico
+              <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+              <input
+                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                disabled={isSubmitting}
+                id="edit-email"
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="cliente@email.com"
+                type="email"
+                value={email}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-ciudad">
+                Ciudad
+              </label>
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                disabled={isSubmitting}
+                id="edit-ciudad"
+                onChange={(e) => setCiudad(e.target.value)}
+                placeholder="Ej. Buenos Aires"
+                type="text"
+                value={ciudad}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-postal">
+                Código postal
+              </label>
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                disabled={isSubmitting}
+                id="edit-postal"
+                onChange={(e) => setPostal(e.target.value)}
+                placeholder="Ej. 1043"
+                type="text"
+                value={postal}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-direccion">
+              Dirección
+              <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+            </label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+              <input
+                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                disabled={isSubmitting}
+                id="edit-direccion"
+                onChange={(e) => setDireccion(e.target.value)}
+                placeholder="Av. Principal #123..."
+                type="text"
+                value={direccion}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-cedula">
+              Cédula / RNC
+              <span className="ml-1.5 text-xs font-normal text-slate-400">(no editable)</span>
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={13} />
+              <input
+                className="w-full cursor-not-allowed rounded-md border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-400"
+                disabled
+                id="edit-cedula"
+                readOnly
+                type="text"
+                value={cedulaDisplay}
+              />
+            </div>
+          </div>
+
           {submitError ? (
             <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
               <p className="text-sm text-rose-900">{submitError}</p>

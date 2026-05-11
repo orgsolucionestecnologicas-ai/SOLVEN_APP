@@ -285,11 +285,18 @@ export function Pos() {
 
   const moreDropdownRef = useRef<HTMLDivElement>(null);
   const applyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const urlCustomerIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const savedCart = readSavedCart();
     if (savedCart) setCartItems(savedCart);
     if (readDraft()) setShowDraftBanner(true);
+    const params = new URLSearchParams(window.location.search);
+    const preselectedCustomerId = params.get("customerId");
+    if (preselectedCustomerId) {
+      urlCustomerIdRef.current = preselectedCustomerId;
+      setPaymentMethod("Fiado");
+    }
   }, []);
 
   useEffect(() => {
@@ -396,6 +403,15 @@ export function Pos() {
       isActive = false;
     };
   }, [isFiado, optionalCustomerOpen, customersLoaded]);
+
+  useEffect(() => {
+    if (!urlCustomerIdRef.current || !customersLoaded) return;
+    const target = customers.find((c) => c.id === urlCustomerIdRef.current);
+    if (target) {
+      setSelectedCustomer(target);
+      urlCustomerIdRef.current = null;
+    }
+  }, [customers, customersLoaded]);
 
   const filteredProducts = useMemo(() => {
     let result = products;

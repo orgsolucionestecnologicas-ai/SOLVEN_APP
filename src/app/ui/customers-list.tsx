@@ -1,21 +1,17 @@
 "use client";
 
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CreditCard,
   DollarSign,
   Eye,
   Filter,
-  MessageCircle,
   MoreHorizontal,
   Pencil,
   Plus,
   RotateCcw,
   Search,
-  ShoppingCart,
-  Upload,
   UserCheck,
   Users,
   Wallet,
@@ -61,6 +57,8 @@ type DebtRecord = {
 };
 
 type CustomerSegment = "VIP" | "Regular" | "Nuevo" | "Inactivo";
+type DebtFilter = "Todos" | "Con deuda" | "Sin deuda";
+type SortOrder = "Mayor deuda" | "Más recientes" | "Nombre A-Z" | "Más compras";
 
 type CustomerMetrics = {
   totalPurchases: number;
@@ -180,7 +178,10 @@ export function CustomersList() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterDebtOnly, setFilterDebtOnly] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [segmentFilter, setSegmentFilter] = useState<CustomerSegment | "Todos">("Todos");
+  const [debtFilter, setDebtFilter] = useState<DebtFilter>("Todos");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("Mayor deuda");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -330,9 +331,17 @@ export function CustomersList() {
 
   const filteredCustomers = useMemo(() => {
     let result = [...customers];
-    if (filterDebtOnly) {
-      result = result.filter((c) => (customerMetrics[c.id]?.currentDebt ?? 0) > 0);
+
+    if (segmentFilter !== "Todos") {
+      result = result.filter((c) => customerMetrics[c.id]?.segment === segmentFilter);
     }
+
+    if (debtFilter === "Con deuda") {
+      result = result.filter((c) => (customerMetrics[c.id]?.currentDebt ?? 0) > 0);
+    } else if (debtFilter === "Sin deuda") {
+      result = result.filter((c) => (customerMetrics[c.id]?.currentDebt ?? 0) === 0);
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((c) => {
@@ -340,8 +349,22 @@ export function CustomersList() {
         return c.name.toLowerCase().includes(q) || phone.includes(q);
       });
     }
+
+    result.sort((a, b) => {
+      switch (sortOrder) {
+        case "Mayor deuda":
+          return (customerMetrics[b.id]?.currentDebt ?? 0) - (customerMetrics[a.id]?.currentDebt ?? 0);
+        case "Más recientes":
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "Nombre A-Z":
+          return a.name.localeCompare(b.name, "es");
+        case "Más compras":
+          return (customerMetrics[b.id]?.totalPurchases ?? 0) - (customerMetrics[a.id]?.totalPurchases ?? 0);
+      }
+    });
+
     return result;
-  }, [customers, customerMetrics, searchQuery, filterDebtOnly]);
+  }, [customers, customerMetrics, searchQuery, segmentFilter, debtFilter, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
@@ -384,9 +407,13 @@ export function CustomersList() {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   }
 
+  const hasActiveFilters = segmentFilter !== "Todos" || debtFilter !== "Todos";
+
   function clearFilters() {
     setSearchQuery("");
-    setFilterDebtOnly(false);
+    setSegmentFilter("Todos");
+    setDebtFilter("Todos");
+    setSortOrder("Mayor deuda");
     setCurrentPage(1);
   }
 
@@ -401,13 +428,6 @@ export function CustomersList() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            className="flex items-center gap-1.5 rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-            type="button"
-          >
-            <Upload size={14} />
-            Importar clientes
-          </button>
           <Link
             className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700"
             href="/customers/new"
@@ -415,13 +435,6 @@ export function CustomersList() {
             <Plus size={14} />
             Nuevo cliente
           </Link>
-          <button
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-            type="button"
-          >
-            <MoreHorizontal size={14} />
-            <ChevronDown size={12} />
-          </button>
         </div>
       </div>
 
@@ -473,44 +486,73 @@ export function CustomersList() {
         {/* Left: search + table + pagination */}
         <div className="min-w-0 flex-1 px-5 py-4">
           {/* Search and filters */}
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <div className="relative flex-1">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                size={14}
-              />
-              <input
-                className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
-                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                placeholder="Buscar cliente por nombre, teléfono o documento..."
-                type="text"
-                value={searchQuery}
-              />
-            </div>
-            <button
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium ${filterDebtOnly ? "border-violet-300 bg-violet-50 text-violet-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
-              onClick={() => { setFilterDebtOnly((v) => !v); setCurrentPage(1); }}
-              type="button"
-            >
-              <Filter size={13} />
-              Filtros
-            </button>
-            <button
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-              type="button"
-            >
-              <Users size={13} />
-              Segmentos
-            </button>
-            {(searchQuery || filterDebtOnly) ? (
+          <div className="mb-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={14}
+                />
+                <input
+                  className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  placeholder="Buscar cliente por nombre, teléfono o documento..."
+                  type="text"
+                  value={searchQuery}
+                />
+              </div>
               <button
-                className="flex items-center gap-1 text-sm font-medium text-violet-600 hover:text-violet-800"
-                onClick={clearFilters}
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium ${showFilters ? "border-violet-300 bg-violet-50 text-violet-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                onClick={() => setShowFilters((v) => !v)}
                 type="button"
               >
-                <RotateCcw size={12} />
-                Limpiar filtros
+                <Filter size={13} />
+                Filtros
               </button>
+              {(searchQuery || hasActiveFilters) ? (
+                <button
+                  className="flex items-center gap-1 text-sm font-medium text-violet-600 hover:text-violet-800"
+                  onClick={clearFilters}
+                  type="button"
+                >
+                  <RotateCcw size={12} />
+                  Limpiar filtros
+                </button>
+              ) : null}
+            </div>
+            {showFilters ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+                  onChange={(e) => { setSegmentFilter(e.target.value as CustomerSegment | "Todos"); setCurrentPage(1); }}
+                  value={segmentFilter}
+                >
+                  <option value="Todos">Segmento: Todos</option>
+                  <option value="VIP">VIP</option>
+                  <option value="Regular">Regular</option>
+                  <option value="Nuevo">Nuevo</option>
+                  <option value="Inactivo">Inactivo</option>
+                </select>
+                <select
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+                  onChange={(e) => { setDebtFilter(e.target.value as DebtFilter); setCurrentPage(1); }}
+                  value={debtFilter}
+                >
+                  <option value="Todos">Con deuda: Todos</option>
+                  <option value="Con deuda">Con deuda</option>
+                  <option value="Sin deuda">Sin deuda</option>
+                </select>
+                <select
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+                  onChange={(e) => { setSortOrder(e.target.value as SortOrder); setCurrentPage(1); }}
+                  value={sortOrder}
+                >
+                  <option value="Mayor deuda">Ordenar: Mayor deuda</option>
+                  <option value="Más recientes">Más recientes</option>
+                  <option value="Nombre A-Z">Nombre A-Z</option>
+                  <option value="Más compras">Más compras</option>
+                </select>
+              </div>
             ) : null}
           </div>
 
@@ -675,7 +717,7 @@ export function CustomersList() {
                 Resumen de cartera
               </h3>
               <PortfolioSummary
-                onViewPortfolio={() => { setFilterDebtOnly(true); setCurrentPage(1); }}
+                onViewPortfolio={() => { setDebtFilter("Con deuda"); setCurrentPage(1); }}
                 summary={portfolioSummary}
               />
             </div>
@@ -687,7 +729,7 @@ export function CustomersList() {
       <QuickActionsBar
         onNewCustomer={() => setIsCreateModalOpen(true)}
         onRegisterPayment={() => setRegisterPaymentModal({})}
-        onViewPortfolio={() => { setFilterDebtOnly(true); setCurrentPage(1); }}
+        onViewPortfolio={() => { setDebtFilter("Con deuda"); setCurrentPage(1); }}
       />
 
       {/* Dropdown overlay */}
@@ -1119,13 +1161,6 @@ function QuickActionsBar({
           <Users size={13} />
           Nuevo cliente
         </Link>
-        <Link
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-          href="/pos"
-        >
-          <ShoppingCart size={13} />
-          Nueva venta a crédito
-        </Link>
         <QuickActionButton
           Icon={DollarSign}
           label="Registrar pago"
@@ -1136,7 +1171,6 @@ function QuickActionsBar({
           label="Ver cartera"
           onClick={onViewPortfolio}
         />
-        <QuickActionButton Icon={MessageCircle} label="Enviar mensaje" />
       </div>
     </div>
   );

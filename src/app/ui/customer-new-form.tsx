@@ -7,8 +7,7 @@ import {
   MapPin,
   Phone,
   Save,
-  User,
-  Users
+  User
 } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
@@ -23,30 +22,14 @@ type CustomerRecord = {
 
 type ApiResponse<T> = { data?: T; error?: { message: string; details?: string[] } };
 
-const AVATAR_COLORS = [
-  "bg-violet-500","bg-blue-500","bg-emerald-500","bg-amber-500",
-  "bg-rose-500","bg-cyan-500","bg-orange-500","bg-indigo-500"
-];
-
-function getInitials(name: string): string {
-  const words = name.trim().split(/\s+/);
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-  if (name.trim().length > 0) return name.trim().slice(0, 2).toUpperCase();
-  return "?";
-}
-
-function getAvatarColor(name: string): string {
-  if (!name.trim()) return "bg-slate-300";
-  const sum = Array.from(name).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length];
-}
-
 export function CustomerNewForm() {
   const router = useRouter();
 
   const [name, setName] = useState("");
   const [cedula, setCedula] = useState("");
   const [direccion, setDireccion] = useState("");
+  const [ciudad, setCiudad] = useState("");
+  const [postal, setPostal] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -80,9 +63,6 @@ export function CustomerNewForm() {
       setIsSubmitting(false);
     }
   }
-
-  const previewInitials = name.trim() ? getInitials(name) : "?";
-  const previewColor = name.trim() ? getAvatarColor(name) : "bg-slate-200";
 
   return (
     <div className="flex min-h-full flex-col">
@@ -122,9 +102,8 @@ export function CustomerNewForm() {
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 gap-6 px-6 py-6">
-        {/* Main form */}
-        <div className="min-w-0 flex-1">
+      <div className="px-6 py-6">
+        <div className="max-w-2xl">
           <form id="new-customer-form" onSubmit={handleSubmit}>
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-5 flex items-center gap-2">
@@ -202,6 +181,46 @@ export function CustomerNewForm() {
                   </div>
                 </div>
 
+                {/* Ciudad + Código postal */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      className="mb-1.5 block text-sm font-medium text-slate-700"
+                      htmlFor="customer-ciudad"
+                    >
+                      Ciudad
+                      <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+                    </label>
+                    <input
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                      disabled={isSubmitting}
+                      id="customer-ciudad"
+                      onChange={(e) => setCiudad(e.target.value)}
+                      placeholder="Ej. Buenos Aires"
+                      type="text"
+                      value={ciudad}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className="mb-1.5 block text-sm font-medium text-slate-700"
+                      htmlFor="customer-postal"
+                    >
+                      Código postal
+                      <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+                    </label>
+                    <input
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                      disabled={isSubmitting}
+                      id="customer-postal"
+                      onChange={(e) => setPostal(e.target.value)}
+                      placeholder="Ej. 1043"
+                      type="text"
+                      value={postal}
+                    />
+                  </div>
+                </div>
+
                 {/* Phone — visual only */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="customer-phone">
@@ -247,66 +266,6 @@ export function CustomerNewForm() {
             </div>
           </form>
         </div>
-
-        {/* Sidebar */}
-        <aside className="w-72 shrink-0 space-y-4">
-          {/* Preview card */}
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-slate-950">Vista previa</h3>
-            <div className="flex flex-col items-center py-4">
-              <div
-                className={`flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white transition-colors ${previewColor}`}
-              >
-                {previewInitials}
-              </div>
-              <p className="mt-3 text-base font-semibold text-slate-950">
-                {name.trim() || "Nombre del cliente"}
-              </p>
-              <span className="mt-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-                Activo
-              </span>
-            </div>
-            <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-              {cedula.trim() ? (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Cédula / RNC</span>
-                  <span className="text-xs font-semibold text-slate-950">{cedula.trim()}</span>
-                </div>
-              ) : null}
-              {direccion.trim() ? (
-                <div className="flex items-start justify-between gap-2">
-                  <span className="shrink-0 text-xs text-slate-500">Dirección</span>
-                  <span className="text-right text-xs font-semibold text-slate-950">{direccion.trim()}</span>
-                </div>
-              ) : null}
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Deuda actual</span>
-                <span className="text-xs font-semibold text-slate-400">RD$ 0.00</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Total compras</span>
-                <span className="text-xs font-semibold text-slate-400">RD$ 0.00</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Límite de crédito</span>
-                <span className="text-xs font-semibold text-slate-950">RD$ 10,000.00</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Info panel */}
-          <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
-            <div className="flex items-start gap-2">
-              <Users className="mt-0.5 shrink-0 text-violet-500" size={15} />
-              <div>
-                <p className="text-xs font-semibold text-violet-800">Después de guardar</p>
-                <p className="mt-1 text-xs text-violet-700">
-                  Serás redirigido al historial del cliente donde podrás ver sus compras, pagos y gestionar su deuda.
-                </p>
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
     </div>
   );
