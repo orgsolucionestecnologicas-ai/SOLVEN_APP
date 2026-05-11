@@ -95,6 +95,7 @@ export function SalesList() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [viewingSale, setViewingSale] = useState<SaleRecord | null>(null);
   const [returningSale, setReturningSale] = useState<SaleRecord | null>(null);
+  const [showAllSales, setShowAllSales] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -154,9 +155,28 @@ export function SalesList() {
     setTimeout(() => setSuccessMessage(null), 4000);
   }
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const displayedSales = showAllSales
+    ? [...sales].sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
+    : [...sales]
+        .filter((s) => s.saleDate.slice(0, 10) === todayStr)
+        .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+
   return (
     <section className="px-5 py-6 sm:px-8">
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <p className="text-sm font-semibold text-slate-900">
+            {showAllSales ? "Historial completo" : "Ventas de hoy"}
+          </p>
+          <button
+            className="text-xs font-medium text-violet-600 hover:text-violet-700"
+            onClick={() => setShowAllSales((v) => !v)}
+            type="button"
+          >
+            {showAllSales ? "← Ver solo hoy" : "Ver historial completo →"}
+          </button>
+        </div>
         <button
           className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
           onClick={() => setIsModalOpen(true)}
@@ -174,12 +194,26 @@ export function SalesList() {
 
       {isLoading ? <LoadingState /> : null}
       {!isLoading && loadError ? <ErrorState message={loadError} /> : null}
-      {!isLoading && !loadError && sales.length === 0 ? <EmptyState /> : null}
-      {!isLoading && !loadError && sales.length > 0 ? (
+      {!isLoading && !loadError && displayedSales.length === 0 ? (
+        showAllSales ? <EmptyState /> : (
+          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm font-semibold text-slate-950">Sin ventas hoy.</p>
+            <p className="mt-1 text-sm text-slate-500">No hay ventas registradas para el día de hoy.</p>
+            <button
+              className="mt-2 text-sm font-medium text-violet-600 hover:text-violet-700"
+              onClick={() => setShowAllSales(true)}
+              type="button"
+            >
+              Ver historial completo →
+            </button>
+          </div>
+        )
+      ) : null}
+      {!isLoading && !loadError && displayedSales.length > 0 ? (
         <SaleCards
           onReturn={setReturningSale}
           onView={setViewingSale}
-          sales={sales}
+          sales={displayedSales}
         />
       ) : null}
 
