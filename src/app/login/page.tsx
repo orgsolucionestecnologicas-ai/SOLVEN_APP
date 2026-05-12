@@ -24,7 +24,7 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
-        router.push("/");
+        router.push("/dashboard");
       } else {
         setError("Usuario o contraseña incorrectos");
       }
