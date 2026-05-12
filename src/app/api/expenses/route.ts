@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { createExpense, listExpenses } from "../../../modules/expenses";
 import {
   type CreateExpenseInput,

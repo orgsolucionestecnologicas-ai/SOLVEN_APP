@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { getDashboardSummary } from "../../../../modules/dashboard";
 import { errorResponse, successResponse } from "../../_shared/responses";
 

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { createProduct, listProducts } from "../../../modules/products";
 import {
   type CreateProductInput,

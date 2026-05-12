@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { getActivePromotions } from "../../../../modules/promotions";
 import { errorResponse, successResponse } from "../../_shared/responses";
 

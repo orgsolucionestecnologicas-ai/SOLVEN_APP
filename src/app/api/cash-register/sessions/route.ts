@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { listSessions } from "../../../../modules/cash-register";
 import { errorResponse, successResponse } from "../../_shared/responses";
 

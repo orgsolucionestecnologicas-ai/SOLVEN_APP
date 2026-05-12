@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { createDebt, listDebts } from "../../../modules/debts";
 import {
   type CreateDebtInput,
