@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { formatARS as fmt } from "@/lib/format-currency";
 
 type ApiResponse<T> = { data?: T; error?: { message: string; details?: string[] } };
 
@@ -70,11 +71,6 @@ const CLOSE_DENOMINATIONS = [
 type CloseKey = (typeof CLOSE_DENOMINATIONS)[number]["key"];
 type BreakdownCounts = Record<CloseKey, number>;
 
-const moneyFmt = new Intl.NumberFormat("es-419", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 const dateFmt = new Intl.DateTimeFormat("es-419", {
   day: "numeric",
   month: "short",
@@ -85,10 +81,6 @@ const timeFmt = new Intl.DateTimeFormat("es-419", {
   hour: "2-digit",
   minute: "2-digit",
 });
-
-function fmt(value: number): string {
-  return `RD$${moneyFmt.format(value)}`;
-}
 
 function sumMoney(items: string[]): number {
   return items.reduce((s, v) => s + Number(v), 0);

@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { formatARS as fmtMoney } from "@/lib/format-currency";
 
 type CustomerRecord = {
   id: string;
@@ -94,10 +95,8 @@ function todayISODate(): string {
   return d.toISOString().split("T")[0];
 }
 
-const moneyFmt = new Intl.NumberFormat("es-419", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dateFmt = new Intl.DateTimeFormat("es-419", { day: "2-digit", month: "short", year: "numeric" });
 
-function fmtMoney(v: number) { return `RD$ ${moneyFmt.format(v)}`; }
 function fmtDate(v: string) { return dateFmt.format(new Date(v)); }
 
 export function CustomerPaymentForm() {

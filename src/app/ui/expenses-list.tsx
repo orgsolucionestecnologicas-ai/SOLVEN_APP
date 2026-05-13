@@ -17,6 +17,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { formatARS as formatMoney } from "@/lib/format-currency";
 
 type ExpenseRecord = {
   id: string;
@@ -45,10 +46,8 @@ const CATEGORY_BADGE_CLASSES = [
   "bg-cyan-100 text-cyan-800"
 ];
 
-const moneyFmt = new Intl.NumberFormat("es-419", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dateFmt = new Intl.DateTimeFormat("es-419", { day: "2-digit", month: "short", year: "numeric" });
 
-function formatMoney(v: number): string { return `$${moneyFmt.format(v)}`; }
 function formatDate(v: string): string { return dateFmt.format(new Date(v)); }
 
 function categoryIndex(cat: string): number {

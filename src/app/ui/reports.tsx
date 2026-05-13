@@ -24,6 +24,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { formatARS } from "@/lib/format-currency";
+
+function formatMoney(value: number | string): string {
+  return formatARS(Number(value));
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -142,15 +147,6 @@ function getChartCategory(cat: string): string {
 }
 
 // ─── Formatters & helpers ─────────────────────────────────────────────────────
-
-const moneyFormatter = new Intl.NumberFormat("es-419", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-function formatMoney(value: number | string): string {
-  return `$${moneyFormatter.format(Number(value))}`;
-}
 
 function formatShortMoney(value: number): string {
   if (value >= 1000) return `$${(value / 1000).toFixed(1)}k`;

@@ -16,6 +16,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import Link from "next/link";
+import { formatARS as formatMoney } from "@/lib/format-currency";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 type DebtRecord = {
@@ -48,10 +49,8 @@ const AVATAR_COLORS = [
   "bg-rose-500", "bg-cyan-500", "bg-orange-500", "bg-indigo-500"
 ];
 
-const moneyFmt = new Intl.NumberFormat("es-419", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dateFmt = new Intl.DateTimeFormat("es-419", { day: "2-digit", month: "short", year: "numeric" });
 
-function formatMoney(v: number): string { return `$${moneyFmt.format(v)}`; }
 function formatDate(v: string): string { return dateFmt.format(new Date(v)); }
 
 function getInitials(name: string): string {

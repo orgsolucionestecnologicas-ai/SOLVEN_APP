@@ -76,7 +76,7 @@ export default function LandingPage() {
         <div className="hero-trust">
           <div className="hero-trust-item">
             <svg width="14" height="14" fill="none" stroke="#22c55e" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>
-            Sin tarjeta de crédito
+            14 días de prueba gratis
           </div>
           <div className="hero-trust-item">
             <svg width="14" height="14" fill="none" stroke="#22c55e" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>
@@ -251,7 +251,7 @@ export default function LandingPage() {
             <div className="why-list fade-in">
               {[
                 { icon: "⚡", title: "Listo en 5 minutos", desc: "Sin instalaciones, sin configuraciones complejas. Abre tu cuenta y empieza a registrar ventas hoy." },
-                { icon: "🎯", title: "Hecho para comercios físicos", desc: "No para e-commerce, no para empresas. Para la tienda del barrio que quiere crecer con datos reales." },
+                { icon: "🎯", title: "Hecho para comercios físicos", desc: "Pensado para el comercio físico argentino que quiere crecer con información real, sin vueltas y sin complicaciones." },
                 { icon: "📱", title: "Sin conocimiento técnico", desc: "Si puedes usar WhatsApp, puedes usar SOLVEN. Interfaz clara, lenguaje simple, cero curva de aprendizaje." },
                 { icon: "🔒", title: "Tus datos, seguros siempre", desc: "Todo en la nube. Accesible desde cualquier dispositivo. Nunca pierdas información." },
               ].map(({ icon, title, desc }) => (
@@ -341,8 +341,7 @@ export default function LandingPage() {
         <div className="pricing-card fade-in">
           <div className="pricing-bg" />
           <div className="pricing-badge">✦ Plan completo</div>
-          <div className="pricing-price"><sup>$</sup>29<span style={{ fontSize: "28px", opacity: 0.5 }}>.99</span></div>
-          <div className="pricing-period">por mes · cancela cuando quieras</div>
+          <div className="pricing-price">$ 15.999 ARS / mes</div>
 
           <ul className="pricing-features">
             {[
@@ -363,7 +362,7 @@ export default function LandingPage() {
           </ul>
 
           <Link href="/login" className="pricing-btn">Comenzar ahora — 14 días gratis</Link>
-          <div className="pricing-guarantee">Sin tarjeta de crédito requerida</div>
+          <div className="pricing-guarantee">Se requiere tarjeta · Cobramos automáticamente al vencer el período de prueba</div>
         </div>
       </section>
 

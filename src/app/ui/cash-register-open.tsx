@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useMemo, useState } from "react";
+import { formatARS as fmt } from "@/lib/format-currency";
 
 type ApiResponse<T> = { data?: T; error?: { message: string } };
 
@@ -27,11 +28,6 @@ const DENOMINATIONS = [
 type DenominationKey = (typeof DENOMINATIONS)[number]["key"];
 type BreakdownCounts = Record<DenominationKey, number>;
 
-const moneyFmt = new Intl.NumberFormat("es-419", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 const dateFmt = new Intl.DateTimeFormat("es-419", {
   day: "numeric",
   month: "long",
@@ -42,10 +38,6 @@ const timeFmt = new Intl.DateTimeFormat("es-419", {
   hour: "2-digit",
   minute: "2-digit",
 });
-
-function fmt(value: number): string {
-  return `RD$${moneyFmt.format(value)}`;
-}
 
 function emptyBreakdown(): BreakdownCounts {
   return Object.fromEntries(DENOMINATIONS.map((d) => [d.key, 0])) as BreakdownCounts;

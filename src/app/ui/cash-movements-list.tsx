@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { formatARS } from "@/lib/format-currency";
 import { CashRegisterClose } from "./cash-register-close";
 import { CashRegisterOpen } from "./cash-register-open";
 
@@ -53,11 +54,10 @@ const PAGE_SIZE = 10;
 
 const DAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
-const moneyFmt = new Intl.NumberFormat("es-419", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dateFmt = new Intl.DateTimeFormat("es-419", { day: "2-digit", month: "short", year: "numeric" });
 const timeFmt = new Intl.DateTimeFormat("es-419", { hour: "2-digit", minute: "2-digit", hour12: true });
 
-function fmtMoney(v: number | string) { return `RD$ ${moneyFmt.format(Number(v))}`; }
+function fmtMoney(v: number | string) { return formatARS(Number(v)); }
 function fmtDate(v: string) { return dateFmt.format(new Date(v)); }
 function fmtTime(v: string) { return timeFmt.format(new Date(v)); }
 
@@ -673,7 +673,7 @@ function CategoryBreakdown({ categorySums }: { categorySums: Record<string, numb
             <div className="mb-1 flex items-center justify-between">
               <span className="text-xs text-slate-600">{cat}</span>
               <span className="text-xs font-semibold text-slate-950">
-                RD$ {new Intl.NumberFormat("es-419", { maximumFractionDigits: 0 }).format(amt)}
+                {fmtMoney(amt)}
               </span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">

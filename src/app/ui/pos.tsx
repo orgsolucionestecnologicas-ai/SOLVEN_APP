@@ -9,6 +9,7 @@ import {
   Copy,
   CreditCard,
   FileText,
+  Globe,
   Landmark,
   MoreHorizontal,
   Package,
@@ -25,6 +26,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { formatARS } from "@/lib/format-currency";
 import Link from "next/link";
 import { SalesList } from "./sales-list";
 
@@ -112,7 +114,7 @@ type ActivePromotionsResponse = {
   error?: { message: string };
 };
 
-type CashPaymentMethod = "Efectivo" | "Tarjeta" | "Transferencia" | "Otro";
+type CashPaymentMethod = "Efectivo" | "Tarjeta" | "Transferencia" | "VentaWeb" | "Otro";
 type PaymentMethod = CashPaymentMethod | "Fiado";
 type ActiveTab = "Venta actual" | "Historial";
 
@@ -147,6 +149,7 @@ const CASH_PAYMENT_CARDS: CashPaymentCard[] = [
   { method: "Efectivo", Icon: Wallet },
   { method: "Tarjeta", Icon: CreditCard },
   { method: "Transferencia", Icon: Landmark },
+  { method: "VentaWeb", Icon: Globe },
   { method: "Otro", Icon: MoreHorizontal },
 ];
 
@@ -2208,7 +2211,7 @@ function PrintModal({
 
   function handlePrintTicket() {
     const rows = cartItems
-      .map((item) => `<tr><td>${item.productName}</td><td style="text-align:center">${item.quantity}</td><td style="text-align:right">${moneyFormatter.format(item.unitPrice * item.quantity)}</td></tr>`)
+      .map((item) => `<tr><td>${item.productName}</td><td style="text-align:center">${item.quantity}</td><td style="text-align:right">${formatARS(item.unitPrice * item.quantity)}</td></tr>`)
       .join("");
     openPrintWindow(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
       body{font-family:monospace;width:72mm;margin:0 auto;padding:4mm;font-size:11px}
@@ -2225,14 +2228,14 @@ function PrintModal({
       <table><thead><tr><th style="text-align:left">Producto</th><th>Cant.</th><th style="text-align:right">Total</th></tr></thead>
       <tbody>${rows}</tbody></table>
       <hr style="border-style:dashed"/>
-      <p class="total center">Total: ${moneyFormatter.format(total)}</p>
+      <p class="total center">Total: ${formatARS(total)}</p>
       <p class="center" style="margin-top:8px;font-size:10px">¡Gracias por su compra!</p>
     </body></html>`);
   }
 
   function handlePrintInvoice() {
     const rows = cartItems
-      .map((item) => `<tr><td>${item.productName}</td><td style="text-align:center">${item.quantity}</td><td style="text-align:right">${moneyFormatter.format(item.unitPrice)}</td><td style="text-align:right">${moneyFormatter.format(item.unitPrice * item.quantity)}</td></tr>`)
+      .map((item) => `<tr><td>${item.productName}</td><td style="text-align:center">${item.quantity}</td><td style="text-align:right">${formatARS(item.unitPrice)}</td><td style="text-align:right">${formatARS(item.unitPrice * item.quantity)}</td></tr>`)
       .join("");
     openPrintWindow(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
       body{font-family:sans-serif;max-width:800px;margin:0 auto;padding:24px;font-size:13px;color:#1e293b}
@@ -2251,7 +2254,7 @@ function PrintModal({
       </div>
       <table><thead><tr><th>Producto</th><th style="text-align:center">Cant.</th><th style="text-align:right">Precio unit.</th><th style="text-align:right">Total</th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr class="total-row"><td colspan="3">Total</td><td style="text-align:right">${moneyFormatter.format(total)}</td></tr></tfoot></table>
+      <tfoot><tr class="total-row"><td colspan="3">Total</td><td style="text-align:right">${formatARS(total)}</td></tr></tfoot></table>
       <div class="footer">Tienda Demo · ¡Gracias por su compra!</div>
     </body></html>`);
   }
@@ -2262,7 +2265,7 @@ function PrintModal({
         <div className="border-b border-emerald-100 bg-emerald-50 px-6 py-4">
           <p className="text-sm font-semibold text-emerald-800">✓ Venta registrada</p>
           <p className="mt-0.5 text-xs text-emerald-600">
-            #{saleNumber} · {moneyFormatter.format(total)}
+            #{saleNumber} · {formatARS(total)}
           </p>
         </div>
         <div className="space-y-2 px-6 py-4">
@@ -2306,14 +2309,9 @@ function PrintModal({
 }
 
 function formatMoney(value: string) {
-  return moneyFormatter.format(Number(value));
+  return formatARS(Number(value));
 }
 
 function formatMoneyNum(value: number) {
-  return moneyFormatter.format(value);
+  return formatARS(value);
 }
-
-const moneyFormatter = new Intl.NumberFormat("es-419", {
-  maximumFractionDigits: 2,
-  minimumFractionDigits: 2,
-});

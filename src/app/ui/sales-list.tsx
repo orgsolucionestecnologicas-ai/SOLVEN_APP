@@ -2,6 +2,7 @@
 
 import { Eye, Printer, RotateCcw } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
+import { formatARS } from "@/lib/format-currency";
 
 type SaleItemRecord = {
   id: string;
@@ -1137,17 +1138,12 @@ function EmptyState() {
 }
 
 function formatMoney(value: string) {
-  return moneyFormatter.format(Number(value));
+  return formatARS(Number(value));
 }
 
 function formatDateTime(value: string) {
   return dateTimeFormatter.format(new Date(value));
 }
-
-const moneyFormatter = new Intl.NumberFormat("es-419", {
-  maximumFractionDigits: 2,
-  minimumFractionDigits: 2
-});
 
 const numberFormatter = new Intl.NumberFormat("es-419", {
   maximumFractionDigits: 0

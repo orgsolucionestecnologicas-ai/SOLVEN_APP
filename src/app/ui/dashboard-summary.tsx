@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatARS as formatMXN } from "@/lib/format-currency";
 import Link from "next/link";
 import {
   BarChart2,
@@ -698,13 +699,6 @@ function formatCompact(value: number): string {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000)     return `$${(value / 1_000).toFixed(1)}K`;
   return `$${Math.round(value)}`;
-}
-
-function formatMXN(value: number): string {
-  return new Intl.NumberFormat("es-419", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 }
 
 function formatFullDate(date: Date): string {

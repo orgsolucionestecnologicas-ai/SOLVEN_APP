@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { formatARS as formatMoney } from "@/lib/format-currency";
 
 type CustomerRecord = {
   id: string;
@@ -148,11 +149,6 @@ function arcPath(cx: number, cy: number, r: number, start: number, end: number):
   return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`;
 }
 
-const moneyFormatter = new Intl.NumberFormat("es-419", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-});
-
 const dateFormatter = new Intl.DateTimeFormat("es-419", {
   day: "2-digit",
   month: "short",
@@ -160,10 +156,6 @@ const dateFormatter = new Intl.DateTimeFormat("es-419", {
 });
 
 const numberFormatter = new Intl.NumberFormat("es-419", { maximumFractionDigits: 0 });
-
-function formatMoney(value: number): string {
-  return `$${moneyFormatter.format(value)}`;
-}
 
 function formatDate(value: string): string {
   return dateFormatter.format(new Date(value));
