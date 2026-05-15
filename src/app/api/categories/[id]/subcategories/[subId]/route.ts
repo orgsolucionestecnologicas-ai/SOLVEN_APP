@@ -1,0 +1,28 @@
+export const dynamic = "force-dynamic";
+
+import {
+  deleteSubcategory,
+  SubcategoryHasProductsError,
+  SubcategoryNotFoundError
+} from "../../../../../../modules/categories";
+import { errorResponse, successResponse } from "../../../../_shared/responses";
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string; subId: string }> }
+) {
+  const { subId } = await params;
+
+  try {
+    await deleteSubcategory(subId);
+    return successResponse({ deleted: true });
+  } catch (error) {
+    if (error instanceof SubcategoryNotFoundError) {
+      return errorResponse("Subcategoría no encontrada.", 404);
+    }
+    if (error instanceof SubcategoryHasProductsError) {
+      return errorResponse(error.message, 400);
+    }
+    return errorResponse("No se pudo eliminar la subcategoría.");
+  }
+}

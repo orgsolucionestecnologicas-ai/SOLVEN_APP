@@ -1,5 +1,6 @@
 import type { Customer } from "@prisma/client";
 
+import { generateCode } from "@/lib/generate-code";
 import { prisma } from "@/lib/prisma";
 
 import {
@@ -13,9 +14,13 @@ export async function createCustomer(
   customerInput: CreateCustomerInput
 ): Promise<Customer> {
   const validatedCustomer = validateCreateCustomerInput(customerInput);
+  const customerCode = await generateCode("CLI");
 
   return prisma.customer.create({
-    data: validatedCustomer
+    data: {
+      ...validatedCustomer,
+      customerCode
+    }
   });
 }
 

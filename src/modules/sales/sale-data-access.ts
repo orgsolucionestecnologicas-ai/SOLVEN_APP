@@ -1,9 +1,11 @@
-import { Prisma, type Product, type Sale, type SaleItem } from "@prisma/client";
+import { Prisma, type Product, type Sale, type SaleItem, type Service } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
 import {
   type CreateSaleInput,
+  type ValidatedProductSaleItemInput,
+  type ValidatedServiceSaleItemInput,
   type ValidatedSaleItemInput,
   validateCreateSaleInput
 } from "./sale-validation";
@@ -21,7 +23,10 @@ export type SaleWithCustomer = Sale & { customer: { name: string } | null };
 
 export type SaleListRecord = Sale & {
   customer: { name: string } | null;
-  items: (SaleItem & { product: { name: string } | null })[];
+  items: (SaleItem & {
+    product: { name: string } | null;
+    service: { name: string } | null;
+  })[];
 };
 
 export class SaleProductNotFoundError extends Error {
@@ -38,6 +43,25 @@ export class SaleInsufficientStockError extends Error {
   }
 }
 
+export class SaleServiceNotFoundError extends Error {
+  constructor(serviceId: string) {
+    super(`Service ${serviceId} was not found.`);
+    this.name = "SaleServiceNotFoundError";
+  }
+}
+
+function isProductItem(
+  item: ValidatedSaleItemInput
+): item is ValidatedProductSaleItemInput {
+  return "productId" in item;
+}
+
+function isServiceItem(
+  item: ValidatedSaleItemInput
+): item is ValidatedServiceSaleItemInput {
+  return "serviceId" in item;
+}
+
 export async function createSale(
   saleInput: CreateSaleWithPromotionsInput
 ): Promise<SaleWithItems> {
@@ -51,37 +75,40 @@ export async function createSale(
       : new Prisma.Decimal(0);
 
   return prisma.$transaction(async (transaction) => {
-    const productIds = [
-      ...new Set(validatedSale.items.map((item) => item.productId))
-    ];
-    const products = await transaction.product.findMany({
-      where: {
-        id: {
-          in: productIds
-        }
-      }
-    });
-    const productsById = new Map(
-      products.map((product) => [product.id, product])
+    const productItemInputs = validatedSale.items.filter(isProductItem);
+    const serviceItemInputs = validatedSale.items.filter(isServiceItem);
+
+    const productIds = [...new Set(productItemInputs.map((item) => item.productId))];
+    const serviceIds = [...new Set(serviceItemInputs.map((item) => item.serviceId))];
+
+    const [products, services] = await Promise.all([
+      transaction.product.findMany({ where: { id: { in: productIds } } }),
+      transaction.service.findMany({ where: { id: { in: serviceIds } } })
+    ]);
+
+    const productsById = new Map(products.map((product) => [product.id, product]));
+    const servicesById = new Map(services.map((service) => [service.id, service]));
+
+    const productSaleItems = productItemInputs.map((item) =>
+      buildProductSaleItem(item, productsById)
     );
-    const saleItems = validatedSale.items.map((item) =>
-      buildSaleItem(item, productsById)
+    const serviceSaleItems = serviceItemInputs.map((item) =>
+      buildServiceSaleItem(item, servicesById)
     );
-    const quantityByProductId = getQuantityByProductId(saleItems);
-    const totalAmount = saleItems.reduce(
+    const allSaleItems = [...productSaleItems, ...serviceSaleItems];
+
+    const quantityByProductId = getQuantityByProductId(productSaleItems);
+    const totalAmount = allSaleItems.reduce(
       (total, item) => total.plus(item.total),
       new Prisma.Decimal(0)
     );
+
     const sale = await transaction.sale.create({
       data: {
         paymentType: validatedSale.paymentType,
         customer:
           validatedSale.paymentType === "CREDIT"
-            ? {
-                connect: {
-                  id: validatedSale.customerId
-                }
-              }
+            ? { connect: { id: validatedSale.customerId } }
             : undefined,
         totalAmount,
         discountAmount
@@ -89,9 +116,10 @@ export async function createSale(
     });
 
     await transaction.saleItem.createMany({
-      data: saleItems.map((item) => ({
+      data: allSaleItems.map((item) => ({
         saleId: sale.id,
-        productId: item.productId,
+        productId: "productId" in item ? item.productId : null,
+        serviceId: "serviceId" in item ? item.serviceId : null,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         total: item.total
@@ -114,40 +142,32 @@ export async function createSale(
       );
     }
 
-    await transaction.inventoryMovement.createMany({
-      data: buildInventoryMovements(saleItems, stockReductionsByProductId).map((item) => ({
-        productId: item.productId,
-        reason: `SALE:${sale.id}`,
-        previousStock: item.previousStock,
-        newStock: item.newStock,
-        quantityChange: -item.quantity
-      }))
-    });
+    if (productSaleItems.length > 0) {
+      await transaction.inventoryMovement.createMany({
+        data: buildInventoryMovements(productSaleItems, stockReductionsByProductId).map(
+          (item) => ({
+            productId: item.productId,
+            reason: `SALE:${sale.id}`,
+            previousStock: item.previousStock,
+            newStock: item.newStock,
+            quantityChange: -item.quantity
+          })
+        )
+      });
+    }
 
     if (validatedSale.paymentType === "CREDIT") {
       const debt = await transaction.debt.create({
         data: {
-          customer: {
-            connect: {
-              id: validatedSale.customerId
-            }
-          },
+          customer: { connect: { id: validatedSale.customerId } },
           totalAmount,
           remainingAmount: totalAmount
         }
       });
 
       await transaction.sale.update({
-        where: {
-          id: sale.id
-        },
-        data: {
-          debt: {
-            connect: {
-              id: debt.id
-            }
-          }
-        }
+        where: { id: sale.id },
+        data: { debt: { connect: { id: debt.id } } }
       });
     } else {
       await transaction.cashMovement.create({
@@ -161,56 +181,45 @@ export async function createSale(
     }
 
     if (promotionIds.length > 0) {
-      const perPromotionDiscount =
-        promotionIds.length > 0
-          ? discountAmount.div(promotionIds.length)
-          : new Prisma.Decimal(0);
+      const perPromotionDiscount = discountAmount.div(promotionIds.length);
 
       await transaction.promotionUsage.createMany({
         data: promotionIds.map((promotionId) => ({
           promotionId,
           saleId: sale.id,
-          customerId: validatedSale.paymentType === "CREDIT"
-            ? validatedSale.customerId
-            : null,
+          customerId:
+            validatedSale.paymentType === "CREDIT"
+              ? validatedSale.customerId
+              : null,
           discountAmount: perPromotionDiscount
         }))
       });
     }
 
     return transaction.sale.findUniqueOrThrow({
-      where: {
-        id: sale.id
-      },
-      include: {
-        items: true
-      }
+      where: { id: sale.id },
+      include: { items: true }
     });
   }, { timeout: 15000 });
 }
 
 export async function listSales(): Promise<SaleListRecord[]> {
   return prisma.sale.findMany({
-    orderBy: {
-      saleDate: "desc"
-    },
+    orderBy: { saleDate: "desc" },
     include: {
-      customer: {
-        select: { name: true }
-      },
+      customer: { select: { name: true } },
       items: {
         include: {
-          product: {
-            select: { name: true }
-          }
+          product: { select: { name: true } },
+          service: { select: { name: true } }
         }
       }
     }
   });
 }
 
-function buildSaleItem(
-  item: ValidatedSaleItemInput,
+function buildProductSaleItem(
+  item: ValidatedProductSaleItemInput,
   productsById: Map<string, Product>
 ) {
   const product = productsById.get(item.productId);
@@ -227,11 +236,26 @@ function buildSaleItem(
   };
 }
 
+function buildServiceSaleItem(
+  item: ValidatedServiceSaleItemInput,
+  servicesById: Map<string, Service>
+) {
+  const service = servicesById.get(item.serviceId);
+
+  if (!service) {
+    throw new SaleServiceNotFoundError(item.serviceId);
+  }
+
+  return {
+    serviceId: item.serviceId,
+    quantity: item.quantity,
+    unitPrice: service.price,
+    total: service.price.mul(item.quantity)
+  };
+}
+
 function getQuantityByProductId(
-  saleItems: Array<{
-    productId: string;
-    quantity: number;
-  }>
+  saleItems: Array<{ productId: string; quantity: number }>
 ) {
   const quantityByProductId = new Map<string, number>();
 
@@ -282,10 +306,7 @@ async function reduceProductStock(
 }
 
 function buildInventoryMovements(
-  saleItems: Array<{
-    productId: string;
-    quantity: number;
-  }>,
+  saleItems: Array<{ productId: string; quantity: number }>,
   stockReductionsByProductId: Map<string, StockReductionResult>
 ) {
   const currentStockByProductId = new Map(

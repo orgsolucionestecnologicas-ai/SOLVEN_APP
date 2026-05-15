@@ -1,5 +1,6 @@
 export type CreateSaleItemInput = {
-  productId: string;
+  productId?: string;
+  serviceId?: string;
   quantity: number;
 };
 
@@ -11,10 +12,19 @@ export type CreateSaleInput = {
   customerId?: string;
 };
 
-export type ValidatedSaleItemInput = {
+export type ValidatedProductSaleItemInput = {
   productId: string;
   quantity: number;
 };
+
+export type ValidatedServiceSaleItemInput = {
+  serviceId: string;
+  quantity: number;
+};
+
+export type ValidatedSaleItemInput =
+  | ValidatedProductSaleItemInput
+  | ValidatedServiceSaleItemInput;
 
 export type ValidatedCashSaleInput = {
   items: ValidatedSaleItemInput[];
@@ -59,22 +69,32 @@ export function validateCreateSaleInput(
   }
 
   const items = Array.isArray(saleInput.items) ? saleInput.items : [];
-  const validatedItems = items.map((item) => {
-    const productId =
-      typeof item.productId === "string" ? item.productId.trim() : "";
+  const validatedItems = items.map((item): ValidatedSaleItemInput => {
+    const hasProduct = typeof item.productId === "string";
+    const hasService = typeof item.serviceId === "string";
+    const productId = hasProduct ? (item.productId as string).trim() : "";
+    const serviceId = hasService ? (item.serviceId as string).trim() : "";
 
-    if (productId.length === 0) {
+    if (!hasProduct && !hasService) {
+      validationErrors.push("Sale item must have a product or service id.");
+    } else if (hasProduct && hasService) {
+      validationErrors.push(
+        "Sale item cannot have both product id and service id."
+      );
+    } else if (hasProduct && productId.length === 0) {
       validationErrors.push("Sale item product id is required.");
+    } else if (hasService && serviceId.length === 0) {
+      validationErrors.push("Sale item service id is required.");
     }
 
     if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
       validationErrors.push("Sale item quantity must be a positive integer.");
     }
 
-    return {
-      productId,
-      quantity: item.quantity
-    };
+    if (hasService && !hasProduct) {
+      return { serviceId, quantity: item.quantity };
+    }
+    return { productId, quantity: item.quantity };
   });
 
   if (validationErrors.length > 0) {

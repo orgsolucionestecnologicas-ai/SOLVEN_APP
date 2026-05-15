@@ -1,9 +1,13 @@
 export type CreateCustomerInput = {
   name: string;
+  phone?: string;
+  email?: string;
 };
 
 export type ValidatedCustomerInput = {
   name: string;
+  phone?: string | null;
+  email?: string | null;
 };
 
 export class CustomerValidationError extends Error {
@@ -32,8 +36,19 @@ export function validateCreateCustomerInput(
     throw new CustomerValidationError(validationErrors);
   }
 
+  const phone =
+    typeof customerInput.phone === "string"
+      ? customerInput.phone.trim() || null
+      : undefined;
+  const email =
+    typeof customerInput.email === "string"
+      ? customerInput.email.trim() || null
+      : undefined;
+
   return {
-    name
+    name,
+    ...(phone !== undefined ? { phone } : {}),
+    ...(email !== undefined ? { email } : {})
   };
 }
 

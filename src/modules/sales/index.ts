@@ -4,6 +4,7 @@ export {
   listSales,
   SaleInsufficientStockError,
   SaleProductNotFoundError,
+  SaleServiceNotFoundError,
   type SaleListRecord,
   type SaleWithCustomer,
   type SaleWithItems
@@ -12,7 +13,9 @@ export {
   SaleValidationError,
   type CreateSaleInput,
   type CreateSaleItemInput,
+  type ValidatedProductSaleItemInput,
   type ValidatedSaleInput,
   type ValidatedSaleItemInput,
+  type ValidatedServiceSaleItemInput,
   validateCreateSaleInput
 } from "./sale-validation";
