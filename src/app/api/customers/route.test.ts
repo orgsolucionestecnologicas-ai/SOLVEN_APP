@@ -87,6 +87,9 @@ describe("customers API route", () => {
 const customerJson = {
   id: "customer-1",
   name: "Maria Lopez",
+  phone: null,
+  email: null,
+  customerCode: null,
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z"
 };
@@ -94,6 +97,9 @@ const customerJson = {
 function buildCustomerRecord(): Awaited<ReturnType<typeof createCustomer>> {
   return {
     ...customerJson,
+    phone: null,
+    email: null,
+    customerCode: null,
     createdAt: new Date(customerJson.createdAt),
     updatedAt: new Date(customerJson.updatedAt)
   };

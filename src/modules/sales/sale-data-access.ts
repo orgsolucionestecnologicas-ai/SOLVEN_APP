@@ -21,7 +21,7 @@ export type SaleWithCustomer = Sale & { customer: { name: string } | null };
 
 export type SaleListRecord = Sale & {
   customer: { name: string } | null;
-  items: (SaleItem & { product: { name: string } })[];
+  items: (SaleItem & { product: { name: string } | null })[];
 };
 
 export class SaleProductNotFoundError extends Error {
