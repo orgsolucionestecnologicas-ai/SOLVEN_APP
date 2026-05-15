@@ -30,6 +30,8 @@ export function CustomerNewForm() {
   const [direccion, setDireccion] = useState("");
   const [ciudad, setCiudad] = useState("");
   const [postal, setPostal] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -45,7 +47,11 @@ export function CustomerNewForm() {
       const res = await fetch("/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed })
+        body: JSON.stringify({
+          name: trimmed,
+          ...(phone.trim() ? { phone: phone.trim() } : {}),
+          ...(email.trim() ? { email: email.trim() } : {})
+        })
       });
       const body = (await res.json()) as ApiResponse<CustomerRecord>;
 
@@ -221,38 +227,42 @@ export function CustomerNewForm() {
                   </div>
                 </div>
 
-                {/* Phone — visual only */}
+                {/* Phone */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="customer-phone">
                     Teléfono
-                    <span className="ml-1.5 text-xs font-normal text-slate-400">(próximamente)</span>
+                    <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
                   </label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                     <input
-                      className="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-400 placeholder:text-slate-300"
-                      disabled
+                      className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                      disabled={isSubmitting}
                       id="customer-phone"
-                      placeholder="809-000-0000"
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="11 1234-5678"
                       type="tel"
+                      value={phone}
                     />
                   </div>
                 </div>
 
-                {/* Email — visual only */}
+                {/* Email */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="customer-email">
                     Correo electrónico
-                    <span className="ml-1.5 text-xs font-normal text-slate-400">(próximamente)</span>
+                    <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                     <input
-                      className="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-400 placeholder:text-slate-300"
-                      disabled
+                      className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                      disabled={isSubmitting}
                       id="customer-email"
+                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="cliente@email.com"
                       type="email"
+                      value={email}
                     />
                   </div>
                 </div>

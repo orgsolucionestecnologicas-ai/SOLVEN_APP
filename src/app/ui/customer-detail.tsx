@@ -26,6 +26,7 @@ import { formatARS as fmtMoney } from "@/lib/format-currency";
 type CustomerRecord = {
   id: string;
   name: string;
+  customerCode?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -381,6 +382,8 @@ export function CustomerDetail() {
               </div>
               <p className="mt-0.5 text-sm text-slate-500">{phone} · {email}</p>
               <p className="text-xs text-slate-400">
+                {customer.customerCode ? <span className="font-mono font-medium text-slate-600">{customer.customerCode}</span> : null}
+                {customer.customerCode ? " · " : null}
                 Cédula: {cedula} · Cliente desde: {fmtDate(customer.createdAt)}
               </p>
             </div>

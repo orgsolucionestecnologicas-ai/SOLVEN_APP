@@ -655,12 +655,12 @@ export function InventoryAdjustForm() {
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className="text-sm text-slate-700">
-                                RD$ {moneyFmt.format(item.costPrice)}
+                                AR$ {moneyFmt.format(item.costPrice)}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className="text-sm font-medium text-rose-600">
-                                RD${" "}
+                                AR${" "}
                                 {moneyFmt.format(item.quantity * item.costPrice)}
                               </span>
                             </td>
@@ -721,7 +721,7 @@ export function InventoryAdjustForm() {
                     Costo total de las unidades
                   </span>
                   <span className="text-sm font-semibold text-slate-950">
-                    RD$ {moneyFmt.format(costoTotal)}
+                    AR$ {moneyFmt.format(costoTotal)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -729,7 +729,7 @@ export function InventoryAdjustForm() {
                     Impuestos (ITBIS 18%)
                   </span>
                   <span className="text-sm font-semibold text-slate-950">
-                    RD$ {moneyFmt.format(impuestos)}
+                    AR$ {moneyFmt.format(impuestos)}
                   </span>
                 </div>
                 <div className="border-t border-slate-200 pt-3">
@@ -738,7 +738,7 @@ export function InventoryAdjustForm() {
                       Valor total del ajuste
                     </span>
                     <span className="text-lg font-bold text-rose-600">
-                      RD$ {moneyFmt.format(valorTotal)}
+                      AR$ {moneyFmt.format(valorTotal)}
                     </span>
                   </div>
                 </div>
@@ -799,7 +799,7 @@ export function InventoryAdjustForm() {
                         Valor total del ajuste
                       </span>
                       <span className="text-base font-bold text-rose-600">
-                        RD$ {moneyFmt.format(valorTotal)}
+                        AR$ {moneyFmt.format(valorTotal)}
                       </span>
                     </div>
                   </div>
@@ -808,7 +808,7 @@ export function InventoryAdjustForm() {
                       Disminución de inventario
                     </span>
                     <span className="text-xs font-semibold text-rose-600">
-                      - RD$ {moneyFmt.format(costoTotal)}
+                      - AR$ {moneyFmt.format(costoTotal)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -855,7 +855,7 @@ export function InventoryAdjustForm() {
                       Valor total del ajuste
                     </span>
                     <span className="text-xs font-semibold text-rose-600">
-                      - RD$ {moneyFmt.format(valorTotal)}
+                      - AR$ {moneyFmt.format(valorTotal)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">

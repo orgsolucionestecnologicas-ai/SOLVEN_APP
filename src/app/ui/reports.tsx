@@ -213,6 +213,33 @@ async function fetchData<T>(url: string): Promise<T | null> {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+type Period = "today" | "week" | "month" | "custom";
+
+function getPeriodRange(period: Period, customStart: string, customEnd: string): { start: Date; end: Date } {
+  const now = new Date();
+  if (period === "today") {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return { start, end };
+  }
+  if (period === "week") {
+    const start = new Date(now);
+    start.setDate(now.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return { start, end };
+  }
+  if (period === "custom" && customStart && customEnd) {
+    const [sy, sm, sd] = customStart.split("-").map(Number);
+    const [ey, em, ed] = customEnd.split("-").map(Number);
+    return {
+      start: new Date(sy, (sm ?? 1) - 1, sd ?? 1, 0, 0, 0, 0),
+      end: new Date(ey, (em ?? 1) - 1, ed ?? 1, 23, 59, 59, 999)
+    };
+  }
+  return getMonthRange(0);
+}
+
 export function Reports() {
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
@@ -220,6 +247,9 @@ export function Reports() {
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("Resumen general");
+  const [selectedPeriod, setSelectedPeriod] = useState<Period>("month");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
 
   useEffect(() => {
     let isActive = true;
@@ -248,7 +278,10 @@ export function Reports() {
     return () => { isActive = false; };
   }, []);
 
-  const currentMonth = useMemo(() => getMonthRange(0), []);
+  const currentMonth = useMemo(
+    () => getPeriodRange(selectedPeriod, customStart, customEnd),
+    [selectedPeriod, customStart, customEnd]
+  );
   const previousMonth = useMemo(() => getMonthRange(-1), []);
 
   const currentSales = useMemo(
@@ -357,28 +390,45 @@ export function Reports() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-              type="button"
-            >
-              <Calendar className="text-slate-400" size={14} />
-              {formatMonthLabel(0)}
-              <ChevronDown className="text-slate-400" size={13} />
-            </button>
-            <button
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 hover:bg-slate-50"
-              type="button"
-            >
-              Comparar con: {formatMonthLabel(-1)}
-              <ChevronDown className="text-slate-400" size={13} />
-            </button>
-            <button
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-              type="button"
-            >
-              <Filter className="text-slate-400" size={14} />
-              Filtros avanzados
-            </button>
+            {(
+              [
+                { key: "today", label: "Hoy" },
+                { key: "week", label: "7 días" },
+                { key: "month", label: "Este mes" },
+                { key: "custom", label: "Personalizado" },
+              ] as { key: Period; label: string }[]
+            ).map(({ key, label }) => (
+              <button
+                key={key}
+                className={
+                  selectedPeriod === key
+                    ? "inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white"
+                    : "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                }
+                onClick={() => setSelectedPeriod(key)}
+                type="button"
+              >
+                {key === "month" ? <Calendar className={selectedPeriod === key ? "text-white/70" : "text-slate-400"} size={14} /> : null}
+                {label}
+              </button>
+            ))}
+            {selectedPeriod === "custom" ? (
+              <div className="flex items-center gap-1">
+                <input
+                  className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:border-violet-500 focus:outline-none"
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  type="date"
+                  value={customStart}
+                />
+                <span className="text-xs text-slate-400">–</span>
+                <input
+                  className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:border-violet-500 focus:outline-none"
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  type="date"
+                  value={customEnd}
+                />
+              </div>
+            ) : null}
             <button
               className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700"
               onClick={() => window.print()}
@@ -2406,7 +2456,7 @@ function ReporteMensualTab({
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">#</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Producto</th>
                   <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">Cantidad</th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">Ventas (RD$)</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">Ventas (AR$)</th>
                   <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">% del total</th>
                 </tr>
               </thead>

@@ -6,14 +6,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
-  LayoutGrid,
-  LayoutList,
   MoreHorizontal,
   Package,
   Pencil,
   Plus,
   RotateCcw,
-  Upload,
+  Tag,
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -46,6 +44,26 @@ type EditProductResponse = {
 
 type StockAdjustmentResponse = {
   data?: { product: ProductRecord; inventoryMovement: { id: string } };
+  error?: { message: string; details?: string[] };
+};
+
+type ServiceRecord = {
+  id: string;
+  code: string;
+  name: string;
+  price: string;
+  description?: string | null;
+  isActive: boolean;
+  createdAt: string;
+};
+
+type ServicesResponse = {
+  data?: ServiceRecord[];
+  error?: { message: string };
+};
+
+type CreateServiceResponse = {
+  data?: ServiceRecord;
   error?: { message: string; details?: string[] };
 };
 
@@ -107,7 +125,11 @@ export function ProductsInventory() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [activeMainTab, setActiveMainTab] = useState<"Productos" | "Servicios">("Productos");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [services, setServices] = useState<ServiceRecord[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null);
   const [adjustingProduct, setAdjustingProduct] = useState<ProductRecord | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -162,6 +184,28 @@ export function ProductsInventory() {
   useEffect(() => {
     localStorage.setItem("solven_categories", JSON.stringify(customCategories));
   }, [customCategories]);
+
+  useEffect(() => {
+    if (activeMainTab !== "Servicios") return;
+    let isActive = true;
+    setServicesLoading(true);
+
+    async function loadServices() {
+      try {
+        const res = await fetch("/api/services", { headers: { Accept: "application/json" } });
+        const body = (await res.json()) as ServicesResponse;
+        if (!isActive) return;
+        setServices(body.data ?? []);
+      } catch {
+        if (isActive) setServices([]);
+      } finally {
+        if (isActive) setServicesLoading(false);
+      }
+    }
+
+    void loadServices();
+    return () => { isActive = false; };
+  }, [activeMainTab, refreshKey]);
 
   const allCategories = useMemo(
     () => ["Todas", ...DEFAULT_PRODUCT_CATEGORIES, ...customCategories],
@@ -250,6 +294,12 @@ export function ProductsInventory() {
     showSuccess("Stock actualizado exitosamente.");
   }
 
+  function handleServiceCreated() {
+    setIsServiceModalOpen(false);
+    setRefreshKey((k) => k + 1);
+    showSuccess("Servicio creado exitosamente.");
+  }
+
   function clearFilters() {
     setSearchQuery("");
     setStatusFilter("Todos");
@@ -274,11 +324,12 @@ export function ProductsInventory() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            className="flex items-center gap-1.5 rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            className="flex items-center gap-1.5 rounded-lg border border-violet-300 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50"
+            onClick={() => setIsServiceModalOpen(true)}
             type="button"
           >
-            <Upload size={14} />
-            Importar productos
+            <Plus size={14} />
+            Agregar servicio
           </button>
           <button
             className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700"
@@ -297,8 +348,87 @@ export function ProductsInventory() {
         </div>
       ) : null}
 
+      {/* Main tabs */}
+      <div className="border-b border-slate-200 px-6">
+        <div className="flex">
+          {(["Productos", "Servicios"] as const).map((tab) => (
+            <button
+              key={tab}
+              className={
+                activeMainTab === tab
+                  ? "border-b-2 border-violet-600 px-4 py-3 text-sm font-semibold text-violet-700"
+                  : "border-b-2 border-transparent px-4 py-3 text-sm font-medium text-slate-500 hover:text-slate-800"
+              }
+              onClick={() => setActiveMainTab(tab)}
+              type="button"
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Services panel */}
+      {activeMainTab === "Servicios" ? (
+        <div className="px-5 py-5">
+          {servicesLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />
+              ))}
+            </div>
+          ) : services.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50">
+                <Tag className="text-violet-400" size={22} />
+              </div>
+              <p className="text-sm font-medium text-slate-700">Sin servicios registrados</p>
+              <p className="mt-1 text-xs text-slate-400">{'Crea tu primer servicio con el botón "Agregar servicio"'}</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200 bg-white">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Código</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Servicio</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Precio</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {services.map((svc) => (
+                      <tr key={svc.id} className="hover:bg-slate-50/50">
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-xs text-slate-500">{svc.code}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-medium text-slate-950">{svc.name}</p>
+                          {svc.description ? (
+                            <p className="text-xs text-slate-400">{svc.description}</p>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-sm font-medium text-slate-950">{formatMoney(svc.price)}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${svc.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                            {svc.isActive ? "Activo" : "Inactivo"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
+
       {/* Body */}
-      <div className="flex border-t border-slate-200">
+      <div className={`flex border-t border-slate-200 ${activeMainTab === "Servicios" ? "hidden" : ""}`}>
         {/* Left sidebar */}
         <aside className="w-52 shrink-0 border-r border-slate-200 px-3 py-4 lg:w-60">
           <div className="mb-3 flex items-center justify-between">
@@ -399,20 +529,6 @@ export function ProductsInventory() {
                 <Filter size={13} />
                 Filtros
               </button>
-              <div className="flex rounded-lg border border-slate-200 p-0.5">
-                <button
-                  className="rounded-md bg-violet-50 p-1.5 text-violet-600"
-                  type="button"
-                >
-                  <LayoutGrid size={14} />
-                </button>
-                <button
-                  className="rounded-md p-1.5 text-slate-400 hover:text-slate-600"
-                  type="button"
-                >
-                  <LayoutList size={14} />
-                </button>
-              </div>
             </div>
 
             {showFilters ? (
@@ -657,6 +773,13 @@ export function ProductsInventory() {
             setCustomCategories((prev) => prev.filter((c) => c !== name))
           }
           products={products}
+        />
+      ) : null}
+
+      {isServiceModalOpen ? (
+        <CreateServiceModal
+          onClose={() => setIsServiceModalOpen(false)}
+          onSuccess={handleServiceCreated}
         />
       ) : null}
     </div>
@@ -1553,6 +1676,135 @@ function EmptyState({ onClear }: { onClear: () => void }) {
       >
         Limpiar filtros
       </button>
+    </div>
+  );
+}
+
+type CreateServiceModalProps = {
+  onClose: () => void;
+  onSuccess: () => void;
+};
+
+function CreateServiceModal({ onClose, onSuccess }: CreateServiceModalProps) {
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch("/api/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          price: Number(price),
+          ...(description.trim() ? { description: description.trim() } : {})
+        })
+      });
+      const responseBody = (await response.json()) as CreateServiceResponse;
+
+      if (!response.ok || !responseBody.data) {
+        const errorDetail = responseBody.error?.details?.[0];
+        const errorMessage = responseBody.error?.message;
+        setSubmitError(errorDetail ?? errorMessage ?? "No se pudo guardar el servicio.");
+        return;
+      }
+
+      onSuccess();
+    } catch {
+      setSubmitError("No se pudo guardar el servicio.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">Nuevo servicio</h2>
+          <button className="text-slate-400 hover:text-slate-700" onClick={onClose} type="button">✕</button>
+        </div>
+
+        <form className="space-y-4 px-6 py-5" onSubmit={handleSubmit}>
+          <FormField htmlFor="svc-name" label="Nombre del servicio">
+            <input
+              autoFocus
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="svc-name"
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ej. Instalación de producto"
+              required
+              type="text"
+              value={name}
+            />
+          </FormField>
+
+          <FormField htmlFor="svc-price" label="Precio">
+            <input
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="svc-price"
+              min="0.01"
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="0.00"
+              required
+              step="0.01"
+              type="number"
+              value={price}
+            />
+          </FormField>
+
+          <FormField htmlFor="svc-desc" label="Descripción (opcional)">
+            <input
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="svc-desc"
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Detalle del servicio"
+              type="text"
+              value={description}
+            />
+          </FormField>
+
+          {submitError ? (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+              <p className="text-sm font-medium text-rose-900">{submitError}</p>
+            </div>
+          ) : null}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              disabled={isSubmitting}
+              onClick={onClose}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              disabled={isSubmitting}
+              type="submit"
+            >
+              {isSubmitting ? "Guardando..." : "Guardar servicio"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

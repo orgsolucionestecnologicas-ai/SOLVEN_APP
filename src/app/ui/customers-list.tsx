@@ -24,6 +24,7 @@ import { formatARS as formatMoney } from "@/lib/format-currency";
 type CustomerRecord = {
   id: string;
   name: string;
+  customerCode?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -564,6 +565,9 @@ export function CustomersList() {
                         Cliente
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Código
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Contacto
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -873,6 +877,11 @@ function CustomerRow({
             <p className="text-xs text-slate-400">{getCustomerPhone(customer.id)}</p>
           </div>
         </div>
+      </td>
+      <td className="px-4 py-3">
+        <span className="font-mono text-xs text-slate-500">
+          {customer.customerCode ?? "—"}
+        </span>
       </td>
       <td className="px-4 py-3">
         <span className="max-w-[160px] truncate text-xs text-slate-500">

@@ -97,6 +97,7 @@ export function SalesList() {
   const [viewingSale, setViewingSale] = useState<SaleRecord | null>(null);
   const [returningSale, setReturningSale] = useState<SaleRecord | null>(null);
   const [showAllSales, setShowAllSales] = useState(false);
+  const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     let isActive = true;
@@ -156,26 +157,34 @@ export function SalesList() {
     setTimeout(() => setSuccessMessage(null), 4000);
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const displayedSales = showAllSales
-    ? [...sales].sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
-    : [...sales]
-        .filter((s) => s.saleDate.slice(0, 10) === todayStr)
-        .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+  const displayedSales = [...sales]
+    .filter((s) => showAllSales || s.saleDate.slice(0, 10) === dateFilter)
+    .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
 
   return (
     <section className="px-5 py-6 sm:px-8">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <p className="text-sm font-semibold text-slate-900">
-            {showAllSales ? "Historial completo" : "Ventas de hoy"}
+            {showAllSales ? "Historial completo" : "Ventas del día"}
           </p>
+          {!showAllSales ? (
+            <input
+              className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
+              onChange={(e) => setDateFilter(e.target.value)}
+              type="date"
+              value={dateFilter}
+            />
+          ) : null}
           <button
             className="text-xs font-medium text-violet-600 hover:text-violet-700"
-            onClick={() => setShowAllSales((v) => !v)}
+            onClick={() => {
+              setShowAllSales((v) => !v);
+              setDateFilter(new Date().toISOString().slice(0, 10));
+            }}
             type="button"
           >
-            {showAllSales ? "← Ver solo hoy" : "Ver historial completo →"}
+            {showAllSales ? "← Filtrar por fecha" : "Ver historial completo →"}
           </button>
         </div>
         <button
@@ -198,8 +207,8 @@ export function SalesList() {
       {!isLoading && !loadError && displayedSales.length === 0 ? (
         showAllSales ? <EmptyState /> : (
           <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold text-slate-950">Sin ventas hoy.</p>
-            <p className="mt-1 text-sm text-slate-500">No hay ventas registradas para el día de hoy.</p>
+            <p className="text-sm font-semibold text-slate-950">Sin ventas para esta fecha.</p>
+            <p className="mt-1 text-sm text-slate-500">No hay ventas registradas para la fecha seleccionada.</p>
             <button
               className="mt-2 text-sm font-medium text-violet-600 hover:text-violet-700"
               onClick={() => setShowAllSales(true)}

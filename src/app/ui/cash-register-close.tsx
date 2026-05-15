@@ -58,14 +58,19 @@ type DebtRecord = {
 };
 
 const CLOSE_DENOMINATIONS = [
-  { key: "2000", label: "$2,000", value: 2000 },
-  { key: "1000", label: "$1,000", value: 1000 },
+  { key: "20000", label: "$20.000", value: 20000 },
+  { key: "10000", label: "$10.000", value: 10000 },
+  { key: "2000", label: "$2.000", value: 2000 },
+  { key: "1000", label: "$1.000", value: 1000 },
   { key: "500", label: "$500", value: 500 },
   { key: "200", label: "$200", value: 200 },
   { key: "100", label: "$100", value: 100 },
   { key: "50", label: "$50", value: 50 },
-  { key: "25", label: "$25", value: 25 },
-  { key: "10", label: "$10", value: 10 },
+  { key: "20", label: "$20", value: 20 },
+  { key: "c10", label: "Moneda $10", value: 10 },
+  { key: "c5", label: "Moneda $5", value: 5 },
+  { key: "c2", label: "Moneda $2", value: 2 },
+  { key: "c1", label: "Moneda $1", value: 1 },
 ] as const;
 
 type CloseKey = (typeof CLOSE_DENOMINATIONS)[number]["key"];
@@ -955,7 +960,7 @@ function QuickExpenseModal({
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-                  RD$
+                  AR$
                 </span>
                 <input
                   className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-3 text-sm focus:border-violet-500 focus:outline-none"

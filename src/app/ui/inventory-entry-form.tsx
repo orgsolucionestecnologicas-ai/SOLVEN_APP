@@ -665,7 +665,7 @@ export function InventoryEntryForm() {
                             <td className="px-4 py-3">
                               <div className="flex items-center justify-end gap-1">
                                 <span className="text-xs text-slate-500">
-                                  RD$
+                                  AR$
                                 </span>
                                 <input
                                   className="w-24 rounded-md border border-slate-300 px-2 py-1 text-right text-sm text-slate-950 focus:border-violet-500 focus:outline-none"
@@ -706,7 +706,7 @@ export function InventoryEntryForm() {
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className="text-sm font-medium text-emerald-600">
-                                RD${" "}
+                                AR${" "}
                                 {moneyFmt.format(
                                   item.quantity * item.unitCost
                                 )}
@@ -766,7 +766,7 @@ export function InventoryEntryForm() {
                   </label>
                   <div className="flex w-44 items-center">
                     <span className="flex items-center rounded-l-md border border-r-0 border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-500">
-                      RD$
+                      AR$
                     </span>
                     <input
                       className="w-full rounded-r-md border border-slate-300 px-3 py-2 text-right text-sm text-slate-950 focus:border-violet-500 focus:outline-none"
@@ -809,7 +809,7 @@ export function InventoryEntryForm() {
                   </label>
                   <div className="flex w-44 items-center">
                     <span className="flex items-center rounded-l-md border border-r-0 border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-500">
-                      RD$
+                      AR$
                     </span>
                     <input
                       className="w-full rounded-r-md border border-slate-300 px-3 py-2 text-right text-sm text-slate-950 focus:border-violet-500 focus:outline-none"
@@ -832,7 +832,7 @@ export function InventoryEntryForm() {
                   </label>
                   <div className="flex w-44 items-center">
                     <span className="flex items-center rounded-l-md border border-r-0 border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-500">
-                      RD$
+                      AR$
                     </span>
                     <input
                       className="w-full rounded-r-md border border-slate-300 px-3 py-2 text-right text-sm text-slate-950 focus:border-violet-500 focus:outline-none"
@@ -852,7 +852,7 @@ export function InventoryEntryForm() {
                       Total final
                     </span>
                     <span className="text-xl font-bold text-violet-600">
-                      RD$ {moneyFmt.format(totalFinal)}
+                      AR$ {moneyFmt.format(totalFinal)}
                     </span>
                   </div>
                 </div>
@@ -903,26 +903,26 @@ export function InventoryEntryForm() {
                     Total productos: {entryItems.length}
                   </p>
                   <p className="mt-1 text-2xl font-bold text-emerald-600">
-                    RD$ {moneyFmt.format(totalFinal)}
+                    AR$ {moneyFmt.format(totalFinal)}
                   </p>
                 </div>
                 <div className="space-y-2 border-t border-slate-100 pt-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-500">Subtotal</span>
                     <span className="text-xs font-medium text-slate-950">
-                      RD$ {moneyFmt.format(subtotal)}
+                      AR$ {moneyFmt.format(subtotal)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-500">Impuestos</span>
                     <span className="text-xs font-medium text-slate-950">
-                      RD$ {moneyFmt.format(impuestosTotal)}
+                      AR$ {moneyFmt.format(impuestosTotal)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-500">Descuento</span>
                     <span className="text-xs font-medium text-rose-600">
-                      - RD$ {moneyFmt.format(descuentoNum)}
+                      - AR$ {moneyFmt.format(descuentoNum)}
                     </span>
                   </div>
                   <div className="border-t border-slate-100 pt-2">
@@ -931,7 +931,7 @@ export function InventoryEntryForm() {
                         Total final
                       </span>
                       <span className="text-sm font-bold text-violet-600">
-                        RD$ {moneyFmt.format(totalFinal)}
+                        AR$ {moneyFmt.format(totalFinal)}
                       </span>
                     </div>
                   </div>

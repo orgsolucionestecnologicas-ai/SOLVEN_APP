@@ -12,7 +12,7 @@ import {
   Package,
   Tag
 } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
@@ -50,6 +50,12 @@ const LOCATIONS = [
 type CreateProductResponse = {
   data?: { id: string };
   error?: { message: string; details?: string[] };
+};
+
+type CategoryApiRecord = {
+  id: string;
+  name: string;
+  subcategories: { id: string; name: string }[];
 };
 
 function generateSku(productName: string): string {
@@ -91,9 +97,27 @@ export function ProductForm() {
   const [isActive, setIsActive] = useState(true);
   const [allowSaleWithoutStock, setAllowSaleWithoutStock] = useState(false);
 
+  const [subcategoryName, setSubcategoryName] = useState("");
+  const [apiCategories, setApiCategories] = useState<CategoryApiRecord[]>([]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const res = await fetch("/api/categories", { headers: { Accept: "application/json" } });
+        if (!res.ok) return;
+        const body = (await res.json()) as { data?: CategoryApiRecord[] };
+        if (body.data) setApiCategories(body.data);
+      } catch {}
+    }
+    void loadCategories();
+  }, []);
+
+  const selectedCategoryRecord = apiCategories.find((c) => c.name === categoryName);
+  const availableSubcategories = selectedCategoryRecord?.subcategories ?? [];
 
   function handleCostPriceChange(value: string) {
     setCostPrice(value);
@@ -329,7 +353,10 @@ export function ProductForm() {
                         className={selectClass}
                         disabled={isSubmitting}
                         id="pf-category"
-                        onChange={(e) => setCategoryName(e.target.value)}
+                        onChange={(e) => {
+                          setCategoryName(e.target.value);
+                          setSubcategoryName("");
+                        }}
                         required
                         value={categoryName}
                       >
@@ -356,6 +383,25 @@ export function ProductForm() {
                       />
                     </FormField>
                   </div>
+
+                  {availableSubcategories.length > 0 ? (
+                    <FormField htmlFor="pf-subcategory" label="Subcategoría">
+                      <select
+                        className={selectClass}
+                        disabled={isSubmitting}
+                        id="pf-subcategory"
+                        onChange={(e) => setSubcategoryName(e.target.value)}
+                        value={subcategoryName}
+                      >
+                        <option value="">Sin subcategoría</option>
+                        {availableSubcategories.map((sub) => (
+                          <option key={sub.id} value={sub.name}>
+                            {sub.name}
+                          </option>
+                        ))}
+                      </select>
+                    </FormField>
+                  ) : null}
 
                   <FormField htmlFor="pf-unit" label="Unidad de medida" required>
                     <select
@@ -390,7 +436,7 @@ export function ProductForm() {
                   <FormField htmlFor="pf-cost" label="Precio de compra" required>
                     <div className="flex">
                       <span className="flex items-center rounded-l-md border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">
-                        RD$
+                        AR$
                       </span>
                       <input
                         className="w-full rounded-r-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
@@ -424,7 +470,7 @@ export function ProductForm() {
                   <FormField htmlFor="pf-sale" label="Precio de venta" required>
                     <div className="flex">
                       <span className="flex items-center rounded-l-md border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">
-                        RD$
+                        AR$
                       </span>
                       <input
                         className="w-full rounded-r-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
@@ -705,7 +751,7 @@ export function ProductForm() {
                   <div className="flex items-center justify-between">
                     <dt className="text-xs text-slate-500">Precio de compra</dt>
                     <dd className="text-xs font-medium text-slate-950">
-                      RD$ {formatMoney(costNum)}
+                      AR$ {formatMoney(costNum)}
                     </dd>
                   </div>
                   <div className="flex items-center justify-between">
@@ -719,7 +765,7 @@ export function ProductForm() {
                   <div className="flex items-center justify-between">
                     <dt className="text-xs text-slate-500">Precio de venta</dt>
                     <dd className="text-xs font-semibold text-emerald-600">
-                      RD$ {formatMoney(saleNum)}
+                      AR$ {formatMoney(saleNum)}
                     </dd>
                   </div>
                   <div className="border-t border-slate-100 pt-2">
@@ -734,7 +780,7 @@ export function ProductForm() {
                             : "text-rose-600"
                         }`}
                       >
-                        RD$ {formatMoney(profitPerUnit)}
+                        AR$ {formatMoney(profitPerUnit)}
                       </dd>
                     </div>
                   </div>

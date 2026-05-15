@@ -53,14 +53,32 @@ type CustomersResponse = {
   error?: { message: string };
 };
 
+type ServiceRecord = {
+  id: string;
+  code: string;
+  name: string;
+  price: string;
+  isActive: boolean;
+};
+
+type ServicesResponse = {
+  data?: ServiceRecord[];
+  error?: { message: string };
+};
+
 type CartItem = {
-  productId: string;
+  productId?: string;
+  serviceId?: string;
   productName: string;
   categoryName: string;
   quantity: number;
   unitPrice: number;
   maxStock: number;
 };
+
+function cartItemKey(item: CartItem): string {
+  return item.productId ?? item.serviceId ?? "";
+}
 
 type CreateSaleResponse = {
   data?: { id: string };
@@ -238,6 +256,12 @@ export function Pos() {
   const [productsError, setProductsError] = useState<string | null>(null);
   const [productsRefreshKey, setProductsRefreshKey] = useState(0);
 
+  const [services, setServices] = useState<ServiceRecord[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+
+  const [cardOperationNumber, setCardOperationNumber] = useState("");
+  const [transferOperationNumber, setTransferOperationNumber] = useState("");
+
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("Todos");
   const [currentPage, setCurrentPage] = useState(1);
@@ -373,6 +397,25 @@ export function Pos() {
     };
   }, [productsRefreshKey]);
 
+  useEffect(() => {
+    let isActive = true;
+    async function loadServices() {
+      try {
+        const response = await fetch("/api/services", { headers: { Accept: "application/json" } });
+        const body = (await response.json()) as ServicesResponse;
+        if (isActive && response.ok && body.data) {
+          setServices(body.data.filter((s) => s.isActive));
+        }
+      } catch {
+        // services panel shows empty on error
+      } finally {
+        if (isActive) setServicesLoading(false);
+      }
+    }
+    void loadServices();
+    return () => { isActive = false; };
+  }, []);
+
   const isFiado = paymentMethod === "Fiado";
 
   useEffect(() => {
@@ -436,9 +479,11 @@ export function Pos() {
     currentPage * PRODUCTS_PER_PAGE
   );
 
-  const filteredCustomers = customers.filter((c) =>
-    c.name.toLowerCase().includes(customerSearch.toLowerCase())
-  );
+  const filteredCustomers = customerSearch.trim().length >= 2
+    ? customers
+        .filter((c) => c.name.toLowerCase().includes(customerSearch.toLowerCase()))
+        .slice(0, 5)
+    : [];
 
   useEffect(() => {
     if (applyDebounceRef.current) clearTimeout(applyDebounceRef.current);
@@ -455,13 +500,15 @@ export function Pos() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              cartItems: cartItems.map((item) => ({
-                productId: item.productId,
-                productName: item.productName,
-                categoryName: item.categoryName,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-              })),
+              cartItems: cartItems
+                .filter((item) => item.productId)
+                .map((item) => ({
+                  productId: item.productId!,
+                  productName: item.productName,
+                  categoryName: item.categoryName,
+                  quantity: item.quantity,
+                  unitPrice: item.unitPrice,
+                })),
               ...(manualCodes.length > 0 ? { promotionCodes: manualCodes } : {}),
               ...(selectedCustomer?.id ? { customerId: selectedCustomer.id } : {}),
             }),
@@ -537,6 +584,8 @@ export function Pos() {
     setCartItems([]);
     setPaymentMethod("Efectivo");
     setCashReceived("");
+    setCardOperationNumber("");
+    setTransferOperationNumber("");
     setSelectedCustomer(null);
     setCustomerSearch("");
     setSubmitError(null);
@@ -609,13 +658,15 @@ export function Pos() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          cartItems: cartItems.map((item) => ({
-            productId: item.productId,
-            productName: item.productName,
-            categoryName: item.categoryName,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-          })),
+          cartItems: cartItems
+            .filter((item) => item.productId)
+            .map((item) => ({
+              productId: item.productId!,
+              productName: item.productName,
+              categoryName: item.categoryName,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+            })),
           promotionCodes: newCodes,
           ...(selectedCustomer?.id ? { customerId: selectedCustomer.id } : {}),
         }),
@@ -686,23 +737,48 @@ export function Pos() {
     });
   }
 
-  function updateQuantity(productId: string, quantity: number) {
+  function addServiceToCart(service: ServiceRecord) {
+    setSubmitError(null);
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.serviceId === service.id);
+      if (existing) {
+        return prev.map((item) =>
+          item.serviceId === service.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          serviceId: service.id,
+          productName: service.name,
+          categoryName: "Servicio",
+          quantity: 1,
+          unitPrice: Number(service.price),
+          maxStock: 9999,
+        },
+      ];
+    });
+  }
+
+  function updateQuantity(itemId: string, quantity: number) {
     if (quantity < 1) {
-      setCartItems((prev) => prev.filter((item) => item.productId !== productId));
+      setCartItems((prev) => prev.filter((item) => cartItemKey(item) !== itemId));
       return;
     }
 
     setCartItems((prev) =>
       prev.map((item) =>
-        item.productId === productId
+        cartItemKey(item) === itemId
           ? { ...item, quantity: Math.min(quantity, item.maxStock) }
           : item
       )
     );
   }
 
-  function removeFromCart(productId: string) {
-    setCartItems((prev) => prev.filter((item) => item.productId !== productId));
+  function removeFromCart(itemId: string) {
+    setCartItems((prev) => prev.filter((item) => cartItemKey(item) !== itemId));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -730,10 +806,11 @@ export function Pos() {
         body: JSON.stringify({
           paymentType: apiPaymentType,
           ...(isFiado ? { customerId: selectedCustomerId } : {}),
-          items: cartItems.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-          })),
+          items: cartItems.map((item) =>
+            item.serviceId
+              ? { serviceId: item.serviceId, quantity: item.quantity }
+              : { productId: item.productId, quantity: item.quantity }
+          ),
           ...(displayedAppliedPromotions.length > 0
             ? {
                 promotionIds: displayedAppliedPromotions.map((p) => p.promotionId),
@@ -1014,10 +1091,10 @@ export function Pos() {
                           key={product.id}
                           className={
                             isOutOfStock
-                              ? "flex items-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 opacity-50"
+                              ? "flex items-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50 px-3 py-1 opacity-50"
                               : inCartQty > 0
-                                ? "flex items-center gap-2.5 rounded-lg border-2 border-violet-400 bg-violet-50 px-3 py-2"
-                                : "flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-2 hover:border-slate-300"
+                                ? "flex items-center gap-2.5 rounded-lg border-2 border-violet-400 bg-violet-50 px-3 py-1"
+                                : "flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-1 hover:border-slate-300"
                           }
                         >
                           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-slate-100">
@@ -1093,6 +1170,54 @@ export function Pos() {
                     </div>
                   ) : null}
                 </>
+              ) : null}
+
+              {/* Services section */}
+              {!servicesLoading && services.length > 0 ? (
+                <div className="mt-5 border-t border-slate-100 pt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Servicios disponibles
+                  </p>
+                  <div className="space-y-1">
+                    {services.map((service) => {
+                      const inCartQty = cartItems.find((item) => item.serviceId === service.id)?.quantity ?? 0;
+                      return (
+                        <div
+                          key={service.id}
+                          className={
+                            inCartQty > 0
+                              ? "flex items-center gap-2.5 rounded-lg border-2 border-violet-400 bg-violet-50 px-3 py-1"
+                              : "flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-1 hover:border-slate-300"
+                          }
+                        >
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-violet-50">
+                            <Tag size={13} className="text-violet-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-slate-950">{service.name}</p>
+                            <p className="text-[10px] text-slate-400">{service.code}</p>
+                          </div>
+                          <p className="flex-shrink-0 tabular-nums text-sm font-bold text-emerald-700">
+                            {formatMoneyNum(Number(service.price))}
+                          </p>
+                          {inCartQty > 0 ? (
+                            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-violet-600 text-[10px] font-bold text-white">
+                              {inCartQty}
+                            </span>
+                          ) : null}
+                          <button
+                            className="flex-shrink-0 rounded-md bg-violet-600 px-2 py-1 text-xs font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={cashRegisterStatus !== "open"}
+                            onClick={() => addServiceToCart(service)}
+                            type="button"
+                          >
+                            Agregar
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               ) : null}
 
               {/* 4. Quick actions bar */}
@@ -1226,7 +1351,7 @@ export function Pos() {
                 {/* Cart rows */}
                 <div className="flex-1 divide-y divide-slate-100 overflow-y-auto">
                   {cartItems.map((item) => {
-                    const discountedItem = discountedItemsMap.get(item.productId);
+                    const discountedItem = item.productId ? discountedItemsMap.get(item.productId) : undefined;
                     const isDiscounted =
                       discountedItem !== undefined &&
                       parseFloat(discountedItem.discountAmount) > 0 &&
@@ -1243,7 +1368,7 @@ export function Pos() {
                     return (
                     <div
                       className="flex items-center gap-2 px-4 py-2.5"
-                      key={item.productId}
+                      key={cartItemKey(item)}
                     >
                       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100">
                         <Package size={13} className="text-slate-400" />
@@ -1278,7 +1403,7 @@ export function Pos() {
                         <button
                           className="flex h-5 w-5 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] text-slate-600 hover:bg-slate-50"
                           onClick={() =>
-                            updateQuantity(item.productId, item.quantity - 1)
+                            updateQuantity(cartItemKey(item), item.quantity - 1)
                           }
                           type="button"
                         >
@@ -1295,7 +1420,7 @@ export function Pos() {
                           }
                           disabled={item.quantity >= item.maxStock}
                           onClick={() =>
-                            updateQuantity(item.productId, item.quantity + 1)
+                            updateQuantity(cartItemKey(item), item.quantity + 1)
                           }
                           type="button"
                         >
@@ -1307,7 +1432,7 @@ export function Pos() {
                       </div>
                       <button
                         className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-slate-300 hover:text-rose-500"
-                        onClick={() => removeFromCart(item.productId)}
+                        onClick={() => removeFromCart(cartItemKey(item))}
                         type="button"
                       >
                         <X size={11} />
@@ -1500,6 +1625,38 @@ export function Pos() {
                   Venta a crédito (Fiado)
                 </button>
               </div>
+
+              {/* Tarjeta — número de operación */}
+              {paymentMethod === "Tarjeta" ? (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">
+                    Número de operación <span className="text-slate-400">(opcional)</span>
+                  </label>
+                  <input
+                    className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm tabular-nums text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                    onChange={(e) => setCardOperationNumber(e.target.value)}
+                    placeholder="N° de operación"
+                    type="text"
+                    value={cardOperationNumber}
+                  />
+                </div>
+              ) : null}
+
+              {/* Transferencia — número de operación */}
+              {paymentMethod === "Transferencia" ? (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">
+                    Número de operación <span className="text-slate-400">(opcional)</span>
+                  </label>
+                  <input
+                    className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm tabular-nums text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                    onChange={(e) => setTransferOperationNumber(e.target.value)}
+                    placeholder="N° de operación / CBU / alias"
+                    type="text"
+                    value={transferOperationNumber}
+                  />
+                </div>
+              ) : null}
 
               {/* Efectivo recibido + Cambio */}
               {paymentMethod === "Efectivo" ? (
@@ -1873,7 +2030,7 @@ export function Pos() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {cartItems.map((item) => (
-                      <tr key={item.productId}>
+                      <tr key={cartItemKey(item)}>
                         <td className="py-2 text-sm text-slate-950">
                           {item.productName}
                         </td>

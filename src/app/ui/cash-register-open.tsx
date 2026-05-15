@@ -16,13 +16,19 @@ import { formatARS as fmt } from "@/lib/format-currency";
 type ApiResponse<T> = { data?: T; error?: { message: string } };
 
 const DENOMINATIONS = [
-  { key: "2000", label: "$2,000", value: 2000 },
-  { key: "1000", label: "$1,000", value: 1000 },
+  { key: "20000", label: "$20.000", value: 20000 },
+  { key: "10000", label: "$10.000", value: 10000 },
+  { key: "2000", label: "$2.000", value: 2000 },
+  { key: "1000", label: "$1.000", value: 1000 },
   { key: "500", label: "$500", value: 500 },
   { key: "200", label: "$200", value: 200 },
   { key: "100", label: "$100", value: 100 },
   { key: "50", label: "$50", value: 50 },
-  { key: "monedas", label: "Monedas", value: 1 },
+  { key: "20", label: "$20", value: 20 },
+  { key: "c10", label: "Moneda $10", value: 10 },
+  { key: "c5", label: "Moneda $5", value: 5 },
+  { key: "c2", label: "Moneda $2", value: 2 },
+  { key: "c1", label: "Moneda $1", value: 1 },
 ] as const;
 
 type DenominationKey = (typeof DENOMINATIONS)[number]["key"];
@@ -280,7 +286,7 @@ export function CashRegisterOpen({ onOpened }: { onOpened: () => void }) {
               <div className="mb-4">
                 <div className="flex overflow-hidden rounded-xl border-2 border-slate-200 focus-within:border-violet-500">
                   <span className="border-r border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold text-slate-500">
-                    RD$
+                    AR$
                   </span>
                   <input
                     className="flex-1 px-4 py-3 text-2xl font-bold text-slate-950 focus:outline-none"
