@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_MAX_AGE, COOKIE_NAME, createSessionToken } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
+  console.log("LOGIN_DEBUG - USER_SET:", !!process.env.SOLVEN_USER, "PASS_SET:", !!process.env.SOLVEN_PASSWORD, "USER_LEN:", process.env.SOLVEN_USER?.length, "PASS_LEN:", process.env.SOLVEN_PASSWORD?.length);
   const body = await request.json();
   const { username, password } = body as { username: string; password: string };
 
