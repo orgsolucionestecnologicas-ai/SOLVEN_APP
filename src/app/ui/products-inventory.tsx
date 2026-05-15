@@ -70,6 +70,12 @@ type CreateServiceResponse = {
 type StatusFilter = "Todos" | "Con stock" | "Stock bajo" | "Sin stock";
 type StockRangeFilter = "Todos" | "0" | "1-5" | "6-20" | "20+";
 
+type ApiCategoryTree = {
+  id: string;
+  name: string;
+  subcategories: { id: string; name: string }[];
+};
+
 const DEFAULT_PRODUCT_CATEGORIES = [
   "Alimentos",
   "Bebidas",
@@ -130,6 +136,9 @@ export function ProductsInventory() {
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [services, setServices] = useState<ServiceRecord[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
+  const [editingService, setEditingService] = useState<ServiceRecord | null>(null);
+  const [apiCatTree, setApiCatTree] = useState<ApiCategoryTree[]>([]);
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null);
   const [adjustingProduct, setAdjustingProduct] = useState<ProductRecord | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -184,6 +193,18 @@ export function ProductsInventory() {
   useEffect(() => {
     localStorage.setItem("solven_categories", JSON.stringify(customCategories));
   }, [customCategories]);
+
+  useEffect(() => {
+    async function loadCatTree() {
+      try {
+        const res = await fetch("/api/categories", { headers: { Accept: "application/json" } });
+        if (!res.ok) return;
+        const body = (await res.json()) as { data?: ApiCategoryTree[] };
+        if (body.data) setApiCatTree(body.data);
+      } catch {}
+    }
+    void loadCatTree();
+  }, []);
 
   useEffect(() => {
     if (activeMainTab !== "Servicios") return;
@@ -300,6 +321,19 @@ export function ProductsInventory() {
     showSuccess("Servicio creado exitosamente.");
   }
 
+  function handleServiceEdited() {
+    setEditingService(null);
+    setRefreshKey((k) => k + 1);
+    showSuccess("Servicio actualizado exitosamente.");
+  }
+
+  async function handleToggleService(id: string) {
+    try {
+      await fetch(`/api/services/${id}`, { method: "PATCH", headers: { Accept: "application/json" } });
+      setRefreshKey((k) => k + 1);
+    } catch {}
+  }
+
   function clearFilters() {
     setSearchQuery("");
     setStatusFilter("Todos");
@@ -395,6 +429,7 @@ export function ProductsInventory() {
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Servicio</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Precio</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Estado</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
@@ -416,6 +451,25 @@ export function ProductsInventory() {
                           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${svc.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                             {svc.isActive ? "Activo" : "Inactivo"}
                           </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                              onClick={() => setEditingService(svc)}
+                              title="Editar"
+                              type="button"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              className={`rounded-md px-2 py-1 text-xs font-medium ${svc.isActive ? "text-slate-500 hover:bg-slate-100" : "text-emerald-600 hover:bg-emerald-50"}`}
+                              onClick={() => handleToggleService(svc.id)}
+                              type="button"
+                            >
+                              {svc.isActive ? "Desactivar" : "Activar"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -445,33 +499,90 @@ export function ProductsInventory() {
           </div>
 
           <ul className="space-y-0.5">
-            {allCategories.map((cat) => {
-              const isActive = cat === categoryFilter;
-              const label = cat === "Todas" ? "Todas las categorías" : cat;
-              const count = categoryCounts[cat] ?? 0;
+            {/* Todas */}
+            <li>
+              <button
+                className={
+                  categoryFilter === "Todas"
+                    ? "flex w-full items-center justify-between rounded-lg bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700"
+                    : "flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                }
+                onClick={() => { setCategoryFilter("Todas"); setCurrentPage(1); }}
+                type="button"
+              >
+                <span className="truncate">Todas las categorías</span>
+                <span className={categoryFilter === "Todas" ? "ml-2 shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700" : "ml-2 shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"}>
+                  {products.length}
+                </span>
+              </button>
+            </li>
 
+            {/* API category tree */}
+            {apiCatTree.map((cat) => {
+              const hasSubs = cat.subcategories.length > 0;
+              const isExpanded = expandedCats.has(cat.name);
+              const isActive = categoryFilter === cat.name;
+              const count = categoryCounts[cat.name] ?? 0;
+
+              return (
+                <li key={cat.id}>
+                  <div className="flex items-center">
+                    <button
+                      className={`flex min-w-0 flex-1 items-center justify-between rounded-lg px-3 py-2 text-sm ${isActive ? "bg-violet-50 font-medium text-violet-700" : "text-slate-700 hover:bg-slate-50"}`}
+                      onClick={() => { setCategoryFilter(cat.name); setCurrentPage(1); }}
+                      type="button"
+                    >
+                      <span className="truncate">{cat.name}</span>
+                      <span className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-xs ${isActive ? "bg-violet-100 font-semibold text-violet-700" : "bg-slate-100 font-medium text-slate-600"}`}>
+                        {count}
+                      </span>
+                    </button>
+                    {hasSubs ? (
+                      <button
+                        className="ml-0.5 rounded p-1 text-slate-400 hover:text-slate-600"
+                        onClick={() => setExpandedCats((prev) => {
+                          const next = new Set(prev);
+                          next.has(cat.name) ? next.delete(cat.name) : next.add(cat.name);
+                          return next;
+                        })}
+                        type="button"
+                      >
+                        <ChevronRight className={`transition-transform ${isExpanded ? "rotate-90" : ""}`} size={12} />
+                      </button>
+                    ) : null}
+                  </div>
+                  {hasSubs && isExpanded ? (
+                    <ul className="ml-3 mt-0.5 space-y-0.5 border-l border-slate-200 pl-2">
+                      {cat.subcategories.map((sub) => (
+                        <li key={sub.id}>
+                          <button
+                            className="flex w-full items-center rounded-lg px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                            onClick={() => { setCategoryFilter(cat.name); setCurrentPage(1); }}
+                            type="button"
+                          >
+                            <span className="truncate">{sub.name}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
+
+            {/* Custom categories */}
+            {customCategories.map((cat) => {
+              const isActive = categoryFilter === cat;
+              const count = categoryCounts[cat] ?? 0;
               return (
                 <li key={cat}>
                   <button
-                    className={
-                      isActive
-                        ? "flex w-full items-center justify-between rounded-lg bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700"
-                        : "flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                    }
-                    onClick={() => {
-                      setCategoryFilter(cat);
-                      setCurrentPage(1);
-                    }}
+                    className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm ${isActive ? "bg-violet-50 font-medium text-violet-700" : "text-slate-700 hover:bg-slate-50"}`}
+                    onClick={() => { setCategoryFilter(cat); setCurrentPage(1); }}
                     type="button"
                   >
-                    <span className="truncate">{label}</span>
-                    <span
-                      className={
-                        isActive
-                          ? "ml-2 shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700"
-                          : "ml-2 shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
-                      }
-                    >
+                    <span className="truncate">{cat}</span>
+                    <span className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-xs ${isActive ? "bg-violet-100 font-semibold text-violet-700" : "bg-slate-100 font-medium text-slate-600"}`}>
                       {count}
                     </span>
                   </button>
@@ -780,6 +891,14 @@ export function ProductsInventory() {
         <CreateServiceModal
           onClose={() => setIsServiceModalOpen(false)}
           onSuccess={handleServiceCreated}
+        />
+      ) : null}
+
+      {editingService ? (
+        <EditServiceModal
+          onClose={() => setEditingService(null)}
+          onSuccess={handleServiceEdited}
+          service={editingService}
         />
       ) : null}
     </div>
@@ -1676,6 +1795,133 @@ function EmptyState({ onClear }: { onClear: () => void }) {
       >
         Limpiar filtros
       </button>
+    </div>
+  );
+}
+
+type EditServiceModalProps = {
+  service: ServiceRecord;
+  onClose: () => void;
+  onSuccess: () => void;
+};
+
+function EditServiceModal({ service, onClose, onSuccess }: EditServiceModalProps) {
+  const [name, setName] = useState(service.name);
+  const [price, setPrice] = useState(service.price);
+  const [description, setDescription] = useState(service.description ?? "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch(`/api/services/${service.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          price: Number(price),
+          ...(description.trim() ? { description: description.trim() } : { description: "" })
+        })
+      });
+      const responseBody = (await response.json()) as CreateServiceResponse;
+
+      if (!response.ok || !responseBody.data) {
+        const errorDetail = responseBody.error?.details?.[0];
+        const errorMessage = responseBody.error?.message;
+        setSubmitError(errorDetail ?? errorMessage ?? "No se pudo actualizar el servicio.");
+        return;
+      }
+
+      onSuccess();
+    } catch {
+      setSubmitError("No se pudo actualizar el servicio.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">Editar servicio</h2>
+          <button className="text-slate-400 hover:text-slate-700" onClick={onClose} type="button">✕</button>
+        </div>
+
+        <form className="space-y-4 px-6 py-5" onSubmit={handleSubmit}>
+          <FormField htmlFor="esvc-name" label="Nombre del servicio">
+            <input
+              autoFocus
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="esvc-name"
+              onChange={(e) => setName(e.target.value)}
+              required
+              type="text"
+              value={name}
+            />
+          </FormField>
+
+          <FormField htmlFor="esvc-price" label="Precio">
+            <input
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="esvc-price"
+              min="0.01"
+              onChange={(e) => setPrice(e.target.value)}
+              required
+              step="0.01"
+              type="number"
+              value={price}
+            />
+          </FormField>
+
+          <FormField htmlFor="esvc-desc" label="Descripción (opcional)">
+            <input
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="esvc-desc"
+              onChange={(e) => setDescription(e.target.value)}
+              type="text"
+              value={description}
+            />
+          </FormField>
+
+          {submitError ? (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+              <p className="text-sm font-medium text-rose-900">{submitError}</p>
+            </div>
+          ) : null}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              disabled={isSubmitting}
+              onClick={onClose}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              disabled={isSubmitting}
+              type="submit"
+            >
+              {isSubmitting ? "Guardando..." : "Guardar cambios"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

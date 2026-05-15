@@ -528,17 +528,17 @@ export function Reports() {
             sales={sales}
           />
         ) : activeTab === "Ventas" ? (
-          <VentasTab sales={sales} />
+          <VentasTab sales={currentSales} />
         ) : activeTab === "Productos" ? (
-          <ProductosTab products={products} sales={sales} />
+          <ProductosTab products={products} sales={currentSales} />
         ) : activeTab === "Clientes" ? (
-          <ClientesTab customers={customers} sales={sales} />
+          <ClientesTab customers={customers} sales={currentSales} />
         ) : activeTab === "Inventario" ? (
           <InventarioTab products={products} />
         ) : activeTab === "Crecimiento" ? (
-          <CrecimientoTab sales={sales} />
+          <CrecimientoTab sales={currentSales} />
         ) : activeTab === "Rentabilidad" ? (
-          <RentabilidadTab expenses={expenses} sales={sales} />
+          <RentabilidadTab expenses={currentExpenses} sales={currentSales} />
         ) : activeTab === "Reporte mensual" ? (
           <ReporteMensualTab
             currentExpenses={currentExpenses}
@@ -549,9 +549,9 @@ export function Reports() {
             sales={sales}
           />
         ) : activeTab === "Top productos" ? (
-          <TopProductosTab products={products} sales={sales} />
+          <TopProductosTab products={products} sales={currentSales} />
         ) : activeTab === "Recomendaciones" ? (
-          <RecomendacionesTab products={products} sales={sales} />
+          <RecomendacionesTab products={products} sales={currentSales} />
         ) : (
           <ProximamenteTab tab={activeTab} />
         )}
