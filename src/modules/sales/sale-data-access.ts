@@ -186,7 +186,7 @@ export async function createSale(
         items: true
       }
     });
-  });
+  }, { timeout: 15000 });
 }
 
 export async function listSales(): Promise<SaleListRecord[]> {

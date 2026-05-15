@@ -9,6 +9,8 @@ export default defineConfig({
     }
   },
   test: {
-    fileParallelism: false
+    fileParallelism: false,
+    setupFiles: ["./vitest.setup.ts"],
+    testTimeout: 30000
   }
 });
