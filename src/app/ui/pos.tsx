@@ -612,7 +612,7 @@ export function Pos() {
           cartItems: cartItems.map((item) => ({
             productId: item.productId,
             productName: item.productName,
-            categoryName: getProductCategory(item.productName),
+            categoryName: item.categoryName,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
           })),

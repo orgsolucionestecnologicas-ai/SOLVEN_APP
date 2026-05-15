@@ -236,6 +236,30 @@ describe("applyPromotionsToCart", () => {
     expect(result.totalDiscount.toNumber()).toBe(0);
   });
 
+  it("FIXED_AMOUNT — applies only to matching category", () => {
+    const items = [
+      makeCartItem({ productId: "a", categoryName: "Bebidas", quantity: 2, unitPrice: 50 }),
+      makeCartItem({ productId: "b", categoryName: "Abarrotes", quantity: 1, unitPrice: 30 })
+    ];
+    const promo = makePromotion({
+      type: "FIXED_AMOUNT",
+      discountValue: new Prisma.Decimal(10),
+      application: "CATEGORY",
+      categoryName: "Bebidas"
+    });
+
+    const result = applyPromotionsToCart(items, [promo]);
+
+    const itemA = result.discountedItems.find((i) => i.productId === "a")!;
+    const itemB = result.discountedItems.find((i) => i.productId === "b")!;
+
+    expect(itemA.finalPrice.toNumber()).toBe(40);
+    expect(itemA.discountAmount.toNumber()).toBe(20);
+    expect(itemB.finalPrice.toNumber()).toBe(30);
+    expect(itemB.discountAmount.toNumber()).toBe(0);
+    expect(result.totalDiscount.toNumber()).toBe(20);
+  });
+
   it("MINIMUM_PURCHASE — applies when cart total meets threshold", () => {
     const items = [
       makeCartItem({ productId: "a", quantity: 2, unitPrice: 100 })
@@ -250,6 +274,25 @@ describe("applyPromotionsToCart", () => {
     const result = applyPromotionsToCart(items, [promo]);
 
     expect(result.totalDiscount.toNumber()).toBeGreaterThan(0);
+  });
+
+  it("MINIMUM_PURCHASE — FIXED_AMOUNT discount type distributes proportionally", () => {
+    const items = [
+      makeCartItem({ productId: "a", quantity: 1, unitPrice: 100 }),
+      makeCartItem({ productId: "b", quantity: 2, unitPrice: 50 })
+    ];
+    const promo = makePromotion({
+      type: "MINIMUM_PURCHASE",
+      discountValue: new Prisma.Decimal(20),
+      application: "ALL_PRODUCTS",
+      minimumAmount: new Prisma.Decimal(150),
+      minimumPurchaseDiscountType: "FIXED_AMOUNT"
+    });
+
+    const result = applyPromotionsToCart(items, [promo]);
+
+    expect(result.totalDiscount.toNumber()).toBe(20);
+    expect(result.appliedPromotions).toHaveLength(1);
   });
 
   it("MINIMUM_PURCHASE — does not apply when cart total is below threshold", () => {
@@ -288,6 +331,24 @@ describe("applyPromotionsToCart", () => {
     expect(result.discountedItems[0].finalPrice.toNumber()).toBe(30);
     expect(result.discountedItems[0].discountAmount.toNumber()).toBe(40);
     expect(result.totalDiscount.toNumber()).toBe(40);
+  });
+
+  it("SPECIAL_PRICE — does not apply to non-matching product", () => {
+    const items = [
+      makeCartItem({ productId: "prod-other", quantity: 2, unitPrice: 50 })
+    ];
+    const promo = makePromotion({
+      type: "SPECIAL_PRICE",
+      discountValue: new Prisma.Decimal(0),
+      application: "SPECIFIC_PRODUCT",
+      productAId: "prod-special",
+      fixedPrice: new Prisma.Decimal(30)
+    });
+
+    const result = applyPromotionsToCart(items, [promo]);
+
+    expect(result.totalDiscount.toNumber()).toBe(0);
+    expect(result.discountedItems[0].finalPrice.toNumber()).toBe(50);
   });
 
   it("BUNDLED_PRODUCTS — discounts product B when product A is in cart", () => {

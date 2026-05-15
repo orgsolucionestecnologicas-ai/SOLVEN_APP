@@ -278,7 +278,7 @@ function applyMinimumPurchasePromotion(
   for (const item of workingItems) {
     const discount = isPercentage
       ? item.currentUnitPrice.mul(discountValue.div(100))
-      : discountValue.div(workingItems.length);
+      : item.currentUnitPrice.mul(discountValue).div(cartSubtotal);
 
     const newPrice = clampToZero(item.currentUnitPrice.minus(discount));
     const itemDiscount = item.currentUnitPrice.minus(newPrice).mul(item.quantity);
