@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell($env:PATH)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; node --version; npm --version)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\\", \"C:\\\\Program Files\", \"C:\\\\Program Files \\(x86\\)\", \"$env:APPDATA\", \"$env:LOCALAPPDATA\" -Filter \"node.exe\" -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object -First 5 FullName)",
+      "PowerShell(Get-ChildItem -Path \"$env:APPDATA\\\\nvm\", \"$env:LOCALAPPDATA\\\\nvm\", \"$env:LOCALAPPDATA\\\\Programs\\\\node\" -ErrorAction SilentlyContinue | Select-Object FullName)",
+      "Bash(ls /c/Users/SOLVEN/AppData/Local/claude-cli-nodejs/ 2>/dev/null)",
+      "Read(//c/Users/SOLVEN/AppData/Local/claude-cli-nodejs//**)",
+      "Bash(ls /c/Users/SOLVEN/AppData/Local/Programs/ 2>/dev/null)",
+      "Read(//c/Users/SOLVEN/AppData/Local/Programs//**)",
+      "Bash(ls \"/c/Users/SOLVEN/AppData/Local/Programs/Microsoft VS Code/resources/app/extensions/\" 2>/dev/null | head -5; find \"/c/Users/SOLVEN\" -name \"node.exe\" -maxdepth 8 2>/dev/null | head -5)",
+      "Read(//c/Users/SOLVEN/**)",
+      "PowerShell(Test-Path \"$env:APPDATA\\\\nvm\"; Test-Path \"C:\\\\nvm\"; Test-Path \"C:\\\\nodejs\"; Test-Path \"C:\\\\Program Files\\\\nodejs\")",
+      "PowerShell(Get-Process | Select-Object Name, Path | Where-Object { $_.Path -ne $null } | Select-Object -First 20)",
+      "PowerShell(Get-Process)",
+      "Bash(find /c/Users/SOLVEN -name \"node.exe\" 2>/dev/null | head -10; find /c/ProgramData -name \"node.exe\" -maxdepth 6 2>/dev/null | head -5)",
+      "Read(//c/ProgramData/**)",
+      "PowerShell(Get-ChildItem -Path \"$env:USERPROFILE\" -Filter \"node.exe\" -Recurse -Depth 8 -ErrorAction SilentlyContinue | Select-Object -First 5 FullName)",
+      "PowerShell(winget list --name \"node\" 2>&1)",
+      "PowerShell(winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements 2>&1)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\SOLVEN\\\\Documents\\\\GitHub\\\\SOLVEN_APP\"; npx prisma migrate status 2>&1)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; Set-Location \"C:\\\\Users\\\\SOLVEN\\\\Documents\\\\GitHub\\\\SOLVEN_APP\"; npx prisma migrate status 2>&1)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; Set-Location \"C:\\\\Users\\\\SOLVEN\\\\Documents\\\\GitHub\\\\SOLVEN_APP\"; npm run lint 2>&1)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; Set-Location \"C:\\\\Users\\\\SOLVEN\\\\Documents\\\\GitHub\\\\SOLVEN_APP\"; npm run typecheck 2>&1)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; Set-Location \"C:\\\\Users\\\\SOLVEN\\\\Documents\\\\GitHub\\\\SOLVEN_APP\"; npm test 2>&1)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; Set-Location \"C:\\\\Users\\\\SOLVEN\\\\Documents\\\\GitHub\\\\SOLVEN_APP\"; npm run dev -- --port 3000 2>&1)",
+      "PowerShell(Stop-Process -Name \"node\" -Force -ErrorAction SilentlyContinue)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
+    ]
+  }
+}
