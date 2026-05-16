@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Sora, DM_Sans } from "next/font/google";
 import { LandingScroll } from "./ui/landing-scroll";
+import NoaChat from "@/components/noa/NoaChat";
 import "./landing.css";
 
 const sora = Sora({
@@ -396,6 +397,7 @@ export default function LandingPage() {
       </footer>
 
       <LandingScroll />
+      <NoaChat />
     </div>
   );
 }

@@ -13,6 +13,7 @@
     "prisma:validate": "prisma validate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.96.0",
     "@prisma/client": "5.22.0",
     "lucide-react": "^1.14.0",
     "next": "15.5.15",
