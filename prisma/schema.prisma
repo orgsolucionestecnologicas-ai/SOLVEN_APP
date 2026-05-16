@@ -43,6 +43,7 @@ enum CashRegisterStatus {
 model Product {
   id                 String              @id @default(cuid())
   name               String
+  productCode        String?             @unique
   categoryName       String              @default("Otros")
   costPrice          Decimal             @db.Decimal(12, 2)
   salePrice          Decimal             @db.Decimal(12, 2)

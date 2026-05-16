@@ -77,4 +77,9 @@ describe("validateCreateProductInput", () => {
       })
     ).toThrow(ProductValidationError);
   });
+
+  it("does not require productCode in input", () => {
+    const input = { name: "Rice", costPrice: 10, salePrice: 15, stock: 5 };
+    expect(() => validateCreateProductInput(input)).not.toThrow();
+  });
 });

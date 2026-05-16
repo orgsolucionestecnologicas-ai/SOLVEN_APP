@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 type ProductRecord = {
   id: string;
   name: string;
+  productCode: string | null;
   categoryName: string;
   costPrice: string;
   salePrice: string;
@@ -937,7 +938,9 @@ function ProductRow({
             <p className="truncate text-sm font-semibold text-slate-950">
               {product.name}
             </p>
-            <p className="text-xs text-slate-400">Presentación: {presentation}</p>
+            <p className="text-xs text-slate-400">
+              {product.productCode ? product.productCode : "Presentación: " + presentation}
+            </p>
           </div>
         </div>
       </td>
@@ -1316,6 +1319,13 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
         </div>
 
         <form className="space-y-4 px-6 py-5" onSubmit={handleSubmit}>
+          {product.productCode ? (
+            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-xs text-slate-500">Código del producto</p>
+              <p className="font-mono text-sm font-semibold text-slate-700">{product.productCode}</p>
+            </div>
+          ) : null}
+
           <FormField htmlFor="edit-product-name" label="Nombre">
             <input
               autoFocus

@@ -1,6 +1,7 @@
 import type { Product } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { generateCode } from "@/lib/generate-code";
 
 import {
   type CreateProductInput,
@@ -13,9 +14,10 @@ export async function createProduct(
   productInput: CreateProductInput
 ): Promise<Product> {
   const validatedProduct = validateCreateProductInput(productInput);
+  const productCode = await generateCode("PROD");
 
   return prisma.product.create({
-    data: validatedProduct
+    data: { ...validatedProduct, productCode }
   });
 }
 

@@ -33,6 +33,7 @@ import { SalesList } from "./sales-list";
 type ProductRecord = {
   id: string;
   name: string;
+  productCode: string | null;
   categoryName: string;
   salePrice: string;
   stock: number;
@@ -462,7 +463,10 @@ export function Pos() {
   const filteredProducts = useMemo(() => {
     let result = products;
     const q = searchQuery.trim().toLowerCase();
-    if (q) result = result.filter((p) => p.name.toLowerCase().includes(q));
+    if (q) result = result.filter((p) =>
+      p.name.toLowerCase().includes(q) ||
+      (p.productCode?.toLowerCase().includes(q) ?? false)
+    );
     if (activeCategory !== "Todos") {
       result = result.filter((p) => getProductCategory(p.name) === activeCategory);
     }
@@ -472,6 +476,18 @@ export function Pos() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, activeCategory]);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q || cashRegisterStatus !== "open") return;
+    const exact = products.find((p) => p.productCode && p.productCode.toLowerCase() === q.toLowerCase());
+    if (exact) {
+      addToCart(exact);
+      setSearchQuery("");
+      setBarcodeNotFound(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
   const paginatedProducts = filteredProducts.slice(
