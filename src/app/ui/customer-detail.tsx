@@ -2,7 +2,6 @@
 
 import {
   ArrowLeft,
-  Building2,
   Calendar,
   ChevronDown,
   CreditCard,

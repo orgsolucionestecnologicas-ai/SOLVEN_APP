@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  Calendar,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Eye,

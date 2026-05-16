@@ -15,7 +15,6 @@ import {
   MoreHorizontal,
   Plus,
   Search,
-  ShoppingCart,
   Truck,
   Wallet,
   X,
