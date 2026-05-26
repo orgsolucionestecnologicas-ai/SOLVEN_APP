@@ -1,0 +1,66 @@
+export type UpsertSettingsInput = {
+  businessName?: string;
+  ownerName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  taxId?: string;
+  currency?: string;
+  timezone?: string;
+  dateFormat?: string;
+  language?: string;
+  printerEnabled?: boolean;
+  soundsEnabled?: boolean;
+  darkMode?: boolean;
+  desktopNotifications?: boolean;
+};
+
+export type ValidatedSettingsInput = {
+  businessName: string;
+  ownerName: string;
+  phone: string;
+  email: string;
+  address: string;
+  taxId: string;
+  currency: string;
+  timezone: string;
+  dateFormat: string;
+  language: string;
+  printerEnabled: boolean;
+  soundsEnabled: boolean;
+  darkMode: boolean;
+  desktopNotifications: boolean;
+};
+
+export class SettingsValidationError extends Error {
+  constructor(public readonly reasons: string[]) {
+    super(reasons.join(" "));
+    this.name = "SettingsValidationError";
+  }
+}
+
+export function validateUpsertSettingsInput(input: UpsertSettingsInput): ValidatedSettingsInput {
+  const errors: string[] = [];
+
+  const businessName = typeof input.businessName === "string" ? input.businessName.trim() : "";
+  if (!businessName) errors.push("El nombre del negocio es requerido.");
+
+  if (errors.length > 0) throw new SettingsValidationError(errors);
+
+  return {
+    businessName,
+    ownerName: typeof input.ownerName === "string" ? input.ownerName.trim() : "",
+    phone: typeof input.phone === "string" ? input.phone.trim() : "",
+    email: typeof input.email === "string" ? input.email.trim() : "",
+    address: typeof input.address === "string" ? input.address.trim() : "",
+    taxId: typeof input.taxId === "string" ? input.taxId.trim() : "",
+    currency: typeof input.currency === "string" ? input.currency.trim() : "ARS",
+    timezone: typeof input.timezone === "string" ? input.timezone.trim() : "America/Argentina/Buenos_Aires",
+    dateFormat: typeof input.dateFormat === "string" ? input.dateFormat.trim() : "DD/MM/YYYY",
+    language: typeof input.language === "string" ? input.language.trim() : "es",
+    printerEnabled: Boolean(input.printerEnabled),
+    soundsEnabled: input.soundsEnabled !== undefined ? Boolean(input.soundsEnabled) : true,
+    darkMode: Boolean(input.darkMode),
+    desktopNotifications: Boolean(input.desktopNotifications),
+  };
+}

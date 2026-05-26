@@ -270,3 +270,23 @@ model CodeCounter {
   id      String @id
   lastVal Int    @default(0)
 }
+
+model StoreSettings {
+  id                   String   @id @default(cuid())
+  businessName         String   @default("SOLVEN")
+  ownerName            String   @default("Propietario")
+  phone                String   @default("")
+  email                String   @default("")
+  address              String   @default("")
+  taxId                String   @default("")
+  currency             String   @default("ARS")
+  timezone             String   @default("America/Argentina/Buenos_Aires")
+  dateFormat           String   @default("DD/MM/YYYY")
+  language             String   @default("es")
+  printerEnabled       Boolean  @default(false)
+  soundsEnabled        Boolean  @default(true)
+  darkMode             Boolean  @default(false)
+  desktopNotifications Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}

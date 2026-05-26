@@ -21,7 +21,7 @@ import {
   Users
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +48,23 @@ type TogglesConfig = {
   desktopNotifications: boolean;
 };
 
+type DbSettings = {
+  businessName: string;
+  ownerName: string;
+  phone: string;
+  email: string;
+  address: string;
+  taxId: string;
+  currency: string;
+  timezone: string;
+  dateFormat: string;
+  language: string;
+  printerEnabled: boolean;
+  soundsEnabled: boolean;
+  darkMode: boolean;
+  desktopNotifications: boolean;
+};
+
 type Category = {
   id: string;
   label: string;
@@ -56,10 +73,6 @@ type Category = {
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const STORE_KEY = "solven_settings_store";
-const REGIONAL_KEY = "solven_settings_regional";
-const TOGGLES_KEY = "solven_settings_toggles";
 
 const DEFAULT_STORE: StoreInfo = {
   businessName: "SOLVEN",
@@ -71,8 +84,8 @@ const DEFAULT_STORE: StoreInfo = {
 };
 
 const DEFAULT_REGIONAL: RegionalConfig = {
-  currency: "DOP",
-  timezone: "America/Santo_Domingo",
+  currency: "ARS",
+  timezone: "America/Argentina/Buenos_Aires",
   dateFormat: "DD/MM/YYYY",
   language: "es"
 };
@@ -98,24 +111,6 @@ const CATEGORIES: Category[] = [
   { id: "sistema", label: "Sistema", icon: SettingsIcon },
   { id: "seguridad", label: "Seguridad", icon: Shield }
 ];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function loadLS<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveLS<T>(key: string, value: T) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(key, JSON.stringify(value));
-  }
-}
 
 // ─── Toggle Switch ────────────────────────────────────────────────────────────
 
@@ -175,40 +170,84 @@ function QuickCards({ onNavigate }: { onNavigate: (id: string) => void }) {
 
 // ─── General Section ──────────────────────────────────────────────────────────
 
-function GeneralSection() {
+function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name: string) => void }) {
   const [store, setStore] = useState<StoreInfo>(DEFAULT_STORE);
   const [regional, setRegional] = useState<RegionalConfig>(DEFAULT_REGIONAL);
   const [toggles, setToggles] = useState<TogglesConfig>(DEFAULT_TOGGLES);
   const [storeSaved, setStoreSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const onBusinessNameChangeRef = useRef(onBusinessNameChange);
+  onBusinessNameChangeRef.current = onBusinessNameChange;
 
   useEffect(() => {
-    setStore(loadLS(STORE_KEY, DEFAULT_STORE));
-    setRegional(loadLS(REGIONAL_KEY, DEFAULT_REGIONAL));
-    setToggles(loadLS(TOGGLES_KEY, DEFAULT_TOGGLES));
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((body: { data?: DbSettings }) => {
+        if (body.data) {
+          const d = body.data;
+          setStore({ businessName: d.businessName, ownerName: d.ownerName, phone: d.phone, email: d.email, address: d.address, taxId: d.taxId });
+          setRegional({ currency: d.currency, timezone: d.timezone, dateFormat: d.dateFormat, language: d.language });
+          setToggles({ printer: d.printerEnabled, sounds: d.soundsEnabled, darkMode: d.darkMode, desktopNotifications: d.desktopNotifications });
+          onBusinessNameChangeRef.current(d.businessName);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
+
+  function buildPayload(storeData: StoreInfo, regionalData: RegionalConfig, togglesData: TogglesConfig) {
+    return {
+      ...storeData,
+      ...regionalData,
+      printerEnabled: togglesData.printer,
+      soundsEnabled: togglesData.sounds,
+      darkMode: togglesData.darkMode,
+      desktopNotifications: togglesData.desktopNotifications
+    };
+  }
 
   function handleStoreChange(field: keyof StoreInfo, value: string) {
     setStore((prev) => ({ ...prev, [field]: value }));
   }
 
-  function handleStoreSubmit(e: FormEvent) {
+  async function handleStoreSubmit(e: FormEvent) {
     e.preventDefault();
-    saveLS(STORE_KEY, store);
-    saveLS(REGIONAL_KEY, regional);
-    setStoreSaved(true);
-    setTimeout(() => setStoreSaved(false), 2500);
+    setSaveError(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload(store, regional, toggles))
+      });
+      if (!res.ok) throw new Error();
+      onBusinessNameChangeRef.current(store.businessName);
+      setStoreSaved(true);
+      setTimeout(() => setStoreSaved(false), 2500);
+    } catch {
+      setSaveError("Ocurrió un error. Intenta de nuevo.");
+    }
   }
 
-  function handleToggle(field: keyof TogglesConfig, value: boolean) {
+  async function handleToggle(field: keyof TogglesConfig, value: boolean) {
     const next = { ...toggles, [field]: value };
     setToggles(next);
-    saveLS(TOGGLES_KEY, next);
+    try {
+      await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload(store, regional, next))
+      });
+    } catch {
+      setToggles(toggles);
+    }
   }
 
   const inputCls =
-    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100";
+    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 disabled:opacity-50";
   const selectCls =
-    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100";
+    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 disabled:opacity-50";
   const labelCls = "mb-1.5 block text-xs font-medium text-slate-600";
 
   return (
@@ -225,6 +264,7 @@ function GeneralSection() {
             <input
               className={inputCls}
               value={store.businessName}
+              disabled={loading}
               onChange={(e) => handleStoreChange("businessName", e.target.value)}
               placeholder="Nombre del negocio"
             />
@@ -234,6 +274,7 @@ function GeneralSection() {
             <input
               className={inputCls}
               value={store.ownerName}
+              disabled={loading}
               onChange={(e) => handleStoreChange("ownerName", e.target.value)}
               placeholder="Nombre del propietario"
             />
@@ -243,8 +284,9 @@ function GeneralSection() {
             <input
               className={inputCls}
               value={store.phone}
+              disabled={loading}
               onChange={(e) => handleStoreChange("phone", e.target.value)}
-              placeholder="809-000-0000"
+              placeholder="11-0000-0000"
               type="tel"
             />
           </div>
@@ -253,6 +295,7 @@ function GeneralSection() {
             <input
               className={inputCls}
               value={store.email}
+              disabled={loading}
               onChange={(e) => handleStoreChange("email", e.target.value)}
               placeholder="negocio@correo.com"
               type="email"
@@ -263,17 +306,19 @@ function GeneralSection() {
             <input
               className={inputCls}
               value={store.address}
+              disabled={loading}
               onChange={(e) => handleStoreChange("address", e.target.value)}
               placeholder="Calle, ciudad, provincia"
             />
           </div>
           <div>
-            <label className={labelCls}>RNC / Identificación fiscal</label>
+            <label className={labelCls}>CUIT / Identificación fiscal</label>
             <input
               className={inputCls}
               value={store.taxId}
+              disabled={loading}
               onChange={(e) => handleStoreChange("taxId", e.target.value)}
-              placeholder="000-00000-0"
+              placeholder="20-00000000-0"
             />
           </div>
         </div>
@@ -286,10 +331,11 @@ function GeneralSection() {
               <label className={labelCls}>Moneda</label>
               <select
                 className={selectCls}
+                disabled={loading}
                 value={regional.currency}
                 onChange={(e) => setRegional((r) => ({ ...r, currency: e.target.value }))}
               >
-                <option value="DOP">DOP – Peso Dominicano</option>
+                <option value="ARS">ARS – Peso Argentino</option>
                 <option value="USD">USD – Dólar Estadounidense</option>
                 <option value="EUR">EUR – Euro</option>
               </select>
@@ -298,10 +344,11 @@ function GeneralSection() {
               <label className={labelCls}>Zona horaria</label>
               <select
                 className={selectCls}
+                disabled={loading}
                 value={regional.timezone}
                 onChange={(e) => setRegional((r) => ({ ...r, timezone: e.target.value }))}
               >
-                <option value="America/Santo_Domingo">América/Santo Domingo (UTC-4)</option>
+                <option value="America/Argentina/Buenos_Aires">América/Buenos Aires (UTC-3)</option>
                 <option value="America/New_York">América/Nueva York (UTC-5)</option>
                 <option value="America/Bogota">América/Bogotá (UTC-5)</option>
                 <option value="America/Mexico_City">América/Ciudad de México (UTC-6)</option>
@@ -311,6 +358,7 @@ function GeneralSection() {
               <label className={labelCls}>Formato de fecha</label>
               <select
                 className={selectCls}
+                disabled={loading}
                 value={regional.dateFormat}
                 onChange={(e) => setRegional((r) => ({ ...r, dateFormat: e.target.value }))}
               >
@@ -323,6 +371,7 @@ function GeneralSection() {
               <label className={labelCls}>Idioma</label>
               <select
                 className={selectCls}
+                disabled={loading}
                 value={regional.language}
                 onChange={(e) => setRegional((r) => ({ ...r, language: e.target.value }))}
               >
@@ -334,7 +383,9 @@ function GeneralSection() {
         </div>
 
         <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
-          {storeSaved ? (
+          {saveError ? (
+            <span className="text-xs font-medium text-rose-600">{saveError}</span>
+          ) : storeSaved ? (
             <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Cambios guardados
@@ -344,7 +395,8 @@ function GeneralSection() {
           )}
           <button
             type="submit"
-            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 focus:outline-none"
+            disabled={loading}
+            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50 focus:outline-none"
           >
             Guardar cambios
           </button>
@@ -369,7 +421,10 @@ function GeneralSection() {
                 <p className="text-sm font-medium text-slate-800">{item.label}</p>
                 <p className="mt-0.5 text-xs text-slate-500">{item.sub}</p>
               </div>
-              <ToggleSwitch checked={toggles[item.key]} onChange={(v) => handleToggle(item.key, v)} />
+              <ToggleSwitch
+                checked={toggles[item.key]}
+                onChange={(v) => { if (!loading) handleToggle(item.key, v); }}
+              />
             </div>
           ))}
         </div>
@@ -539,10 +594,10 @@ function SistemaSection() {
     { label: "Versión del sistema", value: "1.0.0" },
     { label: "Plan", value: "MVP" },
     { label: "Framework", value: "Next.js 15 (App Router)" },
-    { label: "Base de datos", value: "SQLite · Prisma ORM" },
-    { label: "Autenticación", value: "JWT · bcrypt" },
+    { label: "Base de datos", value: "PostgreSQL · Prisma ORM" },
+    { label: "Autenticación", value: "Cookie · HMAC" },
     { label: "Estado del sistema", value: "Operativo" },
-    { label: "Entorno", value: "Producción local" }
+    { label: "Entorno", value: "Producción" }
   ];
 
   return (
@@ -600,7 +655,7 @@ function ComingSoonSection({ label }: { label: string }) {
 
 // ─── Right Sidebar ────────────────────────────────────────────────────────────
 
-function RightSidebar({ activeCategory }: { activeCategory: string }) {
+function RightSidebar({ activeCategory, businessName }: { activeCategory: string; businessName: string }) {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -609,8 +664,6 @@ function RightSidebar({ activeCategory }: { activeCategory: string }) {
     const url = URL.createObjectURL(file);
     setLogoPreview(url);
   }
-
-  const store = loadLS<StoreInfo>(STORE_KEY, DEFAULT_STORE);
 
   return (
     <aside className="flex flex-col gap-4">
@@ -670,7 +723,7 @@ function RightSidebar({ activeCategory }: { activeCategory: string }) {
         <p className="mb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Resumen</p>
         <div className="space-y-2.5">
           {[
-            { label: "Negocio", value: store.businessName || "—" },
+            { label: "Negocio", value: businessName || "—" },
             { label: "Versión", value: "1.0.0" },
             { label: "Plan", value: "MVP" },
             { label: "Sección activa", value: CATEGORIES.find((c) => c.id === activeCategory)?.label ?? "—" }
@@ -690,11 +743,12 @@ function RightSidebar({ activeCategory }: { activeCategory: string }) {
 
 export function Settings() {
   const [activeCategory, setActiveCategory] = useState("general");
+  const [businessName, setBusinessName] = useState("");
 
   function renderContent() {
     switch (activeCategory) {
       case "general":
-        return <GeneralSection />;
+        return <GeneralSection onBusinessNameChange={setBusinessName} />;
       case "seguridad":
         return <SeguridadSection />;
       case "sistema":
@@ -775,7 +829,7 @@ export function Settings() {
 
           {/* Right sidebar */}
           <div className="hidden w-56 flex-shrink-0 xl:block">
-            <RightSidebar activeCategory={activeCategory} />
+            <RightSidebar activeCategory={activeCategory} businessName={businessName} />
           </div>
         </div>
       </div>
