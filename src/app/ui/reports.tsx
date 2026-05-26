@@ -1020,9 +1020,9 @@ function TopProductsPanel({ sales }: { sales: SaleRecord[] }) {
               </div>
             ))}
           </div>
-          <a className="mt-3 block text-xs font-medium text-violet-600 hover:text-violet-800" href="/products">
+          <Link className="mt-3 block text-xs font-medium text-violet-600 hover:text-violet-800" href="/products">
             Ver todos los productos →
-          </a>
+          </Link>
         </>
       )}
     </div>

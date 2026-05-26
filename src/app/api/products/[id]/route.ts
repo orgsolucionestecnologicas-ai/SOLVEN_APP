@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import {
+  getProductById,
   updateProduct,
   ProductValidationError,
   type UpdateProductInput
@@ -11,6 +12,20 @@ import {
   isRequestObject,
   successResponse
 } from "../../_shared/responses";
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    const product = await getProductById(id);
+    if (!product) return errorResponse("Producto no encontrado.", 404);
+    return successResponse(product);
+  } catch {
+    return errorResponse("No se pudo cargar el producto.");
+  }
+}
 
 export async function PUT(
   request: Request,

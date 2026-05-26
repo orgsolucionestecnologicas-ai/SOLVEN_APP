@@ -29,6 +29,10 @@ export async function listProducts(): Promise<Product[]> {
   });
 }
 
+export async function getProductById(id: string): Promise<Product | null> {
+  return prisma.product.findUnique({ where: { id } });
+}
+
 export async function updateProduct(
   id: string,
   input: UpdateProductInput

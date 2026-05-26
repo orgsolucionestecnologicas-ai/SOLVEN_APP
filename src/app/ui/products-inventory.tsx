@@ -921,6 +921,7 @@ function ProductRow({
   onEdit,
   onAdjustStock
 }: ProductRowProps) {
+  const router = useRouter();
   const category = product.categoryName;
   const presentation = getProductPresentation(product.name);
   const categoryColor = CATEGORY_COLORS[category] ?? CATEGORY_COLORS["Otros"];
@@ -987,7 +988,7 @@ function ProductRow({
         <div className="flex items-center justify-end gap-1">
           <button
             className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            onClick={onEdit}
+            onClick={() => router.push(`/products/${product.id}`)}
             title="Editar"
             type="button"
           >

@@ -1,5 +1,6 @@
 export {
   createProduct,
+  getProductById,
   listProducts,
   updateProduct
 } from "./product-data-access";

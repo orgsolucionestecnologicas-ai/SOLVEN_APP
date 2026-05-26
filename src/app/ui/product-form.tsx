@@ -52,6 +52,20 @@ type CreateProductResponse = {
   error?: { message: string; details?: string[] };
 };
 
+type InitialProductData = {
+  name: string;
+  categoryName: string;
+  costPrice: string;
+  salePrice: string;
+  stock: number;
+  productCode?: string | null;
+};
+
+type ProductFormProps = {
+  initialData?: InitialProductData;
+  productId?: string;
+};
+
 type CategoryApiRecord = {
   id: string;
   name: string;
@@ -75,19 +89,29 @@ function formatMoney(value: string | number): string {
   return num.toFixed(2);
 }
 
-export function ProductForm() {
+export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
   const router = useRouter();
+  const isEditMode = Boolean(productId);
 
-  const [name, setName] = useState("");
-  const [sku, setSku] = useState("");
+  const [name, setName] = useState(initialData?.name ?? "");
+  const [sku, setSku] = useState(initialData?.productCode ?? "");
   const [barcode, setBarcode] = useState("");
-  const [categoryName, setCategoryName] = useState("");
+  const [categoryName, setCategoryName] = useState(initialData?.categoryName ?? "");
   const [brand, setBrand] = useState("");
   const [unit, setUnit] = useState<string>("Unidad (ud)");
-  const [costPrice, setCostPrice] = useState("");
-  const [margin, setMargin] = useState("30");
-  const [salePrice, setSalePrice] = useState("");
-  const [stock, setStock] = useState("0");
+  const [costPrice, setCostPrice] = useState(initialData?.costPrice ?? "");
+  const [margin, setMargin] = useState(() => {
+    if (initialData) {
+      const cost = parseFloat(initialData.costPrice);
+      const sale = parseFloat(initialData.salePrice);
+      if (!isNaN(cost) && cost > 0 && !isNaN(sale)) {
+        return (((sale - cost) / cost) * 100).toFixed(1);
+      }
+    }
+    return "30";
+  });
+  const [salePrice, setSalePrice] = useState(initialData?.salePrice ?? "");
+  const [stock, setStock] = useState(initialData?.stock !== undefined ? String(initialData.stock) : "0");
   const [minStock, setMinStock] = useState("0");
   const [stockAlert, setStockAlert] = useState("0");
   const [location, setLocation] = useState("");
@@ -178,23 +202,23 @@ export function ProductForm() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const response = await fetch("/api/products", {
-        method: "POST",
+      const url = isEditMode ? `/api/products/${productId}` : "/api/products";
+      const method = isEditMode ? "PUT" : "POST";
+      const payload = isEditMode
+        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice) }
+        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10) };
+
+      const response = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          categoryName,
-          costPrice: parseFloat(costPrice),
-          salePrice: parseFloat(salePrice),
-          stock: parseInt(stock, 10)
-        })
+        body: JSON.stringify(payload)
       });
       const responseBody = (await response.json()) as CreateProductResponse;
       if (!response.ok || !responseBody.data) {
         const errorDetail = responseBody.error?.details?.[0];
         const errorMessage = responseBody.error?.message;
         setSubmitError(
-          errorDetail ?? errorMessage ?? "No se pudo guardar el producto."
+          errorDetail ?? errorMessage ?? (isEditMode ? "No se pudo actualizar el producto." : "No se pudo guardar el producto.")
         );
         return;
       }
@@ -203,7 +227,7 @@ export function ProductForm() {
         router.push("/products");
       }, 1500);
     } catch {
-      setSubmitError("No se pudo guardar el producto.");
+      setSubmitError(isEditMode ? "No se pudo actualizar el producto." : "No se pudo guardar el producto.");
     } finally {
       setIsSubmitting(false);
     }
@@ -223,7 +247,7 @@ export function ProductForm() {
         <div className="fixed inset-x-0 top-4 z-50 flex justify-center px-4">
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-3 shadow-lg">
             <p className="text-sm font-medium text-emerald-800">
-              ✓ Producto creado exitosamente. Redirigiendo...
+              {isEditMode ? "✓ Producto actualizado exitosamente. Redirigiendo..." : "✓ Producto creado exitosamente. Redirigiendo..."}
             </p>
           </div>
         </div>
@@ -244,11 +268,12 @@ export function ProductForm() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-slate-950">
-              Nuevo producto
+              {isEditMode ? "Editar producto" : "Nuevo producto"}
             </h1>
             <p className="mt-0.5 text-sm text-slate-500">
-              Completa la información para registrar un nuevo producto en tu
-              inventario.
+              {isEditMode
+                ? "Modifica los datos del producto y guardá los cambios."
+                : "Completa la información para registrar un nuevo producto en tu inventario."}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -331,7 +356,11 @@ export function ProductForm() {
 
                   <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
                     <p className="text-xs text-slate-500">Código del producto</p>
-                    <p className="text-xs text-slate-400">Se generará al guardar (ej. PROD-0001)</p>
+                    {isEditMode && initialData?.productCode ? (
+                      <p className="font-mono text-sm font-semibold text-slate-700">{initialData.productCode}</p>
+                    ) : (
+                      <p className="text-xs text-slate-400">Se generará al guardar (ej. PROD-0001)</p>
+                    )}
                   </div>
 
                   <FormField htmlFor="pf-barcode" label="Código de barras">
@@ -514,19 +543,26 @@ export function ProductForm() {
 
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
-                    <FormField htmlFor="pf-stock" label="Stock actual" required>
-                      <input
-                        className={inputClass}
-                        disabled={isSubmitting}
-                        id="pf-stock"
-                        min="0"
-                        onChange={(e) => setStock(e.target.value)}
-                        placeholder="0"
-                        required
-                        step="1"
-                        type="number"
-                        value={stock}
-                      />
+                    <FormField htmlFor="pf-stock" label="Stock actual" required={!isEditMode}>
+                      {isEditMode ? (
+                        <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                          <span className="text-sm text-slate-700">{stock} unidades</span>
+                          <span className="text-xs text-slate-400">Ajustá desde inventario</span>
+                        </div>
+                      ) : (
+                        <input
+                          className={inputClass}
+                          disabled={isSubmitting}
+                          id="pf-stock"
+                          min="0"
+                          onChange={(e) => setStock(e.target.value)}
+                          placeholder="0"
+                          required
+                          step="1"
+                          type="number"
+                          value={stock}
+                        />
+                      )}
                     </FormField>
 
                     <FormField
@@ -734,7 +770,7 @@ export function ProductForm() {
                         {name || "Nombre del producto"}
                       </p>
                       <span className="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
-                        Nuevo
+                        {isEditMode ? "Editando" : "Nuevo"}
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs text-slate-500">
