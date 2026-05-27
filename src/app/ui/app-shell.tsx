@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Tag,
   Users,
+  Wrench,
 } from "lucide-react";
 import { LogoutButton } from "./logout-button";
 
@@ -30,6 +31,7 @@ type ActiveSection =
   | "reports"
   | "returns"
   | "sales"
+  | "services"
   | "settings";
 
 type AppShellProps = {
@@ -60,6 +62,7 @@ const navItems: NavItem[] = [
   { type: "link",     href: "/pos",             label: "Ventas",        section: "pos",           Icon: ShoppingCart },
   { type: "link",     href: "/returns",         label: "Devoluciones",  section: "returns",       Icon: RotateCcw },
   { type: "link",     href: "/products",        label: "Productos",     section: "products",      Icon: Package },
+  { type: "link",     href: "/services",        label: "Servicios",     section: "services",      Icon: Wrench },
   { type: "link",     href: "/inventory",       label: "Inventario",    section: "inventory",     Icon: Layers },
   { type: "link",     href: "/customers",       label: "Clientes",      section: "customers",     Icon: Users },
   { type: "link",     href: "/cash-movements",  label: "Caja",          section: "cashMovements", Icon: CreditCard },
