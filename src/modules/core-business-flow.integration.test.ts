@@ -11,10 +11,14 @@ import { createSale } from "./sales";
 const testProductNamePrefix = "SOLVEN_CORE_FLOW_PRODUCT_";
 const testCustomerNamePrefix = "SOLVEN_CORE_FLOW_CUSTOMER_";
 const testExpenseDescriptionPrefix = "SOLVEN_CORE_FLOW_EXPENSE_";
+const testCashierName = "SOLVEN_CORE_FLOW_CASHIER";
 
 describe("SOLVEN core business flow", () => {
   beforeEach(async () => {
     await deleteCoreFlowData();
+    await prisma.cashRegisterSession.create({
+      data: { cashierName: testCashierName, openingAmount: 0, status: "OPEN" }
+    });
   });
 
   afterAll(async () => {
@@ -330,5 +334,8 @@ async function deleteCoreFlowData() {
         in: testCustomerIds
       }
     }
+  });
+  await prisma.cashRegisterSession.deleteMany({
+    where: { cashierName: testCashierName }
   });
 }

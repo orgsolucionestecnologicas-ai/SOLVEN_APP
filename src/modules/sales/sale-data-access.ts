@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 import {
   type CreateSaleInput,
+  SaleNoCashRegisterOpenError,
   type ValidatedProductSaleItemInput,
   type ValidatedServiceSaleItemInput,
   type ValidatedSaleItemInput,
@@ -66,6 +67,16 @@ export async function createSale(
   saleInput: CreateSaleWithPromotionsInput
 ): Promise<SaleWithItems> {
   const validatedSale = validateCreateSaleInput(saleInput);
+
+  if (validatedSale.paymentType === "CASH") {
+    const openSession = await prisma.cashRegisterSession.findFirst({
+      where: { status: "OPEN" }
+    });
+    if (!openSession) {
+      throw new SaleNoCashRegisterOpenError();
+    }
+  }
+
   const promotionIds = Array.isArray(saleInput.promotionIds)
     ? saleInput.promotionIds.filter((id) => typeof id === "string" && id.trim())
     : [];

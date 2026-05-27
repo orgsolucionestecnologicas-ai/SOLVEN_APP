@@ -11,10 +11,14 @@ import {
 
 const testProductNamePrefix = "SOLVEN_SALE_TEST_PRODUCT_";
 const testCustomerNamePrefix = "SOLVEN_SALE_TEST_CUSTOMER_";
+const testCashierName = "SOLVEN_SALE_TEST_CASHIER";
 
 describe("sale data access", () => {
   beforeEach(async () => {
     await deleteSaleTestData();
+    await prisma.cashRegisterSession.create({
+      data: { cashierName: testCashierName, openingAmount: 0, status: "OPEN" }
+    });
   });
 
   afterAll(async () => {
@@ -419,5 +423,8 @@ async function deleteSaleTestData() {
         in: testCustomerIds
       }
     }
+  });
+  await prisma.cashRegisterSession.deleteMany({
+    where: { cashierName: testCashierName }
   });
 }

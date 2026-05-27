@@ -1,9 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  SaleNoCashRegisterOpenError,
   SaleValidationError,
   validateCreateSaleInput
 } from "./sale-validation";
+import { createSale } from "./sale-data-access";
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    cashRegisterSession: { findFirst: vi.fn().mockResolvedValue(null) },
+    $transaction: vi.fn()
+  }
+}));
 
 describe("validateCreateSaleInput", () => {
   it("accepts valid sale input", () => {
@@ -137,5 +146,16 @@ describe("validateCreateSaleInput", () => {
         ]
       })
     ).toThrow(SaleValidationError);
+  });
+});
+
+describe("createSale", () => {
+  it("throws SaleNoCashRegisterOpenError for CASH sales when no session is open", async () => {
+    await expect(
+      createSale({
+        paymentType: "CASH",
+        items: [{ productId: "product-1", quantity: 1 }]
+      })
+    ).rejects.toThrow(SaleNoCashRegisterOpenError);
   });
 });

@@ -6,10 +6,14 @@ import { GET, POST } from "./route";
 
 const testProductNamePrefix = "SOLVEN_INTEGRATION_SALE_PRODUCT_";
 const testCustomerNamePrefix = "SOLVEN_INTEGRATION_SALE_CUSTOMER_";
+const testCashierName = "SOLVEN_INTEGRATION_SALE_CASHIER";
 
 describe("sales API database integration", () => {
   beforeEach(async () => {
     await deleteIntegrationSaleData();
+    await prisma.cashRegisterSession.create({
+      data: { cashierName: testCashierName, openingAmount: 0, status: "OPEN" }
+    });
   });
 
   afterAll(async () => {
@@ -303,5 +307,8 @@ async function deleteIntegrationSaleData() {
         in: testCustomerIds
       }
     }
+  });
+  await prisma.cashRegisterSession.deleteMany({
+    where: { cashierName: testCashierName }
   });
 }

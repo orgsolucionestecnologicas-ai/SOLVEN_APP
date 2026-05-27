@@ -4,6 +4,7 @@ import {
   type CreateSaleWithPromotionsInput,
   listSales,
   SaleInsufficientStockError,
+  SaleNoCashRegisterOpenError,
   SaleProductNotFoundError
 } from "../../../modules/sales";
 import { SaleValidationError } from "../../../modules/sales/sale-validation";
@@ -43,6 +44,10 @@ export async function POST(request: Request) {
 
     return successResponse(sale, 201);
   } catch (error) {
+    if (error instanceof SaleNoCashRegisterOpenError) {
+      return errorResponse(error.message, 400);
+    }
+
     if (error instanceof SaleValidationError) {
       return errorResponse("Invalid sale input.", 400, error.reasons);
     }

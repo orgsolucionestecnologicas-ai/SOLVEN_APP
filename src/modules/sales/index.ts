@@ -10,6 +10,7 @@ export {
   type SaleWithItems
 } from "./sale-data-access";
 export {
+  SaleNoCashRegisterOpenError,
   SaleValidationError,
   type CreateSaleInput,
   type CreateSaleItemInput,

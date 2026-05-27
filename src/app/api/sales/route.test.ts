@@ -15,6 +15,12 @@ import { GET, POST } from "./route";
 vi.mock("../../../modules/sales", () => ({
   createSale: vi.fn(),
   listSales: vi.fn(),
+  SaleNoCashRegisterOpenError: class SaleNoCashRegisterOpenError extends Error {
+    constructor() {
+      super("No hay una sesión de caja abierta. Abrí la caja antes de registrar una venta en efectivo.");
+      this.name = "SaleNoCashRegisterOpenError";
+    }
+  },
   SaleInsufficientStockError: class SaleInsufficientStockError extends Error {
     constructor(productName: string) {
       super(`Product ${productName} does not have enough stock.`);

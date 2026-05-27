@@ -41,6 +41,13 @@ export type ValidatedSaleInput =
   | ValidatedCashSaleInput
   | ValidatedCreditSaleInput;
 
+export class SaleNoCashRegisterOpenError extends Error {
+  constructor() {
+    super("No hay una sesión de caja abierta. Abrí la caja antes de registrar una venta en efectivo.");
+    this.name = "SaleNoCashRegisterOpenError";
+  }
+}
+
 export class SaleValidationError extends Error {
   constructor(public readonly reasons: string[]) {
     super(reasons.join(" "));

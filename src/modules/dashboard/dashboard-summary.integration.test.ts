@@ -13,10 +13,14 @@ const testProductNamePrefix = "SOLVEN_DASHBOARD_PRODUCT_";
 const testCustomerNamePrefix = "SOLVEN_DASHBOARD_CUSTOMER_";
 const testExpenseDescriptionPrefix = "SOLVEN_DASHBOARD_EXPENSE_";
 const cashReferencePrefix = "SOLVEN_DASHBOARD_CASH_";
+const testCashierName = "SOLVEN_DASHBOARD_CASHIER";
 
 describe("dashboard summary", () => {
   beforeEach(async () => {
     await deleteDashboardSummaryData();
+    await prisma.cashRegisterSession.create({
+      data: { cashierName: testCashierName, openingAmount: 0, status: "OPEN" }
+    });
   });
 
   afterAll(async () => {
@@ -257,5 +261,8 @@ async function deleteDashboardSummaryData() {
         in: testCustomerIds
       }
     }
+  });
+  await prisma.cashRegisterSession.deleteMany({
+    where: { cashierName: testCashierName }
   });
 }
