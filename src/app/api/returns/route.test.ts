@@ -25,6 +25,7 @@ describe("returns API route", () => {
 
   it("processes a return successfully", async () => {
     const result = {
+      returnId: "return-1",
       saleId: "sale-1",
       returnedItems: 1,
       totalReturned: "15.00"
@@ -175,5 +176,50 @@ describe("returns API route", () => {
     expect(await response.json()).toEqual({
       error: { message: "No se pudo procesar la devolución." }
     });
+  });
+
+  it("returns 400 when a double return exceeds the sold quantity", async () => {
+    mockedProcessReturn.mockRejectedValueOnce(
+      new ReturnValidationError(
+        "La cantidad a devolver (2) supera el máximo permitido (1) para el producto product-1."
+      )
+    );
+
+    const response = await POST(
+      new Request("http://localhost/api/returns", {
+        method: "POST",
+        body: JSON.stringify({
+          saleId: "sale-1",
+          items: [{ productId: "product-1", quantity: 1 }]
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("supera el máximo permitido");
+  });
+
+  it("returns 201 with returnId when a credit return is processed", async () => {
+    const result = {
+      returnId: "return-2",
+      saleId: "sale-credit-1",
+      returnedItems: 1,
+      totalReturned: "30.00"
+    };
+    mockedProcessReturn.mockResolvedValueOnce(result);
+
+    const response = await POST(
+      new Request("http://localhost/api/returns", {
+        method: "POST",
+        body: JSON.stringify({
+          saleId: "sale-credit-1",
+          items: [{ productId: "product-1", quantity: 1 }]
+        })
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ data: result });
   });
 });
