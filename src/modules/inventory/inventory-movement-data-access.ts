@@ -16,3 +16,10 @@ export async function recordInventoryMovement(
     data: validatedMovement
   });
 }
+
+export async function listInventoryMovements() {
+  return prisma.inventoryMovement.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { product: { select: { name: true } } }
+  });
+}
