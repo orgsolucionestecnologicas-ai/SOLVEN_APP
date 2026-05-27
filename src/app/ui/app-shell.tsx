@@ -8,6 +8,7 @@ import {
   Home,
   Layers,
   Package,
+  RotateCcw,
   Settings,
   Shield,
   ShoppingCart,
@@ -27,6 +28,7 @@ type ActiveSection =
   | "products"
   | "promotions"
   | "reports"
+  | "returns"
   | "sales"
   | "settings";
 
@@ -56,6 +58,7 @@ type NavItem = NavLinkItem | NavDisabledItem;
 const navItems: NavItem[] = [
   { type: "link",     href: "/dashboard",      label: "Inicio",        section: "dashboard",     Icon: Home },
   { type: "link",     href: "/pos",             label: "Ventas",        section: "pos",           Icon: ShoppingCart },
+  { type: "link",     href: "/returns",         label: "Devoluciones",  section: "returns",       Icon: RotateCcw },
   { type: "link",     href: "/products",        label: "Productos",     section: "products",      Icon: Package },
   { type: "link",     href: "/inventory",       label: "Inventario",    section: "inventory",     Icon: Layers },
   { type: "link",     href: "/customers",       label: "Clientes",      section: "customers",     Icon: Users },
