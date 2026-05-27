@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   }
 
   if (!isRequestObject(requestBody)) {
-    return errorResponse("Stock adjustment input must be an object.", 400);
+    return errorResponse("El ajuste de stock debe ser un objeto.", 400);
   }
 
   try {
@@ -34,16 +34,16 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof StockAdjustmentValidationError) {
       return errorResponse(
-        "Invalid stock adjustment input.",
+        "Los datos del ajuste de stock son inválidos.",
         400,
         error.reasons
       );
     }
 
     if (isPrismaRecordNotFoundError(error)) {
-      return errorResponse("Product was not found.", 400);
+      return errorResponse("El producto no fue encontrado.", 400);
     }
 
-    return errorResponse("Could not save stock adjustment.");
+    return errorResponse("No se pudo guardar el ajuste de stock.");
   }
 }
