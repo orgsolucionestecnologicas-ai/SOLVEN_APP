@@ -23,11 +23,12 @@ export class ReturnValidationError extends Error {
 
 export async function processReturn(
   saleId: string,
-  items: ReturnItemInput[]
+  items: ReturnItemInput[],
+  tenantId: string
 ): Promise<ReturnResult> {
   return prisma.$transaction(async (tx) => {
-    const sale = await tx.sale.findUnique({
-      where: { id: saleId },
+    const sale = await tx.sale.findFirst({
+      where: { id: saleId, tenantId },
       include: { items: true }
     });
 
@@ -84,6 +85,7 @@ export async function processReturn(
 
       await tx.inventoryMovement.create({
         data: {
+          tenantId,
           productId: returnItem.productId,
           reason: `RETURN:${saleId}`,
           previousStock,
@@ -98,6 +100,7 @@ export async function processReturn(
     if (sale.paymentType === "CASH") {
       await tx.cashMovement.create({
         data: {
+          tenantId,
           type: "OUT",
           amount: returnTotal,
           source: "RETURN",

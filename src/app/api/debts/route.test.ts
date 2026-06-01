@@ -1,3 +1,5 @@
+vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -60,7 +62,7 @@ describe("debts API route", () => {
     expect(mockedCreateDebt).toHaveBeenCalledWith({
       customerId: "customer-1",
       totalAmount: 90
-    });
+    }, "test-tenant-id");
   });
 
   it("returns validation errors for invalid debt input", async () => {

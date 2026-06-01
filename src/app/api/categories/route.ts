@@ -8,10 +8,12 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function GET() {
+  const tenantId = await requireTenantId();
   try {
-    const categories = await listCategories();
+    const categories = await listCategories(tenantId);
     return successResponse(categories);
   } catch {
     return errorResponse("No se pudieron cargar las categorías.");
@@ -19,6 +21,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const tenantId = await requireTenantId();
   let body: unknown;
 
   try {
@@ -34,7 +37,7 @@ export async function POST(request: Request) {
   const input = body as Record<string, unknown>;
 
   try {
-    const category = await createCategory(input.name as string);
+    const category = await createCategory(input.name as string, tenantId);
     return successResponse(category, 201);
   } catch (error) {
     if (error instanceof CategoryValidationError) {

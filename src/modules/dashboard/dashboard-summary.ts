@@ -15,7 +15,9 @@ export type DashboardSummary = {
   lowStockProductsCount: number;
 };
 
-export async function getDashboardSummary(): Promise<DashboardSummary> {
+export async function getDashboardSummary(
+  tenantId: string
+): Promise<DashboardSummary> {
   const [
     salesSummary,
     expensesSummary,
@@ -25,45 +27,22 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     totalProducts,
     lowStockProductsCount
   ] = await Promise.all([
-    prisma.sale.aggregate({
-      _sum: {
-        totalAmount: true
-      }
-    }),
-    prisma.expense.aggregate({
-      _sum: {
-        amount: true
-      }
+    prisma.sale.aggregate({ where: { tenantId }, _sum: { totalAmount: true } }),
+    prisma.expense.aggregate({ where: { tenantId }, _sum: { amount: true } }),
+    prisma.cashMovement.aggregate({
+      where: { tenantId, type: "IN" },
+      _sum: { amount: true }
     }),
     prisma.cashMovement.aggregate({
-      _sum: {
-        amount: true
-      },
-      where: {
-        type: "IN"
-      }
-    }),
-    prisma.cashMovement.aggregate({
-      _sum: {
-        amount: true
-      },
-      where: {
-        type: "OUT"
-      }
+      where: { tenantId, type: "OUT" },
+      _sum: { amount: true }
     }),
     prisma.debt.aggregate({
-      _sum: {
-        remainingAmount: true
-      }
+      where: { tenantId },
+      _sum: { remainingAmount: true }
     }),
-    prisma.product.count(),
-    prisma.product.count({
-      where: {
-        stock: {
-          lte: LOW_STOCK_THRESHOLD
-        }
-      }
-    })
+    prisma.product.count({ where: { tenantId } }),
+    prisma.product.count({ where: { tenantId, stock: { lte: LOW_STOCK_THRESHOLD } } })
   ]);
 
   const totalSalesAmount = salesSummary._sum.totalAmount ?? zero();

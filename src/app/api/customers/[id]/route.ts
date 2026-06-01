@@ -11,15 +11,15 @@ import {
   isRequestObject,
   successResponse
 } from "../../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
 
   let body: unknown;
-
   try {
     body = await request.json();
   } catch {
@@ -31,17 +31,15 @@ export async function PUT(
   }
 
   try {
-    const customer = await updateCustomer(id, body as UpdateCustomerInput);
+    const customer = await updateCustomer(id, body as UpdateCustomerInput, tenantId);
     return successResponse(customer);
   } catch (error) {
     if (error instanceof CustomerValidationError) {
       return errorResponse("Invalid customer input.", 400, error.reasons);
     }
-
     if (isPrismaRecordNotFoundError(error)) {
       return errorResponse("Cliente no encontrado.", 404);
     }
-
     return errorResponse("No se pudo actualizar el cliente.");
   }
 }

@@ -10,10 +10,17 @@ import {
 } from "./debt-payment-data-access";
 
 const testCustomerNamePrefix = "SOLVEN_DEBT_PAYMENT_TEST_CUSTOMER_";
+const testTenantEmail = "solven_debt_payment_test@test.internal";
+
+let testTenantId: string;
 
 describe("debt payment data access", () => {
   beforeEach(async () => {
     await deleteDebtPaymentTestData();
+    const tenant = await prisma.tenant.create({
+      data: { businessName: "Debt Payment Test Tenant", email: testTenantEmail }
+    });
+    testTenantId = tenant.id;
   });
 
   afterAll(async () => {
@@ -24,63 +31,33 @@ describe("debt payment data access", () => {
   it("registers a debt payment and reduces remaining debt amount atomically", async () => {
     const debt = await createTestDebt(100);
 
-    const payment = await registerDebtPayment({
-      debtId: debt.id,
-      amount: 30.25
-    });
+    const payment = await registerDebtPayment({ debtId: debt.id, amount: 30.25 }, testTenantId);
 
-    const updatedDebt = await prisma.debt.findUniqueOrThrow({
-      where: {
-        id: debt.id
-      }
-    });
+    const updatedDebt = await prisma.debt.findUniqueOrThrow({ where: { id: debt.id } });
 
     expect(payment.debtId).toBe(debt.id);
     expect(payment.amount.toString()).toBe("30.25");
     expect(updatedDebt.remainingAmount.toString()).toBe("69.75");
 
     const cashMovement = await prisma.cashMovement.findFirstOrThrow({
-      where: {
-        source: "DEBT_PAYMENT",
-        referenceId: payment.id
-      }
+      where: { source: "DEBT_PAYMENT", referenceId: payment.id }
     });
 
     expect(cashMovement.amount.toString()).toBe("30.25");
-    expect(cashMovement).toMatchObject({
-      type: "IN",
-      source: "DEBT_PAYMENT",
-      referenceId: payment.id
-    });
+    expect(cashMovement).toMatchObject({ type: "IN", source: "DEBT_PAYMENT", referenceId: payment.id });
   });
 
   it("rejects a payment that exceeds remaining debt amount", async () => {
     const debt = await createTestDebt(40);
 
     await expect(
-      registerDebtPayment({
-        debtId: debt.id,
-        amount: 41
-      })
+      registerDebtPayment({ debtId: debt.id, amount: 41 }, testTenantId)
     ).rejects.toThrow(DebtPaymentAmountError);
 
-    const updatedDebt = await prisma.debt.findUniqueOrThrow({
-      where: {
-        id: debt.id
-      }
-    });
-    const payments = await prisma.debtPayment.findMany({
-      where: {
-        debtId: debt.id
-      }
-    });
+    const updatedDebt = await prisma.debt.findUniqueOrThrow({ where: { id: debt.id } });
+    const payments = await prisma.debtPayment.findMany({ where: { debtId: debt.id } });
     const cashMovements = await prisma.cashMovement.findMany({
-      where: {
-        source: "DEBT_PAYMENT",
-        referenceId: {
-          in: payments.map((payment) => payment.id)
-        }
-      }
+      where: { source: "DEBT_PAYMENT", referenceId: { in: payments.map((p) => p.id) } }
     });
 
     expect(updatedDebt.remainingAmount.toString()).toBe("40");
@@ -92,72 +69,37 @@ describe("debt payment data access", () => {
     const debt = await createTestDebt(100);
 
     const results = await Promise.allSettled([
-      registerDebtPayment({
-        debtId: debt.id,
-        amount: 80
-      }),
-      registerDebtPayment({
-        debtId: debt.id,
-        amount: 80
-      })
+      registerDebtPayment({ debtId: debt.id, amount: 80 }, testTenantId),
+      registerDebtPayment({ debtId: debt.id, amount: 80 }, testTenantId)
     ]);
 
-    const fulfilledResults = results.filter(
-      (result) => result.status === "fulfilled"
-    );
-    const rejectedResults = results.filter(
-      (result) => result.status === "rejected"
-    );
-    const updatedDebt = await prisma.debt.findUniqueOrThrow({
-      where: {
-        id: debt.id
-      }
-    });
-    const payments = await prisma.debtPayment.findMany({
-      where: {
-        debtId: debt.id
-      }
-    });
+    const fulfilledResults = results.filter((r) => r.status === "fulfilled");
+    const rejectedResults = results.filter((r) => r.status === "rejected");
+    const updatedDebt = await prisma.debt.findUniqueOrThrow({ where: { id: debt.id } });
+    const payments = await prisma.debtPayment.findMany({ where: { debtId: debt.id } });
     const cashMovements = await prisma.cashMovement.findMany({
-      where: {
-        source: "DEBT_PAYMENT",
-        referenceId: {
-          in: payments.map((payment) => payment.id)
-        }
-      }
+      where: { source: "DEBT_PAYMENT", referenceId: { in: payments.map((p) => p.id) } }
     });
 
     expect(fulfilledResults).toHaveLength(1);
     expect(rejectedResults).toHaveLength(1);
-    expect(rejectedResults[0].reason).toBeInstanceOf(
-      DebtPaymentAmountError
-    );
+    expect(rejectedResults[0].reason).toBeInstanceOf(DebtPaymentAmountError);
     expect(updatedDebt.remainingAmount.toString()).toBe("20");
     expect(payments).toHaveLength(1);
     expect(payments[0].amount.toString()).toBe("80");
     expect(cashMovements).toHaveLength(1);
-    expect(cashMovements[0]).toMatchObject({
-      type: "IN",
-      source: "DEBT_PAYMENT",
-      referenceId: payments[0].id
-    });
+    expect(cashMovements[0]).toMatchObject({ type: "IN", source: "DEBT_PAYMENT", referenceId: payments[0].id });
   });
 
   it("lists debt payments after registration", async () => {
     const debt = await createTestDebt(80);
-    const payment = await registerDebtPayment({
-      debtId: debt.id,
-      amount: 25
-    });
+    const payment = await registerDebtPayment({ debtId: debt.id, amount: 25 }, testTenantId);
 
-    const payments = await listDebtPayments();
+    const payments = await listDebtPayments(testTenantId);
 
     expect(payments).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          id: payment.id,
-          debtId: debt.id
-        })
+        expect.objectContaining({ id: payment.id, debtId: debt.id })
       ])
     );
   });
@@ -165,79 +107,34 @@ describe("debt payment data access", () => {
 
 async function createTestDebt(totalAmount: number) {
   const customer = await prisma.customer.create({
-    data: {
-      name: `${testCustomerNamePrefix}${Date.now()}`
-    }
+    data: { tenantId: testTenantId, name: `${testCustomerNamePrefix}${Date.now()}` }
   });
 
-  return createDebt({
-    customerId: customer.id,
-    totalAmount
-  });
+  return createDebt({ customerId: customer.id, totalAmount }, testTenantId);
 }
 
 async function deleteDebtPaymentTestData() {
   const testCustomers = await prisma.customer.findMany({
-    where: {
-      name: {
-        startsWith: testCustomerNamePrefix
-      }
-    },
-    select: {
-      id: true
-    }
+    where: { name: { startsWith: testCustomerNamePrefix } },
+    select: { id: true }
   });
-  const testCustomerIds = testCustomers.map((customer) => customer.id);
+  const testCustomerIds = testCustomers.map((c) => c.id);
   const testDebts = await prisma.debt.findMany({
-    where: {
-      customerId: {
-        in: testCustomerIds
-      }
-    },
-    select: {
-      id: true
-    }
+    where: { customerId: { in: testCustomerIds } },
+    select: { id: true }
   });
-  const testDebtIds = testDebts.map((debt) => debt.id);
+  const testDebtIds = testDebts.map((d) => d.id);
   const testPayments = await prisma.debtPayment.findMany({
-    where: {
-      debtId: {
-        in: testDebtIds
-      }
-    },
-    select: {
-      id: true
-    }
+    where: { debtId: { in: testDebtIds } },
+    select: { id: true }
   });
-  const testPaymentIds = testPayments.map((payment) => payment.id);
+  const testPaymentIds = testPayments.map((p) => p.id);
 
   await prisma.cashMovement.deleteMany({
-    where: {
-      source: "DEBT_PAYMENT",
-      referenceId: {
-        in: testPaymentIds
-      }
-    }
+    where: { source: "DEBT_PAYMENT", referenceId: { in: testPaymentIds } }
   });
-  await prisma.debtPayment.deleteMany({
-    where: {
-      debtId: {
-        in: testDebtIds
-      }
-    }
-  });
-  await prisma.debt.deleteMany({
-    where: {
-      id: {
-        in: testDebtIds
-      }
-    }
-  });
-  await prisma.customer.deleteMany({
-    where: {
-      id: {
-        in: testCustomerIds
-      }
-    }
-  });
+  await prisma.debtPayment.deleteMany({ where: { debtId: { in: testDebtIds } } });
+  await prisma.debt.deleteMany({ where: { id: { in: testDebtIds } } });
+  await prisma.customer.deleteMany({ where: { id: { in: testCustomerIds } } });
+  await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }

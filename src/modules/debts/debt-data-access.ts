@@ -9,31 +9,26 @@ import {
 
 export type DebtWithCustomer = Debt & { customer: { name: string } };
 
-export async function createDebt(debtInput: CreateDebtInput): Promise<Debt> {
+export async function createDebt(
+  debtInput: CreateDebtInput,
+  tenantId: string
+): Promise<Debt> {
   const validatedDebt = validateCreateDebtInput(debtInput);
 
   return prisma.debt.create({
     data: {
-      customer: {
-        connect: {
-          id: validatedDebt.customerId
-        }
-      },
+      tenantId,
+      customerId: validatedDebt.customerId,
       totalAmount: validatedDebt.totalAmount,
       remainingAmount: validatedDebt.remainingAmount
     }
   });
 }
 
-export async function listDebts(): Promise<DebtWithCustomer[]> {
+export async function listDebts(tenantId: string): Promise<DebtWithCustomer[]> {
   return prisma.debt.findMany({
-    orderBy: {
-      createdAt: "desc"
-    },
-    include: {
-      customer: {
-        select: { name: true }
-      }
-    }
+    where: { tenantId },
+    orderBy: { createdAt: "desc" },
+    include: { customer: { select: { name: true } } }
   });
 }

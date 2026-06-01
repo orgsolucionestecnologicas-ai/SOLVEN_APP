@@ -13,11 +13,12 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function GET() {
+  const tenantId = await requireTenantId();
   try {
-    const cashMovements = await listCashMovements();
-
+    const cashMovements = await listCashMovements(tenantId);
     return successResponse(cashMovements);
   } catch {
     return errorResponse("Could not load cash movements.");
@@ -25,6 +26,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const tenantId = await requireTenantId();
   let requestBody: unknown;
 
   try {
@@ -39,15 +41,14 @@ export async function POST(request: Request) {
 
   try {
     const cashMovement = await createCashMovement(
-      requestBody as CreateCashMovementInput
+      requestBody as CreateCashMovementInput,
+      tenantId
     );
-
     return successResponse(cashMovement, 201);
   } catch (error) {
     if (error instanceof CashMovementValidationError) {
       return errorResponse("Invalid cash movement input.", 400, error.reasons);
     }
-
     return errorResponse("Could not save cash movement.");
   }
 }

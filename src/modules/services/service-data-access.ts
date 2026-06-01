@@ -17,45 +17,49 @@ export class ServiceNotFoundError extends Error {
   }
 }
 
-export async function createService(input: CreateServiceInput): Promise<Service> {
+export async function createService(
+  input: CreateServiceInput,
+  tenantId: string
+): Promise<Service> {
   const validated = validateCreateServiceInput(input);
   const code = await generateCode("SRV");
 
   return prisma.service.create({
-    data: {
-      ...validated,
-      code
-    }
+    data: { ...validated, code, tenantId }
   });
 }
 
-export async function listServices(): Promise<Service[]> {
+export async function listServices(tenantId: string): Promise<Service[]> {
   return prisma.service.findMany({
+    where: { tenantId },
     orderBy: { name: "asc" }
   });
 }
 
-export async function getServiceById(id: string): Promise<Service> {
-  const service = await prisma.service.findUnique({ where: { id } });
-  if (!service) {
-    throw new ServiceNotFoundError(id);
-  }
+export async function getServiceById(
+  id: string,
+  tenantId: string
+): Promise<Service> {
+  const service = await prisma.service.findFirst({ where: { id, tenantId } });
+  if (!service) throw new ServiceNotFoundError(id);
   return service;
 }
 
 export async function updateService(
   id: string,
-  input: UpdateServiceInput
+  input: UpdateServiceInput,
+  tenantId: string
 ): Promise<Service> {
   const data = validateUpdateServiceInput(input);
-  return prisma.service.update({ where: { id }, data });
+  return prisma.service.update({ where: { id, tenantId }, data });
 }
 
-export async function toggleServiceActive(id: string): Promise<Service> {
-  const existing = await prisma.service.findUnique({ where: { id } });
-  if (!existing) {
-    throw new ServiceNotFoundError(id);
-  }
+export async function toggleServiceActive(
+  id: string,
+  tenantId: string
+): Promise<Service> {
+  const existing = await prisma.service.findFirst({ where: { id, tenantId } });
+  if (!existing) throw new ServiceNotFoundError(id);
   return prisma.service.update({
     where: { id },
     data: { isActive: !existing.isActive }

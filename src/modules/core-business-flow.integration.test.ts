@@ -12,12 +12,19 @@ const testProductNamePrefix = "SOLVEN_CORE_FLOW_PRODUCT_";
 const testCustomerNamePrefix = "SOLVEN_CORE_FLOW_CUSTOMER_";
 const testExpenseDescriptionPrefix = "SOLVEN_CORE_FLOW_EXPENSE_";
 const testCashierName = "SOLVEN_CORE_FLOW_CASHIER";
+const testTenantEmail = "solven_core_flow@test.internal";
+
+let testTenantId: string;
 
 describe("SOLVEN core business flow", () => {
   beforeEach(async () => {
     await deleteCoreFlowData();
+    const tenant = await prisma.tenant.create({
+      data: { businessName: "Core Flow Test Tenant", email: testTenantEmail }
+    });
+    testTenantId = tenant.id;
     await prisma.cashRegisterSession.create({
-      data: { cashierName: testCashierName, openingAmount: 0, status: "OPEN" }
+      data: { tenantId: testTenantId, cashierName: testCashierName, openingAmount: 0, status: "OPEN" }
     });
   });
 
@@ -32,310 +39,133 @@ describe("SOLVEN core business flow", () => {
       costPrice: 8,
       salePrice: 15,
       stock: 10
-    });
+    }, testTenantId);
 
     const cashSale = await createSale({
       paymentType: "CASH",
-      items: [
-        {
-          productId: cashProduct.id,
-          quantity: 2
-        }
-      ]
-    });
+      items: [{ productId: cashProduct.id, quantity: 2 }]
+    }, testTenantId);
 
-    const updatedCashProduct = await prisma.product.findUniqueOrThrow({
-      where: {
-        id: cashProduct.id
-      }
+    const updatedCashProduct = await prisma.product.findUniqueOrThrow({ where: { id: cashProduct.id } });
+    const cashSaleInventoryMovement = await prisma.inventoryMovement.findFirstOrThrow({
+      where: { productId: cashProduct.id, reason: `SALE:${cashSale.id}` }
     });
-    const cashSaleInventoryMovement =
-      await prisma.inventoryMovement.findFirstOrThrow({
-        where: {
-          productId: cashProduct.id,
-          reason: `SALE:${cashSale.id}`
-        }
-      });
     const cashSaleCashMovement = await prisma.cashMovement.findFirstOrThrow({
-      where: {
-        source: "SALE",
-        referenceId: cashSale.id
-      }
+      where: { source: "SALE", referenceId: cashSale.id }
     });
 
     expect(updatedCashProduct.stock).toBe(8);
-    expect(cashSaleInventoryMovement).toMatchObject({
-      previousStock: 10,
-      newStock: 8,
-      quantityChange: -2
-    });
-    expect(cashSaleCashMovement).toMatchObject({
-      type: "IN",
-      source: "SALE",
-      referenceId: cashSale.id
-    });
+    expect(cashSaleInventoryMovement).toMatchObject({ previousStock: 10, newStock: 8, quantityChange: -2 });
+    expect(cashSaleCashMovement).toMatchObject({ type: "IN", source: "SALE", referenceId: cashSale.id });
     expect(cashSaleCashMovement.amount.toString()).toBe("30");
 
     const expense = await createExpense({
       amount: 12.5,
       category: "Operations",
       description: `${testExpenseDescriptionPrefix}${Date.now()}`
-    });
+    }, testTenantId);
     const expenseCashMovement = await prisma.cashMovement.findFirstOrThrow({
-      where: {
-        source: "EXPENSE",
-        referenceId: expense.id
-      }
+      where: { source: "EXPENSE", referenceId: expense.id }
     });
 
-    expect(expenseCashMovement).toMatchObject({
-      type: "OUT",
-      source: "EXPENSE",
-      referenceId: expense.id
-    });
+    expect(expenseCashMovement).toMatchObject({ type: "OUT", source: "EXPENSE", referenceId: expense.id });
     expect(expenseCashMovement.amount.toString()).toBe("12.5");
 
     const customer = await createCustomer({
       name: `${testCustomerNamePrefix}${Date.now()}`
-    });
+    }, testTenantId);
     const creditProduct = await createProduct({
       name: `${testProductNamePrefix}CREDIT_${Date.now()}`,
       costPrice: 10,
       salePrice: 25,
       stock: 6
-    });
+    }, testTenantId);
 
     const creditSale = await createSale({
       paymentType: "CREDIT",
       customerId: customer.id,
-      items: [
-        {
-          productId: creditProduct.id,
-          quantity: 2
-        }
-      ]
-    });
+      items: [{ productId: creditProduct.id, quantity: 2 }]
+    }, testTenantId);
 
-    const updatedCreditProduct = await prisma.product.findUniqueOrThrow({
-      where: {
-        id: creditProduct.id
-      }
+    const updatedCreditProduct = await prisma.product.findUniqueOrThrow({ where: { id: creditProduct.id } });
+    const creditSaleInventoryMovement = await prisma.inventoryMovement.findFirstOrThrow({
+      where: { productId: creditProduct.id, reason: `SALE:${creditSale.id}` }
     });
-    const creditSaleInventoryMovement =
-      await prisma.inventoryMovement.findFirstOrThrow({
-        where: {
-          productId: creditProduct.id,
-          reason: `SALE:${creditSale.id}`
-        }
-      });
     const creditSaleDebt = await prisma.debt.findFirstOrThrow({
-      where: {
-        customerId: customer.id,
-        totalAmount: creditSale.totalAmount
-      }
+      where: { customerId: customer.id, totalAmount: creditSale.totalAmount }
     });
     const creditSaleCashMovement = await prisma.cashMovement.findFirst({
-      where: {
-        source: "SALE",
-        referenceId: creditSale.id
-      }
+      where: { source: "SALE", referenceId: creditSale.id }
     });
 
     expect(updatedCreditProduct.stock).toBe(4);
-    expect(creditSale).toMatchObject({
-      paymentType: "CREDIT",
-      customerId: customer.id,
-      debtId: creditSaleDebt.id
-    });
-    expect(creditSaleInventoryMovement).toMatchObject({
-      previousStock: 6,
-      newStock: 4,
-      quantityChange: -2
-    });
+    expect(creditSale).toMatchObject({ paymentType: "CREDIT", customerId: customer.id, debtId: creditSaleDebt.id });
+    expect(creditSaleInventoryMovement).toMatchObject({ previousStock: 6, newStock: 4, quantityChange: -2 });
     expect(creditSaleDebt.totalAmount.toString()).toBe("50");
     expect(creditSaleDebt.remainingAmount.toString()).toBe("50");
     expect(creditSaleCashMovement).toBeNull();
 
-    const debtPayment = await registerDebtPayment({
-      debtId: creditSaleDebt.id,
-      amount: 20
+    const debtPayment = await registerDebtPayment({ debtId: creditSaleDebt.id, amount: 20 }, testTenantId);
+    const updatedDebt = await prisma.debt.findUniqueOrThrow({ where: { id: creditSaleDebt.id } });
+    const debtPaymentCashMovement = await prisma.cashMovement.findFirstOrThrow({
+      where: { source: "DEBT_PAYMENT", referenceId: debtPayment.id }
     });
-    const updatedDebt = await prisma.debt.findUniqueOrThrow({
-      where: {
-        id: creditSaleDebt.id
-      }
-    });
-    const debtPaymentCashMovement =
-      await prisma.cashMovement.findFirstOrThrow({
-        where: {
-          source: "DEBT_PAYMENT",
-          referenceId: debtPayment.id
-        }
-      });
 
     expect(updatedDebt.remainingAmount.toString()).toBe("30");
-    expect(debtPaymentCashMovement).toMatchObject({
-      type: "IN",
-      source: "DEBT_PAYMENT",
-      referenceId: debtPayment.id
-    });
+    expect(debtPaymentCashMovement).toMatchObject({ type: "IN", source: "DEBT_PAYMENT", referenceId: debtPayment.id });
     expect(debtPaymentCashMovement.amount.toString()).toBe("20");
   });
 });
 
 async function deleteCoreFlowData() {
   const testProducts = await prisma.product.findMany({
-    where: {
-      name: {
-        startsWith: testProductNamePrefix
-      }
-    },
-    select: {
-      id: true
-    }
+    where: { name: { startsWith: testProductNamePrefix } },
+    select: { id: true }
   });
-  const testProductIds = testProducts.map((product) => product.id);
+  const testProductIds = testProducts.map((p) => p.id);
   const testSaleItems = await prisma.saleItem.findMany({
-    where: {
-      productId: {
-        in: testProductIds
-      }
-    },
-    select: {
-      saleId: true
-    }
+    where: { productId: { in: testProductIds } },
+    select: { saleId: true }
   });
-  const testSaleIds = [
-    ...new Set(testSaleItems.map((saleItem) => saleItem.saleId))
-  ];
-
+  const testSaleIds = [...new Set(testSaleItems.map((si) => si.saleId))];
   const testExpenses = await prisma.expense.findMany({
-    where: {
-      description: {
-        startsWith: testExpenseDescriptionPrefix
-      }
-    },
-    select: {
-      id: true
-    }
+    where: { description: { startsWith: testExpenseDescriptionPrefix } },
+    select: { id: true }
   });
-  const testExpenseIds = testExpenses.map((expense) => expense.id);
-
+  const testExpenseIds = testExpenses.map((e) => e.id);
   const testCustomers = await prisma.customer.findMany({
-    where: {
-      name: {
-        startsWith: testCustomerNamePrefix
-      }
-    },
-    select: {
-      id: true
-    }
+    where: { name: { startsWith: testCustomerNamePrefix } },
+    select: { id: true }
   });
-  const testCustomerIds = testCustomers.map((customer) => customer.id);
+  const testCustomerIds = testCustomers.map((c) => c.id);
   const testDebts = await prisma.debt.findMany({
-    where: {
-      customerId: {
-        in: testCustomerIds
-      }
-    },
-    select: {
-      id: true
-    }
+    where: { customerId: { in: testCustomerIds } },
+    select: { id: true }
   });
-  const testDebtIds = testDebts.map((debt) => debt.id);
+  const testDebtIds = testDebts.map((d) => d.id);
   const testDebtPayments = await prisma.debtPayment.findMany({
-    where: {
-      debtId: {
-        in: testDebtIds
-      }
-    },
-    select: {
-      id: true
-    }
+    where: { debtId: { in: testDebtIds } },
+    select: { id: true }
   });
-  const testDebtPaymentIds = testDebtPayments.map((payment) => payment.id);
+  const testDebtPaymentIds = testDebtPayments.map((p) => p.id);
 
   await prisma.cashMovement.deleteMany({
     where: {
       OR: [
-        {
-          source: "SALE",
-          referenceId: {
-            in: testSaleIds
-          }
-        },
-        {
-          source: "EXPENSE",
-          referenceId: {
-            in: testExpenseIds
-          }
-        },
-        {
-          source: "DEBT_PAYMENT",
-          referenceId: {
-            in: testDebtPaymentIds
-          }
-        }
+        { source: "SALE", referenceId: { in: testSaleIds } },
+        { source: "EXPENSE", referenceId: { in: testExpenseIds } },
+        { source: "DEBT_PAYMENT", referenceId: { in: testDebtPaymentIds } }
       ]
     }
   });
-  await prisma.inventoryMovement.deleteMany({
-    where: {
-      productId: {
-        in: testProductIds
-      }
-    }
-  });
-  await prisma.debtPayment.deleteMany({
-    where: {
-      id: {
-        in: testDebtPaymentIds
-      }
-    }
-  });
-  await prisma.debt.deleteMany({
-    where: {
-      id: {
-        in: testDebtIds
-      }
-    }
-  });
-  await prisma.saleItem.deleteMany({
-    where: {
-      productId: {
-        in: testProductIds
-      }
-    }
-  });
-  await prisma.sale.deleteMany({
-    where: {
-      id: {
-        in: testSaleIds
-      }
-    }
-  });
-  await prisma.expense.deleteMany({
-    where: {
-      id: {
-        in: testExpenseIds
-      }
-    }
-  });
-  await prisma.product.deleteMany({
-    where: {
-      id: {
-        in: testProductIds
-      }
-    }
-  });
-  await prisma.customer.deleteMany({
-    where: {
-      id: {
-        in: testCustomerIds
-      }
-    }
-  });
-  await prisma.cashRegisterSession.deleteMany({
-    where: { cashierName: testCashierName }
-  });
+  await prisma.inventoryMovement.deleteMany({ where: { productId: { in: testProductIds } } });
+  await prisma.debtPayment.deleteMany({ where: { id: { in: testDebtPaymentIds } } });
+  await prisma.debt.deleteMany({ where: { id: { in: testDebtIds } } });
+  await prisma.saleItem.deleteMany({ where: { productId: { in: testProductIds } } });
+  await prisma.sale.deleteMany({ where: { id: { in: testSaleIds } } });
+  await prisma.expense.deleteMany({ where: { id: { in: testExpenseIds } } });
+  await prisma.product.deleteMany({ where: { id: { in: testProductIds } } });
+  await prisma.customer.deleteMany({ where: { id: { in: testCustomerIds } } });
+  await prisma.cashRegisterSession.deleteMany({ where: { cashierName: testCashierName } });
+  await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }

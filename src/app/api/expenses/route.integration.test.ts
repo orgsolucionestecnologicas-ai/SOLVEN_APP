@@ -1,14 +1,26 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { prisma } from "@/lib/prisma";
+import { requireTenantId } from "@/lib/tenant";
 
 import { GET, POST } from "./route";
 
+vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn() }));
+
+const mockedRequireTenantId = vi.mocked(requireTenantId);
 const testExpenseDescriptionPrefix = "SOLVEN_INTEGRATION_EXPENSE_";
+const testTenantEmail = "solven_integration_expense@test.internal";
+
+let testTenantId: string;
 
 describe("expenses API database integration", () => {
   beforeEach(async () => {
     await deleteIntegrationExpenses();
+    const tenant = await prisma.tenant.create({
+      data: { businessName: "Expense API Test Tenant", email: testTenantEmail }
+    });
+    testTenantId = tenant.id;
+    mockedRequireTenantId.mockResolvedValue(testTenantId);
   });
 
   afterAll(async () => {
@@ -22,36 +34,21 @@ describe("expenses API database integration", () => {
     const response = await POST(
       new Request("http://localhost/api/expenses", {
         method: "POST",
-        body: JSON.stringify({
-          amount: 25.5,
-          category: "Supplies",
-          description: expenseDescription
-        })
+        body: JSON.stringify({ amount: 25.5, category: "Supplies", description: expenseDescription })
       })
     );
 
     const responseBody = await response.json();
 
     expect(response.status).toBe(201);
-    expect(responseBody.data).toMatchObject({
-      amount: "25.5",
-      category: "Supplies",
-      description: expenseDescription
-    });
+    expect(responseBody.data).toMatchObject({ amount: "25.5", category: "Supplies", description: expenseDescription });
 
     const cashMovement = await prisma.cashMovement.findFirstOrThrow({
-      where: {
-        source: "EXPENSE",
-        referenceId: responseBody.data.id
-      }
+      where: { source: "EXPENSE", referenceId: responseBody.data.id }
     });
 
     expect(cashMovement.amount.toString()).toBe("25.5");
-    expect(cashMovement).toMatchObject({
-      type: "OUT",
-      source: "EXPENSE",
-      referenceId: responseBody.data.id
-    });
+    expect(cashMovement).toMatchObject({ type: "OUT", source: "EXPENSE", referenceId: responseBody.data.id });
   });
 
   it("lists expenses after creation", async () => {
@@ -60,11 +57,7 @@ describe("expenses API database integration", () => {
     await POST(
       new Request("http://localhost/api/expenses", {
         method: "POST",
-        body: JSON.stringify({
-          amount: 18,
-          category: "Transport",
-          description: expenseDescription
-        })
+        body: JSON.stringify({ amount: 18, category: "Transport", description: expenseDescription })
       })
     );
 
@@ -74,11 +67,7 @@ describe("expenses API database integration", () => {
     expect(response.status).toBe(200);
     expect(responseBody.data).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          amount: "18",
-          category: "Transport",
-          description: expenseDescription
-        })
+        expect.objectContaining({ amount: "18", category: "Transport", description: expenseDescription })
       ])
     );
   });
@@ -86,30 +75,12 @@ describe("expenses API database integration", () => {
 
 async function deleteIntegrationExpenses() {
   const testExpenses = await prisma.expense.findMany({
-    where: {
-      description: {
-        startsWith: testExpenseDescriptionPrefix
-      }
-    },
-    select: {
-      id: true
-    }
+    where: { description: { startsWith: testExpenseDescriptionPrefix } },
+    select: { id: true }
   });
-  const testExpenseIds = testExpenses.map((expense) => expense.id);
+  const testExpenseIds = testExpenses.map((e) => e.id);
 
-  await prisma.cashMovement.deleteMany({
-    where: {
-      source: "EXPENSE",
-      referenceId: {
-        in: testExpenseIds
-      }
-    }
-  });
-  await prisma.expense.deleteMany({
-    where: {
-      description: {
-        startsWith: testExpenseDescriptionPrefix
-      }
-    }
-  });
+  await prisma.cashMovement.deleteMany({ where: { source: "EXPENSE", referenceId: { in: testExpenseIds } } });
+  await prisma.expense.deleteMany({ where: { description: { startsWith: testExpenseDescriptionPrefix } } });
+  await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }

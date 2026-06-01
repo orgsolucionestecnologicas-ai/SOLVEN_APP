@@ -8,19 +8,19 @@ import {
 } from "./cash-movement-validation";
 
 export async function createCashMovement(
-  movementInput: CreateCashMovementInput
+  movementInput: CreateCashMovementInput,
+  tenantId: string
 ): Promise<CashMovement> {
   const validatedMovement = validateCreateCashMovementInput(movementInput);
 
   return prisma.cashMovement.create({
-    data: validatedMovement
+    data: { ...validatedMovement, tenantId }
   });
 }
 
-export async function listCashMovements(): Promise<CashMovement[]> {
+export async function listCashMovements(tenantId: string): Promise<CashMovement[]> {
   return prisma.cashMovement.findMany({
-    orderBy: {
-      movementDate: "desc"
-    }
+    where: { tenantId },
+    orderBy: { movementDate: "desc" }
   });
 }

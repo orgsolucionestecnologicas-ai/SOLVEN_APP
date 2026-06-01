@@ -1,10 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { COOKIE_NAME, verifySessionToken } from "@/lib/session";
+import { COOKIE_NAME, verifySession } from "@/lib/auth";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/api/auth/")) {
+  if (
+    pathname === "/" ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/api/auth/")
+  ) {
     return NextResponse.next();
   }
 
@@ -14,13 +19,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const username = await verifySessionToken(token);
+  const session = await verifySession(token);
 
-  if (!username) {
+  if (!session) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set("x-tenant-id", session.tenantId);
+  return response;
 }
 
 export const config = {

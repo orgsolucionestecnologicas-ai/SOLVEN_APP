@@ -31,18 +31,20 @@ export class CashRegisterAlreadyClosedError extends Error {
 }
 
 export async function openSession(
-  input: OpenSessionInput
+  input: OpenSessionInput,
+  tenantId: string
 ): Promise<CashRegisterSession> {
   const validated = validateOpenSession(input);
 
   const existingOpen = await prisma.cashRegisterSession.findFirst({
-    where: { status: "OPEN" }
+    where: { status: "OPEN", tenantId }
   });
 
   if (existingOpen) throw new CashRegisterAlreadyOpenError();
 
   return prisma.cashRegisterSession.create({
     data: {
+      tenantId,
       cashierName: validated.cashierName,
       branchName: validated.branchName,
       ...(validated.shift !== undefined ? { shift: validated.shift } : {}),
@@ -59,23 +61,26 @@ export async function openSession(
 
 export async function closeSession(
   id: string,
-  input: CloseSessionInput
+  input: CloseSessionInput,
+  tenantId: string
 ): Promise<CashRegisterSession> {
   const validated = validateCloseSession(input);
 
   return prisma.$transaction(async (tx) => {
-    const session = await tx.cashRegisterSession.findUnique({ where: { id } });
+    const session = await tx.cashRegisterSession.findFirst({
+      where: { id, tenantId }
+    });
 
     if (!session) throw new CashRegisterSessionNotFoundError(id);
     if (session.status === "CLOSED") throw new CashRegisterAlreadyClosedError();
 
     const inResult = await tx.cashMovement.aggregate({
-      where: { createdAt: { gte: session.openedAt }, type: "IN" },
+      where: { tenantId, createdAt: { gte: session.openedAt }, type: "IN" },
       _sum: { amount: true }
     });
 
     const outResult = await tx.cashMovement.aggregate({
-      where: { createdAt: { gte: session.openedAt }, type: "OUT" },
+      where: { tenantId, createdAt: { gte: session.openedAt }, type: "OUT" },
       _sum: { amount: true }
     });
 
@@ -104,23 +109,33 @@ export async function closeSession(
   });
 }
 
-export async function getCurrentSession(): Promise<CashRegisterSession | null> {
+export async function getCurrentSession(
+  tenantId: string
+): Promise<CashRegisterSession | null> {
   return prisma.cashRegisterSession.findFirst({
-    where: { status: "OPEN" },
+    where: { status: "OPEN", tenantId },
     orderBy: { openedAt: "desc" }
   });
 }
 
-export async function getSessionById(id: string): Promise<CashRegisterSession> {
-  const session = await prisma.cashRegisterSession.findUnique({ where: { id } });
+export async function getSessionById(
+  id: string,
+  tenantId: string
+): Promise<CashRegisterSession> {
+  const session = await prisma.cashRegisterSession.findFirst({
+    where: { id, tenantId }
+  });
 
   if (!session) throw new CashRegisterSessionNotFoundError(id);
 
   return session;
 }
 
-export async function listSessions(): Promise<CashRegisterSession[]> {
+export async function listSessions(
+  tenantId: string
+): Promise<CashRegisterSession[]> {
   return prisma.cashRegisterSession.findMany({
+    where: { tenantId },
     orderBy: { openedAt: "desc" }
   });
 }

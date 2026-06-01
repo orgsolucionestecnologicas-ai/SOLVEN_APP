@@ -11,10 +11,12 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function GET() {
+  const tenantId = await requireTenantId();
   try {
-    const settings = await getSettings();
+    const settings = await getSettings(tenantId);
     return successResponse(settings);
   } catch {
     return errorResponse("No se pudo cargar la configuración.");
@@ -22,6 +24,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const tenantId = await requireTenantId();
   let requestBody: unknown;
   try {
     requestBody = await request.json();
@@ -34,7 +37,7 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const settings = await upsertSettings(requestBody as UpsertSettingsInput);
+    const settings = await upsertSettings(requestBody as UpsertSettingsInput, tenantId);
     return successResponse(settings);
   } catch (error) {
     if (error instanceof SettingsValidationError) {

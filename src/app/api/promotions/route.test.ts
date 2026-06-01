@@ -1,3 +1,5 @@
+vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -62,7 +64,7 @@ describe("promotions API route", () => {
     );
 
     expect(response.status).toBe(201);
-    expect(mockedCreatePromotion).toHaveBeenCalledWith(buildCreateInput());
+    expect(mockedCreatePromotion).toHaveBeenCalledWith(buildCreateInput(), "test-tenant-id");
   });
 
   it("returns 400 with validation errors for invalid promotion input", async () => {
@@ -114,6 +116,7 @@ function buildCreateInput() {
 function buildPromotionRecord(): PromotionWithUsageCount {
   return {
     id: "promo-1",
+    tenantId: "tenant-1",
     name: "Black Friday 10%",
     code: null,
     type: "PERCENTAGE",

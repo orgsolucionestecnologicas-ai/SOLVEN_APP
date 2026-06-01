@@ -7,11 +7,12 @@ import {
   getSessionById
 } from "../../../../modules/cash-register";
 import { errorResponse, successResponse } from "../../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
   try {
-    const { id } = await params;
-    const session = await getSessionById(id);
+    const session = await getSessionById(id, tenantId);
     return successResponse(session);
   } catch (err) {
     if (err instanceof CashRegisterSessionNotFoundError) {
@@ -22,10 +23,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
   try {
-    const { id } = await params;
     const body = await request.json();
-    const session = await closeSession(id, body);
+    const session = await closeSession(id, body, tenantId);
     return successResponse(session);
   } catch (err) {
     if (err instanceof CashRegisterValidationError) {

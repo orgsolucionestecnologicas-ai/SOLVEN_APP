@@ -10,11 +10,12 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function GET() {
+  const tenantId = await requireTenantId();
   try {
-    const expenses = await listExpenses();
-
+    const expenses = await listExpenses(tenantId);
     return successResponse(expenses);
   } catch {
     return errorResponse("Could not load expenses.");
@@ -22,6 +23,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const tenantId = await requireTenantId();
   let requestBody: unknown;
 
   try {
@@ -35,14 +37,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const expense = await createExpense(requestBody as CreateExpenseInput);
-
+    const expense = await createExpense(requestBody as CreateExpenseInput, tenantId);
     return successResponse(expense, 201);
   } catch (error) {
     if (error instanceof ExpenseValidationError) {
       return errorResponse("Invalid expense input.", 400, error.reasons);
     }
-
     return errorResponse("Could not save expense.");
   }
 }

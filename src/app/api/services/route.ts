@@ -11,10 +11,12 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function GET() {
+  const tenantId = await requireTenantId();
   try {
-    const services = await listServices();
+    const services = await listServices(tenantId);
     return successResponse(services);
   } catch {
     return errorResponse("No se pudieron cargar los servicios.");
@@ -22,6 +24,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const tenantId = await requireTenantId();
   let requestBody: unknown;
 
   try {
@@ -35,7 +38,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const service = await createService(requestBody as CreateServiceInput);
+    const service = await createService(requestBody as CreateServiceInput, tenantId);
     return successResponse(service, 201);
   } catch (error) {
     if (error instanceof ServiceValidationError) {

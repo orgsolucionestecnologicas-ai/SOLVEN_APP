@@ -1,14 +1,26 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { prisma } from "@/lib/prisma";
+import { requireTenantId } from "@/lib/tenant";
 
 import { GET, POST } from "./route";
 
+vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn() }));
+
+const mockedRequireTenantId = vi.mocked(requireTenantId);
 const testCustomerNamePrefix = "SOLVEN_INTEGRATION_CUSTOMER_";
+const testTenantEmail = "solven_integration_customer@test.internal";
+
+let testTenantId: string;
 
 describe("customers API database integration", () => {
   beforeEach(async () => {
     await deleteIntegrationCustomers();
+    const tenant = await prisma.tenant.create({
+      data: { businessName: "Customer API Test Tenant", email: testTenantEmail }
+    });
+    testTenantId = tenant.id;
+    mockedRequireTenantId.mockResolvedValue(testTenantId);
   });
 
   afterAll(async () => {
@@ -22,18 +34,14 @@ describe("customers API database integration", () => {
     const response = await POST(
       new Request("http://localhost/api/customers", {
         method: "POST",
-        body: JSON.stringify({
-          name: customerName
-        })
+        body: JSON.stringify({ name: customerName })
       })
     );
 
     const responseBody = await response.json();
 
     expect(response.status).toBe(201);
-    expect(responseBody.data).toMatchObject({
-      name: customerName
-    });
+    expect(responseBody.data).toMatchObject({ name: customerName });
   });
 
   it("lists customers after creation", async () => {
@@ -42,9 +50,7 @@ describe("customers API database integration", () => {
     await POST(
       new Request("http://localhost/api/customers", {
         method: "POST",
-        body: JSON.stringify({
-          name: customerName
-        })
+        body: JSON.stringify({ name: customerName })
       })
     );
 
@@ -53,21 +59,12 @@ describe("customers API database integration", () => {
 
     expect(response.status).toBe(200);
     expect(responseBody.data).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          name: customerName
-        })
-      ])
+      expect.arrayContaining([expect.objectContaining({ name: customerName })])
     );
   });
 });
 
 async function deleteIntegrationCustomers() {
-  await prisma.customer.deleteMany({
-    where: {
-      name: {
-        startsWith: testCustomerNamePrefix
-      }
-    }
-  });
+  await prisma.customer.deleteMany({ where: { name: { startsWith: testCustomerNamePrefix } } });
+  await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }

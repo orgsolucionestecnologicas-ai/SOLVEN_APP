@@ -7,15 +7,16 @@ import {
   deleteCategory
 } from "../../../../modules/categories";
 import { errorResponse, successResponse } from "../../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
 
   try {
-    await deleteCategory(id);
+    await deleteCategory(id, tenantId);
     return successResponse({ deleted: true });
   } catch (error) {
     if (error instanceof CategoryNotFoundError) {

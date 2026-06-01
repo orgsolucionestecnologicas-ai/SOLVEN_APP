@@ -7,21 +7,22 @@ import {
   validateUpsertSettingsInput
 } from "./settings-validation";
 
-const SINGLETON_ID = "store";
-
-export async function getSettings(): Promise<StoreSettings> {
+export async function getSettings(tenantId: string): Promise<StoreSettings> {
   return prisma.storeSettings.upsert({
-    where: { id: SINGLETON_ID },
-    create: { id: SINGLETON_ID },
+    where: { tenantId },
+    create: { tenantId },
     update: {}
   });
 }
 
-export async function upsertSettings(input: UpsertSettingsInput): Promise<StoreSettings> {
+export async function upsertSettings(
+  input: UpsertSettingsInput,
+  tenantId: string
+): Promise<StoreSettings> {
   const validated = validateUpsertSettingsInput(input);
   return prisma.storeSettings.upsert({
-    where: { id: SINGLETON_ID },
-    create: { id: SINGLETON_ID, ...validated },
+    where: { tenantId },
+    create: { tenantId, ...validated },
     update: validated
   });
 }

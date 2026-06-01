@@ -12,14 +12,15 @@ import {
   isRequestObject,
   successResponse
 } from "../../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
   try {
-    const product = await getProductById(id);
+    const product = await getProductById(id, tenantId);
     if (!product) return errorResponse("Producto no encontrado.", 404);
     return successResponse(product);
   } catch {
@@ -31,10 +32,9 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
 
   let body: unknown;
-
   try {
     body = await request.json();
   } catch {
@@ -46,18 +46,15 @@ export async function PUT(
   }
 
   try {
-    const product = await updateProduct(id, body as UpdateProductInput);
-
+    const product = await updateProduct(id, body as UpdateProductInput, tenantId);
     return successResponse(product);
   } catch (error) {
     if (error instanceof ProductValidationError) {
       return errorResponse("Invalid product input.", 400, error.reasons);
     }
-
     if (isPrismaRecordNotFoundError(error)) {
       return errorResponse("Producto no encontrado.", 404);
     }
-
     return errorResponse("No se pudo actualizar el producto.");
   }
 }

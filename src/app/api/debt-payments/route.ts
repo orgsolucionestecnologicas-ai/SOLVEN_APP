@@ -15,11 +15,12 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function GET() {
+  const tenantId = await requireTenantId();
   try {
-    const debtPayments = await listDebtPayments();
-
+    const debtPayments = await listDebtPayments(tenantId);
     return successResponse(debtPayments);
   } catch {
     return errorResponse("Could not load debt payments.");
@@ -27,6 +28,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const tenantId = await requireTenantId();
   let requestBody: unknown;
 
   try {
@@ -41,23 +43,20 @@ export async function POST(request: Request) {
 
   try {
     const debtPayment = await registerDebtPayment(
-      requestBody as RegisterDebtPaymentInput
+      requestBody as RegisterDebtPaymentInput,
+      tenantId
     );
-
     return successResponse(debtPayment, 201);
   } catch (error) {
     if (error instanceof DebtPaymentValidationError) {
       return errorResponse("Invalid debt payment input.", 400, error.reasons);
     }
-
     if (error instanceof DebtPaymentAmountError) {
       return errorResponse(error.message, 400);
     }
-
     if (isPrismaRecordNotFoundError(error)) {
       return errorResponse("Debt was not found.", 400);
     }
-
     return errorResponse("Could not save debt payment.");
   }
 }

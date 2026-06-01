@@ -1,28 +1,37 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
-import { COOKIE_MAX_AGE, COOKIE_NAME, createSessionToken } from "@/lib/session";
+import {
+  COOKIE_MAX_AGE,
+  COOKIE_NAME,
+  createSession,
+  verifyPassword
+} from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { username, password } = body as { username: string; password: string };
+  const body = await request.json() as { email?: string; password?: string };
+  const { email, password } = body;
 
-  const validUsername = process.env.SOLVEN_USER;
-  const validPassword = process.env.SOLVEN_PASSWORD;
+  if (!email || !password) {
+    return NextResponse.json(
+      { error: "Email y contraseña son requeridos." },
+      { status: 400 }
+    );
+  }
 
-  if (
-    !username ||
-    !password ||
-    username !== validUsername ||
-    password !== validPassword
-  ) {
+  const user = await prisma.user.findUnique({
+    where: { email: email.trim().toLowerCase() }
+  });
+
+  if (!user || !(await verifyPassword(password, user.password))) {
     return NextResponse.json(
       { error: "Credenciales inválidas" },
       { status: 401 }
     );
   }
 
-  const token = await createSessionToken(username);
+  const token = await createSession(user.id, user.tenantId);
   const cookieStore = await cookies();
 
   cookieStore.set(COOKIE_NAME, token, {

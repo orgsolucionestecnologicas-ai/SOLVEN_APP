@@ -13,30 +13,26 @@ export type ProductStockAdjustment = {
 };
 
 export async function adjustProductStock(
-  adjustmentInput: AdjustProductStockInput
+  adjustmentInput: AdjustProductStockInput,
+  tenantId: string
 ): Promise<ProductStockAdjustment> {
   const validatedAdjustment = validateAdjustProductStockInput(adjustmentInput);
 
   return prisma.$transaction(async (transaction) => {
     const product = await transaction.product.findUniqueOrThrow({
-      where: {
-        id: validatedAdjustment.productId
-      }
+      where: { id: validatedAdjustment.productId }
     });
     const previousStock = product.stock;
     const quantityChange = validatedAdjustment.newStock - previousStock;
 
     const updatedProduct = await transaction.product.update({
-      where: {
-        id: validatedAdjustment.productId
-      },
-      data: {
-        stock: validatedAdjustment.newStock
-      }
+      where: { id: validatedAdjustment.productId },
+      data: { stock: validatedAdjustment.newStock }
     });
 
     const inventoryMovement = await transaction.inventoryMovement.create({
       data: {
+        tenantId,
         productId: validatedAdjustment.productId,
         reason: validatedAdjustment.reason,
         previousStock,
@@ -45,9 +41,6 @@ export async function adjustProductStock(
       }
     });
 
-    return {
-      product: updatedProduct,
-      inventoryMovement
-    };
+    return { product: updatedProduct, inventoryMovement };
   });
 }

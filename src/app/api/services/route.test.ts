@@ -1,3 +1,5 @@
+vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createService, listServices } from "../../../modules/services";
@@ -59,7 +61,7 @@ describe("services API route", () => {
     expect(mockedCreateService).toHaveBeenCalledWith({
       name: "Corte de cabello",
       price: 150
-    });
+    }, "test-tenant-id");
   });
 
   it("returns validation errors for invalid service input", async () => {

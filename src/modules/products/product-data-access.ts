@@ -11,36 +11,40 @@ import {
 } from "./product-validation";
 
 export async function createProduct(
-  productInput: CreateProductInput
+  productInput: CreateProductInput,
+  tenantId: string
 ): Promise<Product> {
   const validatedProduct = validateCreateProductInput(productInput);
   const productCode = await generateCode("PROD");
 
   return prisma.product.create({
-    data: { ...validatedProduct, productCode }
+    data: { ...validatedProduct, productCode, tenantId }
   });
 }
 
-export async function listProducts(): Promise<Product[]> {
+export async function listProducts(tenantId: string): Promise<Product[]> {
   return prisma.product.findMany({
-    orderBy: {
-      name: "asc"
-    }
+    where: { tenantId },
+    orderBy: { name: "asc" }
   });
 }
 
-export async function getProductById(id: string): Promise<Product | null> {
-  return prisma.product.findUnique({ where: { id } });
+export async function getProductById(
+  id: string,
+  tenantId: string
+): Promise<Product | null> {
+  return prisma.product.findFirst({ where: { id, tenantId } });
 }
 
 export async function updateProduct(
   id: string,
-  input: UpdateProductInput
+  input: UpdateProductInput,
+  tenantId: string
 ): Promise<Product> {
   const data = validateUpdateProductInput(input);
 
   return prisma.product.update({
-    where: { id },
+    where: { id, tenantId },
     data
   });
 }

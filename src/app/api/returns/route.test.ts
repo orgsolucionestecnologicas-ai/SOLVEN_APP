@@ -1,3 +1,5 @@
+vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -46,7 +48,7 @@ describe("returns API route", () => {
     expect(await response.json()).toEqual({ data: result });
     expect(mockedProcessReturn).toHaveBeenCalledWith("sale-1", [
       { productId: "product-1", quantity: 1 }
-    ]);
+    ], "test-tenant-id");
   });
 
   it("returns 400 when saleId is missing", async () => {

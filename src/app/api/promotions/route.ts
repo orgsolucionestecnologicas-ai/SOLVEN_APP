@@ -11,11 +11,12 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function GET() {
+  const tenantId = await requireTenantId();
   try {
-    const promotions = await listPromotions();
-
+    const promotions = await listPromotions(tenantId);
     return successResponse(promotions);
   } catch {
     return errorResponse("No se pudieron cargar las promociones.");
@@ -23,6 +24,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const tenantId = await requireTenantId();
   let requestBody: unknown;
 
   try {
@@ -36,20 +38,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const promotion = await createPromotion(
-      requestBody as CreatePromotionInput
-    );
-
+    const promotion = await createPromotion(requestBody as CreatePromotionInput, tenantId);
     return successResponse(promotion, 201);
   } catch (error) {
     if (error instanceof PromotionValidationError) {
-      return errorResponse(
-        "Datos de promoción inválidos.",
-        400,
-        error.reasons
-      );
+      return errorResponse("Datos de promoción inválidos.", 400, error.reasons);
     }
-
     return errorResponse("No se pudo guardar la promoción.");
   }
 }

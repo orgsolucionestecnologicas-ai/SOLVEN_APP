@@ -5,10 +5,17 @@ import { prisma } from "@/lib/prisma";
 import { adjustProductStock } from "./stock-adjustment";
 
 const testProductNamePrefix = "SOLVEN_STOCK_ADJUSTMENT_PRODUCT_";
+const testTenantEmail = "solven_stock_adjustment@test.internal";
+
+let testTenantId: string;
 
 describe("adjustProductStock", () => {
   beforeEach(async () => {
     await deleteStockAdjustmentTestData();
+    const tenant = await prisma.tenant.create({
+      data: { businessName: "Stock Adjustment Test Tenant", email: testTenantEmail }
+    });
+    testTenantId = tenant.id;
   });
 
   afterAll(async () => {
@@ -19,6 +26,7 @@ describe("adjustProductStock", () => {
   it("updates product stock and records an inventory movement atomically", async () => {
     const product = await prisma.product.create({
       data: {
+        tenantId: testTenantId,
         name: `${testProductNamePrefix}${Date.now()}`,
         costPrice: 5,
         salePrice: 8,
@@ -30,18 +38,10 @@ describe("adjustProductStock", () => {
       productId: product.id,
       newStock: 9,
       reason: "Manual stock count"
-    });
+    }, testTenantId);
 
-    const updatedProduct = await prisma.product.findUniqueOrThrow({
-      where: {
-        id: product.id
-      }
-    });
-    const inventoryMovements = await prisma.inventoryMovement.findMany({
-      where: {
-        productId: product.id
-      }
-    });
+    const updatedProduct = await prisma.product.findUniqueOrThrow({ where: { id: product.id } });
+    const inventoryMovements = await prisma.inventoryMovement.findMany({ where: { productId: product.id } });
 
     expect(result.product.stock).toBe(9);
     expect(updatedProduct.stock).toBe(9);
@@ -59,29 +59,12 @@ describe("adjustProductStock", () => {
 
 async function deleteStockAdjustmentTestData() {
   const testProducts = await prisma.product.findMany({
-    where: {
-      name: {
-        startsWith: testProductNamePrefix
-      }
-    },
-    select: {
-      id: true
-    }
+    where: { name: { startsWith: testProductNamePrefix } },
+    select: { id: true }
   });
-  const testProductIds = testProducts.map((product) => product.id);
+  const testProductIds = testProducts.map((p) => p.id);
 
-  await prisma.inventoryMovement.deleteMany({
-    where: {
-      productId: {
-        in: testProductIds
-      }
-    }
-  });
-  await prisma.product.deleteMany({
-    where: {
-      id: {
-        in: testProductIds
-      }
-    }
-  });
+  await prisma.inventoryMovement.deleteMany({ where: { productId: { in: testProductIds } } });
+  await prisma.product.deleteMany({ where: { id: { in: testProductIds } } });
+  await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }

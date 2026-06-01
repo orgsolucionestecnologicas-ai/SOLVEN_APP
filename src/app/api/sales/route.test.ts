@@ -1,3 +1,5 @@
+vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -93,7 +95,7 @@ describe("sales API route", () => {
           quantity: 2
         }
       ]
-    });
+    }, "test-tenant-id");
   });
 
   it("returns validation errors for invalid sale input", async () => {

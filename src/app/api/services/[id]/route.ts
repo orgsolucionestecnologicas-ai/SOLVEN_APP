@@ -16,15 +16,15 @@ import {
   isRequestObject,
   successResponse
 } from "../../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
 
   let body: unknown;
-
   try {
     body = await request.json();
   } catch {
@@ -36,7 +36,7 @@ export async function PUT(
   }
 
   try {
-    const service = await updateService(id, body as UpdateServiceInput);
+    const service = await updateService(id, body as UpdateServiceInput, tenantId);
     return successResponse(service);
   } catch (error) {
     if (error instanceof ServiceValidationError) {
@@ -53,10 +53,9 @@ export async function PATCH(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-
+  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
   try {
-    const service = await toggleServiceActive(id);
+    const service = await toggleServiceActive(id, tenantId);
     return successResponse(service);
   } catch (error) {
     if (error instanceof ServiceNotFoundError) {

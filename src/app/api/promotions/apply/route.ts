@@ -11,6 +11,7 @@ import {
   isRequestObject,
   successResponse
 } from "../../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 type ApplyRequest = {
   cartItems: CartItem[];
@@ -19,6 +20,7 @@ type ApplyRequest = {
 };
 
 export async function POST(request: Request) {
+  const tenantId = await requireTenantId();
   let requestBody: unknown;
 
   try {
@@ -28,10 +30,7 @@ export async function POST(request: Request) {
   }
 
   if (!isRequestObject(requestBody)) {
-    return errorResponse(
-      "Los datos del carrito deben ser un objeto.",
-      400
-    );
+    return errorResponse("Los datos del carrito deben ser un objeto.", 400);
   }
 
   const body = requestBody as ApplyRequest;
@@ -41,12 +40,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const activePromotions = await getActivePromotions();
+    const activePromotions = await getActivePromotions(tenantId);
     const promotionSet = new Map(activePromotions.map((p) => [p.id, p]));
 
     if (Array.isArray(body.promotionCodes) && body.promotionCodes.length > 0) {
       for (const code of body.promotionCodes) {
-        const byCode = await getPromotionByCode(code);
+        const byCode = await getPromotionByCode(code, tenantId);
         if (byCode && !promotionSet.has(byCode.id)) {
           promotionSet.set(byCode.id, byCode);
         }

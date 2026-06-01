@@ -155,7 +155,7 @@ describe("createSale", () => {
       createSale({
         paymentType: "CASH",
         items: [{ productId: "product-1", quantity: 1 }]
-      })
+      }, "test-tenant-id")
     ).rejects.toThrow(SaleNoCashRegisterOpenError);
   });
 });

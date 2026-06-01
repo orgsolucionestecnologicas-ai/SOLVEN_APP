@@ -16,15 +16,14 @@ export class DebtPaymentAmountError extends Error {
 }
 
 export async function registerDebtPayment(
-  paymentInput: RegisterDebtPaymentInput
+  paymentInput: RegisterDebtPaymentInput,
+  tenantId: string
 ): Promise<DebtPayment> {
   const validatedPayment = validateRegisterDebtPaymentInput(paymentInput);
 
   return prisma.$transaction(async (transaction) => {
     const debt = await transaction.debt.findUniqueOrThrow({
-      where: {
-        id: validatedPayment.debtId
-      }
+      where: { id: validatedPayment.debtId }
     });
     const paymentAmount = new Prisma.Decimal(validatedPayment.amount);
 
@@ -35,15 +34,9 @@ export async function registerDebtPayment(
     const debtUpdate = await transaction.debt.updateMany({
       where: {
         id: validatedPayment.debtId,
-        remainingAmount: {
-          gte: paymentAmount
-        }
+        remainingAmount: { gte: paymentAmount }
       },
-      data: {
-        remainingAmount: {
-          decrement: paymentAmount
-        }
-      }
+      data: { remainingAmount: { decrement: paymentAmount } }
     });
 
     if (debtUpdate.count === 0) {
@@ -52,11 +45,8 @@ export async function registerDebtPayment(
 
     const debtPayment = await transaction.debtPayment.create({
       data: {
-        debt: {
-          connect: {
-            id: validatedPayment.debtId
-          }
-        },
+        tenantId,
+        debtId: validatedPayment.debtId,
         amount: validatedPayment.amount
       }
     });
@@ -68,17 +58,16 @@ export async function registerDebtPayment(
     });
 
     await transaction.cashMovement.create({
-      data: cashMovement
+      data: { ...cashMovement, tenantId }
     });
 
     return debtPayment;
   });
 }
 
-export async function listDebtPayments(): Promise<DebtPayment[]> {
+export async function listDebtPayments(tenantId: string): Promise<DebtPayment[]> {
   return prisma.debtPayment.findMany({
-    orderBy: {
-      paymentDate: "desc"
-    }
+    where: { tenantId },
+    orderBy: { paymentDate: "desc" }
   });
 }

@@ -8,17 +8,19 @@ import {
 } from "./inventory-movement-validation";
 
 export async function recordInventoryMovement(
-  movementInput: RecordInventoryMovementInput
+  movementInput: RecordInventoryMovementInput,
+  tenantId: string
 ): Promise<InventoryMovement> {
   const validatedMovement = validateRecordInventoryMovementInput(movementInput);
 
   return prisma.inventoryMovement.create({
-    data: validatedMovement
+    data: { ...validatedMovement, tenantId }
   });
 }
 
-export async function listInventoryMovements() {
+export async function listInventoryMovements(tenantId: string) {
   return prisma.inventoryMovement.findMany({
+    where: { tenantId },
     orderBy: { createdAt: "desc" },
     include: { product: { select: { name: true } } }
   });

@@ -11,8 +11,10 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function POST(request: Request) {
+  const tenantId = await requireTenantId();
   let requestBody: unknown;
 
   try {
@@ -27,23 +29,17 @@ export async function POST(request: Request) {
 
   try {
     const result = await adjustProductStock(
-      requestBody as AdjustProductStockInput
+      requestBody as AdjustProductStockInput,
+      tenantId
     );
-
     return successResponse(result, 201);
   } catch (error) {
     if (error instanceof StockAdjustmentValidationError) {
-      return errorResponse(
-        "Los datos del ajuste de stock son inválidos.",
-        400,
-        error.reasons
-      );
+      return errorResponse("Los datos del ajuste de stock son inválidos.", 400, error.reasons);
     }
-
     if (isPrismaRecordNotFoundError(error)) {
       return errorResponse("El producto no fue encontrado.", 400);
     }
-
     return errorResponse("No se pudo guardar el ajuste de stock.");
   }
 }

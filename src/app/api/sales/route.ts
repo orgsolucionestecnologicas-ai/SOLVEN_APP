@@ -15,11 +15,12 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function GET() {
+  const tenantId = await requireTenantId();
   try {
-    const sales = await listSales();
-
+    const sales = await listSales(tenantId);
     return successResponse(sales);
   } catch {
     return errorResponse("Could not load sales.");
@@ -27,6 +28,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const tenantId = await requireTenantId();
   let requestBody: unknown;
 
   try {
@@ -40,29 +42,24 @@ export async function POST(request: Request) {
   }
 
   try {
-    const sale = await createSale(requestBody as CreateSaleWithPromotionsInput);
-
+    const sale = await createSale(requestBody as CreateSaleWithPromotionsInput, tenantId);
     return successResponse(sale, 201);
   } catch (error) {
     if (error instanceof SaleNoCashRegisterOpenError) {
       return errorResponse(error.message, 400);
     }
-
     if (error instanceof SaleValidationError) {
       return errorResponse("Invalid sale input.", 400, error.reasons);
     }
-
     if (
       error instanceof SaleProductNotFoundError ||
       error instanceof SaleInsufficientStockError
     ) {
       return errorResponse(error.message, 400);
     }
-
     if (isPrismaRecordNotFoundError(error)) {
       return errorResponse("Customer was not found.", 400);
     }
-
     return errorResponse("Could not save sale.");
   }
 }

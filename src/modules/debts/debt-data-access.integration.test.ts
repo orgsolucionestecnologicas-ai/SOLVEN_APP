@@ -5,10 +5,17 @@ import { prisma } from "@/lib/prisma";
 import { createDebt, listDebts } from "./debt-data-access";
 
 const testCustomerNamePrefix = "SOLVEN_DEBT_TEST_CUSTOMER_";
+const testTenantEmail = "solven_debt_test_tenant@test.internal";
+
+let testTenantId: string;
 
 describe("debt data access", () => {
   beforeEach(async () => {
     await deleteDebtTestData();
+    const tenant = await prisma.tenant.create({
+      data: { businessName: "Debt Test Tenant", email: testTenantEmail }
+    });
+    testTenantId = tenant.id;
   });
 
   afterAll(async () => {
@@ -22,12 +29,10 @@ describe("debt data access", () => {
     const debt = await createDebt({
       customerId: customer.id,
       totalAmount: 85.75
-    });
+    }, testTenantId);
 
     const storedDebt = await prisma.debt.findUniqueOrThrow({
-      where: {
-        id: debt.id
-      }
+      where: { id: debt.id }
     });
 
     expect(storedDebt.customerId).toBe(customer.id);
@@ -40,16 +45,13 @@ describe("debt data access", () => {
     const debt = await createDebt({
       customerId: customer.id,
       totalAmount: 42
-    });
+    }, testTenantId);
 
-    const debts = await listDebts();
+    const debts = await listDebts(testTenantId);
 
     expect(debts).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          id: debt.id,
-          customerId: customer.id
-        })
+        expect.objectContaining({ id: debt.id, customerId: customer.id })
       ])
     );
   });
@@ -58,6 +60,7 @@ describe("debt data access", () => {
 async function createTestCustomer() {
   return prisma.customer.create({
     data: {
+      tenantId: testTenantId,
       name: `${testCustomerNamePrefix}${Date.now()}`
     }
   });
@@ -65,29 +68,12 @@ async function createTestCustomer() {
 
 async function deleteDebtTestData() {
   const testCustomers = await prisma.customer.findMany({
-    where: {
-      name: {
-        startsWith: testCustomerNamePrefix
-      }
-    },
-    select: {
-      id: true
-    }
+    where: { name: { startsWith: testCustomerNamePrefix } },
+    select: { id: true }
   });
-  const testCustomerIds = testCustomers.map((customer) => customer.id);
+  const testCustomerIds = testCustomers.map((c) => c.id);
 
-  await prisma.debt.deleteMany({
-    where: {
-      customerId: {
-        in: testCustomerIds
-      }
-    }
-  });
-  await prisma.customer.deleteMany({
-    where: {
-      id: {
-        in: testCustomerIds
-      }
-    }
-  });
+  await prisma.debt.deleteMany({ where: { customerId: { in: testCustomerIds } } });
+  await prisma.customer.deleteMany({ where: { id: { in: testCustomerIds } } });
+  await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }

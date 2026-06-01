@@ -1,3 +1,5 @@
+vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createCustomer, listCustomers } from "../../../modules/customers";
@@ -57,7 +59,7 @@ describe("customers API route", () => {
     expect(await response.json()).toEqual({ data: customerJson });
     expect(mockedCreateCustomer).toHaveBeenCalledWith({
       name: "Maria Lopez"
-    });
+    }, "test-tenant-id");
   });
 
   it("returns validation errors for invalid customer input", async () => {
@@ -86,6 +88,7 @@ describe("customers API route", () => {
 
 const customerJson = {
   id: "customer-1",
+  tenantId: "tenant-1",
   name: "Maria Lopez",
   phone: null,
   email: null,

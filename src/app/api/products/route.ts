@@ -10,11 +10,12 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function GET() {
+  const tenantId = await requireTenantId();
   try {
-    const products = await listProducts();
-
+    const products = await listProducts(tenantId);
     return successResponse(products);
   } catch {
     return errorResponse("Could not load products.");
@@ -22,6 +23,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const tenantId = await requireTenantId();
   let requestBody: unknown;
 
   try {
@@ -35,14 +37,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const product = await createProduct(requestBody as CreateProductInput);
-
+    const product = await createProduct(requestBody as CreateProductInput, tenantId);
     return successResponse(product, 201);
   } catch (error) {
     if (error instanceof ProductValidationError) {
       return errorResponse("Invalid product input.", 400, error.reasons);
     }
-
     return errorResponse("Could not save product.");
   }
 }

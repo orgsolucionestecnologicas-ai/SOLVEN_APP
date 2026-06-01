@@ -10,8 +10,10 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function POST(request: Request) {
+  const tenantId = await requireTenantId();
   let body: unknown;
 
   try {
@@ -31,10 +33,7 @@ export async function POST(request: Request) {
   }
 
   if (!Array.isArray(input.items) || input.items.length === 0) {
-    return errorResponse(
-      "Debés seleccionar al menos un producto para devolver.",
-      400
-    );
+    return errorResponse("Debés seleccionar al menos un producto para devolver.", 400);
   }
 
   for (const item of input.items as unknown[]) {
@@ -51,24 +50,19 @@ export async function POST(request: Request) {
       !Number.isInteger(returnItem.quantity) ||
       (returnItem.quantity as number) <= 0
     ) {
-      return errorResponse(
-        "La cantidad a devolver debe ser un entero positivo.",
-        400
-      );
+      return errorResponse("La cantidad a devolver debe ser un entero positivo.", 400);
     }
   }
 
   const returnItems = input.items as ReturnItemInput[];
 
   try {
-    const result = await processReturn(input.saleId.trim(), returnItems);
-
+    const result = await processReturn(input.saleId.trim(), returnItems, tenantId);
     return successResponse(result, 201);
   } catch (error) {
     if (error instanceof ReturnValidationError) {
       return errorResponse(error.message, 400);
     }
-
     return errorResponse("No se pudo procesar la devolución.");
   }
 }

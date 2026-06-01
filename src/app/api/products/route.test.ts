@@ -1,3 +1,5 @@
+vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProductValidationError } from "../../../modules/products/product-validation";
@@ -63,7 +65,7 @@ describe("products API route", () => {
       costPrice: 10,
       salePrice: 15,
       stock: 20
-    });
+    }, "test-tenant-id");
   });
 
   it("returns validation errors for invalid product input", async () => {

@@ -1,6 +1,10 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+const DEMO_TENANT_EMAIL = "demo@solven.app";
+const DEMO_TENANT_ID = "seed_tenant_demo";
 
 type ProductSeed = {
   id: string;
@@ -99,8 +103,8 @@ const customers: CustomerSeed[] = [
   { id: "seed_cust_15", name: "Patricia Elena Soto Miranda" },
 ];
 
-async function seedOperations(stock: Map<string, number>) {
-  const existingCount = await prisma.sale.count();
+async function seedOperations(stock: Map<string, number>, tenantId: string) {
+  const existingCount = await prisma.sale.count({ where: { tenantId } });
   if (existingCount > 0) {
     console.log(`Operations already seeded (${existingCount} sales found), skipping.`);
     return;
@@ -113,7 +117,7 @@ async function seedOperations(stock: Map<string, number>) {
     const total = items.reduce((s, i) => s + i.qty * i.price, 0);
     await prisma.$transaction(async (tx) => {
       const sale = await tx.sale.create({
-        data: { id, saleDate: date, paymentType: "CASH", totalAmount: total },
+        data: { id, tenantId, saleDate: date, paymentType: "CASH", totalAmount: total },
       });
       await tx.saleItem.createMany({
         data: items.map((i) => ({
@@ -130,6 +134,7 @@ async function seedOperations(stock: Map<string, number>) {
         await tx.product.update({ where: { id: i.productId }, data: { stock: next } });
         await tx.inventoryMovement.create({
           data: {
+            tenantId,
             productId: i.productId,
             movementDate: date,
             reason: `SALE:${sale.id}`,
@@ -141,7 +146,7 @@ async function seedOperations(stock: Map<string, number>) {
         stock.set(i.productId, next);
       }
       await tx.cashMovement.create({
-        data: { movementDate: date, type: "IN", amount: total, source: "SALE", referenceId: sale.id },
+        data: { tenantId, movementDate: date, type: "IN", amount: total, source: "SALE", referenceId: sale.id },
       });
     });
   }
@@ -156,11 +161,12 @@ async function seedOperations(stock: Map<string, number>) {
     const total = items.reduce((s, i) => s + i.qty * i.price, 0);
     await prisma.$transaction(async (tx) => {
       const debt = await tx.debt.create({
-        data: { id: debtId, customerId, totalAmount: total, remainingAmount: total },
+        data: { id: debtId, tenantId, customerId, totalAmount: total, remainingAmount: total },
       });
       await tx.sale.create({
         data: {
           id: saleId,
+          tenantId,
           saleDate: date,
           paymentType: "CREDIT",
           customerId,
@@ -183,6 +189,7 @@ async function seedOperations(stock: Map<string, number>) {
         await tx.product.update({ where: { id: i.productId }, data: { stock: next } });
         await tx.inventoryMovement.create({
           data: {
+            tenantId,
             productId: i.productId,
             movementDate: date,
             reason: `SALE:${saleId}`,
@@ -223,10 +230,10 @@ async function seedOperations(stock: Map<string, number>) {
     { productId: "seed_prod_42", qty: 1, price: 46 },
   ]);
   await prisma.expense.create({
-    data: { id: "seed_exp_01", expenseDate: d1, category: "Servicios", description: "Pago de luz", amount: 350 },
+    data: { id: "seed_exp_01", tenantId, expenseDate: d1, category: "Servicios", description: "Pago de luz", amount: 350 },
   });
   await prisma.expense.create({
-    data: { id: "seed_exp_02", expenseDate: d1, category: "Insumos", description: "Bolsas de plástico", amount: 85 },
+    data: { id: "seed_exp_02", tenantId, expenseDate: d1, category: "Insumos", description: "Bolsas de plástico", amount: 85 },
   });
 
   // ── DAY 2 (today − 5) ──────────────────────────────────────────────────────
@@ -256,7 +263,7 @@ async function seedOperations(stock: Map<string, number>) {
     { productId: "seed_prod_21", qty: 2, price: 20 },
   ]);
   await prisma.expense.create({
-    data: { id: "seed_exp_03", expenseDate: d2, category: "Mantenimiento", description: "Reparación de refrigerador", amount: 450 },
+    data: { id: "seed_exp_03", tenantId, expenseDate: d2, category: "Mantenimiento", description: "Reparación de refrigerador", amount: 450 },
   });
   // Stock adjustment: Azúcar 1→8 (physical count correction)
   {
@@ -267,6 +274,7 @@ async function seedOperations(stock: Map<string, number>) {
       await tx.inventoryMovement.create({
         data: {
           id: "seed_im_adj_01",
+          tenantId,
           productId: "seed_prod_43",
           movementDate: d2,
           reason: "Conteo físico de inventario",
@@ -309,19 +317,19 @@ async function seedOperations(stock: Map<string, number>) {
     { productId: "seed_prod_41", qty: 1, price: 45 },
   ]);
   await prisma.expense.create({
-    data: { id: "seed_exp_04", expenseDate: d3, category: "Servicios", description: "Pago de agua", amount: 120 },
+    data: { id: "seed_exp_04", tenantId, expenseDate: d3, category: "Servicios", description: "Pago de agua", amount: 120 },
   });
   await prisma.expense.create({
-    data: { id: "seed_exp_05", expenseDate: d3, category: "Insumos", description: "Etiquetas de precio", amount: 65 },
+    data: { id: "seed_exp_05", tenantId, expenseDate: d3, category: "Insumos", description: "Etiquetas de precio", amount: 65 },
   });
   // Debt payment: seed_cust_01 pays 100 on seed_debt_01 (267 → 167 remaining)
   await prisma.$transaction(async (tx) => {
     await tx.debtPayment.create({
-      data: { id: "seed_dpay_01", debtId: "seed_debt_01", amount: 100, paymentDate: d3 },
+      data: { id: "seed_dpay_01", tenantId, debtId: "seed_debt_01", amount: 100, paymentDate: d3 },
     });
     await tx.debt.update({ where: { id: "seed_debt_01" }, data: { remainingAmount: 167 } });
     await tx.cashMovement.create({
-      data: { movementDate: d3, type: "IN", amount: 100, source: "DEBT_PAYMENT", referenceId: "seed_dpay_01" },
+      data: { tenantId, movementDate: d3, type: "IN", amount: 100, source: "DEBT_PAYMENT", referenceId: "seed_dpay_01" },
     });
   });
 
@@ -355,16 +363,16 @@ async function seedOperations(stock: Map<string, number>) {
     { productId: "seed_prod_07", qty: 1, price: 30 },
   ]);
   await prisma.expense.create({
-    data: { id: "seed_exp_06", expenseDate: d4, category: "Servicios", description: "Internet del negocio", amount: 200 },
+    data: { id: "seed_exp_06", tenantId, expenseDate: d4, category: "Servicios", description: "Internet del negocio", amount: 200 },
   });
   // Debt payment: seed_cust_02 pays 112 on seed_debt_02 (fully paid)
   await prisma.$transaction(async (tx) => {
     await tx.debtPayment.create({
-      data: { id: "seed_dpay_02", debtId: "seed_debt_02", amount: 112, paymentDate: d4 },
+      data: { id: "seed_dpay_02", tenantId, debtId: "seed_debt_02", amount: 112, paymentDate: d4 },
     });
     await tx.debt.update({ where: { id: "seed_debt_02" }, data: { remainingAmount: 0 } });
     await tx.cashMovement.create({
-      data: { movementDate: d4, type: "IN", amount: 112, source: "DEBT_PAYMENT", referenceId: "seed_dpay_02" },
+      data: { tenantId, movementDate: d4, type: "IN", amount: 112, source: "DEBT_PAYMENT", referenceId: "seed_dpay_02" },
     });
   });
 
@@ -394,10 +402,10 @@ async function seedOperations(stock: Map<string, number>) {
     { productId: "seed_prod_34", qty: 1, price: 115 },
   ]);
   await prisma.expense.create({
-    data: { id: "seed_exp_07", expenseDate: d5, category: "Proveedores", description: "Reabastecimiento de lácteos", amount: 800 },
+    data: { id: "seed_exp_07", tenantId, expenseDate: d5, category: "Proveedores", description: "Reabastecimiento de lácteos", amount: 800 },
   });
   await prisma.expense.create({
-    data: { id: "seed_exp_08", expenseDate: d5, category: "Servicios", description: "Gasolina para surtido", amount: 250 },
+    data: { id: "seed_exp_08", tenantId, expenseDate: d5, category: "Servicios", description: "Gasolina para surtido", amount: 250 },
   });
   // Stock adjustment: Refresco Cola damaged in warehouse (50 → 47)
   {
@@ -408,6 +416,7 @@ async function seedOperations(stock: Map<string, number>) {
       await tx.inventoryMovement.create({
         data: {
           id: "seed_im_adj_02",
+          tenantId,
           productId: "seed_prod_09",
           movementDate: d5,
           reason: "Producto dañado en almacén",
@@ -422,21 +431,21 @@ async function seedOperations(stock: Map<string, number>) {
   // Debt payment: seed_cust_01 pays remaining 167 on seed_debt_01 (fully paid)
   await prisma.$transaction(async (tx) => {
     await tx.debtPayment.create({
-      data: { id: "seed_dpay_03", debtId: "seed_debt_01", amount: 167, paymentDate: d5 },
+      data: { id: "seed_dpay_03", tenantId, debtId: "seed_debt_01", amount: 167, paymentDate: d5 },
     });
     await tx.debt.update({ where: { id: "seed_debt_01" }, data: { remainingAmount: 0 } });
     await tx.cashMovement.create({
-      data: { movementDate: d5, type: "IN", amount: 167, source: "DEBT_PAYMENT", referenceId: "seed_dpay_03" },
+      data: { tenantId, movementDate: d5, type: "IN", amount: 167, source: "DEBT_PAYMENT", referenceId: "seed_dpay_03" },
     });
   });
   // Debt payment: seed_cust_03 pays 100 on seed_debt_03 (176 → 76 remaining)
   await prisma.$transaction(async (tx) => {
     await tx.debtPayment.create({
-      data: { id: "seed_dpay_04", debtId: "seed_debt_03", amount: 100, paymentDate: d5 },
+      data: { id: "seed_dpay_04", tenantId, debtId: "seed_debt_03", amount: 100, paymentDate: d5 },
     });
     await tx.debt.update({ where: { id: "seed_debt_03" }, data: { remainingAmount: 76 } });
     await tx.cashMovement.create({
-      data: { movementDate: d5, type: "IN", amount: 100, source: "DEBT_PAYMENT", referenceId: "seed_dpay_04" },
+      data: { tenantId, movementDate: d5, type: "IN", amount: 100, source: "DEBT_PAYMENT", referenceId: "seed_dpay_04" },
     });
   });
 
@@ -482,16 +491,16 @@ async function seedOperations(stock: Map<string, number>) {
     { productId: "seed_prod_29", qty: 3, price: 14 },
   ]);
   await prisma.expense.create({
-    data: { id: "seed_exp_09", expenseDate: d6, category: "Insumos", description: "Rollos de recibo", amount: 120 },
+    data: { id: "seed_exp_09", tenantId, expenseDate: d6, category: "Insumos", description: "Rollos de recibo", amount: 120 },
   });
   // Debt payment: seed_cust_04 pays 150 on seed_debt_04 (309 → 159 remaining)
   await prisma.$transaction(async (tx) => {
     await tx.debtPayment.create({
-      data: { id: "seed_dpay_05", debtId: "seed_debt_04", amount: 150, paymentDate: d6 },
+      data: { id: "seed_dpay_05", tenantId, debtId: "seed_debt_04", amount: 150, paymentDate: d6 },
     });
     await tx.debt.update({ where: { id: "seed_debt_04" }, data: { remainingAmount: 159 } });
     await tx.cashMovement.create({
-      data: { movementDate: d6, type: "IN", amount: 150, source: "DEBT_PAYMENT", referenceId: "seed_dpay_05" },
+      data: { tenantId, movementDate: d6, type: "IN", amount: 150, source: "DEBT_PAYMENT", referenceId: "seed_dpay_05" },
     });
   });
 
@@ -517,16 +526,16 @@ async function seedOperations(stock: Map<string, number>) {
     { productId: "seed_prod_41", qty: 1, price: 45 },
   ]);
   await prisma.expense.create({
-    data: { id: "seed_exp_10", expenseDate: d7, category: "Servicios", description: "Pago de renta", amount: 3500 },
+    data: { id: "seed_exp_10", tenantId, expenseDate: d7, category: "Servicios", description: "Pago de renta", amount: 3500 },
   });
   // Debt payment: seed_cust_03 pays remaining 76 on seed_debt_03 (fully paid)
   await prisma.$transaction(async (tx) => {
     await tx.debtPayment.create({
-      data: { id: "seed_dpay_06", debtId: "seed_debt_03", amount: 76, paymentDate: d7 },
+      data: { id: "seed_dpay_06", tenantId, debtId: "seed_debt_03", amount: 76, paymentDate: d7 },
     });
     await tx.debt.update({ where: { id: "seed_debt_03" }, data: { remainingAmount: 0 } });
     await tx.cashMovement.create({
-      data: { movementDate: d7, type: "IN", amount: 76, source: "DEBT_PAYMENT", referenceId: "seed_dpay_06" },
+      data: { tenantId, movementDate: d7, type: "IN", amount: 76, source: "DEBT_PAYMENT", referenceId: "seed_dpay_06" },
     });
   });
 
@@ -534,6 +543,28 @@ async function seedOperations(stock: Map<string, number>) {
 }
 
 async function main() {
+  console.log("Seeding demo tenant and user...");
+  const tenant = await prisma.tenant.upsert({
+    where: { id: DEMO_TENANT_ID },
+    update: {},
+    create: { id: DEMO_TENANT_ID, businessName: "Comercio Demo", email: DEMO_TENANT_EMAIL },
+  });
+  const hashedPassword = await bcrypt.hash("demo1234", 10);
+  await prisma.user.upsert({
+    where: { email: DEMO_TENANT_EMAIL },
+    update: {},
+    create: {
+      email: DEMO_TENANT_EMAIL,
+      password: hashedPassword,
+      name: "Comercio Demo",
+      role: "OWNER",
+      tenantId: tenant.id,
+    },
+  });
+  console.log(`Demo tenant ready (email: ${DEMO_TENANT_EMAIL}, password: demo1234)`);
+
+  const tenantId = tenant.id;
+
   console.log("Seeding products...");
   for (const product of products) {
     await prisma.product.upsert({
@@ -541,6 +572,7 @@ async function main() {
       update: { categoryName: product.categoryName },
       create: {
         id: product.id,
+        tenantId,
         name: product.name,
         categoryName: product.categoryName,
         costPrice: product.costPrice,
@@ -556,17 +588,14 @@ async function main() {
     await prisma.customer.upsert({
       where: { id: customer.id },
       update: {},
-      create: {
-        id: customer.id,
-        name: customer.name,
-      },
+      create: { id: customer.id, tenantId, name: customer.name },
     });
   }
   console.log(`${customers.length} customers ready.`);
 
   console.log("Seeding operations...");
   const stock = new Map<string, number>(products.map((p) => [p.id, p.stock]));
-  await seedOperations(stock);
+  await seedOperations(stock, tenantId);
 }
 
 main()

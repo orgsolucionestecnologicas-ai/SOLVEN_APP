@@ -1,3 +1,5 @@
+vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createExpense, listExpenses } from "../../../modules/expenses";
@@ -61,7 +63,7 @@ describe("expenses API route", () => {
       amount: 25.5,
       category: "Supplies",
       description: "Printer paper"
-    });
+    }, "test-tenant-id");
   });
 
   it("returns validation errors for invalid expense input", async () => {

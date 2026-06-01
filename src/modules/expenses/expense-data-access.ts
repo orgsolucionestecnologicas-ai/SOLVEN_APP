@@ -9,13 +9,14 @@ import {
 } from "./expense-validation";
 
 export async function createExpense(
-  expenseInput: CreateExpenseInput
+  expenseInput: CreateExpenseInput,
+  tenantId: string
 ): Promise<Expense> {
   const validatedExpense = validateCreateExpenseInput(expenseInput);
 
   return prisma.$transaction(async (transaction) => {
     const expense = await transaction.expense.create({
-      data: validatedExpense
+      data: { ...validatedExpense, tenantId }
     });
     const cashMovement = validateCreateCashMovementInput({
       type: "OUT",
@@ -25,17 +26,16 @@ export async function createExpense(
     });
 
     await transaction.cashMovement.create({
-      data: cashMovement
+      data: { ...cashMovement, tenantId }
     });
 
     return expense;
   });
 }
 
-export async function listExpenses(): Promise<Expense[]> {
+export async function listExpenses(tenantId: string): Promise<Expense[]> {
   return prisma.expense.findMany({
-    orderBy: {
-      expenseDate: "desc"
-    }
+    where: { tenantId },
+    orderBy: { expenseDate: "desc" }
   });
 }

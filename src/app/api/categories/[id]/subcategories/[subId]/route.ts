@@ -6,15 +6,16 @@ import {
   SubcategoryNotFoundError
 } from "../../../../../../modules/categories";
 import { errorResponse, successResponse } from "../../../../_shared/responses";
+import { requireTenantId } from "@/lib/tenant";
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; subId: string }> }
 ) {
-  const { subId } = await params;
+  const [{ subId }, tenantId] = await Promise.all([params, requireTenantId()]);
 
   try {
-    await deleteSubcategory(subId);
+    await deleteSubcategory(subId, tenantId);
     return successResponse({ deleted: true });
   } catch (error) {
     if (error instanceof SubcategoryNotFoundError) {

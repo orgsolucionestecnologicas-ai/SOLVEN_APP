@@ -1,10 +1,11 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { Eye, EyeOff, X, Check } from "lucide-react";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -20,7 +21,7 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (response.ok) {
@@ -134,24 +135,24 @@ export default function LoginPage() {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Username */}
+              {/* Email */}
               <div>
                 <label
                   className="mb-1.5 block text-sm font-medium text-slate-700"
-                  htmlFor="username"
+                  htmlFor="email"
                 >
-                  Usuario
+                  Email
                 </label>
                 <input
-                  autoComplete="username"
+                  autoComplete="email"
                   autoFocus
                   className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-                  id="username"
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Tu usuario"
+                  id="email"
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nombre@negocio.com"
                   required
-                  type="text"
-                  value={username}
+                  type="email"
+                  value={email}
                 />
               </div>
 
@@ -244,10 +245,10 @@ export default function LoginPage() {
 
             {/* Bottom */}
             <p className="mt-8 text-center text-sm text-slate-400">
-              ¿Eres nuevo?{" "}
-              <span className="cursor-default font-medium text-violet-600">
-                Solicitar acceso →
-              </span>
+              ¿No tenés cuenta?{" "}
+              <Link className="font-medium text-violet-600 hover:underline" href="/register">
+                Registrate gratis →
+              </Link>
             </p>
           </div>
         </div>

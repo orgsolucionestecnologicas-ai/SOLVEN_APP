@@ -32,44 +32,46 @@ export class PromotionHasUsagesError extends Error {
 }
 
 export async function createPromotion(
-  input: CreatePromotionInput
+  input: CreatePromotionInput,
+  tenantId: string
 ): Promise<Promotion> {
   const data = validateCreatePromotion(input);
 
-  return prisma.promotion.create({ data });
+  return prisma.promotion.create({ data: { ...data, tenantId } });
 }
 
-export async function listPromotions(): Promise<PromotionWithUsageCount[]> {
+export async function listPromotions(
+  tenantId: string
+): Promise<PromotionWithUsageCount[]> {
   return prisma.promotion.findMany({
+    where: { tenantId },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { usages: true } } }
   });
 }
 
 export async function getPromotionById(
-  id: string
+  id: string,
+  tenantId: string
 ): Promise<PromotionWithUsageCount> {
-  const promotion = await prisma.promotion.findUnique({
-    where: { id },
+  const promotion = await prisma.promotion.findFirst({
+    where: { id, tenantId },
     include: { _count: { select: { usages: true } } }
   });
 
-  if (!promotion) {
-    throw new PromotionNotFoundError(id);
-  }
+  if (!promotion) throw new PromotionNotFoundError(id);
 
   return promotion;
 }
 
 export async function getPromotionByCode(
-  code: string
+  code: string,
+  tenantId: string
 ): Promise<PromotionWithUsages | null> {
   const now = new Date();
-  const promotion = await prisma.promotion.findUnique({
-    where: { code },
-    include: {
-      usages: { select: { id: true, customerId: true } }
-    }
+  const promotion = await prisma.promotion.findFirst({
+    where: { code, tenantId },
+    include: { usages: { select: { id: true, customerId: true } } }
   });
 
   if (!promotion) return null;
@@ -81,49 +83,47 @@ export async function getPromotionByCode(
 
 export async function updatePromotion(
   id: string,
-  input: UpdatePromotionInput
+  input: UpdatePromotionInput,
+  tenantId: string
 ): Promise<Promotion> {
   const data = validateUpdatePromotion(input);
 
-  const existing = await prisma.promotion.findUnique({ where: { id } });
-  if (!existing) {
-    throw new PromotionNotFoundError(id);
-  }
+  const existing = await prisma.promotion.findFirst({ where: { id, tenantId } });
+  if (!existing) throw new PromotionNotFoundError(id);
 
   return prisma.promotion.update({ where: { id }, data });
 }
 
-export async function deletePromotion(id: string): Promise<void> {
-  const existing = await prisma.promotion.findUnique({
-    where: { id },
+export async function deletePromotion(
+  id: string,
+  tenantId: string
+): Promise<void> {
+  const existing = await prisma.promotion.findFirst({
+    where: { id, tenantId },
     include: { _count: { select: { usages: true } } }
   });
 
-  if (!existing) {
-    throw new PromotionNotFoundError(id);
-  }
-
-  if (existing._count.usages > 0) {
-    throw new PromotionHasUsagesError();
-  }
+  if (!existing) throw new PromotionNotFoundError(id);
+  if (existing._count.usages > 0) throw new PromotionHasUsagesError();
 
   await prisma.promotion.delete({ where: { id } });
 }
 
-export async function getActivePromotions(): Promise<PromotionWithUsages[]> {
+export async function getActivePromotions(
+  tenantId: string
+): Promise<PromotionWithUsages[]> {
   const now = new Date();
   const todayDow = now.getDay();
 
   const promotions = await prisma.promotion.findMany({
     where: {
+      tenantId,
       isActive: true,
       startsAt: { lte: now },
       endsAt: { gte: now },
       activationType: { in: ["AUTOMATIC", "BOTH"] }
     },
-    include: {
-      usages: { select: { id: true, customerId: true } }
-    }
+    include: { usages: { select: { id: true, customerId: true } } }
   });
 
   return promotions.filter((p) => {

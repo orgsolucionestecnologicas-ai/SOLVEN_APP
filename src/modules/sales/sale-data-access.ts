@@ -64,13 +64,14 @@ function isServiceItem(
 }
 
 export async function createSale(
-  saleInput: CreateSaleWithPromotionsInput
+  saleInput: CreateSaleWithPromotionsInput,
+  tenantId: string
 ): Promise<SaleWithItems> {
   const validatedSale = validateCreateSaleInput(saleInput);
 
   if (validatedSale.paymentType === "CASH") {
     const openSession = await prisma.cashRegisterSession.findFirst({
-      where: { status: "OPEN" }
+      where: { status: "OPEN", tenantId }
     });
     if (!openSession) {
       throw new SaleNoCashRegisterOpenError();
@@ -116,11 +117,12 @@ export async function createSale(
 
     const sale = await transaction.sale.create({
       data: {
+        tenantId,
         paymentType: validatedSale.paymentType,
-        customer:
+        customerId:
           validatedSale.paymentType === "CREDIT"
-            ? { connect: { id: validatedSale.customerId } }
-            : undefined,
+            ? validatedSale.customerId
+            : null,
         totalAmount,
         discountAmount
       }
@@ -157,6 +159,7 @@ export async function createSale(
       await transaction.inventoryMovement.createMany({
         data: buildInventoryMovements(productSaleItems, stockReductionsByProductId).map(
           (item) => ({
+            tenantId,
             productId: item.productId,
             reason: `SALE:${sale.id}`,
             previousStock: item.previousStock,
@@ -170,7 +173,8 @@ export async function createSale(
     if (validatedSale.paymentType === "CREDIT") {
       const debt = await transaction.debt.create({
         data: {
-          customer: { connect: { id: validatedSale.customerId } },
+          tenantId,
+          customerId: validatedSale.customerId,
           totalAmount,
           remainingAmount: totalAmount
         }
@@ -183,6 +187,7 @@ export async function createSale(
     } else {
       await transaction.cashMovement.create({
         data: {
+          tenantId,
           type: "IN",
           amount: totalAmount,
           source: "SALE",
@@ -214,8 +219,9 @@ export async function createSale(
   }, { timeout: 15000 });
 }
 
-export async function listSales(): Promise<SaleListRecord[]> {
+export async function listSales(tenantId: string): Promise<SaleListRecord[]> {
   return prisma.sale.findMany({
+    where: { tenantId },
     orderBy: { saleDate: "desc" },
     include: {
       customer: { select: { name: true } },
