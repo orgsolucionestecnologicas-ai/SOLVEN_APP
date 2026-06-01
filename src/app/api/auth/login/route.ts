@@ -31,7 +31,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const token = await createSession(user.id, user.tenantId);
+  const subscription = await prisma.subscription.findUnique({
+    where: { tenantId: user.tenantId }
+  });
+
+  const token = await createSession(
+    user.id,
+    user.tenantId,
+    subscription?.status ?? "TRIAL",
+    subscription?.trialEndsAt?.toISOString() ?? null
+  );
   const cookieStore = await cookies();
 
   cookieStore.set(COOKIE_NAME, token, {

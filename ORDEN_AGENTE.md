@@ -1,198 +1,197 @@
-# ORDEN AL AGENTE — T21 + T15 + T22
-## Multi-tenancy + Registro de clientes + Protección por tenant
+# ORDEN AL AGENTE — T14 + T23 + T26
+## Rebill (suscripciones) + Webhook de pagos + Emails transaccionales
 
 ---
 
 ## Contexto
-SOLVEN hoy es single-tenant: un solo usuario, credenciales hardcodeadas en variables de entorno.
-Para soportar 50 clientes independientes necesitamos:
-1. Multi-tenancy: cada cliente tiene su propio espacio de datos aislado
-2. Página de registro: el cliente se crea su propia cuenta
-3. Protección: cada API query filtra por el tenant del usuario autenticado
+Multi-tenancy ya está implementado (Orden 1 completada).
+Ahora necesitamos el sistema de cobro y emails para que los clientes paguen
+y reciban comunicaciones automáticas.
+
+Diego ya tiene cuenta en Rebill (rebill.com).
+El plan de SOLVEN en Rebill debe configurarse manualmente desde el dashboard
+de Rebill (no desde código) — el agente NO hace eso.
+
+Lo que SÍ hace el agente:
+1. Modelo Subscription en Prisma
+2. Webhook endpoint para recibir eventos de Rebill
+3. Middleware que bloquea acceso si la suscripción está vencida
+4. Emails transaccionales con Resend
+5. Banner de trial en el dashboard
 
 ---
 
-## Lo que tenés que hacer
-
-### PASO 1 — Modelo Tenant y User en Prisma
+## PASO 1 — Modelo Subscription en Prisma
 
 Agregar en `prisma/schema.prisma`:
 
 ```prisma
-model Tenant {
-  id           String    @id @default(cuid())
-  businessName String
-  email        String    @unique
-  plan         String    @default("trial")
-  trialEndsAt  DateTime?
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  users        User[]
-  products     Product[]
-  sales        Sale[]
-  customers    Customer[]
-  expenses     Expense[]
-  cashRegisters CashRegister[]
-  debts        Debt[]
-  categories   Category[]
-  services     Service[]
-  promotions   Promotion[]
-  storeSettings StoreSettings?
+model Subscription {
+  id                 String             @id @default(cuid())
+  tenantId           String             @unique
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
+  rebillSubscriptionId String?          @unique
+  status             SubscriptionStatus @default(TRIAL)
+  trialEndsAt        DateTime?
+  currentPeriodEnd   DateTime?
+  cancelledAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 }
 
-model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  password     String
-  name         String    @default("")
-  role         UserRole  @default(OWNER)
-  tenantId     String
-  tenant       Tenant    @relation(fields: [tenantId], references: [id])
-  createdAt    DateTime  @default(now())
-}
-
-enum UserRole {
-  OWNER
-  CASHIER
-  INVENTORY
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
 }
 ```
 
-Agregar `tenantId String` a los modelos: Product, Sale, Customer, Expense, CashRegister, CashMovement, Debt, DebtPayment, Category, Service, Promotion, StoreSettings, InventoryMovement.
+Agregar relación en Tenant: `subscription Subscription?`
 
-Agregar la relación `tenant Tenant @relation(fields: [tenantId], references: [id])` en cada uno.
+Correr: `npx prisma migrate dev --name add-subscription`
 
-Agregar `@@index([tenantId])` en cada modelo modificado.
-
-Correr: `npx prisma migrate dev --name add-multitenancy`
-
----
-
-### PASO 2 — Sistema de sesión basado en JWT con tenantId
-
-Reemplazar el sistema de autenticación actual (variables de entorno hardcodeadas) por uno basado en base de datos:
-
-1. Crear `src/lib/auth.ts` con funciones:
-   - `hashPassword(password: string): Promise<string>` — usar bcryptjs
-   - `verifyPassword(password: string, hash: string): Promise<boolean>`
-   - `createSession(userId: string, tenantId: string): Promise<string>` — JWT firmado con SOLVEN_SESSION_SECRET
-   - `verifySession(token: string): Promise<{ userId: string, tenantId: string } | null>`
-
-2. Reescribir `src/app/api/auth/login/route.ts`:
-   - Buscar el User por email en la BD
-   - Verificar password con bcrypt
-   - Crear JWT con { userId, tenantId }
-   - Guardar en cookie httpOnly
-
-3. Actualizar `src/middleware.ts`:
-   - Leer el JWT de la cookie
-   - Verificar y decodificar → obtener tenantId
-   - Pasar tenantId en el header `x-tenant-id` para que las rutas API lo lean
+Al crear un Tenant nuevo (en /api/auth/register), crear automáticamente una
+Subscription con status TRIAL y trialEndsAt = ahora + 14 días.
 
 ---
 
-### PASO 3 — Helper getTenantId() para las rutas API
+## PASO 2 — Webhook de Rebill
 
-Crear `src/lib/tenant.ts`:
+Crear `src/app/api/webhooks/rebill/route.ts`:
 
 ```typescript
-import { cookies } from 'next/headers';
-import { verifySession } from './auth';
-
-export async function getTenantId(): Promise<string | null> {
-  const cookieStore = cookies();
-  const token = cookieStore.get('solven_session')?.value;
-  if (!token) return null;
-  const session = await verifySession(token);
-  return session?.tenantId ?? null;
-}
-
-export async function requireTenantId(): Promise<string> {
-  const tenantId = await getTenantId();
-  if (!tenantId) throw new Error('Unauthorized');
-  return tenantId;
+export async function POST(request: Request) {
+  // 1. Leer el body como texto raw (necesario para verificar HMAC)
+  // 2. Verificar la firma HMAC con REBILL_WEBHOOK_SECRET
+  //    - Header: x-rebill-signature
+  //    - Algoritmo: HMAC-SHA256 del body raw
+  //    - Si no coincide: return 401
+  // 3. Parsear el evento JSON
+  // 4. Manejar según event.type:
 }
 ```
 
+Manejar estos eventos:
+
+**`subscription.activated`** o **`subscription.created`**:
+- Buscar el Tenant por el email que viene en event.data.customer.email
+- Actualizar su Subscription: status = ACTIVE, rebillSubscriptionId = event.data.id
+- Enviar email de bienvenida
+
+**`payment.success`** o **`invoice.paid`**:
+- Actualizar currentPeriodEnd en Subscription
+- status = ACTIVE si era PAST_DUE
+
+**`payment.failed`** o **`invoice.payment_failed`**:
+- status = PAST_DUE
+- Enviar email de pago fallido
+
+**`subscription.cancelled`**:
+- status = CANCELLED, cancelledAt = ahora
+- Enviar email de cancelación
+
+**`subscription.trial_will_end`**:
+- Enviar email de recordatorio (trial termina en 3 días)
+
+Siempre retornar `{ received: true }` con status 200.
+
 ---
 
-### PASO 4 — Actualizar TODOS los data-access para filtrar por tenantId
+## PASO 3 — Middleware: bloquear acceso si suscripción vencida
 
-En cada archivo `src/modules/*/[nombre]-data-access.ts`, agregar `tenantId` a:
-- Todos los `findMany` → agregar `where: { tenantId }`
-- Todos los `create` → agregar `data: { tenantId, ...rest }`
-- Todos los `findUnique` que necesiten validar pertenencia → verificar que el registro pertenece al tenant
+En `src/middleware.ts`, después de verificar la sesión:
 
-Módulos a actualizar:
-- products/product-data-access.ts
-- sales/sale-data-access.ts
-- customers/customer-data-access.ts
-- expenses/expense-data-access.ts
-- cash/cash-movement-data-access.ts
-- cash-register/cash-register-data-access.ts
-- debts/debt-data-access.ts + debt-payment-data-access.ts
-- categories/category-data-access.ts
-- services/service-data-access.ts
-- promotions/promotion-data-access.ts
-- inventory/inventory-movement-data-access.ts + stock-adjustment.ts
-- settings/settings-data-access.ts
+- Consultar la Subscription del tenant
+- Si status es CANCELLED o EXPIRED → redirigir a /suscripcion-vencida
+- Si status es TRIAL y trialEndsAt < ahora → cambiar status a EXPIRED, redirigir a /suscripcion-vencida
+- Si status es PAST_DUE → permitir acceso pero mostrar banner (no bloquear todavía)
+- Rutas que siempre pasan: /login, /register, /suscripcion-vencida, /api/webhooks/rebill
 
 ---
 
-### PASO 5 — Actualizar las rutas API para pasar tenantId
+## PASO 4 — Página /suscripcion-vencida
 
-En cada `src/app/api/*/route.ts`, al inicio de cada handler:
+Crear `src/app/suscripcion-vencida/page.tsx`:
+- Mensaje claro: "Tu período de prueba terminó" o "Tu suscripción fue cancelada"
+- Botón principal: "Renovar suscripción" → link al checkout de Rebill
+  (usar placeholder URL: `process.env.NEXT_PUBLIC_REBILL_CHECKOUT_URL`)
+- Link secundario: "Contactar soporte" → mailto:orgsolucionestecnologicas@gmail.com
+- Botón de logout
+
+---
+
+## PASO 5 — Emails transaccionales con Resend
+
+Instalar: `npm install resend`
+
+Crear `src/lib/email.ts` con las siguientes funciones:
 
 ```typescript
-import { requireTenantId } from '@/lib/tenant';
+// Configuración
+const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM = 'SOLVEN <no-reply@solven.app>';
 
-export async function GET() {
-  const tenantId = await requireTenantId();
-  // pasar tenantId a las funciones del módulo
-}
+// Emails a implementar:
+sendWelcomeEmail(to: string, businessName: string): Promise<void>
+sendTrialEndingEmail(to: string, businessName: string, daysLeft: number): Promise<void>
+sendPaymentFailedEmail(to: string, businessName: string): Promise<void>
+sendCancellationEmail(to: string, businessName: string): Promise<void>
 ```
 
----
+Cada email debe tener:
+- Asunto claro en español
+- HTML simple con el branding de SOLVEN (fondo blanco, acento naranja #E85D04, fuente sans-serif)
+- Nombre del negocio personalizado
+- CTA relevante (renovar, actualizar tarjeta, etc.)
+- Footer con "SOLVEN — Gestión Comercial | orgsolucionestecnologicas@gmail.com"
 
-### PASO 6 — Página de registro (/register)
-
-Crear `src/app/register/page.tsx` con formulario:
-- Nombre del negocio (businessName)
-- Email
-- Contraseña (mínimo 8 caracteres)
-- Confirmar contraseña
-
-Crear `src/app/api/auth/register/route.ts` (POST):
-1. Validar los campos
-2. Verificar que el email no esté ya registrado
-3. Crear el Tenant con businessName y email
-4. Crear el User con password hasheada, rol OWNER, vinculado al Tenant
-5. Crear sesión automáticamente (login inmediato post-registro)
-6. Redirigir a /onboarding o /dashboard
-
-El formulario de registro debe tener link a /login ("¿Ya tenés cuenta? Iniciá sesión").
-El formulario de login debe tener link a /register ("¿No tenés cuenta? Registrate gratis").
+Si RESEND_API_KEY no está configurado, logear un warning y no fallar
+(para que el desarrollo local funcione sin Resend).
 
 ---
 
-### PASO 7 — Seed actualizado
+## PASO 6 — Banner de trial en el dashboard
 
-Actualizar `prisma/seed.ts` para crear:
-1. Un Tenant de prueba (nombre: "Comercio Demo", email: "demo@solven.app")
-2. Un User asociado (email: "demo@solven.app", password: "demo1234", rol: OWNER)
-3. Todos los datos de prueba existentes vinculados a ese tenant
+En `src/app/ui/app-shell.tsx` (o el layout del dashboard):
+
+Agregar un banner visible arriba de todo si:
+- La suscripción está en TRIAL y quedan ≤ 7 días
+- La suscripción está en PAST_DUE
+
+Banner TRIAL (amarillo): "⏳ Tu prueba gratuita vence en X días · [Activar suscripción →]"
+Banner PAST_DUE (rojo): "⚠️ Tu pago falló · Actualizá tu método de pago para continuar · [Actualizar →]"
+
+Obtener el estado de la suscripción con un fetch a GET /api/subscription
+(crear ese endpoint que devuelva { status, trialEndsAt, daysLeft }).
+
+---
+
+## Variables de entorno necesarias
+
+Agregar a `.env` local (y a Vercel cuando estén disponibles):
+```
+REBILL_WEBHOOK_SECRET=     # secreto HMAC del dashboard de Rebill
+REBILL_API_KEY=            # API key de Rebill
+RESEND_API_KEY=            # API key de Resend (resend.com)
+NEXT_PUBLIC_REBILL_CHECKOUT_URL=  # URL del checkout de Rebill para SOLVEN
+```
+
+Documentar estas 4 variables en un archivo `ENV_VARS.md` en la raíz del proyecto
+para que Diego las complete con los valores reales del dashboard.
 
 ---
 
 ## Criterio de éxito
 
-- Un usuario puede registrarse en /register con email y contraseña
-- Después de registrarse entra directo al dashboard
-- Puede crear productos, ventas, clientes — todo queda en su propio espacio
-- Si se registra un segundo usuario con otro email, NO ve los datos del primero
-- `npm test` pasa sin errores (actualizar los tests que rompan por el tenantId)
-- El login en /login sigue funcionando con las nuevas credenciales de BD
+- Al registrarse, el Tenant tiene una Subscription en TRIAL por 14 días
+- El webhook recibe eventos de Rebill y actualiza el estado correctamente
+- Si el trial vence, el usuario es redirigido a /suscripcion-vencida
+- El dashboard muestra el banner de trial cuando quedan ≤ 7 días
+- Los emails se envían correctamente (o logean warning si no hay API key)
+- `npm test` pasa sin errores
+- Lint y typecheck limpios
 
 ---
 
@@ -201,7 +200,7 @@ Actualizar `prisma/seed.ts` para crear:
 Escribí el resultado en `REPORTE_AGENTE.md`:
 
 ```
-# REPORTE — T21+T15+T22
+# REPORTE — T14+T23+T26
 ## Estado: COMPLETADO / ERROR
 ## Migraciones corridas:
 ## Archivos creados:

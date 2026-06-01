@@ -46,6 +46,14 @@ enum UserRole {
   INVENTORY
 }
 
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
 model Tenant {
   id                String              @id @default(cuid())
   businessName      String
@@ -69,6 +77,7 @@ model Tenant {
   promotions        Promotion[]
   inventoryMovements InventoryMovement[]
   storeSettings     StoreSettings?
+  subscription      Subscription?
 }
 
 model User {
@@ -400,4 +409,17 @@ model StoreSettings {
   desktopNotifications Boolean  @default(false)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  tenantId             String             @unique
+  tenant               Tenant             @relation(fields: [tenantId], references: [id])
+  rebillSubscriptionId String?            @unique
+  status               SubscriptionStatus @default(TRIAL)
+  trialEndsAt          DateTime?
+  currentPeriodEnd     DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 }

@@ -62,8 +62,14 @@ export async function POST(request: NextRequest) {
 
   const hashedPassword = await hashPassword(password);
 
+  const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
   const tenant = await prisma.tenant.create({
     data: { businessName: businessName.trim(), email: normalizedEmail }
+  });
+
+  await prisma.subscription.create({
+    data: { tenantId: tenant.id, status: "TRIAL", trialEndsAt }
   });
 
   const user = await prisma.user.create({
@@ -75,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
   });
 
-  const token = await createSession(user.id, tenant.id);
+  const token = await createSession(user.id, tenant.id, "TRIAL", trialEndsAt.toISOString());
   const cookieStore = await cookies();
 
   cookieStore.set(COOKIE_NAME, token, {

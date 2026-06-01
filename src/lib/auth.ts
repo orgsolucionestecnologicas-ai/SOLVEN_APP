@@ -27,14 +27,23 @@ async function getHmacKey(): Promise<CryptoKey> {
   );
 }
 
-type SessionPayload = { userId: string; tenantId: string };
+export type SessionPayload = {
+  userId: string;
+  tenantId: string;
+  subscriptionStatus: string;
+  trialEndsAt: string | null;
+};
 
 export async function createSession(
   userId: string,
-  tenantId: string
+  tenantId: string,
+  subscriptionStatus = "TRIAL",
+  trialEndsAt: string | null = null
 ): Promise<string> {
   const key = await getHmacKey();
-  const payload = btoa(JSON.stringify({ userId, tenantId } satisfies SessionPayload));
+  const payload = btoa(
+    JSON.stringify({ userId, tenantId, subscriptionStatus, trialEndsAt } satisfies SessionPayload)
+  );
   const signature = await crypto.subtle.sign(
     "HMAC",
     key,
