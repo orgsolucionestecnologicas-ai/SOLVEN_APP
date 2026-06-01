@@ -39,7 +39,7 @@ export default function LandingPage() {
 
         <div className="nav-cta">
           <Link href="/login" className="btn-ghost">Iniciar sesión</Link>
-          <Link href="/login" className="btn-primary">
+          <Link href="/register" className="btn-primary">
             Comenzar gratis
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </Link>
@@ -64,7 +64,7 @@ export default function LandingPage() {
         </p>
 
         <div className="hero-actions">
-          <Link href="/login" className="btn-hero">
+          <Link href="/register" className="btn-hero">
             Empezar ahora — es gratis
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </Link>
@@ -362,7 +362,7 @@ export default function LandingPage() {
             ))}
           </ul>
 
-          <Link href="/login" className="pricing-btn">Comenzar ahora — 14 días gratis</Link>
+          <Link href="/register" className="pricing-btn">Comenzar ahora — 14 días gratis</Link>
           <div className="pricing-guarantee">Se requiere tarjeta · Cobramos automáticamente al vencer el período de prueba</div>
         </div>
       </section>
@@ -373,7 +373,7 @@ export default function LandingPage() {
         <h2>¿Listo para tener control real de tu negocio?</h2>
         <p>Únete a cientos de comercios que ya operan con claridad y confianza.</p>
         <div className="cta-actions">
-          <Link href="/login" className="btn-cta-white">
+          <Link href="/register" className="btn-cta-white">
             Empezar gratis hoy
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </Link>
