@@ -128,6 +128,42 @@ function SubscriptionBanner() {
   return null;
 }
 
+function SidebarUser() {
+  const [businessName, setBusinessName] = useState("");
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    fetch("/api/me")
+      .then((r) => r.json())
+      .then((body: { data?: { name: string; businessName: string } }) => {
+        if (body.data) {
+          setBusinessName(body.data.businessName);
+          setUserName(body.data.name);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const initial = businessName ? businessName[0].toUpperCase() : "·";
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
+        {initial}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-white">
+          {businessName || <span className="text-slate-500">—</span>}
+        </p>
+        <p className="truncate text-xs text-slate-400">
+          {userName || <span className="text-slate-600">—</span>}
+        </p>
+      </div>
+      <ChevronDown size={15} className="flex-shrink-0 text-slate-500" />
+    </div>
+  );
+}
+
 export function AppShell({ activeSection, eyebrow, title, children }: AppShellProps) {
   return (
     <div className="min-h-screen bg-slate-100 lg:flex">
@@ -178,16 +214,7 @@ export function AppShell({ activeSection, eyebrow, title, children }: AppShellPr
 
         {/* Bottom — desktop only */}
         <div className="mt-auto hidden border-t border-slate-800 pt-3 lg:block">
-          <div className="flex items-center gap-3 rounded-lg px-3 py-2">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
-              T
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-white">Tienda Demo</p>
-              <p className="truncate text-xs text-slate-400">Propietario</p>
-            </div>
-            <ChevronDown size={15} className="flex-shrink-0 text-slate-500" />
-          </div>
+          <SidebarUser />
           <LogoutButton />
         </div>
       </aside>

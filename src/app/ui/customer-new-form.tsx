@@ -2,9 +2,7 @@
 
 import {
   ArrowLeft,
-  CreditCard,
   Mail,
-  MapPin,
   Phone,
   Save,
   User
@@ -26,10 +24,6 @@ export function CustomerNewForm() {
   const router = useRouter();
 
   const [name, setName] = useState("");
-  const [cedula, setCedula] = useState("");
-  const [direccion, setDireccion] = useState("");
-  const [ciudad, setCiudad] = useState("");
-  const [postal, setPostal] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,92 +133,6 @@ export function CustomerNewForm() {
                     type="text"
                     value={name}
                   />
-                </div>
-
-                {/* Cédula / RNC */}
-                <div>
-                  <label
-                    className="mb-1.5 block text-sm font-medium text-slate-700"
-                    htmlFor="customer-cedula"
-                  >
-                    Cédula / RNC
-                    <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
-                  </label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                    <input
-                      className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                      disabled={isSubmitting}
-                      id="customer-cedula"
-                      onChange={(e) => setCedula(e.target.value)}
-                      placeholder="000-0000000-0"
-                      type="text"
-                      value={cedula}
-                    />
-                  </div>
-                </div>
-
-                {/* Dirección */}
-                <div>
-                  <label
-                    className="mb-1.5 block text-sm font-medium text-slate-700"
-                    htmlFor="customer-direccion"
-                  >
-                    Dirección
-                    <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                    <input
-                      className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                      disabled={isSubmitting}
-                      id="customer-direccion"
-                      onChange={(e) => setDireccion(e.target.value)}
-                      placeholder="Av. Principal #123..."
-                      type="text"
-                      value={direccion}
-                    />
-                  </div>
-                </div>
-
-                {/* Ciudad + Código postal */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      className="mb-1.5 block text-sm font-medium text-slate-700"
-                      htmlFor="customer-ciudad"
-                    >
-                      Ciudad
-                      <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
-                    </label>
-                    <input
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                      disabled={isSubmitting}
-                      id="customer-ciudad"
-                      onChange={(e) => setCiudad(e.target.value)}
-                      placeholder="Ej. Buenos Aires"
-                      type="text"
-                      value={ciudad}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="mb-1.5 block text-sm font-medium text-slate-700"
-                      htmlFor="customer-postal"
-                    >
-                      Código postal
-                      <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
-                    </label>
-                    <input
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                      disabled={isSubmitting}
-                      id="customer-postal"
-                      onChange={(e) => setPostal(e.target.value)}
-                      placeholder="Ej. 1043"
-                      type="text"
-                      value={postal}
-                    />
-                  </div>
                 </div>
 
                 {/* Phone */}

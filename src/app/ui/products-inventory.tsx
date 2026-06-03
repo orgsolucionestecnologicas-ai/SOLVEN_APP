@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  BarChart2,
+
   Barcode,
   ChevronLeft,
   ChevronRight,
@@ -994,13 +994,7 @@ function ProductRow({
           >
             <Pencil size={13} />
           </button>
-          <button
-            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            title="Estadísticas"
-            type="button"
-          >
-            <BarChart2 size={13} />
-          </button>
+
           <div className="relative">
             <button
               className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"

@@ -12,6 +12,7 @@ import {
   successResponse
 } from "../../_shared/responses";
 import { requireTenantId } from "@/lib/tenant";
+import { prisma } from "@/lib/prisma";
 
 export async function PUT(
   request: Request,
@@ -41,5 +42,32 @@ export async function PUT(
       return errorResponse("Cliente no encontrado.", 404);
     }
     return errorResponse("No se pudo actualizar el cliente.");
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+
+  const customer = await prisma.customer.findFirst({ where: { id, tenantId } });
+  if (!customer) {
+    return errorResponse("Cliente no encontrado.", 404);
+  }
+
+  const hasPendingDebt = await prisma.debt.findFirst({
+    where: { customerId: id, remainingAmount: { gt: 0 } }
+  });
+
+  if (hasPendingDebt) {
+    return errorResponse("No podés eliminar un cliente con deudas pendientes.", 400);
+  }
+
+  try {
+    await prisma.customer.delete({ where: { id } });
+    return successResponse({ deleted: true });
+  } catch {
+    return errorResponse("No se pudo eliminar el cliente.");
   }
 }

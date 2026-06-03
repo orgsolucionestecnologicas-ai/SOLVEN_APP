@@ -67,4 +67,4 @@
 ---
 
 ## Tests: 176 pasando / 37 archivos
-## Commit: pendiente
+## Commit: ecfc851 fix: QA pass — UI corrections and consistency fixes

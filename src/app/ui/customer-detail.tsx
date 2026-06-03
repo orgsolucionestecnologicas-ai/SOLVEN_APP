@@ -117,6 +117,9 @@ export function CustomerDetail() {
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const PAGE_SIZE = 10;
@@ -237,6 +240,25 @@ export function CustomerDetail() {
   const paginatedPayments = customerPayments.slice((paymentsPage - 1) * PAGE_SIZE, paymentsPage * PAGE_SIZE);
   const paymentsTotalPages = Math.max(1, Math.ceil(customerPayments.length / PAGE_SIZE));
 
+  async function handleDelete() {
+    if (!customer) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, { method: "DELETE" });
+      const body = (await res.json()) as ApiResponse<unknown>;
+      if (!res.ok) {
+        setDeleteError(body.error?.message ?? "No se pudo eliminar el cliente.");
+        setIsDeleting(false);
+        return;
+      }
+      router.push("/customers");
+    } catch {
+      setDeleteError("No se pudo eliminar el cliente.");
+      setIsDeleting(false);
+    }
+  }
+
   function getDaysSince(dateStr: string): number {
     return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
   }
@@ -328,13 +350,11 @@ export function CustomerDetail() {
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsMoreMenuOpen(false)} />
                 <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-                  <button className="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-slate-50" type="button">
-                    Exportar historial
-                  </button>
-                  <button className="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-slate-50" type="button">
-                    Enviar estado de cuenta
-                  </button>
-                  <button className="flex w-full items-center px-3 py-2 text-sm text-rose-600 hover:bg-rose-50" type="button">
+                  <button
+                    className="flex w-full items-center px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
+                    onClick={() => { setIsMoreMenuOpen(false); setIsDeleteConfirming(true); setDeleteError(null); }}
+                    type="button"
+                  >
                     Eliminar cliente
                   </button>
                 </div>
@@ -540,6 +560,42 @@ export function CustomerDetail() {
             setRefreshKey((k) => k + 1);
           }}
         />
+      ) : null}
+
+      {isDeleteConfirming ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onClick={() => !isDeleting && setIsDeleteConfirming(false)}>
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-5">
+              <h2 className="text-sm font-semibold text-slate-950">Eliminar cliente</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                ¿Eliminar a <strong>{customer.name}</strong>? Esta acción no se puede deshacer.
+              </p>
+              {deleteError ? (
+                <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3">
+                  <p className="text-sm text-rose-900">{deleteError}</p>
+                </div>
+              ) : null}
+            </div>
+            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+              <button
+                className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                disabled={isDeleting}
+                onClick={() => setIsDeleteConfirming(false)}
+                type="button"
+              >
+                Cancelar
+              </button>
+              <button
+                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+                disabled={isDeleting}
+                onClick={() => void handleDelete()}
+                type="button"
+              >
+                {isDeleting ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
