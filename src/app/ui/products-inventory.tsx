@@ -1032,13 +1032,6 @@ function ProductRow({
                 >
                   Ajustar stock
                 </button>
-                <button
-                  className="flex w-full items-center px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
-                  onClick={onMenuToggle}
-                  type="button"
-                >
-                  Desactivar
-                </button>
               </div>
             ) : null}
           </div>

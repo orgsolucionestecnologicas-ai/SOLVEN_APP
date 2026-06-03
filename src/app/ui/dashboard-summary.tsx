@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatARS as formatMXN } from "@/lib/format-currency";
+import { formatARS } from "@/lib/format-currency";
 import Link from "next/link";
 import {
   BarChart2,
@@ -195,7 +195,7 @@ export function DashboardSummary() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             title="Ventas del día"
-            value={formatMXN(todaySalesTotal)}
+            value={formatARS(todaySalesTotal)}
             IconEl={<DollarSign size={18} />}
             iconBg="bg-violet-100"
             iconColor="text-violet-600"
@@ -206,7 +206,7 @@ export function DashboardSummary() {
           />
           <MetricCard
             title="Ventas del mes"
-            value={formatMXN(monthSalesTotal)}
+            value={formatARS(monthSalesTotal)}
             IconEl={<ShoppingBag size={18} />}
             iconBg="bg-green-100"
             iconColor="text-green-600"
@@ -217,7 +217,7 @@ export function DashboardSummary() {
           />
           <MetricCard
             title="Ganancia del día"
-            value={formatMXN(todayProfit)}
+            value={formatARS(todayProfit)}
             IconEl={<TrendingUp size={18} />}
             iconBg="bg-blue-100"
             iconColor="text-blue-600"
@@ -521,7 +521,7 @@ function CashMovementsPanel({ cashMovements }: { cashMovements: CashMovement[] |
                   m.type === "IN" ? "text-green-600" : "text-red-500"
                 }`}
               >
-                {m.type === "IN" ? "+" : "-"}{formatMXN(Number(m.amount))}
+                {m.type === "IN" ? "+" : "-"}{formatARS(Number(m.amount))}
               </span>
             </li>
           ))}
@@ -598,8 +598,8 @@ function QuickSummaryPanel({
   pendingDebtsCount: number;
 }) {
   const rows = [
-    { label: "Ventas de hoy",           value: formatMXN(todaySalesTotal), highlight: false },
-    { label: "Ganancia de hoy",         value: formatMXN(todayProfit),     highlight: todayProfit < 0 },
+    { label: "Ventas de hoy",           value: formatARS(todaySalesTotal), highlight: false },
+    { label: "Ganancia de hoy",         value: formatARS(todayProfit),     highlight: todayProfit < 0 },
     { label: "Productos en inventario", value: String(totalProducts),       highlight: false },
     { label: "Clientes registrados",    value: String(totalCustomers),      highlight: false },
     { label: "Ventas pendientes",       value: String(pendingDebtsCount),   highlight: pendingDebtsCount > 0 },
@@ -627,12 +627,12 @@ function QuickSummaryPanel({
 // ── QuickActions ───────────────────────────────────────────────────────────────
 
 const quickActions = [
-  { label: "Nueva venta",     href: "/pos",            Icon: ShoppingCart },
-  { label: "Nuevo producto",  href: "/products",       Icon: Package },
-  { label: "Abrir caja",      href: "/cash-movements", Icon: CreditCard },
-  { label: "Ver reportes",    href: "/reports",        Icon: BarChart2 },
-  { label: "Nuevo cliente",   href: "/customers",      Icon: UserPlus },
-  { label: "Ajuste de stock", href: "/products",       Icon: RefreshCw },
+  { label: "Nueva venta",     href: "/pos",              Icon: ShoppingCart },
+  { label: "Nuevo producto",  href: "/products/new",     Icon: Package },
+  { label: "Abrir caja",      href: "/cash-movements",   Icon: CreditCard },
+  { label: "Ver reportes",    href: "/reports",          Icon: BarChart2 },
+  { label: "Nuevo cliente",   href: "/customers/new",    Icon: UserPlus },
+  { label: "Ajuste de stock", href: "/inventory/adjust", Icon: RefreshCw },
 ];
 
 function QuickActions() {

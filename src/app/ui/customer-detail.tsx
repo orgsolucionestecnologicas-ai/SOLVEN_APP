@@ -86,20 +86,6 @@ function getAvatarColor(name: string): string {
   return AVATAR_COLORS[sum % AVATAR_COLORS.length];
 }
 
-function getCustomerPhone(id: string): string {
-  const hex = id.replace(/[^0-9a-f]/gi, "");
-  const n1 = parseInt(hex.slice(-6, -3) || "000", 16) % 1000;
-  const n2 = parseInt(hex.slice(-3) || "000", 16) % 10000;
-  return `809-${String(n1).padStart(3, "0")}-${String(n2).padStart(4, "0")}`;
-}
-
-function getCustomerEmail(name: string): string {
-  const normalize = (w: string) =>
-    w.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]/g, "");
-  const parts = name.toLowerCase().trim().split(/\s+/).map(normalize).filter(Boolean);
-  if (parts.length >= 2) return `${parts[0]}.${parts[1]}@email.com`;
-  return `${parts[0] ?? "cliente"}@email.com`;
-}
 
 const dateFmt = new Intl.DateTimeFormat("es-419", { day: "2-digit", month: "short", year: "numeric" });
 
@@ -237,8 +223,6 @@ export function CustomerDetail() {
 
   const avgTicket = customerSales.length > 0 ? totalPurchased / customerSales.length : 0;
   const lastSaleDate = customerSales.length > 0 ? customerSales[0].saleDate : null;
-  const creditLimit = 10000;
-  const creditAvailable = Math.max(0, creditLimit - totalDebt);
 
   const TABS: { id: TabId; label: string }[] = [
     { id: "resumen", label: "Resumen" },
@@ -289,9 +273,6 @@ export function CustomerDetail() {
 
   const initials = getInitials(customer.name);
   const avatarColor = getAvatarColor(customer.name);
-  const phone = getCustomerPhone(customer.id);
-  const email = getCustomerEmail(customer.name);
-  const cedula = `001-${customer.id.slice(-7, -3)}-${customer.id.slice(-3)}`;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -379,11 +360,10 @@ export function CustomerDetail() {
                   Activo
                 </span>
               </div>
-              <p className="mt-0.5 text-sm text-slate-500">{phone} · {email}</p>
               <p className="text-xs text-slate-400">
                 {customer.customerCode ? <span className="font-mono font-medium text-slate-600">{customer.customerCode}</span> : null}
                 {customer.customerCode ? " · " : null}
-                Cédula: {cedula} · Cliente desde: {fmtDate(customer.createdAt)}
+                Cliente desde: {fmtDate(customer.createdAt)}
               </p>
             </div>
           </div>
@@ -406,13 +386,6 @@ export function CustomerDetail() {
               value={fmtMoney(totalPaid)}
               valueClass="text-emerald-600"
               bgClass="bg-emerald-50 border-emerald-200"
-            />
-            <MetricCard
-              label="Límite de crédito"
-              value={fmtMoney(creditLimit)}
-              valueClass="text-blue-600"
-              bgClass="bg-blue-50 border-blue-200"
-              sub={`Disponible: ${fmtMoney(creditAvailable)}`}
             />
           </div>
         </div>
