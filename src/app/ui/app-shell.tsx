@@ -3,10 +3,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
+import { HelpChat } from "@/components/help/HelpChat";
 import {
   BarChart2,
   ChevronDown,
   CreditCard,
+  HelpCircle,
   Home,
   Layers,
   Package,
@@ -32,6 +34,7 @@ type ActiveSection =
   | "promotions"
   | "reports"
   | "returns"
+  | "ayuda"
   | "sales"
   | "services"
   | "settings";
@@ -71,6 +74,7 @@ const navItems: NavItem[] = [
   { type: "link",     href: "/reports",         label: "Reportes",      section: "reports",       Icon: BarChart2 },
   { type: "link",     href: "/promotions",      label: "Promociones",   section: "promotions",    Icon: Tag },
   { type: "link",     href: "/settings",        label: "Configuración", section: "settings",      Icon: Settings },
+  { type: "link",     href: "/ayuda",            label: "Ayuda",         section: "ayuda",         Icon: HelpCircle },
   { type: "disabled",                           label: "Licencia",                                Icon: Shield },
 ];
 
@@ -233,6 +237,8 @@ export function AppShell({ activeSection, eyebrow, title, children }: AppShellPr
         ) : null}
         {children}
       </main>
+
+      <HelpChat />
     </div>
   );
 }

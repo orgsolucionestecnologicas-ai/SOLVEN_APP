@@ -1,93 +1,191 @@
-# ORDEN AL AGENTE — Correcciones QA (4 decisiones de Diego)
+# ORDEN AL AGENTE — Asistente de ayuda interno SOLVEN (sin API externa)
 
-## Contexto
-El QA anterior identificó 4 puntos que requieren decisión de Diego.
-Las decisiones están tomadas. Ejecutá exactamente lo que dice cada punto.
+## Concepto
+Construir un asistente conversacional de ayuda dentro de SOLVEN que responde
+preguntas sobre cómo usar el sistema. Es 100% autocontenido — sin llamadas a
+Claude ni a ninguna API externa. Toda la información está en una base de
+conocimiento local en TypeScript.
 
----
-
-## CORRECCIÓN 1 — Sacar campos innecesarios del formulario de nuevo cliente
-
-**Archivo:** `src/app/ui/customer-new-form.tsx`
-
-Eliminar del formulario los siguientes campos (inputs + labels):
-- Cédula / RNC
-- Dirección
-- Ciudad
-- Código Postal
-
-Mantener solo: Nombre (obligatorio), Teléfono, Email.
-
-Verificar que el formulario sigue funcionando correctamente después de la eliminación.
+El usuario abre el chat, escribe su pregunta en lenguaje natural, y el sistema
+encuentra la mejor respuesta en milisegundos.
 
 ---
 
-## CORRECCIÓN 2 — Menú "..." en ficha de cliente
+## PASO 1 — Base de conocimiento
 
-**Archivo:** `src/app/ui/customer-detail.tsx`
+Crear `src/lib/help-knowledge-base.ts` con la siguiente estructura:
 
-Hacer estos cambios en el menú de 3 puntos (menú contextual del cliente):
+```typescript
+export type HelpEntry = {
+  id: string;
+  module: string;         // módulo al que pertenece
+  keywords: string[];     // palabras clave para matching
+  question: string;       // pregunta representativa
+  answer: string;         // respuesta completa en español
+  steps?: string[];       // pasos opcionales si aplica
+  tip?: string;           // consejo extra opcional
+};
 
-**Eliminar** los botones:
-- "Exportar historial"
-- "Enviar estado de cuenta"
+export const HELP_KNOWLEDGE_BASE: HelpEntry[] = [ ... ];
+```
 
-**Implementar** el botón "Eliminar cliente":
-- Al hacer click, mostrar un diálogo de confirmación: "¿Eliminar a [nombre del cliente]? Esta acción no se puede deshacer."
-- Si confirma: llamar a DELETE `/api/customers/[id]`
-- Verificar que el endpoint DELETE existe en `src/app/api/customers/[id]/route.ts`
-  - Si no existe, crearlo: verificar que el cliente pertenece al tenant, eliminar con `prisma.customer.delete`
-  - Si el cliente tiene deudas pendientes, retornar error 400: "No podés eliminar un cliente con deudas pendientes"
-- Después de eliminar exitosamente: redirigir a `/customers`
+Poblar con al menos 40 entradas cubriendo TODOS los módulos de SOLVEN:
+
+**Caja (5 entradas mínimo):**
+- Cómo abrir la caja al inicio del turno
+- Cómo cerrar la caja y hacer el cuadre
+- Cómo registrar un movimiento manual (entrada/salida de dinero)
+- Qué hacer si la caja no cierra porque ya hay una sesión abierta
+- Cómo ver el historial de movimientos de caja
+
+**Ventas / POS (5 entradas):**
+- Cómo registrar una venta al contado
+- Cómo registrar una venta a crédito (fiado)
+- Cómo aplicar un descuento en una venta
+- Cómo buscar un producto en el punto de venta
+- Cómo ver el historial de ventas del día
+
+**Productos (5 entradas):**
+- Cómo agregar un producto nuevo
+- Cómo editar el precio de un producto
+- Cómo agregar una categoría
+- Cómo asignar un código de barras a un producto
+- Cómo desactivar un producto sin eliminarlo
+
+**Inventario (5 entradas):**
+- Cómo hacer una entrada de mercadería
+- Cómo ajustar el stock manualmente
+- Cómo ver qué productos tienen stock bajo
+- Cómo ver el historial de movimientos de un producto
+- Qué significa cada tipo de movimiento (entrada, ajuste, venta, devolución)
+
+**Clientes (5 entradas):**
+- Cómo agregar un cliente nuevo
+- Cómo ver la deuda de un cliente
+- Cómo registrar un pago parcial de deuda
+- Cómo ver el historial de compras de un cliente
+- Cómo eliminar un cliente
+
+**Devoluciones (3 entradas):**
+- Cómo procesar una devolución
+- Qué pasa con el stock cuando hago una devolución
+- Qué pasa con la caja cuando devuelvo una venta en efectivo
+
+**Promociones (3 entradas):**
+- Cómo crear una promoción 2x1
+- Cómo crear un descuento por porcentaje
+- Cómo activar o desactivar una promoción
+
+**Reportes (3 entradas):**
+- Cómo ver las ventas del mes
+- Cómo comparar ventas entre períodos
+- Qué muestra el reporte de productos más vendidos
+
+**Configuración (3 entradas):**
+- Cómo cambiar el nombre del negocio
+- Cómo cambiar la moneda
+- Cómo cambiar la contraseña
+
+**General / Suscripción (3 entradas):**
+- Qué pasa cuando vence el período de prueba
+- Cómo renovar la suscripción
+- Cómo contactar soporte
 
 ---
 
-## CORRECCIÓN 3 — Sacar botón "Estadísticas" de la lista de productos
+## PASO 2 — Motor de búsqueda local
 
-**Archivo:** `src/app/ui/products-inventory.tsx`
+Crear `src/lib/help-search.ts`:
 
-Buscar el botón con ícono `BarChart2` (estadísticas) que aparece en cada fila de producto.
-Eliminarlo completamente (botón + ícono + import si queda sin uso).
+```typescript
+import { HELP_KNOWLEDGE_BASE, HelpEntry } from './help-knowledge-base';
+
+export function searchHelp(query: string): HelpEntry[] {
+  // 1. Normalizar query: minúsculas, quitar acentos, split en palabras
+  // 2. Para cada entrada de la KB, calcular un score:
+  //    - +3 puntos por cada keyword que matchea exactamente
+  //    - +2 puntos si la query contiene alguna palabra del campo question
+  //    - +1 punto si el module matchea alguna palabra de la query
+  // 3. Ordenar por score descendente
+  // 4. Retornar las 3 mejores entradas con score > 0
+  // 5. Si no hay matches, retornar [] (el UI mostrará respuesta por defecto)
+}
+```
+
+Incluir una función `normalizeText(text: string): string` que:
+- Convierte a minúsculas
+- Elimina acentos (á→a, é→e, í→i, ó→o, ú→u, ñ→n)
+- Elimina caracteres especiales
 
 ---
 
-## CORRECCIÓN 4 — Conectar sidebar al tenant y usuario real
+## PASO 3 — Componente del chat de ayuda
 
-**Archivo:** `src/app/ui/app-shell.tsx`
+Crear `src/components/help/HelpChat.tsx`:
 
-El sidebar muestra "Tienda Demo" y "Propietario" hardcodeados.
-Hay que leerlos desde la sesión real del usuario autenticado.
+**Comportamiento:**
+- Botón flotante fijo en la esquina inferior derecha de la app (círculo violeta con ícono de interrogación "?")
+- Al hacer click, se abre un panel de chat (340px de ancho, posición fixed)
+- El panel tiene: header "Ayuda SOLVEN", botón de cerrar (X), área de mensajes, input de texto
 
-Pasos:
-1. Crear endpoint GET `/api/me` que devuelva:
-   ```json
-   { "name": "nombre del usuario", "businessName": "nombre del negocio del tenant" }
-   ```
-   Leer `user.name` y `user.tenant.businessName` desde Prisma usando el tenantId de la sesión.
+**Flujo de conversación:**
+1. Al abrir, mostrar mensaje de bienvenida:
+   > "¡Hola! Soy tu asistente de ayuda. Preguntame sobre cualquier función de SOLVEN — ventas, caja, inventario, clientes y más."
+2. El usuario escribe su pregunta
+3. Mostrar "Buscando..." por 400ms (para que no parezca instantáneo/robot)
+4. Si hay resultados: mostrar la respuesta de la entrada más relevante con sus steps
+5. Si no hay resultados: mostrar:
+   > "No encontré una respuesta exacta para eso. Podés escribirnos a orgsolucionestecnologicas@gmail.com y te ayudamos."
 
-2. En `app-shell.tsx`, hacer fetch a `/api/me` al montar el componente.
+**Sugerencias rápidas** (chips clickeables debajo del input):
+- "¿Cómo cierro la caja?"
+- "¿Cómo cargo un producto?"
+- "¿Cómo registro una venta?"
+- "¿Cómo veo los reportes?"
 
-3. Mostrar en el sidebar:
-   - Nombre del negocio: `businessName` del tenant (el que configuró en Settings)
-   - Nombre del usuario: `name` del User (o el email si el name está vacío)
+Al hacer click en una sugerencia, se envía esa pregunta automáticamente.
 
-4. Si el fetch falla o está cargando, mostrar un skeleton o los valores vacíos — nunca "Tienda Demo".
+**Diseño:**
+- Colors: fondo blanco, header violeta #7c3aed, texto gris oscuro
+- Mensajes del usuario: burbuja violeta claro a la derecha
+- Respuestas del asistente: burbuja gris claro a la izquierda
+- No usar ninguna librería externa de chat — implementar con CSS puro
+- El panel es scrollable si hay muchos mensajes
+
+---
+
+## PASO 4 — Integrar en la app
+
+En `src/app/ui/app-shell.tsx`:
+- Importar y renderizar `<HelpChat />` al final del layout, visible en todas las páginas del dashboard
+- NO mostrar en /login, /register, /suscripcion-vencida
+
+---
+
+## PASO 5 — Página de ayuda completa (opcional pero recomendado)
+
+Crear `src/app/ayuda/page.tsx`:
+- Lista de todos los módulos como acordeón expandible
+- Cada módulo muestra todas sus entradas de la KB
+- Búsqueda en tiempo real que filtra las entradas
+- Accessible desde el menú lateral (ícono de interrogación "?" en el footer del sidebar)
 
 ---
 
 ## AL FINAL
 
-1. Correr `npm test` — verificar que sigue en verde
+1. `npm test` — verificar que pasa
 2. `git add -A`
-3. `git commit -m "fix: QA corrections — remove unused fields/buttons, connect sidebar to tenant"`
+3. `git commit -m "feat: add in-app help assistant with local knowledge base"`
 4. `git push origin main`
 
 Escribí el resultado en `REPORTE_AGENTE.md`:
 
 ```
-# REPORTE — Correcciones QA
+# REPORTE — Asistente de ayuda interno
 ## Estado: COMPLETADO / ERROR
-## Correcciones aplicadas:
+## Archivos creados:
+## Entradas en la KB: X
 ## Tests: X pasando
 ## Commit: xxxxx
 ## Observaciones:
