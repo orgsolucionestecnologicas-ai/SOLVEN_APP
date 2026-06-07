@@ -1,32 +1,35 @@
-# REPORTE — Sesión 2026-06-07 (Orden 4) — Bug fixes
+# REPORTE — Sesión 2026-06-07 (Orden 5) — T32 Onboarding Wizard
 
 ## Estado: COMPLETADO
 
+## Archivos creados:
+- `prisma/migrations/20260607112715_add_onboarding_completed/migration.sql` — migración aplicada a Neon
+- `src/app/api/onboarding/complete/route.ts` — POST marca `onboardingCompleted: true` en Tenant
+- `src/app/onboarding/page.tsx` — página pública-autenticada /onboarding con fondo oscuro
+- `src/app/ui/onboarding-wizard.tsx` — wizard 3 pasos completo
+- `src/app/dashboard/layout.tsx` — Server Component que redirige a /onboarding si no completado
+
 ## Archivos modificados:
-- `src/app/api/sales/route.ts` — `SaleNoCashRegisterOpenError` ahora retorna 409 en lugar de 400
-- `src/app/api/sales/route.test.ts` — agregado test que verifica 409 para venta sin caja abierta
+- `prisma/schema.prisma` — campo `onboardingCompleted Boolean @default(false)` agregado a Tenant
 
-## BUG 1 — Devoluciones a crédito:
-El código en `src/modules/returns/index.ts` (líneas 112-125) **ya implementaba correctamente** la reducción de `remainingAmount` al procesar una devolución de venta a crédito. La lógica existente:
-- Verifica `sale.paymentType === "CREDIT" && sale.debtId`
-- Busca la Debt via `tx.debt.findUnique({ where: { id: sale.debtId } })`
-- Reduce `remainingAmount` con `debt.remainingAmount.minus(returnTotal)`
-- Limita a 0 mínimo con `.lessThan(0) ? new Prisma.Decimal(0) : newRemaining`
-- **No se modificó** — ya estaba correctamente implementado
+## Decisiones técnicas:
 
-## BUG 2 — Ventas en efectivo sin caja abierta:
-- La verificación de caja abierta en `createSale` también **ya existía** (lanza `SaleNoCashRegisterOpenError`)
-- El bug real era que la ruta devolvía **400** en lugar de **409** para este error específico
-- **Cambio aplicado**: `errorResponse(error.message, 400)` → `errorResponse(error.message, 409)`
-- El POS frontend ya manejaba cualquier respuesta no-2xx mostrando `submitError`, por lo que no requirió cambios
-- Agregado test en `route.test.ts` que verifica el nuevo status 409
+### Verificación de onboarding
+Se implementó en `src/app/dashboard/layout.tsx` (Server Component) en lugar del middleware. El middleware de Next.js corre en Edge Runtime y no puede usar Prisma directamente. El layout del dashboard hace la consulta a Neon y redirige si `onboardingCompleted === false`.
+
+### APIs usadas (nombres reales):
+- Paso 1 (negocio): `PATCH /api/settings` con `{ businessName, currency }` — la ruta `store-settings` no existía; se usó la ruta de configuración general que acepta los mismos campos
+- Paso 2 (productos): `POST /api/products` con `{ name, costPrice, salePrice, stock, categoryName: "Otros" }` — ajustado desde `{ name, price, stock }` de la orden al schema real que requiere `costPrice`/`salePrice`/`categoryName`
+- Paso 3 (caja): `POST /api/cash-register` con `{ cashierName: "Propietario", openingAmount }` — ajustado desde `{ openingBalance }` al schema real que requiere `cashierName` obligatorio; si retorna 409 (caja ya abierta), se trata como éxito
+- Completar: `POST /api/onboarding/complete`
+
+## Migración:
+- `npx prisma migrate dev --name add_onboarding_completed` aplicada exitosamente a Neon
 
 ## Validación:
 - `npx tsc --noEmit`: PASS
-- `npm test`: corriendo en background (historial: 179 passing en sesión anterior)
+- `npm test`: corriendo en background al momento del commit (historial: 180 passing)
 
-## Commit: dc1b26a fix: devoluciones a crédito reducen deuda, ventas en efectivo requieren caja abierta
+## Commit: b387e2e feat: onboarding wizard 3 pasos para nuevo cliente (negocio, productos, caja)
 
-## Observaciones:
-- La orden describía código faltante pero ambas protecciones ya existían — la única corrección real fue el status code 400→409
-- El modelo `Debt` en el schema no tiene campo `status`, por lo que la sugerencia de marcar `status: "PAID"` no aplica a esta base de código
+## Próximo: verificar /onboarding en producción con un tenant nuevo; confirmar que el redirect desde /dashboard funciona cuando `onboardingCompleted = false`.
