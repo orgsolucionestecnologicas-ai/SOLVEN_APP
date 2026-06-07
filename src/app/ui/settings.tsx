@@ -590,6 +590,26 @@ function SeguridadSection() {
 // ─── Sistema Section ──────────────────────────────────────────────────────────
 
 function SistemaSection() {
+  const [role, setRole] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+    fetch("/api/me", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: { role?: string } }) => {
+        if (isActive && body.data?.role) setRole(body.data.role);
+      })
+      .catch(() => {});
+    return () => { isActive = false; };
+  }, []);
+
+  function handleDownloadBackup() {
+    setIsDownloading(true);
+    window.open("/api/export", "_blank");
+    setTimeout(() => setIsDownloading(false), 1500);
+  }
+
   const rows = [
     { label: "Versión del sistema", value: "1.0.0" },
     { label: "Plan", value: "MVP" },
@@ -635,6 +655,32 @@ function SistemaSection() {
           </div>
         </div>
       </div>
+
+      {role === "OWNER" ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <Download className="mt-0.5 h-5 w-5 flex-shrink-0 text-violet-600" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-900">Respaldo de datos</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Descarga un archivo JSON con todos tus productos, clientes, ventas y configuración.
+              </p>
+              <button
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-violet-200 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-50 disabled:opacity-50"
+                disabled={isDownloading}
+                onClick={handleDownloadBackup}
+                type="button"
+              >
+                <Download size={14} />
+                {isDownloading ? "Descargando…" : "Descargar respaldo"}
+              </button>
+              <p className="mt-2 text-xs text-slate-400">
+                Recomendado: realizar un respaldo antes de cambios importantes.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

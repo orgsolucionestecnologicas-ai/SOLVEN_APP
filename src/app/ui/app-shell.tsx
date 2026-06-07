@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { HelpChat } from "@/components/help/HelpChat";
+import { formatARS } from "@/lib/format-currency";
 import {
   BarChart2,
   ChevronDown,
@@ -11,8 +12,10 @@ import {
   HelpCircle,
   Home,
   Layers,
+  Loader2,
   Package,
   RotateCcw,
+  Search,
   Settings,
   Shield,
   ShoppingCart,
@@ -139,6 +142,171 @@ function SubscriptionBanner() {
   return null;
 }
 
+type SearchResults = {
+  productos: { id: string; name: string; productCode: string | null; salePrice: string; stock: number }[];
+  clientes: { id: string; name: string; phone: string | null }[];
+  servicios: { id: string; name: string; price: string }[];
+};
+
+function SearchResultSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="py-1">
+      <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+function SearchResultItem({
+  href,
+  name,
+  subtext,
+  onNavigate,
+}: {
+  href: string;
+  name: string;
+  subtext: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <Link className="flex flex-col gap-0.5 px-3 py-2 hover:bg-violet-50" href={href} onClick={onNavigate}>
+      <span className="truncate text-sm text-slate-900">{name}</span>
+      <span className="truncate text-xs text-slate-500">{subtext}</span>
+    </Link>
+  );
+}
+
+function GlobalSearch() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResults | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const trimmedQuery = query.trim();
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (trimmedQuery.length < 2) {
+      setResults(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    debounceRef.current = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}`, { headers: { Accept: "application/json" } })
+        .then((r) => r.json())
+        .then((body: { data?: SearchResults }) => {
+          if (body.data) setResults(body.data);
+        })
+        .catch(() => {})
+        .finally(() => setIsLoading(false));
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [trimmedQuery]);
+
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setIsOpen(false);
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
+  function close() {
+    setIsOpen(false);
+  }
+
+  const hasResults = !!results && (results.productos.length > 0 || results.clientes.length > 0 || results.servicios.length > 0);
+  const showDropdown = isOpen && trimmedQuery.length >= 2;
+
+  return (
+    <div className="relative px-2 pb-3 lg:px-1" ref={containerRef}>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
+        <input
+          className="w-full rounded-lg border border-slate-700 bg-slate-800 py-2 pl-9 pr-8 text-sm text-white placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+          onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
+          onFocus={() => setIsOpen(true)}
+          placeholder="Buscar…"
+          type="text"
+          value={query}
+        />
+        {isLoading ? (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-slate-500" size={14} />
+        ) : null}
+      </div>
+
+      {showDropdown ? (
+        <div className="absolute left-2 right-2 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+          {!results ? (
+            <p className="px-3 py-4 text-center text-xs text-slate-400">Buscando…</p>
+          ) : !hasResults ? (
+            <p className="px-3 py-4 text-center text-xs text-slate-400">Sin resultados para &quot;{trimmedQuery}&quot;</p>
+          ) : (
+            <>
+              {results.productos.length > 0 ? (
+                <SearchResultSection title="Productos">
+                  {results.productos.map((p) => (
+                    <SearchResultItem
+                      href="/products"
+                      key={p.id}
+                      name={p.name}
+                      onNavigate={close}
+                      subtext={`${p.productCode ? `${p.productCode} · ` : ""}${formatARS(Number(p.salePrice))} · stock ${p.stock}`}
+                    />
+                  ))}
+                </SearchResultSection>
+              ) : null}
+              {results.clientes.length > 0 ? (
+                <SearchResultSection title="Clientes">
+                  {results.clientes.map((c) => (
+                    <SearchResultItem
+                      href="/customers"
+                      key={c.id}
+                      name={c.name}
+                      onNavigate={close}
+                      subtext={c.phone ?? "Sin teléfono"}
+                    />
+                  ))}
+                </SearchResultSection>
+              ) : null}
+              {results.servicios.length > 0 ? (
+                <SearchResultSection title="Servicios">
+                  {results.servicios.map((s) => (
+                    <SearchResultItem
+                      href="/services"
+                      key={s.id}
+                      name={s.name}
+                      onNavigate={close}
+                      subtext={formatARS(Number(s.price))}
+                    />
+                  ))}
+                </SearchResultSection>
+              ) : null}
+            </>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function SidebarUser() {
   const [businessName, setBusinessName] = useState("");
   const [userName, setUserName] = useState("");
@@ -205,8 +373,13 @@ export function AppShell({ activeSection, eyebrow, title, children }: AppShellPr
           </span>
         </div>
 
+        {/* Global search */}
+        <div className="mt-4">
+          <GlobalSearch />
+        </div>
+
         {/* Navigation */}
-        <nav className="mt-5 flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-0.5 lg:overflow-visible lg:pb-0">
+        <nav className="mt-1 flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-0.5 lg:overflow-visible lg:pb-0">
           {visibleNavItems.map((item) => {
             if (item.type === "disabled") {
               return (

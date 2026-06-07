@@ -20,6 +20,7 @@ import {
   Star,
   TrendingUp,
   Users,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -70,12 +71,21 @@ type ProductRecord = {
   stock: number;
 };
 
+type ServiceRecord = {
+  id: string;
+  name: string;
+  price: string;
+  isActive: boolean;
+  createdAt: string;
+};
+
 type ApiResponse<T> = { data?: T };
 
 type Tab =
   | "Resumen general"
   | "Ventas"
   | "Productos"
+  | "Servicios"
   | "Clientes"
   | "Inventario"
   | "Crecimiento"
@@ -88,6 +98,7 @@ const TABS: Tab[] = [
   "Resumen general",
   "Ventas",
   "Productos",
+  "Servicios",
   "Clientes",
   "Inventario",
   "Crecimiento",
@@ -245,6 +256,7 @@ export function Reports() {
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [products, setProducts] = useState<ProductRecord[]>([]);
+  const [services, setServices] = useState<ServiceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("Resumen general");
   const [selectedPeriod, setSelectedPeriod] = useState<Period>("month");
@@ -255,7 +267,7 @@ export function Reports() {
     let isActive = true;
 
     async function load() {
-      const [salesRes, expensesRes, customersRes, , productsRes] = await Promise.allSettled([
+      const [salesRes, expensesRes, customersRes, , productsRes, , , servicesRes] = await Promise.allSettled([
         fetchData<SaleRecord[]>("/api/sales"),
         fetchData<ExpenseRecord[]>("/api/expenses"),
         fetchData<CustomerRecord[]>("/api/customers"),
@@ -263,6 +275,7 @@ export function Reports() {
         fetchData<ProductRecord[]>("/api/products"),
         fetchData<unknown>("/api/debts"),
         fetchData<unknown>("/api/dashboard/summary"),
+        fetchData<ServiceRecord[]>("/api/services"),
       ]);
 
       if (!isActive) return;
@@ -271,6 +284,7 @@ export function Reports() {
       setExpenses(expensesRes.status === "fulfilled" && expensesRes.value ? expensesRes.value : []);
       setCustomers(customersRes.status === "fulfilled" && customersRes.value ? customersRes.value : []);
       setProducts(productsRes.status === "fulfilled" && productsRes.value ? productsRes.value : []);
+      setServices(servicesRes.status === "fulfilled" && servicesRes.value ? servicesRes.value : []);
       setIsLoading(false);
     }
 
@@ -526,11 +540,14 @@ export function Reports() {
             metrics={metrics}
             previousSales={previousSales}
             sales={sales}
+            services={services}
           />
         ) : activeTab === "Ventas" ? (
           <VentasTab sales={currentSales} />
         ) : activeTab === "Productos" ? (
           <ProductosTab products={products} sales={currentSales} />
+        ) : activeTab === "Servicios" ? (
+          <ServiciosTab services={services} />
         ) : activeTab === "Clientes" ? (
           <ClientesTab customers={customers} sales={currentSales} />
         ) : activeTab === "Inventario" ? (
@@ -538,7 +555,7 @@ export function Reports() {
         ) : activeTab === "Crecimiento" ? (
           <CrecimientoTab sales={currentSales} />
         ) : activeTab === "Rentabilidad" ? (
-          <RentabilidadTab expenses={currentExpenses} sales={currentSales} />
+          <RentabilidadTab expenses={currentExpenses} sales={currentSales} services={services} />
         ) : activeTab === "Reporte mensual" ? (
           <ReporteMensualTab
             currentExpenses={currentExpenses}
@@ -633,12 +650,14 @@ function ResumenGeneralTab({
   previousSales,
   customers,
   metrics,
+  services,
 }: {
   sales: SaleRecord[];
   currentSales: SaleRecord[];
   previousSales: SaleRecord[];
   customers: CustomerRecord[];
   metrics: AllMetrics;
+  services: ServiceRecord[];
 }) {
   return (
     <div className="space-y-4">
@@ -651,11 +670,12 @@ function ResumenGeneralTab({
         <GrowthSummaryPanel metrics={metrics} />
       </div>
       {/* Row 2 */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <PaymentMethodPanel sales={currentSales} />
         <TopProductsPanel sales={sales} />
         <TopCustomersPanel customers={customers} sales={sales} />
         <ProfitabilityPanel metrics={metrics} previousSales={previousSales} />
+        <ServiciosActivosPanel services={services} />
       </div>
       {/* Row 3 */}
       <div className="grid grid-cols-4 gap-4">
@@ -1135,6 +1155,30 @@ function ProfitabilityPanel({
   );
 }
 
+// ─── ServiciosActivosPanel ────────────────────────────────────────────────────
+
+function ServiciosActivosPanel({ services }: { services: ServiceRecord[] }) {
+  const activeCount = services.filter((s) => s.isActive).length;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-50">
+        <Wrench className="text-cyan-600" size={16} />
+      </div>
+      <p className="mt-2 text-xs font-medium text-slate-500">Servicios activos</p>
+      <p className="mt-0.5 text-xl font-bold text-slate-950">{activeCount}</p>
+      <p className="mt-1 text-xs text-slate-400">
+        {activeCount} de {services.length} en catálogo
+      </p>
+      <div className="mt-3 border-t border-slate-100 pt-2">
+        <Link className="text-xs font-medium text-violet-600 hover:text-violet-800" href="/services">
+          Ver servicios →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 // ─── SalesHeatmapPanel ────────────────────────────────────────────────────────
 
 const WEEKDAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -1399,6 +1443,9 @@ function VentasTab({ sales }: { sales: SaleRecord[] }) {
 
   return (
     <div className="space-y-4">
+      <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+        Los servicios vendidos se registran junto a las ventas de productos.
+      </p>
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-slate-950">Evolución de ventas — últimos 30 días</h3>
         <svg className="w-full" viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
@@ -1607,6 +1654,89 @@ function ProductosTab({ sales, products }: { sales: SaleRecord[]; products: Prod
                     </tr>
                   );
                 })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ServiciosTab ─────────────────────────────────────────────────────────────
+
+function exportServicesCsv(services: ServiceRecord[]) {
+  const header = "nombre,precio,estado";
+  const rows = services.map((s) => {
+    const name = `"${s.name.replace(/"/g, '""')}"`;
+    const status = s.isActive ? "Activo" : "Inactivo";
+    return `${name},${s.price},${status}`;
+  });
+  const csv = [header, ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "servicios.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function ServiciosTab({ services }: { services: ServiceRecord[] }) {
+  const activeCount = services.filter((s) => s.isActive).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-600">
+          <span className="font-semibold text-slate-900">{activeCount}</span> servicios activos de{" "}
+          <span className="font-semibold text-slate-900">{services.length}</span> totales
+        </p>
+        <button
+          className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700"
+          onClick={() => exportServicesCsv(services)}
+          type="button"
+        >
+          <Download size={14} />
+          Exportar
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Nombre</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Precio</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {services.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-8 text-center text-xs text-slate-400" colSpan={3}>
+                    No hay servicios registrados
+                  </td>
+                </tr>
+              ) : (
+                services.map((service) => (
+                  <tr className="border-b border-slate-50 hover:bg-slate-50" key={service.id}>
+                    <td className="px-4 py-2.5 text-xs font-medium text-slate-800">{service.name}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-slate-700">{formatMoney(service.price)}</td>
+                    <td className="px-4 py-2.5">
+                      <span
+                        className={
+                          service.isActive
+                            ? "inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                            : "inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500"
+                        }
+                      >
+                        {service.isActive ? "Activo" : "Inactivo"}
+                      </span>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -1939,7 +2069,15 @@ function CrecimientoTab({ sales }: { sales: SaleRecord[] }) {
 
 // ─── RentabilidadTab ──────────────────────────────────────────────────────────
 
-function RentabilidadTab({ sales, expenses }: { sales: SaleRecord[]; expenses: ExpenseRecord[] }) {
+function RentabilidadTab({
+  sales,
+  expenses,
+  services,
+}: {
+  sales: SaleRecord[];
+  expenses: ExpenseRecord[];
+  services: ServiceRecord[];
+}) {
   const { start: currStart, end: currEnd } = useMemo(() => getMonthRange(0), []);
 
   const currRevenue = useMemo(
@@ -2126,6 +2264,37 @@ function RentabilidadTab({ sales, expenses }: { sales: SaleRecord[]; expenses: E
           )}
         </div>
       </div>
+
+      {services.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h3 className="text-sm font-semibold text-slate-950">Servicios</h3>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Los servicios no tienen costo asociado: su precio de venta es ganancia bruta.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Servicio</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Precio</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Ganancia bruta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {services.filter((s) => s.isActive).map((service) => (
+                  <tr className="border-b border-slate-50 hover:bg-slate-50" key={service.id}>
+                    <td className="px-4 py-2.5 text-xs font-medium text-slate-800">{service.name}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-slate-700">{formatMoney(service.price)}</td>
+                    <td className="px-4 py-2.5 text-right text-xs font-semibold text-emerald-700">{formatMoney(service.price)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
