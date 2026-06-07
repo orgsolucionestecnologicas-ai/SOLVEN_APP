@@ -1,38 +1,38 @@
-# REPORTE — Sesión 2026-06-07 — Fix estilo onboarding + T11 folio en ventas
+# Reporte — T7: Filtros de fecha server-side (Gastos, Ventas, Caja, Deudas)
 
-## Estado: COMPLETADO
+## Commit
+5dbf898 — feat(T7): server-side date filters for sales, expenses, cash and debts
 
-## Tarea 1 — Fix estilo onboarding wizard
-`src/app/ui/onboarding-wizard.tsx` ya tenía el reemplazo de naranja por violeta
-aplicado en el árbol de trabajo (cambio sin commitear de una sesión anterior).
-Se verificó que coincide con la paleta pedida (logo, barra de progreso, íconos,
-inputs, botones, link "+ Agregar otro producto") y se incluyó en este commit.
+## Resumen
+Se activaron filtros de fecha reales (server-side) en los 4 módulos solicitados, reemplazando el filtrado en memoria por cláusulas WHERE de Prisma con parámetros `from`/`to`.
 
-## Tarea 2 — T11: Folio secuencial en ventas
-- **Schema**: agregado `folio Int @default(0)` a `Sale` (`prisma/schema.prisma`)
-- **Migración**: `20260607153439_add_sale_folio` — agrega la columna con default 0
-  y backfill por tenant ordenado por `createdAt` usando `ROW_NUMBER() OVER (PARTITION BY "tenantId" ...)`
-- **Lógica de negocio**: `src/modules/sales/sale-data-access.ts` — dentro de la
-  transacción de `createSale`, se busca el último folio del tenant
-  (`orderBy: { folio: 'desc' }`) y se asigna `nextFolio = (lastSale?.folio ?? 0) + 1`
-- **API**: no requirió cambios — `listSales`/`createSale` devuelven el registro
-  completo de `Sale` (incluye `folio` automáticamente vía Prisma)
-- **UI — Historial de ventas** (`src/app/ui/sales-list.tsx`): se agregó `folio`
-  al tipo `SaleRecord` y un helper `formatFolio()` que da formato `#0001`;
-  reemplaza el identificador truncado `Venta #{id.slice(-6)}` en la card, el
-  modal de detalle y el modal de devolución
-- **UI — Ticket POS** (`src/app/ui/pos.tsx`): `CreateSaleResponse` ahora incluye
-  `folio`; el `PrintModal` recibe `folio` como prop y lo usa para el número de
-  venta/factura mostrado en pantalla y en los tickets impresos (formato `#0001`)
-- **Test**: se agregó `folio: 1` al fixture `saleJson` en
-  `src/app/api/sales/route.test.ts` para reflejar el shape real
+## Cambios por módulo
+
+### Helper
+- `src/lib/date-filter.ts` (nuevo): `getDateRangeParams(period)` — convierte "todo"/"hoy"/"semana"/"mes" en rango `{ from, to }` ISO.
+
+### Gastos
+- `expense-data-access.ts`: `PaginationParams` con `from?`/`to?`; WHERE sobre `expenseDate`.
+- `api/expenses/route.ts`: parsea `from`/`to` de query string (`T00:00:00` / `T23:59:59.999`).
+- `expenses-list.tsx`: tabla usa fetch paginado y filtrado por fecha vía `getDateRangeParams`; se eliminó `matchesDateFilter()`.
+
+### Ventas
+- `sale-data-access.ts` / `api/sales/route.ts`: mismo patrón sobre `saleDate`.
+- `sales-list.tsx`: envía `from=dateFilter&to=dateFilter` (o ninguno con "Todo"); se eliminó el `.filter()` de cliente.
+
+### Caja
+- `cash-movement-data-access.ts` / `api/cash-movements/route.ts`: mismo patrón sobre `movementDate`.
+- `cash-movements-list.tsx`: envía `from=dateFilterDate&to=dateFilterDate`, agregado toggle "Ver todo"; se eliminó el filtro de fecha en cliente y los helpers `isSameLocalDay`/`isOnDate` (quedaron sin uso).
+
+### Deudas
+- `debt-data-access.ts` / `api/debts/route.ts`: mismo patrón sobre `createdAt`.
+- `debts-list.tsx`: se agregó selector de período (Todo/Hoy/Esta semana/Este mes) que filtra la tabla server-side vía `getDateRangeParams`.
+
+## Decisión de diseño
+Para preservar el comportamiento de las tarjetas de métricas (que deben reflejar el estado global/del día, no el subconjunto filtrado de la tabla), se mantuvieron fetches `?limit=1000` separados e independientes del filtro de fecha de la tabla en Gastos (`allExpenses`), Caja (`todayMovements`) y Deudas (`debts` para métricas vs `tableDebts` para la tabla). Esto evita romper funcionalidad existente conforme a la regla "nunca tocar código que funciona sin necesidad".
 
 ## Validación
-- `npx tsc --noEmit`: PASS
-- `npm run build`: PASS (sin errores de tipo)
-- `npm test`: 180/180 passing
-- `npm run lint`: PASS
-
-## Commit: e5a6c80 feat: fix onboarding colors (violet) + folio secuencial en ventas (T11)
-
-## Próximo: verificar visualmente el folio en /sales y en el ticket impreso del POS.
+- `npx tsc --noEmit`: sin errores
+- `npm run lint`: sin errores
+- `npm test`: 180 tests / 37 archivos — todos pasan
+- `npm run build`: compilación exitosa, todas las rutas generadas correctamente
