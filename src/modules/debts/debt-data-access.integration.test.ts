@@ -47,9 +47,9 @@ describe("debt data access", () => {
       totalAmount: 42
     }, testTenantId);
 
-    const debts = await listDebts(testTenantId);
+    const result = await listDebts(testTenantId);
 
-    expect(debts).toEqual(
+    expect(result.data).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: debt.id, customerId: customer.id })
       ])

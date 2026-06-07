@@ -70,7 +70,8 @@ type CustomerMetrics = {
   segment: CustomerSegment;
 };
 
-type ApiResponse<T> = { data?: T; error?: { message: string; details?: string[] } };
+type PaginationMeta = { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
+type ApiResponse<T> = { data?: T; pagination?: PaginationMeta; error?: { message: string; details?: string[] } };
 
 const AVATAR_COLORS = [
   "bg-violet-500",
@@ -196,9 +197,9 @@ export function CustomersList() {
     async function loadAll() {
       try {
         const [customersRes, salesRes, debtsRes] = await Promise.all([
-          fetch("/api/customers", { headers: { Accept: "application/json" } }),
-          fetch("/api/sales", { headers: { Accept: "application/json" } }),
-          fetch("/api/debts", { headers: { Accept: "application/json" } })
+          fetch("/api/customers?limit=1000", { headers: { Accept: "application/json" } }),
+          fetch("/api/sales?limit=1000", { headers: { Accept: "application/json" } }),
+          fetch("/api/debts?limit=1000", { headers: { Accept: "application/json" } })
         ]);
         const [customersBody, salesBody, debtsBody] = (await Promise.all([
           customersRes.json(),

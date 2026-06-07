@@ -219,20 +219,32 @@ export async function createSale(
   }, { timeout: 15000 });
 }
 
-export async function listSales(tenantId: string): Promise<SaleListRecord[]> {
-  return prisma.sale.findMany({
-    where: { tenantId },
-    orderBy: { saleDate: "desc" },
-    include: {
-      customer: { select: { name: true } },
-      items: {
-        include: {
-          product: { select: { name: true } },
-          service: { select: { name: true } }
+export type PaginationParams = { page?: number; limit?: number };
+
+export async function listSales(
+  tenantId: string,
+  { page = 1, limit = 20 }: PaginationParams = {}
+): Promise<{ data: SaleListRecord[]; total: number }> {
+  const where = { tenantId };
+  const [data, total] = await prisma.$transaction([
+    prisma.sale.findMany({
+      where,
+      orderBy: { saleDate: "desc" },
+      take: limit,
+      skip: (page - 1) * limit,
+      include: {
+        customer: { select: { name: true } },
+        items: {
+          include: {
+            product: { select: { name: true } },
+            service: { select: { name: true } }
+          }
         }
       }
-    }
-  });
+    }),
+    prisma.sale.count({ where }),
+  ]);
+  return { data, total };
 }
 
 function buildProductSaleItem(

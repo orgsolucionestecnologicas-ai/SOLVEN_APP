@@ -25,10 +25,16 @@ export async function createDebt(
   });
 }
 
-export async function listDebts(tenantId: string): Promise<DebtWithCustomer[]> {
-  return prisma.debt.findMany({
-    where: { tenantId },
-    orderBy: { createdAt: "desc" },
-    include: { customer: { select: { name: true } } }
-  });
+export type PaginationParams = { page?: number; limit?: number };
+
+export async function listDebts(
+  tenantId: string,
+  { page = 1, limit = 20 }: PaginationParams = {}
+): Promise<{ data: DebtWithCustomer[]; total: number }> {
+  const where = { tenantId };
+  const [data, total] = await prisma.$transaction([
+    prisma.debt.findMany({ where, orderBy: { createdAt: "desc" }, take: limit, skip: (page - 1) * limit, include: { customer: { select: { name: true } } } }),
+    prisma.debt.count({ where }),
+  ]);
+  return { data, total };
 }

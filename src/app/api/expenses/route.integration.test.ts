@@ -61,7 +61,7 @@ describe("expenses API database integration", () => {
       })
     );
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/expenses"));
     const responseBody = await response.json();
 
     expect(response.status).toBe(200);

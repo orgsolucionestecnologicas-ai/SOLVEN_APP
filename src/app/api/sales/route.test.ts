@@ -47,23 +47,23 @@ describe("sales API route", () => {
 
   it("lists sales", async () => {
     const sales = [buildSaleRecord()];
-    mockedListSales.mockResolvedValueOnce(sales);
+    mockedListSales.mockResolvedValueOnce({ data: sales, total: 1 } as never);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/sales"));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ data: [saleJson] });
+    expect(await response.json()).toEqual(expect.objectContaining({ data: [saleJson] }));
   });
 
   it("returns a server error when sales cannot be listed", async () => {
     mockedListSales.mockRejectedValueOnce(new Error("Database error"));
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/sales"));
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({
       error: {
-        message: "Could not load sales."
+        message: "No se pudieron cargar las ventas."
       }
     });
   });

@@ -30,6 +30,7 @@ type ProductRecord = {
 
 type ProductsResponse = {
   data?: ProductRecord[];
+  pagination?: { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
   error?: { message: string };
 };
 
@@ -152,7 +153,7 @@ export function ProductsInventory() {
 
     async function loadProducts() {
       try {
-        const response = await fetch("/api/products", {
+        const response = await fetch("/api/products?limit=1000", {
           headers: { Accept: "application/json" }
         });
         const responseBody = (await response.json()) as ProductsResponse;

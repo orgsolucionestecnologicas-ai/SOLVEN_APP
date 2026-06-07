@@ -25,6 +25,25 @@ export function invalidJsonResponse() {
   return errorResponse("Request body must be valid JSON.", 400);
 }
 
+export function paginatedResponse<T>(
+  data: T[],
+  page: number,
+  limit: number,
+  total: number
+) {
+  return NextResponse.json({
+    data,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page * limit < total,
+      hasPrev: page > 1,
+    },
+  });
+}
+
 export function isRequestObject(requestBody: unknown) {
   return (
     typeof requestBody === "object" &&

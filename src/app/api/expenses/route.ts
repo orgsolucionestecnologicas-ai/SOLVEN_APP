@@ -8,17 +8,21 @@ import {
   errorResponse,
   invalidJsonResponse,
   isRequestObject,
+  paginatedResponse,
   successResponse
 } from "../_shared/responses";
 import { requireTenantId } from "@/lib/tenant";
 
-export async function GET() {
+export async function GET(request: Request) {
   const tenantId = await requireTenantId();
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
   try {
-    const expenses = await listExpenses(tenantId);
-    return successResponse(expenses);
+    const result = await listExpenses(tenantId, { page, limit });
+    return paginatedResponse(result.data, page, limit, result.total);
   } catch {
-    return errorResponse("Could not load expenses.");
+    return errorResponse("No se pudieron cargar los gastos.");
   }
 }
 

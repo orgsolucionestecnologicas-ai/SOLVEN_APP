@@ -24,23 +24,23 @@ describe("cash movements API route", () => {
 
   it("lists cash movements", async () => {
     const cashMovements = [buildCashMovementRecord()];
-    mockedListCashMovements.mockResolvedValueOnce(cashMovements);
+    mockedListCashMovements.mockResolvedValueOnce({ data: cashMovements, total: 1 } as never);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/cash-movements"));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ data: [cashMovementJson] });
+    expect(await response.json()).toEqual(expect.objectContaining({ data: [cashMovementJson] }));
   });
 
   it("returns a server error when cash movements cannot be listed", async () => {
     mockedListCashMovements.mockRejectedValueOnce(new Error("Database error"));
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/cash-movements"));
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({
       error: {
-        message: "Could not load cash movements."
+        message: "No se pudieron cargar los movimientos de caja."
       }
     });
   });

@@ -47,7 +47,8 @@ type SessionRecord = {
   status: "OPEN" | "CLOSED";
 };
 
-type ApiResponse<T> = { data?: T; error?: { message: string; details?: string[] } };
+type PaginationMeta = { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
+type ApiResponse<T> = { data?: T; pagination?: PaginationMeta; error?: { message: string; details?: string[] } };
 
 const PAGE_SIZE = 10;
 
@@ -130,7 +131,7 @@ export function CashMovementsList() {
 
     async function load() {
       try {
-        const res = await fetch("/api/cash-movements", { headers: { Accept: "application/json" } });
+        const res = await fetch("/api/cash-movements?limit=1000", { headers: { Accept: "application/json" } });
         const body = (await res.json()) as ApiResponse<CashMovementRecord[]>;
         if (!active) return;
         if (!res.ok || !body.data) { setLoadError("No se pudieron cargar los movimientos de caja."); setMovements([]); return; }

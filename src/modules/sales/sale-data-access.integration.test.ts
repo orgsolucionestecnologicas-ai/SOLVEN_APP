@@ -152,9 +152,9 @@ describe("sale data access", () => {
       items: [{ productId: product.id, quantity: 1 }]
     }, testTenantId);
 
-    const sales = await listSales(testTenantId);
+    const result = await listSales(testTenantId);
 
-    expect(sales).toEqual(
+    expect(result.data).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: sale.id })])
     );
   });

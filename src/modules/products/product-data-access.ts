@@ -22,11 +22,18 @@ export async function createProduct(
   });
 }
 
-export async function listProducts(tenantId: string): Promise<Product[]> {
-  return prisma.product.findMany({
-    where: { tenantId },
-    orderBy: { name: "asc" }
-  });
+export type PaginationParams = { page?: number; limit?: number };
+
+export async function listProducts(
+  tenantId: string,
+  { page = 1, limit = 20 }: PaginationParams = {}
+): Promise<{ data: Product[]; total: number }> {
+  const where = { tenantId };
+  const [data, total] = await prisma.$transaction([
+    prisma.product.findMany({ where, orderBy: { name: "asc" }, take: limit, skip: (page - 1) * limit }),
+    prisma.product.count({ where }),
+  ]);
+  return { data, total };
 }
 
 export async function getProductById(

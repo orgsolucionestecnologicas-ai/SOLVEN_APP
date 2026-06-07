@@ -21,23 +21,23 @@ describe("expenses API route", () => {
 
   it("lists expenses", async () => {
     const expenses = [buildExpenseRecord()];
-    mockedListExpenses.mockResolvedValueOnce(expenses);
+    mockedListExpenses.mockResolvedValueOnce({ data: expenses, total: 1 } as never);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/expenses"));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ data: [expenseJson] });
+    expect(await response.json()).toEqual(expect.objectContaining({ data: [expenseJson] }));
   });
 
   it("returns a server error when expenses cannot be listed", async () => {
     mockedListExpenses.mockRejectedValueOnce(new Error("Database error"));
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/expenses"));
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({
       error: {
-        message: "Could not load expenses."
+        message: "No se pudieron cargar los gastos."
       }
     });
   });

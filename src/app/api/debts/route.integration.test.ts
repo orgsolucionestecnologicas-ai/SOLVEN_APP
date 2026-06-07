@@ -58,7 +58,7 @@ describe("debts API database integration", () => {
       })
     );
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/debts"));
     const responseBody = await response.json();
 
     expect(response.status).toBe(200);

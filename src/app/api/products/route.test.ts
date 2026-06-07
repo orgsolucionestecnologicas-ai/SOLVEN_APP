@@ -21,23 +21,23 @@ describe("products API route", () => {
 
   it("lists products", async () => {
     const products = [buildProductRecord()];
-    mockedListProducts.mockResolvedValueOnce(products);
+    mockedListProducts.mockResolvedValueOnce({ data: products, total: 1 } as never);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/products"));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ data: [productJson] });
+    expect(await response.json()).toEqual(expect.objectContaining({ data: [productJson] }));
   });
 
   it("returns a server error when products cannot be listed", async () => {
     mockedListProducts.mockRejectedValueOnce(new Error("Database error"));
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/products"));
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({
       error: {
-        message: "Could not load products."
+        message: "No se pudieron cargar los productos."
       }
     });
   });

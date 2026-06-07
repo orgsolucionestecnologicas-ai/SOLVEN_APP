@@ -21,23 +21,23 @@ describe("customers API route", () => {
 
   it("lists customers", async () => {
     const customers = [buildCustomerRecord()];
-    mockedListCustomers.mockResolvedValueOnce(customers);
+    mockedListCustomers.mockResolvedValueOnce({ data: customers, total: 1 } as never);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/customers"));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ data: [customerJson] });
+    expect(await response.json()).toEqual(expect.objectContaining({ data: [customerJson] }));
   });
 
   it("returns a server error when customers cannot be listed", async () => {
     mockedListCustomers.mockRejectedValueOnce(new Error("Database error"));
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/customers"));
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({
       error: {
-        message: "Could not load customers."
+        message: "No se pudieron cargar los clientes."
       }
     });
   });

@@ -9,17 +9,21 @@ import {
   invalidJsonResponse,
   isPrismaRecordNotFoundError,
   isRequestObject,
+  paginatedResponse,
   successResponse
 } from "../_shared/responses";
 import { requireTenantId } from "@/lib/tenant";
 
-export async function GET() {
+export async function GET(request: Request) {
   const tenantId = await requireTenantId();
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
   try {
-    const debts = await listDebts(tenantId);
-    return successResponse(debts);
+    const result = await listDebts(tenantId, { page, limit });
+    return paginatedResponse(result.data, page, limit, result.total);
   } catch {
-    return errorResponse("Could not load debts.");
+    return errorResponse("No se pudieron cargar las deudas.");
   }
 }
 

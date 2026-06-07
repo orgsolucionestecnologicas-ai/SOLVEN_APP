@@ -22,23 +22,23 @@ describe("debts API route", () => {
 
   it("lists debts", async () => {
     const debts = [buildDebtRecord()];
-    mockedListDebts.mockResolvedValueOnce(debts);
+    mockedListDebts.mockResolvedValueOnce({ data: debts, total: 1 } as never);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/debts"));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ data: [debtJson] });
+    expect(await response.json()).toEqual(expect.objectContaining({ data: [debtJson] }));
   });
 
   it("returns a server error when debts cannot be listed", async () => {
     mockedListDebts.mockRejectedValueOnce(new Error("Database error"));
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/debts"));
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({
       error: {
-        message: "Could not load debts."
+        message: "No se pudieron cargar las deudas."
       }
     });
   });

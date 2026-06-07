@@ -112,7 +112,7 @@ describe("sales API database integration", () => {
     );
     const createdSale = await createResponse.json();
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/sales"));
     const responseBody = await response.json();
 
     expect(response.status).toBe(200);

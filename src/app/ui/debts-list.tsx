@@ -38,7 +38,8 @@ type DebtPaymentRecord = {
   updatedAt: string;
 };
 
-type ApiResponse<T> = { data?: T; error?: { message: string; details?: string[] } };
+type PaginationMeta = { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
+type ApiResponse<T> = { data?: T; pagination?: PaginationMeta; error?: { message: string; details?: string[] } };
 
 type Tab = "todas" | "pendientes" | "pagadas";
 
@@ -98,7 +99,7 @@ export function DebtsList() {
     async function load() {
       try {
         const [debtsRes, paymentsRes] = await Promise.all([
-          fetch("/api/debts", { headers: { Accept: "application/json" } }),
+          fetch("/api/debts?limit=1000", { headers: { Accept: "application/json" } }),
           fetch("/api/debt-payments", { headers: { Accept: "application/json" } })
         ]);
         const [debtsBody, paymentsBody] = (await Promise.all([

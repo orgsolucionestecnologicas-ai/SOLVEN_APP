@@ -22,11 +22,18 @@ export async function createCustomer(
   });
 }
 
-export async function listCustomers(tenantId: string): Promise<Customer[]> {
-  return prisma.customer.findMany({
-    where: { tenantId },
-    orderBy: { name: "asc" }
-  });
+export type PaginationParams = { page?: number; limit?: number };
+
+export async function listCustomers(
+  tenantId: string,
+  { page = 1, limit = 20 }: PaginationParams = {}
+): Promise<{ data: Customer[]; total: number }> {
+  const where = { tenantId };
+  const [data, total] = await prisma.$transaction([
+    prisma.customer.findMany({ where, orderBy: { name: "asc" }, take: limit, skip: (page - 1) * limit }),
+    prisma.customer.count({ where }),
+  ]);
+  return { data, total };
 }
 
 export async function updateCustomer(

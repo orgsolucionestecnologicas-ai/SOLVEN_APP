@@ -29,7 +29,8 @@ type ExpenseRecord = {
   updatedAt: string;
 };
 
-type ApiResponse<T> = { data?: T; error?: { message: string; details?: string[] } };
+type PaginationMeta = { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
+type ApiResponse<T> = { data?: T; pagination?: PaginationMeta; error?: { message: string; details?: string[] } };
 
 const PAGE_SIZE = 10;
 
@@ -122,7 +123,7 @@ export function ExpensesList() {
 
     async function load() {
       try {
-        const res = await fetch("/api/expenses", { headers: { Accept: "application/json" } });
+        const res = await fetch("/api/expenses?limit=1000", { headers: { Accept: "application/json" } });
         const body = (await res.json()) as ApiResponse<ExpenseRecord[]>;
         if (!isActive) return;
         if (!res.ok || !body.data) {

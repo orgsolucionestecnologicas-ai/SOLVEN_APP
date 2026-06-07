@@ -33,9 +33,16 @@ export async function createExpense(
   });
 }
 
-export async function listExpenses(tenantId: string): Promise<Expense[]> {
-  return prisma.expense.findMany({
-    where: { tenantId },
-    orderBy: { expenseDate: "desc" }
-  });
+export type PaginationParams = { page?: number; limit?: number };
+
+export async function listExpenses(
+  tenantId: string,
+  { page = 1, limit = 20 }: PaginationParams = {}
+): Promise<{ data: Expense[]; total: number }> {
+  const where = { tenantId };
+  const [data, total] = await prisma.$transaction([
+    prisma.expense.findMany({ where, orderBy: { expenseDate: "desc" }, take: limit, skip: (page - 1) * limit }),
+    prisma.expense.count({ where }),
+  ]);
+  return { data, total };
 }

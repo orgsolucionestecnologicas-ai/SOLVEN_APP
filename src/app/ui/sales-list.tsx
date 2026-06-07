@@ -3,6 +3,7 @@
 import { Eye, Printer, RotateCcw } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { formatARS } from "@/lib/format-currency";
+import { Pagination } from "./pagination";
 
 type SaleItemRecord = {
   id: string;
@@ -29,8 +30,11 @@ type SaleRecord = {
   updatedAt: string;
 };
 
+type PaginationMeta = { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
+
 type SalesResponse = {
   data?: SaleRecord[];
+  pagination?: PaginationMeta;
   error?: {
     message: string;
   };
@@ -53,6 +57,7 @@ type ProductOption = {
 
 type ProductsResponse = {
   data?: ProductOption[];
+  pagination?: PaginationMeta;
   error?: { message: string };
 };
 
@@ -63,6 +68,7 @@ type CustomerOption = {
 
 type CustomersResponse = {
   data?: CustomerOption[];
+  pagination?: PaginationMeta;
   error?: { message: string };
 };
 
@@ -98,6 +104,8 @@ export function SalesList() {
   const [returningSale, setReturningSale] = useState<SaleRecord | null>(null);
   const [showAllSales, setShowAllSales] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     let isActive = true;
@@ -105,7 +113,7 @@ export function SalesList() {
 
     async function loadSales() {
       try {
-        const response = await fetch("/api/sales", {
+        const response = await fetch(`/api/sales?page=${page}&limit=20`, {
           headers: {
             Accept: "application/json"
           }
@@ -123,6 +131,7 @@ export function SalesList() {
         }
 
         setSales(responseBody.data);
+        setTotalPages(responseBody.pagination?.totalPages ?? 1);
         setLoadError(null);
       } catch {
         if (isActive) {
@@ -141,10 +150,11 @@ export function SalesList() {
     return () => {
       isActive = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, page]);
 
   function handleSaleCreated() {
     setIsModalOpen(false);
+    setPage(1);
     setRefreshKey((k) => k + 1);
     setSuccessMessage("Venta registrada exitosamente.");
     setTimeout(() => setSuccessMessage(null), 4000);
@@ -152,6 +162,7 @@ export function SalesList() {
 
   function handleReturnSuccess() {
     setReturningSale(null);
+    setPage(1);
     setRefreshKey((k) => k + 1);
     setSuccessMessage("Devolución procesada exitosamente.");
     setTimeout(() => setSuccessMessage(null), 4000);
@@ -220,11 +231,14 @@ export function SalesList() {
         )
       ) : null}
       {!isLoading && !loadError && displayedSales.length > 0 ? (
-        <SaleCards
-          onReturn={setReturningSale}
-          onView={setViewingSale}
-          sales={displayedSales}
-        />
+        <>
+          <SaleCards
+            onReturn={setReturningSale}
+            onView={setViewingSale}
+            sales={displayedSales}
+          />
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       ) : null}
 
       {isModalOpen ? (
@@ -685,7 +699,7 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
   useEffect(() => {
     async function loadProducts() {
       try {
-        const response = await fetch("/api/products", {
+        const response = await fetch("/api/products?limit=1000", {
           headers: { Accept: "application/json" }
         });
         const responseBody = (await response.json()) as ProductsResponse;
@@ -708,7 +722,7 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
 
     async function loadCustomers() {
       try {
-        const response = await fetch("/api/customers", {
+        const response = await fetch("/api/customers?limit=1000", {
           headers: { Accept: "application/json" }
         });
         const responseBody = (await response.json()) as CustomersResponse;
