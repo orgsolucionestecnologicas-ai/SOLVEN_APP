@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     return successResponse(sale, 201);
   } catch (error) {
     if (error instanceof SaleNoCashRegisterOpenError) {
-      return errorResponse(error.message, 400);
+      return errorResponse(error.message, 409);
     }
     if (error instanceof SaleValidationError) {
       return errorResponse("Invalid sale input.", 400, error.reasons);

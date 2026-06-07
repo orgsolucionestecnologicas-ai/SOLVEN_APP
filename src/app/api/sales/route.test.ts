@@ -7,6 +7,7 @@ import {
   createSale,
   listSales,
   SaleInsufficientStockError,
+  SaleNoCashRegisterOpenError,
   SaleProductNotFoundError,
   type SaleListRecord,
   type SaleWithItems
@@ -65,6 +66,22 @@ describe("sales API route", () => {
       error: {
         message: "No se pudieron cargar las ventas."
       }
+    });
+  });
+
+  it("returns 409 when no cash register session is open", async () => {
+    mockedCreateSale.mockRejectedValueOnce(new SaleNoCashRegisterOpenError());
+
+    const response = await POST(
+      new Request("http://localhost/api/sales", {
+        method: "POST",
+        body: JSON.stringify({ paymentType: "CASH", items: [{ productId: "p1", quantity: 1 }] })
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: { message: "No hay una sesión de caja abierta. Abrí la caja antes de registrar una venta en efectivo." }
     });
   });
 
