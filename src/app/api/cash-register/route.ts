@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
-import { CashRegisterAlreadyOpenError, CashRegisterValidationError, getCurrentSession, openSession } from "../../../modules/cash-register";
-import { errorResponse, successResponse } from "../_shared/responses";
+import { CashRegisterAlreadyOpenError, CashRegisterValidationError, getCurrentSession, openSession, type OpenSessionInput } from "../../../modules/cash-register";
+import { errorResponse, invalidJsonResponse, successResponse } from "../_shared/responses";
 import { requireTenantId } from "@/lib/tenant";
 
 export async function GET() {
@@ -15,8 +15,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const tenantId = await requireTenantId();
+  let body: OpenSessionInput;
   try {
-    const body = await request.json();
+    body = await request.json() as OpenSessionInput;
+  } catch {
+    return invalidJsonResponse();
+  }
+  try {
     const session = await openSession(body, tenantId);
     return successResponse(session, 201);
   } catch (err) {

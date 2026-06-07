@@ -259,6 +259,7 @@ export function Pos() {
 
   const [services, setServices] = useState<ServiceRecord[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
+  const [servicesError, setServicesError] = useState(false);
 
   const [cardOperationNumber, setCardOperationNumber] = useState("");
   const [transferOperationNumber, setTransferOperationNumber] = useState("");
@@ -408,7 +409,7 @@ export function Pos() {
           setServices(body.data.filter((s) => s.isActive));
         }
       } catch {
-        // services panel shows empty on error
+        if (isActive) setServicesError(true);
       } finally {
         if (isActive) setServicesLoading(false);
       }
@@ -1189,7 +1190,10 @@ export function Pos() {
               ) : null}
 
               {/* Services section */}
-              {!servicesLoading && services.length > 0 ? (
+              {servicesError ? (
+                <p className="text-sm text-red-400 p-3">No se pudieron cargar los servicios.</p>
+              ) : null}
+              {!servicesLoading && !servicesError && services.length > 0 ? (
                 <div className="mt-5 border-t border-slate-100 pt-4">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Servicios disponibles
