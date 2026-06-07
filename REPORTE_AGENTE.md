@@ -33,6 +33,6 @@ inputs, botones, link "+ Agregar otro producto") y se incluyó en este commit.
 - `npm test`: 180/180 passing
 - `npm run lint`: PASS
 
-## Commit: (ver hash al final del handoff)
+## Commit: e5a6c80 feat: fix onboarding colors (violet) + folio secuencial en ventas (T11)
 
 ## Próximo: verificar visualmente el folio en /sales y en el ticket impreso del POS.
