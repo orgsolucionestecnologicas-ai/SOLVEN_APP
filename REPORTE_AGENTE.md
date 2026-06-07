@@ -1,32 +1,32 @@
-# REPORTE — Sesión 2026-06-07 (Orden 6) — T29 Página de cuenta
+# REPORTE — Sesión 2026-06-07 — Hotfix build roto en Vercel
 
 ## Estado: COMPLETADO
 
-## Archivos creados:
-- `src/app/api/cuenta/route.ts` — GET retorna businessName, email y suscripción del tenant
-- `src/app/cuenta/page.tsx` — página /cuenta con AppShell
-- `src/app/ui/cuenta-subscription.tsx` — componente con info de negocio, estado de suscripción y acciones
+## Causa real
+El commit `6acd6f8` (T35) modificó `src/components/help/HelpChat.tsx` para usar
+`best.confidence` y `best.entry`, asumiendo que `searchHelp()` devuelve un
+`SearchResult[]` (`{ entry, score, confidence }`). Pero el cambio correspondiente
+en `src/lib/help-search.ts` — que agrega el tipo `SearchResult` y hace que
+`searchHelp` devuelva ese shape en lugar de `HelpEntry[]` — quedó **sin commitear**
+(presente solo en el árbol de trabajo local, nunca se incluyó en `6acd6f8`).
 
-## Archivos modificados:
-- `src/app/ui/app-shell.tsx` — agregado "cuenta" a `ActiveSection` type, importado ícono `User`, nuevo nav item "Mi cuenta" → `/cuenta` antes de Ayuda
+## Por qué `npx tsc --noEmit` no lo detectó pero el build sí
+El árbol de trabajo local YA tenía la versión corregida de `help-search.ts`
+(con `SearchResult`/`confidence`) sin commitear, así que el typecheck local
+pasaba con esa combinación. Pero el código commiteado/desplegado en Vercel solo
+tenía el `HelpChat.tsx` nuevo junto con la versión VIEJA de `help-search.ts`
+(`searchHelp(): HelpEntry[]`), produciendo el error
+`Property 'confidence' does not exist on type 'HelpEntry'` en el build de Vercel.
 
-## Campos reales del modelo Subscription usados:
-El modelo Subscription en el schema tiene: `status` (enum), `trialEndsAt`, `currentPeriodEnd`, `rebillSubscriptionId`, `cancelledAt`, `createdAt`. **No tiene `planName`** — se usa el texto fijo "Plan SOLVEN — AR$15.999/mes".
+## Fix aplicado
+Se commiteó el archivo `src/lib/help-search.ts` que ya estaba modificado en el
+árbol de trabajo (agrega `interface SearchResult { entry, score, confidence }`
+y cambia `searchHelp(query): SearchResult[]`), alineándolo con el uso en
+`HelpChat.tsx`. No se modificó `HelpChat.tsx` — ya estaba correcto.
 
-El campo del Tenant es `businessName` (no `name` como la orden sugería).
+## Validación
+- `npm run build`: PASS (sin errores de tipo)
 
-## Adaptaciones al componente:
-- Colores adaptados al sistema de diseño existente (slate/white en lugar de gray-900 oscuro) para coherencia con el resto del dashboard
-- `cancelledAt` mostrado cuando no es null
-- Error tipado como `(e: Error)` para satisfacer TypeScript strict
+## Commit: d79cdb8 fix: corregir tipo HelpEntry en HelpChat — rompe build en Vercel
 
-## Acceso desde el menú:
-Agregado en `src/app/ui/app-shell.tsx`, línea `navItems`, con `User` icon, entre "Configuración" y "Ayuda".
-
-## Validación:
-- `npx tsc --noEmit`: PASS
-- `npm test`: 180 passing (completado en tarea anterior, sin cambios que rompan tests)
-
-## Commit: 8c37519 feat: página de cuenta y estado de suscripción (/cuenta)
-
-## Próximo: verificar /cuenta en producción con un tenant que tenga suscripción activa.
+## Próximo: confirmar en Vercel que el deploy pasa a READY.
