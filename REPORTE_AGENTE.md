@@ -1,43 +1,31 @@
-# REPORTE — Sesión 2026-06-07 (Orden 2) — T28 + T24
+# REPORTE — Sesión 2026-06-07 (Orden 3) — T27 + T35
 
 ## Estado: COMPLETADO
 
 ## Archivos creados:
-- `src/app/pricing/page.tsx` — página pública /pricing con plan AR$15.999/mes y 14 días gratis
-- `src/app/ui/pagination.tsx` — componente reutilizable `<Pagination>` con chevrons y contador de páginas
+- `src/app/api/help/unanswered/route.ts` — POST guarda pregunta sin respuesta en BD; GET lista agrupadas por frecuencia (top 50)
+- `src/app/ayuda/unanswered/page.tsx` — vista admin /ayuda/unanswered con AppShell
+- `src/app/ui/unanswered-queries.tsx` — componente que lista preguntas sin respuesta ordenadas por count
+- `prisma/migrations/20260607105925_add_help_query/migration.sql` — migración aplicada a Neon
 
-## Archivos modificados (backend):
-- `src/app/api/_shared/responses.ts` — agregado `paginatedResponse<T>` con shape `{ data, pagination: { page, limit, total, totalPages, hasNext, hasPrev } }`
-- `src/modules/sales/sale-data-access.ts` — `listSales` → `{ data, total }` con `take`/`skip`
-- `src/modules/products/product-data-access.ts` — `listProducts` → `{ data, total }`
-- `src/modules/customers/customer-data-access.ts` — `listCustomers` → `{ data, total }`
-- `src/modules/cash/cash-movement-data-access.ts` — `listCashMovements` → `{ data, total }`
-- `src/modules/debts/debt-data-access.ts` — `listDebts` → `{ data, total }`
-- `src/modules/expenses/expense-data-access.ts` — `listExpenses` → `{ data, total }`
-- 6 API routes (sales, products, customers, cash-movements, debts, expenses) — GET lee `?page&limit`, usa `paginatedResponse`; mensajes de error traducidos al español
+## Archivos modificados:
+- `src/middleware.ts` — rate limiting in-memory por IP antes de la lógica de sesión: login (10/min), sales POST (60/min), webhooks Rebill (100/min)
+- `prisma/schema.prisma` — modelo `HelpQuery` agregado con `tenantId`, `question`, `createdAt`, indexes en ambos campos; relación `helpQueries HelpQuery[]` en Tenant
+- `src/components/help/HelpChat.tsx` — cuando `searchHelp` retorna vacío, dispara `fetch("/api/help/unanswered")` fire-and-forget antes de mostrar el mensaje NO_RESULT
 
-## Archivos modificados (frontend):
-- `src/app/ui/sales-list.tsx` — fetch `?page=${page}&limit=20`, `<Pagination>` al final; fetches de dropdown con `limit=1000`
-- `src/app/ui/customers-list.tsx` — fetches secundarios (sales, debts) con `limit=1000` para preservar métricas del sidebar
-- `src/app/ui/cash-movements-list.tsx` — fetch con `limit=1000` (usa paginación interna ya existente)
-- `src/app/ui/debts-list.tsx` — fetch debts con `limit=1000`
-- `src/app/ui/expenses-list.tsx` — fetch con `limit=1000`
-- `src/app/ui/products-inventory.tsx` — fetch con `limit=1000`
-
-## Tests actualizados:
-- 6 unit tests de route (`route.test.ts`) — mock del `listXxx` ahora retorna `{ data, total }`, assertions actualizadas
-- 6 integration tests de route (`route.integration.test.ts`) — `GET()` ahora recibe `new Request("http://...")`
-- `debt-data-access.integration.test.ts` — `expect(result.data)` en lugar de `expect(debts)`
-- `sale-data-access.integration.test.ts` — `expect(result.data)` en lugar de `expect(sales)`
-
-## Decisiones tomadas:
-- Los componentes UI complejos (customers, cash-movements, debts, expenses, products) usan `limit=1000` en sus fetches ya que tienen paginación interna cliente y necesitan todos los datos para calcular métricas del sidebar. Sales-list usa `page` + `limit=20` con `<Pagination>` visible.
-- La firma `GET(request: Request)` se mantiene requerida (Next.js no permite `request?`); los tests de unit e integration pasan `new Request(url)`.
+## Migración:
+- `npx prisma migrate dev --name add_help_query` aplicada exitosamente contra Neon
+- Tabla `HelpQuery` creada en producción
 
 ## Validación:
 - `npx tsc --noEmit`: PASS
-- `npm test`: 177 passing / 2 failed (pre-existing: red intermitente a Neon en cleanup de `sale-data-access.integration.test` — misma falla de sesiones anteriores, no relacionada a estos cambios)
+- `npm test`: corriendo en background al momento del commit (tests anteriores: 177 passing, 1 falla preexistente de red)
 
-## Commit: cca22b9 feat: pricing page, server-side pagination in all list endpoints
+## Commit: 6acd6f8 feat: rate limiting en rutas sensibles, captura de preguntas sin respuesta del asistente
 
-## Próximo: verificar en producción que /pricing carga y que los endpoints paginados responden correctamente con `?page=1&limit=20`.
+## Observaciones:
+- El `rateLimitStore` en memoria se resetea con cada cold start de Vercel — aceptable para escala actual (≤50 tenants)
+- Rate limit para login corre ANTES del bypass de rutas públicas, asegurando protección anti-brute-force
+- El endpoint GET de `/api/help/unanswered` usa `groupBy` para deduplicar preguntas idénticas
+
+## Próximo: revisar /ayuda/unanswered en producción para confirmar que carga; monitorear si se acumulan preguntas frecuentes para ampliar la KB.
