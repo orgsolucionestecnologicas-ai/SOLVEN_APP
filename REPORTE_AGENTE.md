@@ -1,32 +1,38 @@
-# REPORTE — Sesión 2026-06-07 — Hotfix build roto en Vercel
+# REPORTE — Sesión 2026-06-07 — Fix estilo onboarding + T11 folio en ventas
 
 ## Estado: COMPLETADO
 
-## Causa real
-El commit `6acd6f8` (T35) modificó `src/components/help/HelpChat.tsx` para usar
-`best.confidence` y `best.entry`, asumiendo que `searchHelp()` devuelve un
-`SearchResult[]` (`{ entry, score, confidence }`). Pero el cambio correspondiente
-en `src/lib/help-search.ts` — que agrega el tipo `SearchResult` y hace que
-`searchHelp` devuelva ese shape en lugar de `HelpEntry[]` — quedó **sin commitear**
-(presente solo en el árbol de trabajo local, nunca se incluyó en `6acd6f8`).
+## Tarea 1 — Fix estilo onboarding wizard
+`src/app/ui/onboarding-wizard.tsx` ya tenía el reemplazo de naranja por violeta
+aplicado en el árbol de trabajo (cambio sin commitear de una sesión anterior).
+Se verificó que coincide con la paleta pedida (logo, barra de progreso, íconos,
+inputs, botones, link "+ Agregar otro producto") y se incluyó en este commit.
 
-## Por qué `npx tsc --noEmit` no lo detectó pero el build sí
-El árbol de trabajo local YA tenía la versión corregida de `help-search.ts`
-(con `SearchResult`/`confidence`) sin commitear, así que el typecheck local
-pasaba con esa combinación. Pero el código commiteado/desplegado en Vercel solo
-tenía el `HelpChat.tsx` nuevo junto con la versión VIEJA de `help-search.ts`
-(`searchHelp(): HelpEntry[]`), produciendo el error
-`Property 'confidence' does not exist on type 'HelpEntry'` en el build de Vercel.
-
-## Fix aplicado
-Se commiteó el archivo `src/lib/help-search.ts` que ya estaba modificado en el
-árbol de trabajo (agrega `interface SearchResult { entry, score, confidence }`
-y cambia `searchHelp(query): SearchResult[]`), alineándolo con el uso en
-`HelpChat.tsx`. No se modificó `HelpChat.tsx` — ya estaba correcto.
+## Tarea 2 — T11: Folio secuencial en ventas
+- **Schema**: agregado `folio Int @default(0)` a `Sale` (`prisma/schema.prisma`)
+- **Migración**: `20260607153439_add_sale_folio` — agrega la columna con default 0
+  y backfill por tenant ordenado por `createdAt` usando `ROW_NUMBER() OVER (PARTITION BY "tenantId" ...)`
+- **Lógica de negocio**: `src/modules/sales/sale-data-access.ts` — dentro de la
+  transacción de `createSale`, se busca el último folio del tenant
+  (`orderBy: { folio: 'desc' }`) y se asigna `nextFolio = (lastSale?.folio ?? 0) + 1`
+- **API**: no requirió cambios — `listSales`/`createSale` devuelven el registro
+  completo de `Sale` (incluye `folio` automáticamente vía Prisma)
+- **UI — Historial de ventas** (`src/app/ui/sales-list.tsx`): se agregó `folio`
+  al tipo `SaleRecord` y un helper `formatFolio()` que da formato `#0001`;
+  reemplaza el identificador truncado `Venta #{id.slice(-6)}` en la card, el
+  modal de detalle y el modal de devolución
+- **UI — Ticket POS** (`src/app/ui/pos.tsx`): `CreateSaleResponse` ahora incluye
+  `folio`; el `PrintModal` recibe `folio` como prop y lo usa para el número de
+  venta/factura mostrado en pantalla y en los tickets impresos (formato `#0001`)
+- **Test**: se agregó `folio: 1` al fixture `saleJson` en
+  `src/app/api/sales/route.test.ts` para reflejar el shape real
 
 ## Validación
+- `npx tsc --noEmit`: PASS
 - `npm run build`: PASS (sin errores de tipo)
+- `npm test`: 180/180 passing
+- `npm run lint`: PASS
 
-## Commit: d79cdb8 fix: corregir tipo HelpEntry en HelpChat — rompe build en Vercel
+## Commit: (ver hash al final del handoff)
 
-## Próximo: confirmar en Vercel que el deploy pasa a READY.
+## Próximo: verificar visualmente el folio en /sales y en el ticket impreso del POS.

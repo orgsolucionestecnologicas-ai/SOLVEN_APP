@@ -115,9 +115,17 @@ export async function createSale(
       new Prisma.Decimal(0)
     );
 
+    const lastSale = await transaction.sale.findFirst({
+      where: { tenantId },
+      orderBy: { folio: "desc" },
+      select: { folio: true }
+    });
+    const nextFolio = (lastSale?.folio ?? 0) + 1;
+
     const sale = await transaction.sale.create({
       data: {
         tenantId,
+        folio: nextFolio,
         paymentType: validatedSale.paymentType,
         customerId:
           validatedSale.paymentType === "CREDIT"

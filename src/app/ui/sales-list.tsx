@@ -19,6 +19,7 @@ type SaleItemRecord = {
 
 type SaleRecord = {
   id: string;
+  folio: number;
   saleDate: string;
   paymentType: "CASH" | "CREDIT";
   customerId: string | null;
@@ -302,7 +303,7 @@ function SaleCard({
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-semibold text-slate-950">
-          Venta #{sale.id.slice(-6).toUpperCase()}
+          Venta {formatFolio(sale.folio)}
         </span>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500">
@@ -371,7 +372,7 @@ function SaleDetailModal({
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h2 className="text-sm font-semibold text-slate-950">
-            Venta #{sale.id.slice(-6).toUpperCase()}
+            Venta {formatFolio(sale.folio)}
           </h2>
           <button
             className="text-slate-400 hover:text-slate-700"
@@ -564,7 +565,7 @@ function ReturnModal({
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h2 className="text-sm font-semibold text-slate-950">
-            Devolución — Venta #{sale.id.slice(-6).toUpperCase()}
+            Devolución — Venta {formatFolio(sale.folio)}
           </h2>
           <button
             className="text-slate-400 hover:text-slate-700"
@@ -1162,6 +1163,10 @@ function EmptyState() {
 
 function formatMoney(value: string) {
   return formatARS(Number(value));
+}
+
+function formatFolio(folio: number) {
+  return `#${String(folio).padStart(4, "0")}`;
 }
 
 function formatDateTime(value: string) {

@@ -122,7 +122,7 @@ export function OnboardingWizard() {
   return (
     <div className="w-full max-w-lg">
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-14 h-14 bg-orange-500 rounded-2xl mb-4">
+        <div className="inline-flex items-center justify-center w-14 h-14 bg-violet-600 rounded-2xl mb-4">
           <span className="text-white font-bold text-2xl">S</span>
         </div>
         <h1 className="text-2xl font-bold text-white">Bienvenido a SOLVEN</h1>
@@ -134,7 +134,7 @@ export function OnboardingWizard() {
           <div
             key={s}
             className={`h-1 flex-1 rounded-full transition-colors ${
-              s <= step ? "bg-orange-500" : "bg-gray-700"
+              s <= step ? "bg-violet-600" : "bg-gray-700"
             }`}
           />
         ))}
@@ -150,7 +150,7 @@ export function OnboardingWizard() {
         {step === 1 && (
           <div className="space-y-5">
             <div className="flex items-center gap-3 mb-6">
-              <Store className="w-5 h-5 text-orange-400" />
+              <Store className="w-5 h-5 text-violet-400" />
               <h2 className="text-lg font-semibold text-white">Tu negocio</h2>
             </div>
 
@@ -161,7 +161,7 @@ export function OnboardingWizard() {
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
                 placeholder="Ej: Almacén Don Pepe"
-                className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 border border-gray-700 focus:outline-none focus:border-violet-500 text-sm"
               />
             </div>
 
@@ -170,7 +170,7 @@ export function OnboardingWizard() {
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 border border-gray-700 focus:outline-none focus:border-violet-500 text-sm"
               >
                 <option value="ARS">ARS — Peso argentino</option>
                 <option value="USD">USD — Dólar</option>
@@ -182,7 +182,7 @@ export function OnboardingWizard() {
             <button
               onClick={submitStep1}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2.5 transition-colors text-sm"
+              className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2.5 transition-colors text-sm"
             >
               {loading ? "Guardando..." : "Continuar"}
               <ChevronRight className="w-4 h-4" />
@@ -193,7 +193,7 @@ export function OnboardingWizard() {
         {step === 2 && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-6">
-              <Package className="w-5 h-5 text-orange-400" />
+              <Package className="w-5 h-5 text-violet-400" />
               <h2 className="text-lg font-semibold text-white">Tus primeros productos</h2>
             </div>
 
@@ -209,7 +209,7 @@ export function OnboardingWizard() {
                     value={p.name}
                     onChange={(e) => updateProduct(i, "name", e.target.value)}
                     placeholder={`Producto ${i + 1}`}
-                    className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                    className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:outline-none focus:border-violet-500 text-sm"
                   />
                   <div className="flex gap-2">
                     <input
@@ -218,7 +218,7 @@ export function OnboardingWizard() {
                       onChange={(e) => updateProduct(i, "price", e.target.value)}
                       placeholder="Precio"
                       min="0"
-                      className="w-1/2 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                      className="w-1/2 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:outline-none focus:border-violet-500 text-sm"
                     />
                     <input
                       type="number"
@@ -226,7 +226,7 @@ export function OnboardingWizard() {
                       onChange={(e) => updateProduct(i, "stock", e.target.value)}
                       placeholder="Stock"
                       min="0"
-                      className="w-1/2 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                      className="w-1/2 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:outline-none focus:border-violet-500 text-sm"
                     />
                   </div>
                 </div>
@@ -244,7 +244,7 @@ export function OnboardingWizard() {
             {products.length < 5 && (
               <button
                 onClick={addProduct}
-                className="text-sm text-orange-400 hover:text-orange-300 transition-colors"
+                className="text-sm text-violet-400 hover:text-violet-300 transition-colors"
               >
                 + Agregar otro producto
               </button>
@@ -253,7 +253,7 @@ export function OnboardingWizard() {
             <button
               onClick={submitStep2}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2.5 transition-colors text-sm mt-2"
+              className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2.5 transition-colors text-sm mt-2"
             >
               {loading ? "Guardando..." : "Continuar"}
               <ChevronRight className="w-4 h-4" />
@@ -264,7 +264,7 @@ export function OnboardingWizard() {
         {step === 3 && !cashOpened && (
           <div className="space-y-5">
             <div className="flex items-center gap-3 mb-6">
-              <Wallet className="w-5 h-5 text-orange-400" />
+              <Wallet className="w-5 h-5 text-violet-400" />
               <h2 className="text-lg font-semibold text-white">Abrí la primera caja</h2>
             </div>
 
@@ -281,14 +281,14 @@ export function OnboardingWizard() {
                 onChange={(e) => setOpeningBalance(e.target.value)}
                 placeholder="0"
                 min="0"
-                className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 border border-gray-700 focus:outline-none focus:border-violet-500 text-sm"
               />
             </div>
 
             <button
               onClick={submitStep3}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2.5 transition-colors text-sm"
+              className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2.5 transition-colors text-sm"
             >
               {loading ? "Abriendo caja..." : "Abrir caja y continuar"}
               <ChevronRight className="w-4 h-4" />
@@ -315,7 +315,7 @@ export function OnboardingWizard() {
             <button
               onClick={complete}
               disabled={loading}
-              className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2.5 transition-colors text-sm"
+              className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-medium rounded-lg px-4 py-2.5 transition-colors text-sm"
             >
               {loading ? "Entrando..." : "Ir al dashboard →"}
             </button>

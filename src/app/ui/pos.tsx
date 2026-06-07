@@ -82,7 +82,7 @@ function cartItemKey(item: CartItem): string {
 }
 
 type CreateSaleResponse = {
-  data?: { id: string };
+  data?: { id: string; folio: number };
   error?: { message: string; details?: string[] };
 };
 
@@ -305,6 +305,7 @@ export function Pos() {
   const [cashRegisterStatus, setCashRegisterStatus] = useState<"loading" | "open" | "closed">("loading");
   const [showPrintModal, setShowPrintModal] = useState<{
     saleId: string;
+    folio: number;
     total: number;
     cartItems: CartItem[];
     paymentMethod: PaymentMethod;
@@ -848,6 +849,7 @@ export function Pos() {
       }
 
       const successSaleId = body.data.id;
+      const successFolio = body.data.folio;
       const successTotal = cartTotal - totalDiscount;
       const successCartItems = [...cartItems];
       const successPaymentMethod = paymentMethod;
@@ -869,6 +871,7 @@ export function Pos() {
       setProductsRefreshKey((k) => k + 1);
       setShowPrintModal({
         saleId: successSaleId,
+        folio: successFolio,
         total: successTotal,
         cartItems: successCartItems,
         paymentMethod: successPaymentMethod,
@@ -2274,6 +2277,7 @@ export function Pos() {
       {showPrintModal ? (
         <PrintModal
           cartItems={showPrintModal.cartItems}
+          folio={showPrintModal.folio}
           paymentMethod={showPrintModal.paymentMethod}
           saleId={showPrintModal.saleId}
           total={showPrintModal.total}
@@ -2359,19 +2363,21 @@ function ProductsLoadingState() {
 
 function PrintModal({
   saleId,
+  folio,
   total,
   cartItems,
   paymentMethod,
   onClose,
 }: {
   saleId: string;
+  folio: number;
   total: number;
   cartItems: CartItem[];
   paymentMethod: PaymentMethod;
   onClose: () => void;
 }) {
   const [emailSent, setEmailSent] = useState(false);
-  const saleNumber = saleId.slice(-6).toUpperCase();
+  const saleNumber = `#${String(folio).padStart(4, "0")}`;
   const saleDate = new Intl.DateTimeFormat("es-419", {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit", hour12: true,
@@ -2398,7 +2404,7 @@ function PrintModal({
       .total{font-weight:bold;font-size:13px;border-top:1px dashed #000;padding-top:4px;margin-top:4px}
     </style></head><body>
       <h2>Tienda Demo</h2>
-      <p class="center">Venta #${saleNumber}</p>
+      <p class="center">Venta ${saleNumber}</p>
       <p class="center">${saleDate}</p>
       <p class="center">Pago: ${paymentMethod}</p>
       <hr style="border-style:dashed"/>
@@ -2427,7 +2433,7 @@ function PrintModal({
     </style></head><body>
       <div class="header">
         <div class="business">Tienda Demo</div>
-        <div class="meta"><p><strong>Factura #${saleNumber}</strong></p><p>${saleDate}</p><p>Método de pago: ${paymentMethod}</p></div>
+        <div class="meta"><p><strong>Factura ${saleNumber}</strong></p><p>${saleDate}</p><p>Método de pago: ${paymentMethod}</p></div>
       </div>
       <table><thead><tr><th>Producto</th><th style="text-align:center">Cant.</th><th style="text-align:right">Precio unit.</th><th style="text-align:right">Total</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -2442,7 +2448,7 @@ function PrintModal({
         <div className="border-b border-emerald-100 bg-emerald-50 px-6 py-4">
           <p className="text-sm font-semibold text-emerald-800">✓ Venta registrada</p>
           <p className="mt-0.5 text-xs text-emerald-600">
-            #{saleNumber} · {formatARS(total)}
+            {saleNumber} · {formatARS(total)}
           </p>
         </div>
         <div className="space-y-2 px-6 py-4">
