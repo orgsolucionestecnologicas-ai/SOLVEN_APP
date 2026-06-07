@@ -21,13 +21,14 @@ export async function GET() {
       }),
       prisma.user.findUnique({
         where: { id: session.userId },
-        select: { name: true, email: true }
+        select: { name: true, email: true, role: true }
       })
     ]);
 
     return successResponse({
       name: user?.name?.trim() || user?.email || "",
-      businessName: tenant?.businessName ?? ""
+      businessName: tenant?.businessName ?? "",
+      role: user?.role ?? session.role
     });
   } catch {
     return errorResponse("No se pudo cargar la información del usuario.");

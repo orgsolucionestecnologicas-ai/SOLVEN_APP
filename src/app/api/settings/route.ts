@@ -11,7 +11,7 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
-import { requireTenantId } from "@/lib/tenant";
+import { requireRole, requireTenantId } from "@/lib/tenant";
 
 export async function GET() {
   const tenantId = await requireTenantId();
@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const tenantId = await requireTenantId();
+  const { tenantId } = await requireRole(["OWNER"]);
   let requestBody: unknown;
   try {
     requestBody = await request.json();

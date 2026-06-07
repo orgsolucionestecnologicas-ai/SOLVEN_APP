@@ -1,13 +1,14 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { prisma } from "@/lib/prisma";
-import { requireTenantId } from "@/lib/tenant";
+import { requireRole, requireTenantId } from "@/lib/tenant";
 
 import { GET, POST } from "./route";
 
-vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn() }));
+vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn(), requireRole: vi.fn() }));
 
 const mockedRequireTenantId = vi.mocked(requireTenantId);
+const mockedRequireRole = vi.mocked(requireRole);
 const testExpenseDescriptionPrefix = "SOLVEN_INTEGRATION_EXPENSE_";
 const testTenantEmail = "solven_integration_expense@test.internal";
 
@@ -21,6 +22,7 @@ describe("expenses API database integration", () => {
     });
     testTenantId = tenant.id;
     mockedRequireTenantId.mockResolvedValue(testTenantId);
+    mockedRequireRole.mockResolvedValue({ tenantId: testTenantId, userId: "test-user-id", role: "OWNER" });
   });
 
   afterAll(async () => {

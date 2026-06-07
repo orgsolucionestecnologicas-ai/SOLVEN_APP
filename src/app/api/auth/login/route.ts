@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
     user.id,
     user.tenantId,
     subscription?.status ?? "TRIAL",
-    subscription?.trialEndsAt?.toISOString() ?? null
+    subscription?.trialEndsAt?.toISOString() ?? null,
+    user.role
   );
   const cookieStore = await cookies();
 

@@ -1,4 +1,7 @@
-vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+vi.mock("@/lib/tenant", () => ({
+  requireTenantId: vi.fn().mockResolvedValue("test-tenant-id"),
+  requireRole: vi.fn().mockResolvedValue({ tenantId: "test-tenant-id", userId: "test-user-id", role: "OWNER" })
+}));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

@@ -12,7 +12,7 @@ import {
   isRequestObject,
   successResponse
 } from "../../_shared/responses";
-import { requireTenantId } from "@/lib/tenant";
+import { requireRole, requireTenantId } from "@/lib/tenant";
 
 export async function GET(
   _request: Request,
@@ -32,7 +32,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+  const [{ id }, { tenantId }] = await Promise.all([params, requireRole(["OWNER", "INVENTORY"])]);
 
   let body: unknown;
   try {

@@ -44,6 +44,7 @@ enum UserRole {
   OWNER
   CASHIER
   INVENTORY
+  READONLY
 }
 
 enum SubscriptionStatus {

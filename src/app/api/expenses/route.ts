@@ -11,7 +11,7 @@ import {
   paginatedResponse,
   successResponse
 } from "../_shared/responses";
-import { requireTenantId } from "@/lib/tenant";
+import { requireRole, requireTenantId } from "@/lib/tenant";
 
 export async function GET(request: Request) {
   const tenantId = await requireTenantId();
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const tenantId = await requireTenantId();
+  const { tenantId } = await requireRole(["OWNER", "CASHIER"]);
   let requestBody: unknown;
 
   try {

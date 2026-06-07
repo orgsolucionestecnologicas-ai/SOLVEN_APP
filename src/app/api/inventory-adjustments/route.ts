@@ -11,10 +11,10 @@ import {
   isRequestObject,
   successResponse
 } from "../_shared/responses";
-import { requireTenantId } from "@/lib/tenant";
+import { requireRole } from "@/lib/tenant";
 
 export async function POST(request: Request) {
-  const tenantId = await requireTenantId();
+  const { tenantId } = await requireRole(["OWNER", "INVENTORY"]);
   let requestBody: unknown;
 
   try {

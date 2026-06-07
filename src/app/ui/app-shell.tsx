@@ -18,6 +18,7 @@ import {
   ShoppingCart,
   Tag,
   User,
+  UserCog,
   Users,
   Wrench,
 } from "lucide-react";
@@ -39,7 +40,8 @@ type ActiveSection =
   | "ayuda"
   | "sales"
   | "services"
-  | "settings";
+  | "settings"
+  | "usuarios";
 
 type AppShellProps = {
   activeSection: ActiveSection;
@@ -54,6 +56,7 @@ type NavLinkItem = {
   label: string;
   section: ActiveSection;
   Icon: LucideIcon;
+  hiddenForRoles?: string[];
 };
 
 type NavDisabledItem = {
@@ -75,7 +78,8 @@ const navItems: NavItem[] = [
   { type: "link",     href: "/cash-movements",  label: "Caja",          section: "cashMovements", Icon: CreditCard },
   { type: "link",     href: "/reports",         label: "Reportes",      section: "reports",       Icon: BarChart2 },
   { type: "link",     href: "/promotions",      label: "Promociones",   section: "promotions",    Icon: Tag },
-  { type: "link",     href: "/settings",        label: "Configuración", section: "settings",      Icon: Settings },
+  { type: "link",     href: "/settings",        label: "Configuración", section: "settings",      Icon: Settings,  hiddenForRoles: ["CASHIER", "READONLY"] },
+  { type: "link",     href: "/usuarios",        label: "Usuarios",      section: "usuarios",      Icon: UserCog,   hiddenForRoles: ["CASHIER", "INVENTORY", "READONLY"] },
   { type: "link",     href: "/cuenta",           label: "Mi cuenta",     section: "cuenta",        Icon: User },
   { type: "link",     href: "/ayuda",            label: "Ayuda",         section: "ayuda",         Icon: HelpCircle },
   { type: "disabled",                           label: "Licencia",                                Icon: Shield },
@@ -172,6 +176,21 @@ function SidebarUser() {
 }
 
 export function AppShell({ activeSection, eyebrow, title, children }: AppShellProps) {
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/me", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: { role?: string } }) => {
+        if (body.data?.role) setRole(body.data.role);
+      })
+      .catch(() => {});
+  }, []);
+
+  const visibleNavItems = navItems.filter(
+    (item) => !(item.type === "link" && item.hiddenForRoles && role && item.hiddenForRoles.includes(role))
+  );
+
   return (
     <div className="min-h-screen bg-slate-100 lg:flex">
       <aside className="bg-slate-900 px-3 py-4 text-white lg:flex lg:min-h-screen lg:w-64 lg:shrink-0 lg:flex-col">
@@ -188,7 +207,7 @@ export function AppShell({ activeSection, eyebrow, title, children }: AppShellPr
 
         {/* Navigation */}
         <nav className="mt-5 flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-0.5 lg:overflow-visible lg:pb-0">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             if (item.type === "disabled") {
               return (
                 <div

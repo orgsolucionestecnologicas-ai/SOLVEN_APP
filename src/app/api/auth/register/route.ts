@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
   });
 
-  const token = await createSession(user.id, tenant.id, "TRIAL", trialEndsAt.toISOString());
+  const token = await createSession(user.id, tenant.id, "TRIAL", trialEndsAt.toISOString(), user.role);
   const cookieStore = await cookies();
 
   cookieStore.set(COOKIE_NAME, token, {
