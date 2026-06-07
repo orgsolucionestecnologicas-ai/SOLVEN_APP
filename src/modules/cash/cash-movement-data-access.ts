@@ -18,13 +18,16 @@ export async function createCashMovement(
   });
 }
 
-export type PaginationParams = { page?: number; limit?: number };
+export type PaginationParams = { page?: number; limit?: number; from?: Date; to?: Date };
 
 export async function listCashMovements(
   tenantId: string,
-  { page = 1, limit = 20 }: PaginationParams = {}
+  { page = 1, limit = 20, from, to }: PaginationParams = {}
 ): Promise<{ data: CashMovement[]; total: number }> {
-  const where = { tenantId };
+  const where = {
+    tenantId,
+    ...(from ? { movementDate: { gte: from, ...(to ? { lte: to } : {}) } } : {})
+  };
   const [data, total] = await prisma.$transaction([
     prisma.cashMovement.findMany({ where, orderBy: { movementDate: "desc" }, take: limit, skip: (page - 1) * limit }),
     prisma.cashMovement.count({ where }),

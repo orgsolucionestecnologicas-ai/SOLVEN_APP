@@ -66,16 +66,6 @@ function todayISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function isSameLocalDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-function isOnDate(movementDate: string, isoDate: string): boolean {
-  const d = new Date(movementDate);
-  const [y, mo, day] = isoDate.split("-").map(Number);
-  return d.getFullYear() === y && d.getMonth() + 1 === mo && d.getDate() === day;
-}
-
 function getDescription(m: CashMovementRecord): string {
   switch (m.source) {
     case "SALE":
@@ -121,9 +111,11 @@ export function CashMovementsList() {
 
   const [typeFilter, setTypeFilter] = useState<"all" | "IN" | "OUT">("all");
   const [dateFilterDate, setDateFilterDate] = useState(todayISO());
+  const [showAllMovements, setShowAllMovements] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [detailMovement, setDetailMovement] = useState<CashMovementRecord | null>(null);
+  const [todayMovements, setTodayMovements] = useState<CashMovementRecord[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -131,7 +123,8 @@ export function CashMovementsList() {
 
     async function load() {
       try {
-        const res = await fetch("/api/cash-movements?limit=1000", { headers: { Accept: "application/json" } });
+        const dateParams = showAllMovements ? "" : `&from=${dateFilterDate}&to=${dateFilterDate}`;
+        const res = await fetch(`/api/cash-movements?limit=1000${dateParams}`, { headers: { Accept: "application/json" } });
         const body = (await res.json()) as ApiResponse<CashMovementRecord[]>;
         if (!active) return;
         if (!res.ok || !body.data) { setLoadError("No se pudieron cargar los movimientos de caja."); setMovements([]); return; }
@@ -145,6 +138,25 @@ export function CashMovementsList() {
     }
 
     void load();
+    return () => { active = false; };
+  }, [refreshKey, showAllMovements, dateFilterDate]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadToday() {
+      try {
+        const today = todayISO();
+        const res = await fetch(`/api/cash-movements?limit=1000&from=${today}&to=${today}`, { headers: { Accept: "application/json" } });
+        const body = (await res.json()) as ApiResponse<CashMovementRecord[]>;
+        if (!active) return;
+        if (res.ok && body.data) setTodayMovements(body.data);
+      } catch {
+        if (active) setTodayMovements([]);
+      }
+    }
+
+    void loadToday();
     return () => { active = false; };
   }, [refreshKey]);
 
@@ -170,12 +182,6 @@ export function CashMovementsList() {
   }, [sessionRefreshKey]);
 
   const now = new Date();
-
-  const todayMovements = useMemo(
-    () => movements.filter((m) => isSameLocalDay(new Date(m.movementDate), now)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [movements]
-  );
 
   const todayIN = useMemo(() => todayMovements.filter((m) => m.type === "IN").reduce((s, m) => s + Number(m.amount), 0), [todayMovements]);
   const todayOUT = useMemo(() => todayMovements.filter((m) => m.type === "OUT").reduce((s, m) => s + Number(m.amount), 0), [todayMovements]);
@@ -205,7 +211,6 @@ export function CashMovementsList() {
     let result = movements;
     if (typeFilter === "IN") result = result.filter((m) => m.type === "IN");
     if (typeFilter === "OUT") result = result.filter((m) => m.type === "OUT");
-    if (dateFilterDate) result = result.filter((m) => isOnDate(m.movementDate, dateFilterDate));
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((m) =>
@@ -215,7 +220,7 @@ export function CashMovementsList() {
       );
     }
     return result;
-  }, [movements, typeFilter, dateFilterDate, searchQuery]);
+  }, [movements, typeFilter, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMovements.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -365,12 +370,21 @@ export function CashMovementsList() {
               <option value="IN">Ingreso</option>
               <option value="OUT">Salida</option>
             </select>
-            <input
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
-              onChange={(e) => { setDateFilterDate(e.target.value); setCurrentPage(1); }}
-              type="date"
-              value={dateFilterDate}
-            />
+            {!showAllMovements ? (
+              <input
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+                onChange={(e) => { setDateFilterDate(e.target.value); setCurrentPage(1); }}
+                type="date"
+                value={dateFilterDate}
+              />
+            ) : null}
+            <button
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              onClick={() => { setShowAllMovements((v) => !v); setCurrentPage(1); }}
+              type="button"
+            >
+              {showAllMovements ? "← Filtrar por fecha" : "Ver todo"}
+            </button>
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <input

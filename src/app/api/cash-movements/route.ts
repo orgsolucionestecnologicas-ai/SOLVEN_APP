@@ -21,8 +21,12 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
+  const from = fromParam ? new Date(`${fromParam}T00:00:00`) : undefined;
+  const to = toParam ? new Date(`${toParam}T23:59:59.999`) : undefined;
   try {
-    const result = await listCashMovements(tenantId, { page, limit });
+    const result = await listCashMovements(tenantId, { page, limit, from, to });
     return paginatedResponse(result.data, page, limit, result.total);
   } catch {
     return errorResponse("No se pudieron cargar los movimientos de caja.");

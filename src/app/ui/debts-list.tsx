@@ -16,6 +16,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import Link from "next/link";
+import { getDateRangeParams } from "@/lib/date-filter";
 import { formatARS as formatMoney } from "@/lib/format-currency";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
@@ -85,8 +86,10 @@ export function DebtsList() {
   const [activeTab, setActiveTab] = useState<Tab>("todas");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterEstado, setFilterEstado] = useState("");
+  const [periodFilter, setPeriodFilter] = useState<"todo" | "hoy" | "semana" | "mes">("todo");
   const [sortOrder, setSortOrder] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
+  const [tableDebts, setTableDebts] = useState<DebtRecord[]>([]);
 
   const [selectedDebt, setSelectedDebt] = useState<DebtRecord | null>(null);
   const [detailDebt, setDetailDebt] = useState<DebtRecord | null>(null);
@@ -128,6 +131,26 @@ export function DebtsList() {
     void load();
     return () => { isActive = false; };
   }, [refreshKey]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadTableDebts() {
+      try {
+        const { from, to } = getDateRangeParams(periodFilter);
+        const url = `/api/debts?limit=1000${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`;
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        const body = (await res.json()) as ApiResponse<DebtRecord[]>;
+        if (!isActive) return;
+        if (res.ok && body.data) setTableDebts(body.data);
+      } catch {
+        if (isActive) setTableDebts([]);
+      }
+    }
+
+    void loadTableDebts();
+    return () => { isActive = false; };
+  }, [refreshKey, periodFilter]);
 
   // ── Metrics ────────────────────────────────────────────────────────────────
 
@@ -180,7 +203,7 @@ export function DebtsList() {
   // ── Filter + sort + paginate ───────────────────────────────────────────────
 
   const filteredDebts = useMemo(() => {
-    let result = [...debts];
+    let result = [...tableDebts];
 
     if (activeTab === "pendientes") result = result.filter((d) => Number(d.remainingAmount) > 0);
     if (activeTab === "pagadas") result = result.filter((d) => Number(d.remainingAmount) === 0);
@@ -197,16 +220,16 @@ export function DebtsList() {
     else if (sortOrder === "name") result.sort((a, b) => a.customer.name.localeCompare(b.customer.name));
 
     return result;
-  }, [debts, activeTab, filterEstado, searchQuery, sortOrder]);
+  }, [tableDebts, activeTab, filterEstado, searchQuery, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filteredDebts.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const paginatedDebts = filteredDebts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   function changePage(p: number) { setCurrentPage(Math.max(1, Math.min(p, totalPages))); }
-  function clearFilters() { setSearchQuery(""); setFilterEstado(""); setSortOrder("recent"); setCurrentPage(1); }
+  function clearFilters() { setSearchQuery(""); setFilterEstado(""); setPeriodFilter("todo"); setSortOrder("recent"); setCurrentPage(1); }
 
-  const hasFilters = Boolean(searchQuery || filterEstado || sortOrder !== "recent");
+  const hasFilters = Boolean(searchQuery || filterEstado || periodFilter !== "todo" || sortOrder !== "recent");
 
   function handlePaymentRegistered() {
     setSelectedDebt(null);
@@ -309,6 +332,16 @@ export function DebtsList() {
               <option value="">Todos los estados</option>
               <option value="pendiente">Pendiente</option>
               <option value="pagada">Pagada</option>
+            </select>
+            <select
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+              onChange={(e) => { setPeriodFilter(e.target.value as "todo" | "hoy" | "semana" | "mes"); setCurrentPage(1); }}
+              value={periodFilter}
+            >
+              <option value="todo">Todo</option>
+              <option value="hoy">Hoy</option>
+              <option value="semana">Esta semana</option>
+              <option value="mes">Este mes</option>
             </select>
             <select
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"

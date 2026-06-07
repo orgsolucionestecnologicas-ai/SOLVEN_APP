@@ -17,6 +17,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { getDateRangeParams } from "@/lib/date-filter";
 import { formatARS as formatMoney } from "@/lib/format-currency";
 
 type ExpenseRecord = {
@@ -79,22 +80,6 @@ function getPageNumbers(current: number, total: number): (number | "...")[] {
   return [1, "...", current - 1, current, current + 1, "...", total];
 }
 
-function matchesDateFilter(expenseDate: string, filter: string): boolean {
-  const d = new Date(expenseDate);
-  const now = new Date();
-  if (filter === "hoy") {
-    return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }
-  if (filter === "semana") {
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    return d >= weekAgo;
-  }
-  if (filter === "mes") {
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }
-  return true;
-}
-
 function todayAsInputValue(): string {
   const t = new Date();
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
@@ -104,13 +89,14 @@ function todayAsInputValue(): string {
 
 export function ExpensesList() {
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
+  const [allExpenses, setAllExpenses] = useState<ExpenseRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-  const [filterDate, setFilterDate] = useState("todo");
+  const [filterDate, setFilterDate] = useState<"todo" | "hoy" | "semana" | "mes">("todo");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -123,7 +109,9 @@ export function ExpensesList() {
 
     async function load() {
       try {
-        const res = await fetch("/api/expenses?limit=1000", { headers: { Accept: "application/json" } });
+        const { from, to } = getDateRangeParams(filterDate);
+        const url = `/api/expenses?limit=1000${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`;
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
         const body = (await res.json()) as ApiResponse<ExpenseRecord[]>;
         if (!isActive) return;
         if (!res.ok || !body.data) {
@@ -142,45 +130,62 @@ export function ExpensesList() {
 
     void load();
     return () => { isActive = false; };
+  }, [refreshKey, filterDate]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadAll() {
+      try {
+        const res = await fetch("/api/expenses?limit=1000", { headers: { Accept: "application/json" } });
+        const body = (await res.json()) as ApiResponse<ExpenseRecord[]>;
+        if (!isActive) return;
+        if (res.ok && body.data) setAllExpenses(body.data);
+      } catch {
+        if (isActive) setAllExpenses([]);
+      }
+    }
+
+    void loadAll();
+    return () => { isActive = false; };
   }, [refreshKey]);
 
-  const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
+  const totalExpenses = useMemo(() => allExpenses.reduce((s, e) => s + Number(e.amount), 0), [allExpenses]);
 
   const monthExpenses = useMemo(() => {
     const now = new Date();
-    return expenses
+    return allExpenses
       .filter((e) => { const d = new Date(e.expenseDate); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
       .reduce((s, e) => s + Number(e.amount), 0);
-  }, [expenses]);
+  }, [allExpenses]);
 
-  const avgExpense = useMemo(() => (expenses.length > 0 ? totalExpenses / expenses.length : 0), [totalExpenses, expenses]);
+  const avgExpense = useMemo(() => (allExpenses.length > 0 ? totalExpenses / allExpenses.length : 0), [totalExpenses, allExpenses]);
 
   const topCategory = useMemo(() => {
     const totals: Record<string, number> = {};
-    for (const e of expenses) totals[e.category] = (totals[e.category] ?? 0) + Number(e.amount);
+    for (const e of allExpenses) totals[e.category] = (totals[e.category] ?? 0) + Number(e.amount);
     let best = "—"; let bestAmt = 0;
     for (const [cat, amt] of Object.entries(totals)) { if (amt > bestAmt) { bestAmt = amt; best = cat; } }
     return best;
-  }, [expenses]);
+  }, [allExpenses]);
 
-  const uniqueCategories = useMemo(() => [...new Set(expenses.map((e) => e.category))].sort(), [expenses]);
+  const uniqueCategories = useMemo(() => [...new Set(allExpenses.map((e) => e.category))].sort(), [allExpenses]);
 
   const categoryStats = useMemo(() => {
     const totals: Record<string, number> = {};
-    for (const e of expenses) totals[e.category] = (totals[e.category] ?? 0) + Number(e.amount);
+    for (const e of allExpenses) totals[e.category] = (totals[e.category] ?? 0) + Number(e.amount);
     return Object.entries(totals).map(([cat, amt]) => ({ cat, amt })).sort((a, b) => b.amt - a.amt);
-  }, [expenses]);
+  }, [allExpenses]);
 
   const filteredExpenses = useMemo(() => {
     let result = [...expenses];
     if (filterCategory) result = result.filter((e) => e.category === filterCategory);
-    if (filterDate !== "todo") result = result.filter((e) => matchesDateFilter(e.expenseDate, filterDate));
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((e) => e.description.toLowerCase().includes(q) || e.category.toLowerCase().includes(q));
     }
     return result;
-  }, [expenses, filterCategory, filterDate, searchQuery]);
+  }, [expenses, filterCategory, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -272,7 +277,7 @@ export function ExpensesList() {
             </select>
             <select
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
-              onChange={(e) => { setFilterDate(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => { setFilterDate(e.target.value as "todo" | "hoy" | "semana" | "mes"); setCurrentPage(1); }}
               value={filterDate}
             >
               <option value="todo">Todo</option>
@@ -388,7 +393,7 @@ export function ExpensesList() {
             </div>
             <div className="border-t border-slate-100 pt-5">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Últimos movimientos</h3>
-              <RecentExpenses expenses={expenses.slice(0, 5)} />
+              <RecentExpenses expenses={allExpenses.slice(0, 5)} />
             </div>
             <div className="border-t border-slate-100 pt-5">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Resumen del período</h3>

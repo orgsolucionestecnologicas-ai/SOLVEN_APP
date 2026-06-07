@@ -114,7 +114,8 @@ export function SalesList() {
 
     async function loadSales() {
       try {
-        const response = await fetch(`/api/sales?page=${page}&limit=20`, {
+        const dateParams = showAllSales ? "" : `&from=${dateFilter}&to=${dateFilter}`;
+        const response = await fetch(`/api/sales?page=${page}&limit=20${dateParams}`, {
           headers: {
             Accept: "application/json"
           }
@@ -151,7 +152,7 @@ export function SalesList() {
     return () => {
       isActive = false;
     };
-  }, [refreshKey, page]);
+  }, [refreshKey, page, showAllSales, dateFilter]);
 
   function handleSaleCreated() {
     setIsModalOpen(false);
@@ -169,9 +170,7 @@ export function SalesList() {
     setTimeout(() => setSuccessMessage(null), 4000);
   }
 
-  const displayedSales = [...sales]
-    .filter((s) => showAllSales || s.saleDate.slice(0, 10) === dateFilter)
-    .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+  const displayedSales = [...sales].sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
 
   return (
     <section className="px-5 py-6 sm:px-8">
@@ -183,7 +182,7 @@ export function SalesList() {
           {!showAllSales ? (
             <input
               className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
-              onChange={(e) => setDateFilter(e.target.value)}
+              onChange={(e) => { setDateFilter(e.target.value); setPage(1); }}
               type="date"
               value={dateFilter}
             />
@@ -193,6 +192,7 @@ export function SalesList() {
             onClick={() => {
               setShowAllSales((v) => !v);
               setDateFilter(new Date().toISOString().slice(0, 10));
+              setPage(1);
             }}
             type="button"
           >
