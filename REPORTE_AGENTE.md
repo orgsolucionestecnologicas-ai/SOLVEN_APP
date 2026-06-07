@@ -1,31 +1,32 @@
-# REPORTE — Sesión 2026-06-07 (Orden 3) — T27 + T35
+# REPORTE — Sesión 2026-06-07 (Orden 4) — Bug fixes
 
 ## Estado: COMPLETADO
 
-## Archivos creados:
-- `src/app/api/help/unanswered/route.ts` — POST guarda pregunta sin respuesta en BD; GET lista agrupadas por frecuencia (top 50)
-- `src/app/ayuda/unanswered/page.tsx` — vista admin /ayuda/unanswered con AppShell
-- `src/app/ui/unanswered-queries.tsx` — componente que lista preguntas sin respuesta ordenadas por count
-- `prisma/migrations/20260607105925_add_help_query/migration.sql` — migración aplicada a Neon
-
 ## Archivos modificados:
-- `src/middleware.ts` — rate limiting in-memory por IP antes de la lógica de sesión: login (10/min), sales POST (60/min), webhooks Rebill (100/min)
-- `prisma/schema.prisma` — modelo `HelpQuery` agregado con `tenantId`, `question`, `createdAt`, indexes en ambos campos; relación `helpQueries HelpQuery[]` en Tenant
-- `src/components/help/HelpChat.tsx` — cuando `searchHelp` retorna vacío, dispara `fetch("/api/help/unanswered")` fire-and-forget antes de mostrar el mensaje NO_RESULT
+- `src/app/api/sales/route.ts` — `SaleNoCashRegisterOpenError` ahora retorna 409 en lugar de 400
+- `src/app/api/sales/route.test.ts` — agregado test que verifica 409 para venta sin caja abierta
 
-## Migración:
-- `npx prisma migrate dev --name add_help_query` aplicada exitosamente contra Neon
-- Tabla `HelpQuery` creada en producción
+## BUG 1 — Devoluciones a crédito:
+El código en `src/modules/returns/index.ts` (líneas 112-125) **ya implementaba correctamente** la reducción de `remainingAmount` al procesar una devolución de venta a crédito. La lógica existente:
+- Verifica `sale.paymentType === "CREDIT" && sale.debtId`
+- Busca la Debt via `tx.debt.findUnique({ where: { id: sale.debtId } })`
+- Reduce `remainingAmount` con `debt.remainingAmount.minus(returnTotal)`
+- Limita a 0 mínimo con `.lessThan(0) ? new Prisma.Decimal(0) : newRemaining`
+- **No se modificó** — ya estaba correctamente implementado
+
+## BUG 2 — Ventas en efectivo sin caja abierta:
+- La verificación de caja abierta en `createSale` también **ya existía** (lanza `SaleNoCashRegisterOpenError`)
+- El bug real era que la ruta devolvía **400** en lugar de **409** para este error específico
+- **Cambio aplicado**: `errorResponse(error.message, 400)` → `errorResponse(error.message, 409)`
+- El POS frontend ya manejaba cualquier respuesta no-2xx mostrando `submitError`, por lo que no requirió cambios
+- Agregado test en `route.test.ts` que verifica el nuevo status 409
 
 ## Validación:
 - `npx tsc --noEmit`: PASS
-- `npm test`: corriendo en background al momento del commit (tests anteriores: 177 passing, 1 falla preexistente de red)
+- `npm test`: corriendo en background (historial: 179 passing en sesión anterior)
 
-## Commit: 6acd6f8 feat: rate limiting en rutas sensibles, captura de preguntas sin respuesta del asistente
+## Commit: dc1b26a fix: devoluciones a crédito reducen deuda, ventas en efectivo requieren caja abierta
 
 ## Observaciones:
-- El `rateLimitStore` en memoria se resetea con cada cold start de Vercel — aceptable para escala actual (≤50 tenants)
-- Rate limit para login corre ANTES del bypass de rutas públicas, asegurando protección anti-brute-force
-- El endpoint GET de `/api/help/unanswered` usa `groupBy` para deduplicar preguntas idénticas
-
-## Próximo: revisar /ayuda/unanswered en producción para confirmar que carga; monitorear si se acumulan preguntas frecuentes para ampliar la KB.
+- La orden describía código faltante pero ambas protecciones ya existían — la única corrección real fue el status code 400→409
+- El modelo `Debt` en el schema no tiene campo `status`, por lo que la sugerencia de marcar `status: "PAID"` no aplica a esta base de código
