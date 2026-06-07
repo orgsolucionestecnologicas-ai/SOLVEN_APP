@@ -76,9 +76,10 @@ model Tenant {
   services          Service[]
   promotions        Promotion[]
   inventoryMovements InventoryMovement[]
-  storeSettings     StoreSettings?
-  subscription      Subscription?
-  helpQueries       HelpQuery[]
+  storeSettings        StoreSettings?
+  subscription         Subscription?
+  helpQueries          HelpQuery[]
+  onboardingCompleted  Boolean @default(false)
 }
 
 model User {
