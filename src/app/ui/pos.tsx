@@ -2377,11 +2377,23 @@ function PrintModal({
   onClose: () => void;
 }) {
   const [emailSent, setEmailSent] = useState(false);
+  const [businessName, setBusinessName] = useState("Mi negocio");
   const saleNumber = `#${String(folio).padStart(4, "0")}`;
   const saleDate = new Intl.DateTimeFormat("es-419", {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit", hour12: true,
   }).format(new Date());
+  const itemsTotal = cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  const discount = itemsTotal - total;
+
+  useEffect(() => {
+    fetch("/api/settings", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body) => {
+        if (body.data?.businessName) setBusinessName(body.data.businessName);
+      })
+      .catch(() => {});
+  }, []);
 
   function openPrintWindow(html: string) {
     const win = window.open("", "_blank", "width=800,height=600");
@@ -2394,8 +2406,11 @@ function PrintModal({
 
   function handlePrintTicket() {
     const rows = cartItems
-      .map((item) => `<tr><td>${item.productName}</td><td style="text-align:center">${item.quantity}</td><td style="text-align:right">${formatARS(item.unitPrice * item.quantity)}</td></tr>`)
+      .map((item) => `<tr><td>${item.productName}</td><td style="text-align:center">${item.quantity}</td><td style="text-align:right">${formatARS(item.unitPrice)}</td><td style="text-align:right">${formatARS(item.unitPrice * item.quantity)}</td></tr>`)
       .join("");
+    const discountRow = discount > 0
+      ? `<p class="center">Descuento: -${formatARS(discount)}</p>`
+      : "";
     openPrintWindow(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
       body{font-family:monospace;width:72mm;margin:0 auto;padding:4mm;font-size:11px}
       h2{text-align:center;font-size:13px;margin:0 0 4px}
@@ -2403,14 +2418,15 @@ function PrintModal({
       td{padding:2px 0}.center{text-align:center}
       .total{font-weight:bold;font-size:13px;border-top:1px dashed #000;padding-top:4px;margin-top:4px}
     </style></head><body>
-      <h2>Tienda Demo</h2>
+      <h2>${businessName}</h2>
       <p class="center">Venta ${saleNumber}</p>
       <p class="center">${saleDate}</p>
       <p class="center">Pago: ${paymentMethod}</p>
       <hr style="border-style:dashed"/>
-      <table><thead><tr><th style="text-align:left">Producto</th><th>Cant.</th><th style="text-align:right">Total</th></tr></thead>
+      <table><thead><tr><th style="text-align:left">Producto</th><th>Cant.</th><th style="text-align:right">P.Unit</th><th style="text-align:right">Total</th></tr></thead>
       <tbody>${rows}</tbody></table>
       <hr style="border-style:dashed"/>
+      ${discountRow}
       <p class="total center">Total: ${formatARS(total)}</p>
       <p class="center" style="margin-top:8px;font-size:10px">¡Gracias por su compra!</p>
     </body></html>`);
@@ -2432,13 +2448,16 @@ function PrintModal({
       .footer{margin-top:24px;text-align:center;color:#94a3b8;font-size:11px}
     </style></head><body>
       <div class="header">
-        <div class="business">Tienda Demo</div>
+        <div>
+          <div class="business">${businessName}</div>
+          <p style="margin:2px 0;color:#64748b;font-size:12px">Comprobante de venta</p>
+        </div>
         <div class="meta"><p><strong>Factura ${saleNumber}</strong></p><p>${saleDate}</p><p>Método de pago: ${paymentMethod}</p></div>
       </div>
       <table><thead><tr><th>Producto</th><th style="text-align:center">Cant.</th><th style="text-align:right">Precio unit.</th><th style="text-align:right">Total</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="total-row"><td colspan="3">Total</td><td style="text-align:right">${formatARS(total)}</td></tr></tfoot></table>
-      <div class="footer">Tienda Demo · ¡Gracias por su compra!</div>
+      <div class="footer">${businessName} · ¡Gracias por su compra!</div>
     </body></html>`);
   }
 
