@@ -1,6 +1,27 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, verifySession } from "@/lib/auth";
 
+// ─── Rate limiting simple (in-memory, por IP) ──────────────────────────────
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+function rateLimit(ip: string, route: string, limit: number, windowMs: number): boolean {
+  const key = `${ip}:${route}`;
+  const now = Date.now();
+  const entry = rateLimitStore.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+
+  if (entry.count >= limit) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
+}
+
 const PUBLIC_PATHS = ["/", "/login", "/register", "/suscripcion-vencida"];
 const WEBHOOK_PREFIX = "/api/webhooks/";
 const AUTH_PREFIX = "/api/auth/";
@@ -15,6 +36,34 @@ function isPublic(pathname: string): boolean {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+
+  if (pathname === "/api/auth/login") {
+    if (!rateLimit(ip, "login", 10, 60_000)) {
+      return new Response(JSON.stringify({ error: "Demasiados intentos. Esperá un momento." }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
+  }
+
+  if (pathname === "/api/sales" && request.method === "POST") {
+    if (!rateLimit(ip, "sales-post", 60, 60_000)) {
+      return new Response(JSON.stringify({ error: "Demasiadas solicitudes. Intentá de nuevo." }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
+  }
+
+  if (pathname.startsWith("/api/webhooks/rebill")) {
+    if (!rateLimit(ip, "webhook-rebill", 100, 60_000)) {
+      return new Response(JSON.stringify({ error: "Rate limit excedido." }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
+  }
 
   if (isPublic(pathname)) {
     return NextResponse.next();
