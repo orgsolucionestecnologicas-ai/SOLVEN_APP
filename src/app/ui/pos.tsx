@@ -1277,7 +1277,7 @@ export function Pos() {
           </div>
 
           {/* ── RIGHT PANEL ── */}
-          <div className="flex h-full w-80 flex-shrink-0 flex-col bg-white lg:w-96">
+          <div className="flex h-full w-96 flex-shrink-0 flex-col bg-white lg:w-[480px]">
 
             {/* Draft recovery banner */}
             {showDraftBanner ? (
