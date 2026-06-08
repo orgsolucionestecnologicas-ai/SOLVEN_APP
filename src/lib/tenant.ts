@@ -1,6 +1,20 @@
 import { cookies } from "next/headers";
 import { type SessionPayload, verifySession } from "./auth";
 
+export class ForbiddenError extends Error {
+  constructor(message = "Forbidden") {
+    super(message);
+    this.name = "ForbiddenError";
+  }
+}
+
+export class UnauthorizedError extends Error {
+  constructor(message = "Unauthorized") {
+    super(message);
+    this.name = "UnauthorizedError";
+  }
+}
+
 export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("solven_session")?.value;
@@ -15,7 +29,7 @@ export async function getTenantId(): Promise<string | null> {
 
 export async function requireTenantId(): Promise<string> {
   const tenantId = await getTenantId();
-  if (!tenantId) throw new Error("Unauthorized");
+  if (!tenantId) throw new UnauthorizedError();
   return tenantId;
 }
 
@@ -23,7 +37,7 @@ export async function requireRole(
   allowedRoles: string[]
 ): Promise<{ tenantId: string; userId: string; role: string }> {
   const session = await getSession();
-  if (!session) throw new Error("Unauthorized");
-  if (!allowedRoles.includes(session.role)) throw new Error("Forbidden");
+  if (!session) throw new UnauthorizedError();
+  if (!allowedRoles.includes(session.role)) throw new ForbiddenError();
   return { tenantId: session.tenantId, userId: session.userId, role: session.role };
 }

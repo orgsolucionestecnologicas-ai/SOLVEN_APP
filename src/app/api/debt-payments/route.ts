@@ -10,15 +10,23 @@ import {
 } from "../../../modules/debts/debt-payment-validation";
 import {
   errorResponse,
+  forbiddenResponse,
   invalidJsonResponse,
   isPrismaRecordNotFoundError,
   isRequestObject,
-  successResponse
+  successResponse,
+  unauthorizedResponse
 } from "../_shared/responses";
-import { requireTenantId } from "@/lib/tenant";
+import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
 
 export async function GET() {
-  const tenantId = await requireTenantId();
+  let tenantId: string;
+  try {
+    tenantId = await requireTenantId();
+  } catch (e) {
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   try {
     const debtPayments = await listDebtPayments(tenantId);
     return successResponse(debtPayments);
@@ -28,7 +36,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const tenantId = await requireTenantId();
+  let tenantId: string;
+  try {
+    ({ tenantId } = await requireRole(["OWNER", "CASHIER"]));
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   let requestBody: unknown;
 
   try {

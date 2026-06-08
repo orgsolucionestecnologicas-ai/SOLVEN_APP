@@ -6,18 +6,29 @@ import {
 } from "../../../../modules/users";
 import {
   errorResponse,
+  forbiddenResponse,
   invalidJsonResponse,
   isPrismaRecordNotFoundError,
   isRequestObject,
-  successResponse
+  successResponse,
+  unauthorizedResponse
 } from "../../_shared/responses";
-import { requireRole } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id }, { tenantId, userId }] = await Promise.all([params, requireRole(["OWNER"])]);
+  let id: string, tenantId: string, userId: string;
+  try {
+    let role: { tenantId: string; userId: string; role: string };
+    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER"])]));
+    ({ tenantId, userId } = role);
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
 
   let requestBody: unknown;
   try {
@@ -48,7 +59,16 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id }, { tenantId, userId }] = await Promise.all([params, requireRole(["OWNER"])]);
+  let id: string, tenantId: string, userId: string;
+  try {
+    let role: { tenantId: string; userId: string; role: string };
+    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER"])]));
+    ({ tenantId, userId } = role);
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
 
   try {
     await deleteUser(id, tenantId, userId);

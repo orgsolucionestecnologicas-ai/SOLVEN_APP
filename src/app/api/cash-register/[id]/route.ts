@@ -6,11 +6,17 @@ import {
   closeSession,
   getSessionById
 } from "../../../../modules/cash-register";
-import { errorResponse, successResponse } from "../../_shared/responses";
-import { requireTenantId } from "@/lib/tenant";
+import { errorResponse, forbiddenResponse, successResponse, unauthorizedResponse } from "../../_shared/responses";
+import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+  let id: string, tenantId: string;
+  try {
+    ([{ id }, tenantId] = await Promise.all([params, requireTenantId()]));
+  } catch (e) {
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   try {
     const session = await getSessionById(id, tenantId);
     return successResponse(session);
@@ -23,7 +29,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+  let id: string, tenantId: string;
+  try {
+    let role: { tenantId: string; userId: string; role: string };
+    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER", "CASHIER"])]));
+    ({ tenantId } = role);
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   try {
     const body = await request.json();
     const session = await closeSession(id, body, tenantId);

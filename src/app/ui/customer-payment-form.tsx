@@ -383,7 +383,7 @@ export function CustomerPaymentForm() {
                   </label>
                   <div className="flex items-center overflow-hidden rounded-lg border border-slate-300 focus-within:border-violet-500">
                     <span className="border-r border-slate-300 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-500">
-                      RD$
+                      $
                     </span>
                     <input
                       className="flex-1 bg-white px-3 py-2.5 text-lg font-semibold text-slate-950 placeholder:text-slate-300 focus:outline-none"

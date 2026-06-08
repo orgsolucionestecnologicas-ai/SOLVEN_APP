@@ -2,14 +2,23 @@ export const dynamic = 'force-dynamic';
 import { createUser, listUsers, UserValidationError } from "../../../modules/users";
 import {
   errorResponse,
+  forbiddenResponse,
   invalidJsonResponse,
   isRequestObject,
-  successResponse
+  successResponse,
+  unauthorizedResponse
 } from "../_shared/responses";
-import { requireRole } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 
 export async function GET() {
-  const { tenantId } = await requireRole(["OWNER"]);
+  let tenantId: string;
+  try {
+    ({ tenantId } = await requireRole(["OWNER"]));
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   try {
     const users = await listUsers(tenantId);
     return successResponse(users);
@@ -19,7 +28,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { tenantId } = await requireRole(["OWNER"]);
+  let tenantId: string;
+  try {
+    ({ tenantId } = await requireRole(["OWNER"]));
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   let requestBody: unknown;
 
   try {

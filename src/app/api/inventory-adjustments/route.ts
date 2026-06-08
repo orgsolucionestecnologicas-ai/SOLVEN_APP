@@ -6,15 +6,24 @@ import {
 } from "../../../modules/inventory";
 import {
   errorResponse,
+  forbiddenResponse,
   invalidJsonResponse,
   isPrismaRecordNotFoundError,
   isRequestObject,
-  successResponse
+  successResponse,
+  unauthorizedResponse
 } from "../_shared/responses";
-import { requireRole } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 
 export async function POST(request: Request) {
-  const { tenantId } = await requireRole(["OWNER", "INVENTORY"]);
+  let tenantId: string;
+  try {
+    ({ tenantId } = await requireRole(["OWNER", "INVENTORY"]));
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   let requestBody: unknown;
 
   try {

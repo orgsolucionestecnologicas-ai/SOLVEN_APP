@@ -6,14 +6,23 @@ import {
 } from "../../../modules/returns";
 import {
   errorResponse,
+  forbiddenResponse,
   invalidJsonResponse,
   isRequestObject,
-  successResponse
+  successResponse,
+  unauthorizedResponse
 } from "../_shared/responses";
-import { requireTenantId } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 
 export async function POST(request: Request) {
-  const tenantId = await requireTenantId();
+  let tenantId: string;
+  try {
+    ({ tenantId } = await requireRole(["OWNER", "CASHIER"]));
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   let body: unknown;
 
   try {

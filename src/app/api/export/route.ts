@@ -1,12 +1,20 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
+import { forbiddenResponse, unauthorizedResponse } from "../_shared/responses";
 
 const SALES_LIMIT = 500;
 
 export async function GET() {
-  const { tenantId } = await requireRole(["OWNER"]);
+  let tenantId: string;
+  try {
+    ({ tenantId } = await requireRole(["OWNER"]));
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
 
   const [tenant, settings, products, services, customers, sales, expenses, debts] = await Promise.all([
     prisma.tenant.findUnique({ where: { id: tenantId } }),

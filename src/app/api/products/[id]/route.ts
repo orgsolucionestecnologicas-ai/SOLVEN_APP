@@ -7,19 +7,27 @@ import {
 } from "../../../../modules/products";
 import {
   errorResponse,
+  forbiddenResponse,
   invalidJsonResponse,
   isPrismaRecordNotFoundError,
   isRequestObject,
-  successResponse
+  successResponse,
+  unauthorizedResponse
 } from "../../_shared/responses";
 import { prisma } from "@/lib/prisma";
-import { requireRole, requireTenantId } from "@/lib/tenant";
+import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+  let id: string, tenantId: string;
+  try {
+    ([{ id }, tenantId] = await Promise.all([params, requireTenantId()]));
+  } catch (e) {
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   try {
     const product = await getProductById(id, tenantId);
     if (!product) return errorResponse("Producto no encontrado.", 404);
@@ -33,7 +41,16 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id }, { tenantId }] = await Promise.all([params, requireRole(["OWNER", "INVENTORY"])]);
+  let id: string, tenantId: string;
+  try {
+    let role: { tenantId: string; userId: string; role: string };
+    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER", "INVENTORY"])]));
+    tenantId = role.tenantId;
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
 
   let body: unknown;
   try {
@@ -64,7 +81,13 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+  let id: string, tenantId: string;
+  try {
+    ([{ id }, tenantId] = await Promise.all([params, requireTenantId()]));
+  } catch (e) {
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
 
   try {
     const product = await prisma.product.findFirst({ where: { id, tenantId } });

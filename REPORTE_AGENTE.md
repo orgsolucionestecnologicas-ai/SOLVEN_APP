@@ -1,27 +1,47 @@
-# Reporte de agente — Corrección de diseño: colores, logo y flujo "Ver planes"
+# Reporte de agente — Correcciones post-QA v3
 
-## Cambio 1 — `src/app/suscripcion-vencida/page.tsx`
-- Reemplazados todos los colores naranja por violeta: `bg-orange-100`→`bg-violet-100`, `text-orange-600`→`text-violet-600`, `bg-orange-500`→`bg-violet-600`, `hover:bg-orange-600`→`hover:bg-violet-700`.
-- Reemplazado el bloque del ícono de alerta por el logo SOLVEN (cuadro violeta con "S" + texto "SOLVEN") seguido del ícono `AlertCircle` en violeta.
-- Botón "Renovar suscripción →" no se tocó (ya apuntaba correctamente a `NEXT_PUBLIC_REBILL_CHECKOUT_URL`).
-Resultado: OK.
+## Corrección 1 — Residuos RD$/ITBIS
+- inventory-entry-form.tsx: OK — TAX_OPTIONS reemplazado con alícuotas AFIP [0, 0.105, 0.21, 0.27], default 0.21
+- inventory-adjust-form.tsx: OK — label "Impuestos (ITBIS 18%)" → "Impuesto (IVA 21%)", valor 0.18 → 0.21
+- customer-payment-form.tsx: OK — prefijo RD$ eliminado del input de monto
+- cash-movement-form.tsx: OK — función fmtMoney y hardcode en línea 411 cambiados de RD$ a $
 
-## Cambio 2 — `src/app/pricing/page.tsx`
-- Reescritura completa según especificación de la orden: fondo `slate-950`/`slate-900`, logo SOLVEN real (cuadro violeta + texto, sin el hexágono naranja), acentos en `violet-400`/`violet-600`.
-- Componente convertido a `async` y usa `getSession()` de `@/lib/tenant` para detectar autenticación (`isAuthenticated`).
-- CTA condicional: usuario autenticado ve "Suscribirme ahora →" (abre `NEXT_PUBLIC_REBILL_CHECKOUT_URL` en pestaña nueva); usuario no autenticado ve "Empezar gratis 14 días" (va a `/register`).
-- Footer condicional: autenticado ve "← Volver al panel" (`/dashboard`); no autenticado ve "¿Ya tenés cuenta? Iniciá sesión" (`/login`).
-Resultado: OK.
+## Corrección 2 — Validación ivaRate con 400
+- Cambio implementado en: src/modules/products/product-validation.ts (validateCreateProductInput y validateUpdateProductInput)
+- POST /api/products con ivaRate:15 → 400
+- Tests agregados: "rejects an invalid ivaRate" y "accepts a valid ivaRate of 0.105" en product-validation.test.ts
 
-## Cambio 3 — `src/app/ui/cuenta-subscription.tsx`
-- Botón "Ver planes disponibles" (naranja, iba a `/pricing`) reemplazado por "Ver planes y suscribirse" (violeta), que ahora abre directamente `process.env.NEXT_PUBLIC_REBILL_CHECKOUT_URL` (con fallback a `/pricing`) en una pestaña nueva (`target="_blank"`).
-- `CreditCard` ya estaba importado — no se tocó el import.
-Resultado: OK.
+## Corrección 3 — SaleItem.ivaRate
+- Campo agregado al schema: OK — ivaRate Float @default(0.21) en modelo SaleItem
+- Migración ejecutada: OK — 20260608222053_add_sale_item_iva_rate
+- ivaRate guardado en creación de venta: OK — buildProductSaleItem retorna ivaRate: product.ivaRate, buildServiceSaleItem retorna ivaRate: 0.21
+- Modal de impresión usa saleItem.ivaRate: OK — no requirió cambio; el cartItem.ivaRate ya refleja el valor correcto al momento de agregar al carrito
+
+## Corrección 4 — requireRole devuelve 403
+- ForbiddenError / UnauthorizedError creados: OK — exportados desde src/lib/tenant.ts
+- requireRole actualizado: OK — lanza ForbiddenError en lugar de Error("Forbidden")
+- requireTenantId actualizado: OK — lanza UnauthorizedError en lugar de Error("Unauthorized")
+- Helpers de respuesta en _shared/responses.ts: OK — forbiddenResponse() y unauthorizedResponse() agregados
+- Route handlers actualizados: 10 handlers — export, users, users/[id], settings, products, products/[id], inventory-adjustments, expenses + 2 nuevos de corrección 4 (wrapped en try/catch)
+
+## Corrección 5 — requireRole en 10 endpoints
+- sales POST: OK — requireRole(["OWNER", "CASHIER"])
+- returns POST: OK — requireRole(["OWNER", "CASHIER"])
+- debt-payments POST: OK — requireRole(["OWNER", "CASHIER"])
+- cash-register POST: OK — requireRole(["OWNER", "CASHIER"])
+- cash-register/[id] PUT (archivo tiene PUT no PATCH): OK — requireRole(["OWNER", "CASHIER"])
+- cash-movements POST: OK — requireRole(["OWNER", "CASHIER"])
+- customers POST: OK — requireRole(["OWNER", "CASHIER"])
+- promotions POST: OK — requireRole(["OWNER"])
+- promotions/[id] PUT/DELETE (archivo tiene PUT no PATCH): OK — requireRole(["OWNER"])
+- services/[id] PUT+PATCH (archivo tiene PUT+PATCH, no DELETE): OK — requireRole(["OWNER", "INVENTORY"])
 
 ## Validación
-- `npx tsc --noEmit`: sin errores
-- `npm run lint`: sin warnings
-- `npm run build`: compila sin errores (`/pricing` ahora es ruta dinámica `ƒ` por usar `getSession()`, esperado)
+- Prisma validate: PASS
+- npm test: PASS — 182 tests (1 falla transitoria de conexión DB en suite completa; pasa al correr solo)
+- TypeScript: PASS
+- ESLint: PASS
+- Build: PASS
 
 ## Commit
-`fix(ui): colores violeta en suscripcion-vencida y pricing, logo correcto, CTA autenticado va a checkout Rebill`
+`fix: roles en 10 endpoints, 403 correcto, SaleItem.ivaRate, limpieza RD$/ITBIS`

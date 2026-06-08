@@ -25,6 +25,14 @@ export function invalidJsonResponse() {
   return errorResponse("Request body must be valid JSON.", 400);
 }
 
+export function forbiddenResponse(message = "Forbidden") {
+  return errorResponse(message, 403);
+}
+
+export function unauthorizedResponse(message = "Unauthorized") {
+  return errorResponse(message, 401);
+}
+
 export function paginatedResponse<T>(
   data: T[],
   page: number,

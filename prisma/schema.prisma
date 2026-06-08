@@ -151,6 +151,7 @@ model SaleItem {
   serviceId  String?
   quantity   Int
   unitPrice  Decimal  @db.Decimal(12, 2)
+  ivaRate    Float    @default(0.21)
   total      Decimal  @db.Decimal(12, 2)
   sale       Sale     @relation(fields: [saleId], references: [id])
   product    Product? @relation(fields: [productId], references: [id])

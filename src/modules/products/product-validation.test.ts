@@ -83,4 +83,28 @@ describe("validateCreateProductInput", () => {
     const input = { name: "Rice", costPrice: 10, salePrice: 15, stock: 5 };
     expect(() => validateCreateProductInput(input)).not.toThrow();
   });
+
+  it("rejects an invalid ivaRate", () => {
+    expect(() =>
+      validateCreateProductInput({
+        name: "Rice",
+        costPrice: 10,
+        salePrice: 15,
+        stock: 5,
+        ivaRate: 15
+      })
+    ).toThrow(ProductValidationError);
+  });
+
+  it("accepts a valid ivaRate of 0.105", () => {
+    expect(
+      validateCreateProductInput({
+        name: "Rice",
+        costPrice: 10,
+        salePrice: 15,
+        stock: 5,
+        ivaRate: 0.105
+      })
+    ).toMatchObject({ ivaRate: 0.105 });
+  });
 });

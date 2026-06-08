@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "SaleItem" ADD COLUMN     "ivaRate" DOUBLE PRECISION NOT NULL DEFAULT 0.21;

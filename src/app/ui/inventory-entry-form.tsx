@@ -53,8 +53,10 @@ const TIPOS_ENTRADA = [
 const ALMACENES = ["Tienda Principal", "Mostrador", "Bodega"] as const;
 
 const TAX_OPTIONS = [
-  { label: "18% ITBIS", value: 0.18 },
-  { label: "0%", value: 0 }
+  { label: "21% IVA", value: 0.21 },
+  { label: "10.5% IVA", value: 0.105 },
+  { label: "27% IVA", value: 0.27 },
+  { label: "Sin IVA (0%)", value: 0 }
 ] as const;
 
 function makeReference(prefix: string): string {
@@ -156,7 +158,7 @@ export function InventoryEntryForm() {
         currentStock: product.stock,
         quantity: 1,
         unitCost: parseFloat(product.costPrice) || 0,
-        taxRate: 0
+        taxRate: 0.21
       }
     ]);
     setSearchQuery("");

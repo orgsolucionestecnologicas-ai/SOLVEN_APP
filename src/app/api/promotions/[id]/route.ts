@@ -10,17 +10,25 @@ import {
 } from "../../../../modules/promotions";
 import {
   errorResponse,
+  forbiddenResponse,
   invalidJsonResponse,
   isRequestObject,
-  successResponse
+  successResponse,
+  unauthorizedResponse
 } from "../../_shared/responses";
-import { requireTenantId } from "@/lib/tenant";
+import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+  let id: string, tenantId: string;
+  try {
+    ([{ id }, tenantId] = await Promise.all([params, requireTenantId()]));
+  } catch (e) {
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   try {
     const promotion = await getPromotionById(id, tenantId);
     return successResponse(promotion);
@@ -36,7 +44,16 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+  let id: string, tenantId: string;
+  try {
+    let role: { tenantId: string; userId: string; role: string };
+    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER"])]));
+    ({ tenantId } = role);
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
 
   let body: unknown;
   try {
@@ -67,7 +84,16 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+  let id: string, tenantId: string;
+  try {
+    let role: { tenantId: string; userId: string; role: string };
+    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER"])]));
+    ({ tenantId } = role);
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   try {
     await deletePromotion(id, tenantId);
     return successResponse({ deleted: true });

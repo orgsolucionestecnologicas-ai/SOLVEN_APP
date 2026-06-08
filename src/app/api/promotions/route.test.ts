@@ -1,4 +1,9 @@
-vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+vi.mock("@/lib/tenant", () => ({
+  requireTenantId: vi.fn().mockResolvedValue("test-tenant-id"),
+  requireRole: vi.fn().mockResolvedValue({ tenantId: "test-tenant-id", userId: "test-user-id", role: "OWNER" }),
+  ForbiddenError: class ForbiddenError extends Error {},
+  UnauthorizedError: class UnauthorizedError extends Error {}
+}));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

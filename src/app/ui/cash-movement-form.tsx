@@ -54,7 +54,7 @@ const METODOS_PAGO = ["Efectivo", "Tarjeta", "Transferencia", "Cheque", "Otro"] 
 const moneyFmt = new Intl.NumberFormat("es-419", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dateFmt = new Intl.DateTimeFormat("es-419", { day: "2-digit", month: "short", year: "numeric" });
 
-function fmtMoney(v: number) { return `RD$ ${moneyFmt.format(v)}`; }
+function fmtMoney(v: number) { return `$ ${moneyFmt.format(v)}`; }
 function fmtDate(v: string) { return dateFmt.format(new Date(v)); }
 
 function todayISO(): string {
@@ -408,7 +408,7 @@ export function CashMovementForm() {
               <div className="rounded-xl border border-slate-200 bg-white p-5">
                 <div className="flex items-center overflow-hidden rounded-lg border border-slate-300 focus-within:border-violet-500">
                   <span className="border-r border-slate-300 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
-                    RD$
+                    $
                   </span>
                   <input
                     autoFocus

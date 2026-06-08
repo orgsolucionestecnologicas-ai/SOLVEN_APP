@@ -272,6 +272,7 @@ function buildProductSaleItem(
     productId: item.productId,
     quantity: item.quantity,
     unitPrice: product.salePrice,
+    ivaRate: product.ivaRate,
     total: product.salePrice.mul(item.quantity)
   };
 }
@@ -290,6 +291,7 @@ function buildServiceSaleItem(
     serviceId: item.serviceId,
     quantity: item.quantity,
     unitPrice: service.price,
+    ivaRate: 0.21,
     total: service.price.mul(item.quantity)
   };
 }

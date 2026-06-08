@@ -244,7 +244,7 @@ export function InventoryAdjustForm() {
     (sum, item) => sum + item.quantity * item.costPrice,
     0
   );
-  const impuestos = costoTotal * 0.18;
+  const impuestos = costoTotal * 0.21;
   const valorTotal = costoTotal + impuestos;
 
   function validate(): string | null {
@@ -726,7 +726,7 @@ export function InventoryAdjustForm() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-600">
-                    Impuestos (ITBIS 18%)
+                    Impuesto (IVA 21%)
                   </span>
                   <span className="text-sm font-semibold text-slate-950">
                     AR$ {moneyFmt.format(impuestos)}

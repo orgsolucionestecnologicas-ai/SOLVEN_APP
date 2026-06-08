@@ -7,14 +7,22 @@ import {
 } from "../../../modules/settings/settings-validation";
 import {
   errorResponse,
+  forbiddenResponse,
   invalidJsonResponse,
   isRequestObject,
-  successResponse
+  successResponse,
+  unauthorizedResponse
 } from "../_shared/responses";
-import { requireRole, requireTenantId } from "@/lib/tenant";
+import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
 
 export async function GET() {
-  const tenantId = await requireTenantId();
+  let tenantId: string;
+  try {
+    tenantId = await requireTenantId();
+  } catch (e) {
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   try {
     const settings = await getSettings(tenantId);
     return successResponse(settings);
@@ -24,7 +32,14 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const { tenantId } = await requireRole(["OWNER"]);
+  let tenantId: string;
+  try {
+    ({ tenantId } = await requireRole(["OWNER"]));
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
   let requestBody: unknown;
   try {
     requestBody = await request.json();

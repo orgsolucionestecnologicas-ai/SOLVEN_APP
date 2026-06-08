@@ -69,9 +69,14 @@ export function validateCreateProductInput(
       ? productInput.categoryName
       : "Otros";
 
-  const ivaRate = IVA_RATES.includes(productInput.ivaRate as IvaRate)
-    ? (productInput.ivaRate as number)
-    : 0.21;
+  let ivaRate = 0.21;
+  if (productInput.ivaRate !== undefined) {
+    if (!IVA_RATES.includes(productInput.ivaRate as IvaRate)) {
+      validationErrors.push("ivaRate inválido. Valores aceptados: 0, 0.105, 0.21, 0.27");
+    } else {
+      ivaRate = productInput.ivaRate;
+    }
+  }
 
   if (validationErrors.length > 0) {
     throw new ProductValidationError(validationErrors);
@@ -138,9 +143,11 @@ export function validateUpdateProductInput(
   }
 
   if (input.ivaRate !== undefined) {
-    result.ivaRate = IVA_RATES.includes(input.ivaRate as IvaRate)
-      ? input.ivaRate
-      : 0.21;
+    if (!IVA_RATES.includes(input.ivaRate as IvaRate)) {
+      errors.push("ivaRate inválido. Valores aceptados: 0, 0.105, 0.21, 0.27");
+    } else {
+      result.ivaRate = input.ivaRate;
+    }
   }
 
   if (errors.length > 0) {
