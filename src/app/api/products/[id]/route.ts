@@ -12,6 +12,7 @@ import {
   isRequestObject,
   successResponse
 } from "../../_shared/responses";
+import { prisma } from "@/lib/prisma";
 import { requireRole, requireTenantId } from "@/lib/tenant";
 
 export async function GET(
@@ -56,5 +57,22 @@ export async function PUT(
       return errorResponse("Producto no encontrado.", 404);
     }
     return errorResponse("No se pudo actualizar el producto.");
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+
+  try {
+    const product = await prisma.product.findFirst({ where: { id, tenantId } });
+    if (!product) return errorResponse("Producto no encontrado.", 404);
+
+    await prisma.product.delete({ where: { id } });
+    return successResponse({ deleted: true });
+  } catch {
+    return errorResponse("No se pudo eliminar el producto.");
   }
 }

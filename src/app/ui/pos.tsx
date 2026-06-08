@@ -142,24 +142,6 @@ type CashPaymentCard = { method: CashPaymentMethod; Icon: LucideIcon };
 const DRAFT_KEY = "solven_draft";
 const CART_KEY = "solven_pos_cart";
 
-const CATEGORIES = [
-  "Todos",
-  "Alimentos",
-  "Bebidas",
-  "Limpieza",
-  "Cuidado Personal",
-  "Hogar",
-  "Otros",
-];
-
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  Alimentos: ["arroz", "azúcar", "aceite", "leche", "pan", "huevo", "atún", "café", "harina", "frijol", "sal"],
-  Bebidas: ["agua", "refresco", "jugo", "gaseosa", "bebida"],
-  Limpieza: ["jabón", "detergente", "cloro", "limpiador", "escoba"],
-  "Cuidado Personal": ["shampoo", "pasta dental", "desodorante", "crema"],
-  Hogar: ["papel", "servilleta", "bolsa", "foco"],
-};
-
 const PRODUCTS_PER_PAGE = 10;
 
 const TABS: ActiveTab[] = ["Venta actual", "Historial"];
@@ -217,14 +199,6 @@ function formatPromoApplication(promo: ActivePromotion): string {
     default:
       return promo.application;
   }
-}
-
-function getProductCategory(name: string): string {
-  const lower = name.toLowerCase();
-  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((kw) => lower.includes(kw))) return cat;
-  }
-  return "Otros";
 }
 
 function readDraft(): CartItem[] | null {
@@ -462,6 +436,13 @@ export function Pos() {
     }
   }, [customers, customersLoaded]);
 
+  const categories = useMemo(() => {
+    const unique = Array.from(
+      new Set(products.map((p) => p.categoryName).filter(Boolean))
+    ).sort();
+    return ["Todos", ...unique];
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     let result = products;
     const q = searchQuery.trim().toLowerCase();
@@ -470,7 +451,7 @@ export function Pos() {
       (p.productCode?.toLowerCase().includes(q) ?? false)
     );
     if (activeCategory !== "Todos") {
-      result = result.filter((p) => getProductCategory(p.name) === activeCategory);
+      result = result.filter((p) => p.categoryName === activeCategory);
     }
     return result;
   }, [products, searchQuery, activeCategory]);
@@ -1017,7 +998,7 @@ export function Pos() {
 
               {/* Category pills */}
               <div className="flex gap-1.5 overflow-x-auto pb-3">
-                {CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <button
                     key={cat}
                     className={

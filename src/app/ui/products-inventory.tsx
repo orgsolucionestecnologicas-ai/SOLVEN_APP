@@ -143,6 +143,7 @@ export function ProductsInventory() {
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null);
   const [adjustingProduct, setAdjustingProduct] = useState<ProductRecord | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<ProductRecord | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
@@ -315,6 +316,12 @@ export function ProductsInventory() {
     setAdjustingProduct(null);
     setRefreshKey((k) => k + 1);
     showSuccess("Stock actualizado exitosamente.");
+  }
+
+  function handleProductDeleted() {
+    setDeletingProduct(null);
+    setRefreshKey((k) => k + 1);
+    showSuccess("Producto eliminado exitosamente.");
   }
 
   function handleServiceCreated() {
@@ -752,6 +759,10 @@ export function ProductsInventory() {
                           setAdjustingProduct(product);
                           setOpenMenuId(null);
                         }}
+                        onDelete={() => {
+                          setDeletingProduct(product);
+                          setOpenMenuId(null);
+                        }}
                         onEdit={() => {
                           setEditingProduct(product);
                           setOpenMenuId(null);
@@ -875,6 +886,14 @@ export function ProductsInventory() {
         />
       ) : null}
 
+      {deletingProduct ? (
+        <DeleteProductModal
+          onClose={() => setDeletingProduct(null)}
+          onSuccess={handleProductDeleted}
+          product={deletingProduct}
+        />
+      ) : null}
+
       {showCategoryManager ? (
         <CategoryManagerModal
           customCategories={customCategories}
@@ -913,6 +932,7 @@ type ProductRowProps = {
   onMenuToggle: () => void;
   onEdit: () => void;
   onAdjustStock: () => void;
+  onDelete: () => void;
 };
 
 function ProductRow({
@@ -920,7 +940,8 @@ function ProductRow({
   isMenuOpen,
   onMenuToggle,
   onEdit,
-  onAdjustStock
+  onAdjustStock,
+  onDelete
 }: ProductRowProps) {
   const router = useRouter();
   const category = product.categoryName;
@@ -1015,17 +1036,17 @@ function ProductRow({
                 </button>
                 <button
                   className="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                  onClick={onEdit}
-                  type="button"
-                >
-                  Editar
-                </button>
-                <button
-                  className="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
                   onClick={onAdjustStock}
                   type="button"
                 >
                   Ajustar stock
+                </button>
+                <button
+                  className="flex w-full items-center px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
+                  onClick={onDelete}
+                  type="button"
+                >
+                  Eliminar producto
                 </button>
               </div>
             ) : null}
@@ -1572,6 +1593,118 @@ function AdjustStockModal({ product, onClose, onSuccess }: AdjustStockModalProps
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+type DeleteProductModalProps = {
+  product: ProductRecord;
+  onClose: () => void;
+  onSuccess: () => void;
+};
+
+function DeleteProductModal({ product, onClose, onSuccess }: DeleteProductModalProps) {
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  async function handleDelete() {
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const verifyResponse = await fetch("/api/auth/verify-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
+      if (!verifyResponse.ok) {
+        setSubmitError("Contraseña incorrecta. Intentá de nuevo.");
+        return;
+      }
+
+      const deleteResponse = await fetch(`/api/products/${product.id}`, {
+        method: "DELETE"
+      });
+      if (!deleteResponse.ok) {
+        setSubmitError("No se pudo eliminar el producto.");
+        return;
+      }
+
+      onSuccess();
+    } catch {
+      setSubmitError("Error de red. Intentá de nuevo.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">Eliminar producto</h2>
+          <button
+            className="text-slate-400 hover:text-slate-700"
+            onClick={onClose}
+            type="button"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="space-y-4 px-6 py-5">
+          <p className="text-sm text-slate-500">
+            Ingresá tu contraseña para confirmar la eliminación de{" "}
+            <span className="font-medium text-slate-900">{product.name}</span>.
+            Esta acción no se puede deshacer.
+          </p>
+
+          <FormField htmlFor="delete-password" label="Contraseña">
+            <input
+              autoFocus
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="delete-password"
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Tu contraseña"
+              type="password"
+              value={password}
+            />
+          </FormField>
+
+          {submitError ? (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+              <p className="text-sm font-medium text-rose-900">{submitError}</p>
+            </div>
+          ) : null}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              disabled={isSubmitting}
+              onClick={onClose}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+              disabled={isSubmitting || !password}
+              onClick={() => void handleDelete()}
+              type="button"
+            >
+              {isSubmitting ? "Eliminando..." : "Eliminar"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

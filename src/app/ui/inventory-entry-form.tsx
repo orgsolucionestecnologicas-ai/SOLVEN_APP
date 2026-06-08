@@ -52,12 +52,6 @@ const TIPOS_ENTRADA = [
 
 const ALMACENES = ["Tienda Principal", "Mostrador", "Bodega"] as const;
 
-const MONEDAS = [
-  "DOP - Peso dominicano",
-  "USD - Dólar",
-  "EUR - Euro"
-] as const;
-
 const TAX_OPTIONS = [
   { label: "18% ITBIS", value: 0.18 },
   { label: "0%", value: 0 }
@@ -90,7 +84,7 @@ export function InventoryEntryForm() {
     makeReference("FACT")
   );
   const [almacen, setAlmacen] = useState("Tienda Principal");
-  const [moneda, setMoneda] = useState("DOP - Peso dominicano");
+  const [moneda] = useState("ARS - Peso argentino");
   const [notas, setNotas] = useState("");
 
   const [allProducts, setAllProducts] = useState<ProductRecord[]>([]);
@@ -99,7 +93,6 @@ export function InventoryEntryForm() {
   const [entryItems, setEntryItems] = useState<EntryItem[]>([]);
 
   const [descuento, setDescuento] = useState("0");
-  const [globalTaxRate, setGlobalTaxRate] = useState(0.18);
   const [transporte, setTransporte] = useState("0");
   const [otrosGastos, setOtrosGastos] = useState("0");
 
@@ -206,7 +199,6 @@ export function InventoryEntryForm() {
         notas,
         entryItems,
         descuento,
-        globalTaxRate,
         transporte,
         otrosGastos
       };
@@ -225,12 +217,10 @@ export function InventoryEntryForm() {
     (sum, item) => sum + item.quantity * item.unitCost,
     0
   );
-  const impuestosTotal = subtotal * globalTaxRate;
   const descuentoNum = parseFloat(descuento) || 0;
   const transporteNum = parseFloat(transporte) || 0;
   const otrosNum = parseFloat(otrosGastos) || 0;
-  const totalFinal =
-    subtotal + impuestosTotal - descuentoNum + transporteNum + otrosNum;
+  const totalFinal = subtotal - descuentoNum + transporteNum + otrosNum;
 
   function validate(): string | null {
     if (!tipoEntrada) return "Selecciona el tipo de entrada.";
@@ -397,7 +387,7 @@ export function InventoryEntryForm() {
                       className={`${inputClass} flex-1`}
                       id="ent-proveedor"
                       onChange={(e) => setProveedor(e.target.value)}
-                      placeholder="Agroinsumos del Cibao, SRL"
+                      placeholder="Nombre del proveedor"
                       type="text"
                       value={proveedor}
                     />
@@ -476,24 +466,6 @@ export function InventoryEntryForm() {
                     {ALMACENES.map((a) => (
                       <option key={a} value={a}>
                         {a}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className={labelClass} htmlFor="ent-moneda">
-                    Moneda
-                  </label>
-                  <select
-                    className={selectClass}
-                    id="ent-moneda"
-                    onChange={(e) => setMoneda(e.target.value)}
-                    value={moneda}
-                  >
-                    {MONEDAS.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
                       </option>
                     ))}
                   </select>
@@ -783,26 +755,6 @@ export function InventoryEntryForm() {
                 <div className="flex items-center justify-between gap-4">
                   <label
                     className="shrink-0 text-sm text-slate-600"
-                    htmlFor="ent-impuestos"
-                  >
-                    Impuestos
-                  </label>
-                  <select
-                    className="w-44 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
-                    id="ent-impuestos"
-                    onChange={(e) =>
-                      setGlobalTaxRate(parseFloat(e.target.value))
-                    }
-                    value={globalTaxRate}
-                  >
-                    <option value={0.18}>18% ITBIS</option>
-                    <option value={0}>0%</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between gap-4">
-                  <label
-                    className="shrink-0 text-sm text-slate-600"
                     htmlFor="ent-transporte"
                   >
                     Transporte / Flete
@@ -911,12 +863,6 @@ export function InventoryEntryForm() {
                     <span className="text-xs text-slate-500">Subtotal</span>
                     <span className="text-xs font-medium text-slate-950">
                       AR$ {moneyFmt.format(subtotal)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Impuestos</span>
-                    <span className="text-xs font-medium text-slate-950">
-                      AR$ {moneyFmt.format(impuestosTotal)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
