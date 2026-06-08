@@ -1,28 +1,49 @@
-# Reporte de agente — Panel de caja actual en POS
+# Reporte de agente — 6 cambios de UI/UX (limpieza general)
 
-## Tarea
-Ampliar el panel derecho ("Venta actual / caja actual") del POS para mejorar la
-legibilidad de nombres de productos largos en monitores pequeños.
+## Cambio 1 — POS: categorías reales en lugar de hardcodeadas
+**Archivo:** `src/app/ui/pos.tsx`
+- Eliminados `CATEGORIES`, `CATEGORY_KEYWORDS` y `getProductCategory()`.
+- Agregado memo `categories` que deriva las categorías únicas desde `products[].categoryName`.
+- El filtro y el render de pills ahora usan `categories` y `p.categoryName` directamente.
+Resultado: OK.
 
-## Cambio realizado
-**Archivo:** `src/app/ui/pos.tsx` (línea 1280)
+## Cambio 2 — Botón de ayuda reposicionado
+**Archivo:** `src/components/help/HelpChat.tsx`
+- Botón flotante: `fixed bottom-6 right-6 z-50` → `fixed bottom-24 right-4 z-40`.
+- Panel del chat: `fixed bottom-24 right-6 z-50` → `fixed bottom-40 right-4 z-40`.
+Resultado: OK.
 
-```tsx
-// ANTES:
-<div className="flex h-full w-80 flex-shrink-0 flex-col bg-white lg:w-96">
+## Cambio 3 — Eliminar producto con verificación de contraseña
+**Archivos:** `src/app/api/auth/verify-password/route.ts` (nuevo), `src/app/api/products/[id]/route.ts`, `src/app/ui/products-inventory.tsx`
+- Nuevo endpoint `POST /api/auth/verify-password`: valida sesión, compara contraseña con `verifyPassword` de `@/lib/auth` (campo real `user.password`, no `passwordHash`).
+- Agregado `DELETE` a `/api/products/[id]` (verifica pertenencia al tenant antes de borrar).
+- Quitado el botón "Editar" duplicado del menú "..." (quedó solo "Ver detalles" y "Ajustar stock").
+- Agregado botón "Eliminar producto" (rojo) y modal `DeleteProductModal` que pide contraseña, llama a `verify-password` y luego al `DELETE`.
+- El estado del modal se maneja en el componente padre (`deletingProduct`, igual que `editingProduct`/`adjustingProduct`), no dentro de `ProductRow`, para mantener el patrón existente y evitar anidar un modal `fixed` dentro de un `<tr>`.
+Resultado: OK.
 
-// DESPUÉS:
-<div className="flex h-full w-96 flex-shrink-0 flex-col bg-white lg:w-[480px]">
-```
+## Cambio 4 — Placeholder de proveedor
+**Archivo:** `src/app/ui/inventory-entry-form.tsx`
+- `placeholder="Agroinsumos del Cibao, SRL"` → `placeholder="Nombre del proveedor"`.
+Resultado: OK.
 
-- Pantallas pequeñas: `w-80` (320px) → `w-96` (384px)
-- Pantallas grandes: `lg:w-96` (384px) → `lg:w-[480px]` (480px)
+## Cambio 5 — Quitar selector de Impuestos del total
+**Archivo:** `src/app/ui/inventory-entry-form.tsx`
+- Eliminado `globalTaxRate`, el selector "Impuestos" de "Totales y ajustes adicionales", la línea "Impuestos" del resumen lateral, y `impuestosTotal` del cálculo (`totalFinal = subtotal - descuento + transporte + otros`).
+- `TAX_OPTIONS` **no** se eliminó: lo sigue usando el selector de impuesto por ítem en la tabla de productos cargados (funcionalidad distinta, no mencionada en el cambio).
+Resultado: OK (con nota — ver arriba).
 
-El panel izquierdo usa `flex-1 min-w-0`, por lo que absorbe el ajuste de ancho
-sin romper el layout.
+## Cambio 6 — Solo Peso argentino
+**Archivo:** `src/app/ui/inventory-entry-form.tsx`
+- Eliminada la constante `MONEDAS` y el selector de Moneda.
+- `moneda` ahora es estado fijo no editable: `const [moneda] = useState("ARS - Peso argentino")`, se sigue enviando en el submit.
+Resultado: OK.
 
 ## Validación
 - `npx tsc --noEmit`: sin errores
+- `npm run lint`: sin errores
+- `npm test`: 180/180 tests pasan
+- `npm run build`: compila sin errores
 
 ## Commit
-`fix(pos): ampliar panel de caja actual para mejor legibilidad en monitores pequeños`
+`fix(ui): limpieza general — categorías dinámicas en POS, botón ayuda reposicionado, eliminar producto con contraseña, remover moneda RD e impuestos dominicanos`
