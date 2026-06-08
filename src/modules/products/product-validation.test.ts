@@ -19,7 +19,8 @@ describe("validateCreateProductInput", () => {
       categoryName: "Otros",
       costPrice: 10,
       salePrice: 15,
-      stock: 20
+      stock: 20,
+      ivaRate: 0.21
     });
   });
 

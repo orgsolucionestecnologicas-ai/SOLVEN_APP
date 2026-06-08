@@ -12,12 +12,16 @@ export const PRODUCT_CATEGORIES = [
 
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 
+export const IVA_RATES = [0, 0.105, 0.21, 0.27] as const;
+export type IvaRate = (typeof IVA_RATES)[number];
+
 export type CreateProductInput = {
   name: string;
   categoryName?: string;
   costPrice: number;
   salePrice: number;
   stock: number;
+  ivaRate?: number;
 };
 
 export type ValidatedProductInput = {
@@ -26,6 +30,7 @@ export type ValidatedProductInput = {
   costPrice: number;
   salePrice: number;
   stock: number;
+  ivaRate: number;
 };
 
 export class ProductValidationError extends Error {
@@ -64,6 +69,10 @@ export function validateCreateProductInput(
       ? productInput.categoryName
       : "Otros";
 
+  const ivaRate = IVA_RATES.includes(productInput.ivaRate as IvaRate)
+    ? (productInput.ivaRate as number)
+    : 0.21;
+
   if (validationErrors.length > 0) {
     throw new ProductValidationError(validationErrors);
   }
@@ -73,7 +82,8 @@ export function validateCreateProductInput(
     categoryName,
     costPrice: productInput.costPrice,
     salePrice: productInput.salePrice,
-    stock: productInput.stock
+    stock: productInput.stock,
+    ivaRate
   };
 }
 
@@ -86,13 +96,14 @@ export type UpdateProductInput = {
   categoryName?: string;
   costPrice?: number;
   salePrice?: number;
+  ivaRate?: number;
 };
 
 export function validateUpdateProductInput(
   input: UpdateProductInput
-): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number } {
+): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; ivaRate?: number } {
   const errors: string[] = [];
-  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number } = {};
+  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; ivaRate?: number } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -124,6 +135,12 @@ export function validateUpdateProductInput(
     result.categoryName = (PRODUCT_CATEGORIES as readonly string[]).includes(input.categoryName)
       ? input.categoryName
       : "Otros";
+  }
+
+  if (input.ivaRate !== undefined) {
+    result.ivaRate = IVA_RATES.includes(input.ivaRate as IvaRate)
+      ? input.ivaRate
+      : 0.21;
   }
 
   if (errors.length > 0) {

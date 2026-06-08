@@ -23,6 +23,7 @@ type ProductRecord = {
   categoryName: string;
   costPrice: string;
   salePrice: string;
+  ivaRate: number;
   stock: number;
   createdAt: string;
   updatedAt: string;
@@ -1090,6 +1091,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
   const [categoryName, setCategoryName] = useState(categories[0] ?? "Otros");
   const [costPrice, setCostPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
+  const [ivaRate, setIvaRate] = useState<number>(0.21);
   const [stock, setStock] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -1108,6 +1110,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
           categoryName,
           costPrice: Number(costPrice),
           salePrice: Number(salePrice),
+          ivaRate,
           stock: Number(stock)
         })
       });
@@ -1212,6 +1215,46 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
             />
           </FormField>
 
+          <FormField htmlFor="product-iva-rate" label="Alícuota de IVA">
+            <select
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="product-iva-rate"
+              onChange={(e) => setIvaRate(parseFloat(e.target.value))}
+              value={ivaRate}
+            >
+              <option value={0.21}>21% — Alícuota general</option>
+              <option value={0.105}>10,5% — Alícuota reducida</option>
+              <option value={0.27}>27% — Alícuota incrementada</option>
+              <option value={0}>0% / Exento</option>
+            </select>
+          </FormField>
+
+          {Number(salePrice) > 0 ? (
+            <div className="space-y-1 rounded-md bg-slate-50 p-3 text-xs text-slate-500">
+              <div className="flex justify-between">
+                <span>Precio final (IVA incluido)</span>
+                <span className="font-medium text-slate-950">{formatMoney(salePrice)}</span>
+              </div>
+              {ivaRate > 0 ? (
+                <>
+                  <div className="flex justify-between">
+                    <span>Precio neto (sin IVA)</span>
+                    <span>{moneyFormatter.format(Number(salePrice) / (1 + ivaRate))}</span>
+                  </div>
+                  <div className="flex justify-between text-violet-600">
+                    <span>IVA {(ivaRate * 100).toFixed(ivaRate === 0.105 ? 1 : 0)}%</span>
+                    <span>{moneyFormatter.format(Number(salePrice) - Number(salePrice) / (1 + ivaRate))}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Producto exento de IVA</span>
+                </div>
+              )}
+            </div>
+          ) : null}
+
           <FormField htmlFor="product-stock" label="Stock inicial">
             <input
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
@@ -1268,6 +1311,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
   const [categoryName, setCategoryName] = useState(product.categoryName);
   const [costPrice, setCostPrice] = useState(product.costPrice);
   const [salePrice, setSalePrice] = useState(product.salePrice);
+  const [ivaRate, setIvaRate] = useState<number>(Number(product.ivaRate) ?? 0.21);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -1284,7 +1328,8 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
           name: name.trim(),
           categoryName,
           costPrice: Number(costPrice),
-          salePrice: Number(salePrice)
+          salePrice: Number(salePrice),
+          ivaRate
         })
       });
       const responseBody = (await response.json()) as EditProductResponse;
@@ -1391,6 +1436,46 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
               value={salePrice}
             />
           </FormField>
+
+          <FormField htmlFor="edit-product-iva-rate" label="Alícuota de IVA">
+            <select
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="edit-product-iva-rate"
+              onChange={(e) => setIvaRate(parseFloat(e.target.value))}
+              value={ivaRate}
+            >
+              <option value={0.21}>21% — Alícuota general</option>
+              <option value={0.105}>10,5% — Alícuota reducida</option>
+              <option value={0.27}>27% — Alícuota incrementada</option>
+              <option value={0}>0% / Exento</option>
+            </select>
+          </FormField>
+
+          {Number(salePrice) > 0 ? (
+            <div className="space-y-1 rounded-md bg-slate-50 p-3 text-xs text-slate-500">
+              <div className="flex justify-between">
+                <span>Precio final (IVA incluido)</span>
+                <span className="font-medium text-slate-950">{formatMoney(salePrice)}</span>
+              </div>
+              {ivaRate > 0 ? (
+                <>
+                  <div className="flex justify-between">
+                    <span>Precio neto (sin IVA)</span>
+                    <span>{moneyFormatter.format(Number(salePrice) / (1 + ivaRate))}</span>
+                  </div>
+                  <div className="flex justify-between text-violet-600">
+                    <span>IVA {(ivaRate * 100).toFixed(ivaRate === 0.105 ? 1 : 0)}%</span>
+                    <span>{moneyFormatter.format(Number(salePrice) - Number(salePrice) / (1 + ivaRate))}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Producto exento de IVA</span>
+                </div>
+              )}
+            </div>
+          ) : null}
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">

@@ -37,6 +37,7 @@ type ProductRecord = {
   categoryName: string;
   salePrice: string;
   stock: number;
+  ivaRate: number;
 };
 
 type ProductsResponse = {
@@ -75,6 +76,7 @@ type CartItem = {
   quantity: number;
   unitPrice: number;
   maxStock: number;
+  ivaRate: number;
 };
 
 function cartItemKey(item: CartItem): string {
@@ -731,6 +733,7 @@ export function Pos() {
           quantity: 1,
           unitPrice: Number(product.salePrice),
           maxStock: product.stock,
+          ivaRate: Number(product.ivaRate) ?? 0.21,
         },
       ];
     });
@@ -756,6 +759,7 @@ export function Pos() {
           quantity: 1,
           unitPrice: Number(service.price),
           maxStock: 9999,
+          ivaRate: 0.21,
         },
       ];
     });
@@ -2409,35 +2413,113 @@ function PrintModal({
       <hr style="border-style:dashed"/>
       ${discountRow}
       <p class="total center">Total: ${formatARS(total)}</p>
+      <p class="center" style="font-size:9px;margin-top:4px">IVA incluido en los precios</p>
       <p class="center" style="margin-top:8px;font-size:10px">¡Gracias por su compra!</p>
     </body></html>`);
   }
 
   function handlePrintInvoice() {
-    const rows = cartItems
-      .map((item) => `<tr><td>${item.productName}</td><td style="text-align:center">${item.quantity}</td><td style="text-align:right">${formatARS(item.unitPrice)}</td><td style="text-align:right">${formatARS(item.unitPrice * item.quantity)}</td></tr>`)
+    const enrichedItems = cartItems.map((item) => {
+      const totalFinal = item.unitPrice * item.quantity;
+      const neto = item.ivaRate > 0 ? totalFinal / (1 + item.ivaRate) : totalFinal;
+      const ivaAmount = totalFinal - neto;
+      return { ...item, totalFinal, neto, ivaAmount };
+    });
+
+    const rows = enrichedItems
+      .map((item) => `
+        <tr>
+          <td>${item.productName}</td>
+          <td style="text-align:center">${item.quantity}</td>
+          <td style="text-align:right">${formatARS(item.unitPrice / (item.ivaRate > 0 ? 1 + item.ivaRate : 1))}</td>
+          <td style="text-align:right">${formatARS(item.neto)}</td>
+          <td style="text-align:right">${item.ivaRate > 0 ? `${(item.ivaRate * 100).toFixed(item.ivaRate === 0.105 ? 1 : 0)}%` : "Exento"}</td>
+          <td style="text-align:right">${formatARS(item.ivaAmount)}</td>
+          <td style="text-align:right">${formatARS(item.totalFinal)}</td>
+        </tr>`)
       .join("");
+
+    const ivaGroups = new Map<number, number>();
+    for (const item of enrichedItems) {
+      if (item.ivaRate > 0) {
+        ivaGroups.set(item.ivaRate, (ivaGroups.get(item.ivaRate) ?? 0) + item.ivaAmount);
+      }
+    }
+    const totalNeto = enrichedItems.reduce((sum, item) => sum + item.neto, 0);
+    const totalIva = enrichedItems.reduce((sum, item) => sum + item.ivaAmount, 0);
+
+    const ivaRows = Array.from(ivaGroups.entries())
+      .sort(([a], [b]) => b - a)
+      .map(([rate, amount]) => `
+        <tr>
+          <td colspan="5" style="text-align:right;color:#64748b">IVA ${(rate * 100).toFixed(rate === 0.105 ? 1 : 0)}%</td>
+          <td style="text-align:right;color:#7c3aed">${formatARS(amount)}</td>
+          <td></td>
+        </tr>`)
+      .join("");
+
+    const discountRow = discount > 0
+      ? `<tr><td colspan="6" style="text-align:right;color:#64748b">Descuento</td><td style="text-align:right">-${formatARS(discount)}</td></tr>`
+      : "";
+
     openPrintWindow(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-      body{font-family:sans-serif;max-width:800px;margin:0 auto;padding:24px;font-size:13px;color:#1e293b}
+      body{font-family:sans-serif;max-width:900px;margin:0 auto;padding:24px;font-size:13px;color:#1e293b}
       .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
       .business{font-size:20px;font-weight:bold;color:#0f172a}
       .meta{color:#64748b;font-size:12px;text-align:right}
       table{width:100%;border-collapse:collapse;margin:16px 0}
       th{background:#f8fafc;padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;border-bottom:2px solid #e2e8f0}
-      td{padding:10px 12px;border-bottom:1px solid #f1f5f9}
-      .total-row td{font-weight:bold;font-size:15px;border-top:2px solid #e2e8f0;border-bottom:none}
+      td{padding:8px 12px;border-bottom:1px solid #f1f5f9}
+      .subtotal-row td{color:#64748b;font-size:12px;border-bottom:none;padding-top:4px;padding-bottom:2px}
+      .iva-row td{color:#7c3aed;font-size:12px;border-bottom:none;padding-top:2px;padding-bottom:2px}
+      .total-row td{font-weight:bold;font-size:15px;border-top:2px solid #e2e8f0;border-bottom:none;padding-top:10px}
       .footer{margin-top:24px;text-align:center;color:#94a3b8;font-size:11px}
+      .tax-note{margin-top:12px;padding:10px 12px;background:#f8fafc;border-radius:6px;font-size:11px;color:#64748b;border:1px solid #e2e8f0}
     </style></head><body>
       <div class="header">
         <div>
           <div class="business">${businessName}</div>
           <p style="margin:2px 0;color:#64748b;font-size:12px">Comprobante de venta</p>
         </div>
-        <div class="meta"><p><strong>Factura ${saleNumber}</strong></p><p>${saleDate}</p><p>Método de pago: ${paymentMethod}</p></div>
+        <div class="meta">
+          <p><strong>Comprobante ${saleNumber}</strong></p>
+          <p>${saleDate}</p>
+          <p>Método de pago: ${paymentMethod}</p>
+        </div>
       </div>
-      <table><thead><tr><th>Producto</th><th style="text-align:center">Cant.</th><th style="text-align:right">Precio unit.</th><th style="text-align:right">Total</th></tr></thead>
-      <tbody>${rows}</tbody>
-      <tfoot><tr class="total-row"><td colspan="3">Total</td><td style="text-align:right">${formatARS(total)}</td></tr></tfoot></table>
+      <table>
+        <thead>
+          <tr>
+            <th>Producto / Servicio</th>
+            <th style="text-align:center">Cant.</th>
+            <th style="text-align:right">P. Unit. Neto</th>
+            <th style="text-align:right">Subtotal Neto</th>
+            <th style="text-align:right">Alíc. IVA</th>
+            <th style="text-align:right">IVA</th>
+            <th style="text-align:right">Total c/IVA</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr class="subtotal-row">
+            <td colspan="3" style="text-align:right">Subtotal neto (sin IVA)</td>
+            <td style="text-align:right">${formatARS(totalNeto)}</td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          ${ivaRows}
+          ${discountRow}
+          <tr class="total-row">
+            <td colspan="6">Total a pagar (IVA incluido)</td>
+            <td style="text-align:right">${formatARS(total)}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div class="tax-note">
+        Los precios incluyen IVA. Documento no válido como factura fiscal.
+        IVA total: ${formatARS(totalIva)} | Neto gravado: ${formatARS(totalNeto)}
+      </div>
       <div class="footer">${businessName} · ¡Gracias por su compra!</div>
     </body></html>`);
   }
