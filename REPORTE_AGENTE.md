@@ -1,50 +1,27 @@
-# Reporte de agente — IVA por producto: desglose en facturas (Argentina)
+# Reporte de agente — Corrección de diseño: colores, logo y flujo "Ver planes"
 
-## Cambio 1 — Schema: `ivaRate` en `Product`
-**Archivo:** `prisma/schema.prisma`
-- Agregado `ivaRate Float @default(0.21)` después de `salePrice`.
-- Migración `20260608181926_add_product_iva_rate` aplicada sin errores (`npx prisma migrate dev`).
+## Cambio 1 — `src/app/suscripcion-vencida/page.tsx`
+- Reemplazados todos los colores naranja por violeta: `bg-orange-100`→`bg-violet-100`, `text-orange-600`→`text-violet-600`, `bg-orange-500`→`bg-violet-600`, `hover:bg-orange-600`→`hover:bg-violet-700`.
+- Reemplazado el bloque del ícono de alerta por el logo SOLVEN (cuadro violeta con "S" + texto "SOLVEN") seguido del ícono `AlertCircle` en violeta.
+- Botón "Renovar suscripción →" no se tocó (ya apuntaba correctamente a `NEXT_PUBLIC_REBILL_CHECKOUT_URL`).
 Resultado: OK.
 
-## Cambio 2 — Validación: `product-validation.ts`
-**Archivo:** `src/modules/products/product-validation.ts`
-- Agregado `IVA_RATES = [0, 0.105, 0.21, 0.27]` y tipo `IvaRate`.
-- `CreateProductInput`/`ValidatedProductInput`/`UpdateProductInput`: agregado `ivaRate`.
-- `validateCreateProductInput`: valida la alícuota contra `IVA_RATES` (default `0.21` si es inválida) y la incluye en el resultado.
-- `validateUpdateProductInput`: maneja `ivaRate` opcional con la misma validación.
-- Exportados `IVA_RATES`/`IvaRate` desde `src/modules/products/index.ts`.
-- Actualizado `product-validation.test.ts` (el test "accepts valid product input" ahora espera `ivaRate: 0.21` en el resultado).
+## Cambio 2 — `src/app/pricing/page.tsx`
+- Reescritura completa según especificación de la orden: fondo `slate-950`/`slate-900`, logo SOLVEN real (cuadro violeta + texto, sin el hexágono naranja), acentos en `violet-400`/`violet-600`.
+- Componente convertido a `async` y usa `getSession()` de `@/lib/tenant` para detectar autenticación (`isAuthenticated`).
+- CTA condicional: usuario autenticado ve "Suscribirme ahora →" (abre `NEXT_PUBLIC_REBILL_CHECKOUT_URL` en pestaña nueva); usuario no autenticado ve "Empezar gratis 14 días" (va a `/register`).
+- Footer condicional: autenticado ve "← Volver al panel" (`/dashboard`); no autenticado ve "¿Ya tenés cuenta? Iniciá sesión" (`/login`).
 Resultado: OK.
 
-## Cambio 3 — UI: selector de IVA en formulario de producto
-**Archivo:** `src/app/ui/products-inventory.tsx`
-- `ProductRecord`: agregado `ivaRate: number`.
-- `CreateProductModal` y `EditProductModal`: agregado estado `ivaRate`, incluido en el `body` del submit, selector "Alícuota de IVA" (21% / 10,5% / 27% / 0% Exento) después de "Precio de venta", y preview en tiempo real con precio final / neto / monto IVA (o "Producto exento de IVA" cuando la alícuota es 0%).
-Resultado: OK.
-
-## Cambio 4 — POS: `ivaRate` en el carrito
-**Archivo:** `src/app/ui/pos.tsx`
-- `ProductRecord` y `CartItem`: agregado `ivaRate: number`.
-- `addToCart`: pasa `ivaRate: Number(product.ivaRate) ?? 0.21` al crear el ítem.
-- `addServiceToCart`: agrega `ivaRate: 0.21` por defecto a los servicios.
-Resultado: OK.
-
-## Cambio 5 — Comprobante e ticket con desglose de IVA
-**Archivo:** `src/app/ui/pos.tsx`
-- `handlePrintInvoice` reescrita: tabla con columnas Producto/Cant./P.Unit. Neto/Subtotal Neto/Alíc. IVA/IVA/Total c/IVA, fila de subtotal neto, filas de IVA agrupadas por alícuota, fila de descuento (si aplica), total final, y nota "Los precios incluyen IVA. Documento no válido como factura fiscal." con IVA total y neto gravado.
-- `handlePrintTicket`: agregada la línea "IVA incluido en los precios" al pie del ticket.
+## Cambio 3 — `src/app/ui/cuenta-subscription.tsx`
+- Botón "Ver planes disponibles" (naranja, iba a `/pricing`) reemplazado por "Ver planes y suscribirse" (violeta), que ahora abre directamente `process.env.NEXT_PUBLIC_REBILL_CHECKOUT_URL` (con fallback a `/pricing`) en una pestaña nueva (`target="_blank"`).
+- `CreditCard` ya estaba importado — no se tocó el import.
 Resultado: OK.
 
 ## Validación
-- `npx prisma migrate dev --name add-product-iva-rate`: migración aplicada sin errores
 - `npx tsc --noEmit`: sin errores
-- `npm run lint`: sin errores
-- `npm test`: 180/180 tests pasan
-- `npm run build`: compila sin errores
-
-## Notas
-- `salePrice` no cambió de significado: sigue siendo el precio final con IVA incluido; el desglose se calcula solo al momento de emitir el comprobante.
-- Productos existentes quedan con `ivaRate = 0.21` por el `@default` de la migración.
+- `npm run lint`: sin warnings
+- `npm run build`: compila sin errores (`/pricing` ahora es ruta dinámica `ƒ` por usar `getSession()`, esperado)
 
 ## Commit
-`feat(products): IVA por producto con desglose en comprobantes — alícuotas AFIP, migración schema, preview en formulario`
+`fix(ui): colores violeta en suscripcion-vencida y pricing, logo correcto, CTA autenticado va a checkout Rebill`
