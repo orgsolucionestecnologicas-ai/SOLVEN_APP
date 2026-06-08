@@ -159,11 +159,13 @@ export function CuentaSubscription() {
         <div className="space-y-3">
 
           <a
-            href="/pricing"
-            className="flex items-center gap-3 w-full bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg px-4 py-2.5 transition-colors text-sm"
+            href={process.env.NEXT_PUBLIC_REBILL_CHECKOUT_URL ?? "/pricing"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 w-full bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg px-4 py-2.5 transition-colors text-sm"
           >
             <CreditCard className="w-4 h-4" />
-            Ver planes disponibles
+            Ver planes y suscribirse
           </a>
 
           {sub?.rebillSubscriptionId && (

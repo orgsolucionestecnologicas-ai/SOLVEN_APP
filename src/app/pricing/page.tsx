@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { getSession } from "@/lib/tenant";
 
 const features = [
   "Punto de venta (POS) completo",
@@ -16,31 +17,35 @@ const features = [
   "Soporte por email",
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const session = await getSession();
+  const isAuthenticated = session !== null;
+  const checkoutUrl = process.env.NEXT_PUBLIC_REBILL_CHECKOUT_URL ?? "#";
+
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center px-4 py-16">
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center px-4 py-16">
       {/* Header */}
       <div className="text-center mb-12">
-        <div className="flex justify-center mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" className="w-14 h-14">
-            <polygon points="32,2 58,17 58,47 32,62 6,47 6,17" fill="#f97316" />
-            <text x="32" y="44" textAnchor="middle" fontFamily="Arial, sans-serif" fontWeight="bold" fontSize="32" fill="white">S</text>
-          </svg>
+        <div className="flex justify-center items-center gap-3 mb-6">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 text-lg font-bold text-white">
+            S
+          </div>
+          <span className="text-2xl font-bold tracking-tight text-white">SOLVEN</span>
         </div>
         <h1 className="text-4xl font-bold mb-3">Simple. Sin sorpresas.</h1>
-        <p className="text-gray-400 text-lg max-w-md mx-auto">
+        <p className="text-slate-400 text-lg max-w-md mx-auto">
           Un solo plan con todo lo que tu negocio necesita.
         </p>
       </div>
 
       {/* Card de precio */}
-      <div className="bg-gray-900 border border-orange-500/30 rounded-2xl p-8 w-full max-w-md shadow-xl">
+      <div className="bg-slate-900 border border-violet-500/30 rounded-2xl p-8 w-full max-w-md shadow-xl">
         <div className="text-center mb-8">
-          <p className="text-orange-400 font-semibold text-sm uppercase tracking-wider mb-2">Plan SOLVEN</p>
+          <p className="text-violet-400 font-semibold text-sm uppercase tracking-wider mb-2">Plan SOLVEN</p>
           <div className="flex items-end justify-center gap-1 mb-1">
-            <span className="text-gray-400 text-lg">AR$</span>
+            <span className="text-slate-400 text-lg">AR$</span>
             <span className="text-5xl font-bold">15.999</span>
-            <span className="text-gray-400 mb-1">/mes</span>
+            <span className="text-slate-400 mb-1">/mes</span>
           </div>
           <p className="text-green-400 text-sm font-medium">✓ 14 días gratis, sin tarjeta requerida</p>
         </div>
@@ -49,32 +54,53 @@ export default function PricingPage() {
         <ul className="space-y-3 mb-8">
           {features.map((feature) => (
             <li key={feature} className="flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-orange-400 mt-0.5 shrink-0" />
-              <span className="text-gray-300 text-sm">{feature}</span>
+              <CheckCircle2 className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" />
+              <span className="text-slate-300 text-sm">{feature}</span>
             </li>
           ))}
         </ul>
 
-        {/* CTA */}
+        {/* CTA — condicional según si el usuario está autenticado */}
         <div className="space-y-3">
-          <Link
-            href="/register"
-            className="block w-full text-center bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition-colors text-lg"
-          >
-            Empezar gratis 14 días
-          </Link>
-          <p className="text-center text-gray-500 text-xs">
+          {isAuthenticated ? (
+            <a
+              href={checkoutUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-xl transition-colors text-lg"
+            >
+              Suscribirme ahora →
+            </a>
+          ) : (
+            <Link
+              href="/register"
+              className="block w-full text-center bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-xl transition-colors text-lg"
+            >
+              Empezar gratis 14 días
+            </Link>
+          )}
+          <p className="text-center text-slate-500 text-xs">
             Sin compromisos. Cancelá cuando quieras.
           </p>
         </div>
       </div>
 
       {/* Footer link */}
-      <p className="mt-8 text-gray-500 text-sm">
-        ¿Ya tenés cuenta?{" "}
-        <Link href="/login" className="text-orange-400 hover:text-orange-300">
-          Iniciá sesión
-        </Link>
+      <p className="mt-8 text-slate-500 text-sm">
+        {isAuthenticated ? (
+          <>
+            <Link href="/dashboard" className="text-violet-400 hover:text-violet-300">
+              ← Volver al panel
+            </Link>
+          </>
+        ) : (
+          <>
+            ¿Ya tenés cuenta?{" "}
+            <Link href="/login" className="text-violet-400 hover:text-violet-300">
+              Iniciá sesión
+            </Link>
+          </>
+        )}
       </p>
     </div>
   );
