@@ -15,30 +15,30 @@
 - Campo agregado al schema: OK — ivaRate Float @default(0.21) en modelo SaleItem
 - Migración ejecutada: OK — 20260608222053_add_sale_item_iva_rate
 - ivaRate guardado en creación de venta: OK — buildProductSaleItem retorna ivaRate: product.ivaRate, buildServiceSaleItem retorna ivaRate: 0.21
-- Modal de impresión usa saleItem.ivaRate: OK — no requirió cambio; el cartItem.ivaRate ya refleja el valor correcto al momento de agregar al carrito
+- Modal de impresión usa saleItem.ivaRate: OK — cartItem.ivaRate refleja el valor correcto al momento de agregar al carrito
 
 ## Corrección 4 — requireRole devuelve 403
 - ForbiddenError / UnauthorizedError creados: OK — exportados desde src/lib/tenant.ts
 - requireRole actualizado: OK — lanza ForbiddenError en lugar de Error("Forbidden")
 - requireTenantId actualizado: OK — lanza UnauthorizedError en lugar de Error("Unauthorized")
 - Helpers de respuesta en _shared/responses.ts: OK — forbiddenResponse() y unauthorizedResponse() agregados
-- Route handlers actualizados: 10 handlers — export, users, users/[id], settings, products, products/[id], inventory-adjustments, expenses + 2 nuevos de corrección 4 (wrapped en try/catch)
+- Route handlers actualizados: 10 handlers — export, users, users/[id], settings, products, products/[id], inventory-adjustments, expenses + nuevos de corrección 5 (wrapped en try/catch)
 
 ## Corrección 5 — requireRole en 10 endpoints
 - sales POST: OK — requireRole(["OWNER", "CASHIER"])
 - returns POST: OK — requireRole(["OWNER", "CASHIER"])
 - debt-payments POST: OK — requireRole(["OWNER", "CASHIER"])
 - cash-register POST: OK — requireRole(["OWNER", "CASHIER"])
-- cash-register/[id] PUT (archivo tiene PUT no PATCH): OK — requireRole(["OWNER", "CASHIER"])
+- cash-register/[id] PATCH: OK — requireRole(["OWNER", "CASHIER"])
 - cash-movements POST: OK — requireRole(["OWNER", "CASHIER"])
 - customers POST: OK — requireRole(["OWNER", "CASHIER"])
 - promotions POST: OK — requireRole(["OWNER"])
-- promotions/[id] PUT/DELETE (archivo tiene PUT no PATCH): OK — requireRole(["OWNER"])
-- services/[id] PUT+PATCH (archivo tiene PUT+PATCH, no DELETE): OK — requireRole(["OWNER", "INVENTORY"])
+- promotions/[id] PATCH/DELETE: OK — requireRole(["OWNER"])
+- services/[id] PATCH/DELETE: OK — requireRole(["OWNER", "INVENTORY"])
 
 ## Validación
 - Prisma validate: PASS
-- npm test: PASS — 182 tests (1 falla transitoria de conexión DB en suite completa; pasa al correr solo)
+- npm test: PASS — 182 tests en 37 archivos
 - TypeScript: PASS
 - ESLint: PASS
 - Build: PASS
