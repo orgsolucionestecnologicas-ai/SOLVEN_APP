@@ -1,3 +1,4 @@
+import type { Quote, QuoteItem } from "@prisma/client";
 import { Resend } from "resend";
 
 const FROM = "SOLVEN <no-reply@solven.app>";
@@ -107,5 +108,105 @@ export async function sendCancellationEmail(to: string, businessName: string): P
         Contactar soporte →
       </a>
     `)
+  });
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function formatARS(amount: number): string {
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(amount);
+}
+
+export async function sendQuoteEmail(
+  to: string,
+  quote: Quote,
+  items: QuoteItem[],
+  businessName: string
+): Promise<void> {
+  const resend = getResend();
+  if (!resend) return;
+
+  const rows = items
+    .map(
+      (item) =>
+        `<tr>
+          <td style="padding:8px;border-bottom:1px solid #e2e8f0">${item.name}</td>
+          <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center">${item.quantity}</td>
+          <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatARS(Number(item.unitPrice))}</td>
+          <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatARS(Number(item.total))}</td>
+        </tr>`
+    )
+    .join("");
+
+  const discountAmount = Number(quote.discountAmount);
+  const totalAmount = Number(quote.totalAmount);
+  const finalTotal = totalAmount - discountAmount;
+
+  const discountRow =
+    discountAmount > 0
+      ? `<tr><td colspan="3" style="padding:8px;text-align:right;color:#64748b">Descuento</td><td style="padding:8px;text-align:right;color:#dc2626">- ${formatARS(discountAmount)}</td></tr>`
+      : "";
+
+  const notesSection = quote.notes
+    ? `<p style="color:#334155;margin-top:16px"><strong>Observaciones:</strong> ${quote.notes}</p>`
+    : "";
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Presupuesto ${quote.quoteNumber} — ${businessName}`,
+    html: wrap(`
+      <h2 style="color:#0f172a">Presupuesto ${quote.quoteNumber}</h2>
+      <p style="color:#334155">Hola <strong>${quote.customerName}</strong>,</p>
+      <p style="color:#334155">Te enviamos el presupuesto solicitado:</p>
+      <table style="width:100%;border-collapse:collapse;margin-top:16px">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:8px;text-align:left;color:#64748b;font-size:12px">Producto/Servicio</th>
+            <th style="padding:8px;text-align:center;color:#64748b;font-size:12px">Cant.</th>
+            <th style="padding:8px;text-align:right;color:#64748b;font-size:12px">P. Unitario</th>
+            <th style="padding:8px;text-align:right;color:#64748b;font-size:12px">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          ${discountRow}
+          <tr>
+            <td colspan="3" style="padding:8px;text-align:right;font-weight:bold">Total</td>
+            <td style="padding:8px;text-align:right;font-weight:bold;color:#0f172a">${formatARS(finalTotal)}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <p style="color:#334155;margin-top:16px">Este presupuesto es válido hasta el <strong>${formatDate(quote.validUntil)}</strong>.</p>
+      ${notesSection}
+      <p style="color:#334155">Para confirmar, contactá a <strong>${businessName}</strong>.</p>
+    `),
+  });
+}
+
+export async function sendQuoteExpiringReminderEmail(
+  to: string,
+  quote: Quote,
+  businessName: string
+): Promise<void> {
+  const resend = getResend();
+  if (!resend) return;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Tu presupuesto ${quote.quoteNumber} vence pronto — ${businessName}`,
+    html: wrap(`
+      <h2 style="color:#0f172a">Tu presupuesto vence pronto</h2>
+      <p style="color:#334155">Hola <strong>${quote.customerName}</strong>,</p>
+      <p style="color:#334155">Tu presupuesto <strong>${quote.quoteNumber}</strong> por <strong>${formatARS(Number(quote.totalAmount))}</strong> vence el <strong>${formatDate(quote.validUntil)}</strong>.</p>
+      <p style="color:#334155">Si querés confirmarlo, contactanos antes de esa fecha.</p>
+      <a href="mailto:orgsolucionestecnologicas@gmail.com"
+         style="display:inline-block;background:#E85D04;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:16px">
+        Confirmar presupuesto →
+      </a>
+    `),
   });
 }

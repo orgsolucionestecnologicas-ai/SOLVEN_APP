@@ -9,6 +9,7 @@ import {
   BarChart2,
   ChevronDown,
   CreditCard,
+  FileText,
   HelpCircle,
   Home,
   Layers,
@@ -38,6 +39,7 @@ type ActiveSection =
   | "pos"
   | "products"
   | "promotions"
+  | "quotes"
   | "reports"
   | "returns"
   | "ayuda"
@@ -79,6 +81,7 @@ const navItems: NavItem[] = [
   { type: "link",     href: "/inventory",       label: "Inventario",    section: "inventory",     Icon: Layers },
   { type: "link",     href: "/customers",       label: "Clientes",      section: "customers",     Icon: Users },
   { type: "link",     href: "/cash-movements",  label: "Caja",          section: "cashMovements", Icon: CreditCard },
+  { type: "link",     href: "/quotes",          label: "Cotizaciones",  section: "quotes",        Icon: FileText },
   { type: "link",     href: "/reports",         label: "Reportes",      section: "reports",       Icon: BarChart2 },
   { type: "link",     href: "/promotions",      label: "Promociones",   section: "promotions",    Icon: Tag },
   { type: "link",     href: "/settings",        label: "Configuración", section: "settings",      Icon: Settings,  hiddenForRoles: ["CASHIER", "READONLY"] },
