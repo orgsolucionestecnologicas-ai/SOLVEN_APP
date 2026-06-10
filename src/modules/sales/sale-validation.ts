@@ -10,6 +10,9 @@ export type CreateSaleInput = {
   items: CreateSaleItemInput[];
   paymentType?: SalePaymentType;
   customerId?: string;
+  sellerCode?: string;
+  sellerId?: string;
+  receiptType?: "TICKET" | "INVOICE";
 };
 
 export type ValidatedProductSaleItemInput = {
@@ -29,12 +32,18 @@ export type ValidatedSaleItemInput =
 export type ValidatedCashSaleInput = {
   items: ValidatedSaleItemInput[];
   paymentType: "CASH";
+  sellerCode: string;
+  sellerId: string;
+  receiptType: "TICKET" | "INVOICE";
 };
 
 export type ValidatedCreditSaleInput = {
   items: ValidatedSaleItemInput[];
   paymentType: "CREDIT";
   customerId: string;
+  sellerCode: string;
+  sellerId: string;
+  receiptType: "TICKET" | "INVOICE";
 };
 
 export type ValidatedSaleInput =
@@ -108,16 +117,26 @@ export function validateCreateSaleInput(
     throw new SaleValidationError(validationErrors);
   }
 
+  const sellerCode = typeof saleInput.sellerCode === "string" ? saleInput.sellerCode.trim() : "";
+  const sellerId = typeof saleInput.sellerId === "string" ? saleInput.sellerId.trim() : "";
+  const receiptType = saleInput.receiptType === "INVOICE" ? "INVOICE" as const : "TICKET" as const;
+
   if (paymentType === "CREDIT") {
     return {
       items: validatedItems,
       paymentType,
-      customerId
+      customerId,
+      sellerCode,
+      sellerId,
+      receiptType
     };
   }
 
   return {
     items: validatedItems,
-    paymentType: "CASH"
+    paymentType: "CASH",
+    sellerCode,
+    sellerId,
+    receiptType
   };
 }

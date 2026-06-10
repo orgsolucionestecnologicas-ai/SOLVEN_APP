@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-export type CodePrefix = "CLI" | "SRV" | "PROD" | "COT";
+export type CodePrefix = "CLI" | "SRV" | "PROD" | "COT" | "TKT" | "FAC";
 
 export async function generateCode(prefix: CodePrefix): Promise<string> {
   const counter = await prisma.$transaction(async (tx) => {

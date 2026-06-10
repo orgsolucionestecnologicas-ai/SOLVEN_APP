@@ -13,6 +13,7 @@ export type UpsertSettingsInput = {
   soundsEnabled?: boolean;
   darkMode?: boolean;
   desktopNotifications?: boolean;
+  arcaEnabled?: boolean;
 };
 
 export type ValidatedSettingsInput = {
@@ -30,6 +31,7 @@ export type ValidatedSettingsInput = {
   soundsEnabled: boolean;
   darkMode: boolean;
   desktopNotifications: boolean;
+  arcaEnabled: boolean;
 };
 
 export class SettingsValidationError extends Error {
@@ -62,5 +64,6 @@ export function validateUpsertSettingsInput(input: UpsertSettingsInput): Validat
     soundsEnabled: input.soundsEnabled !== undefined ? Boolean(input.soundsEnabled) : true,
     darkMode: Boolean(input.darkMode),
     desktopNotifications: Boolean(input.desktopNotifications),
+    arcaEnabled: Boolean(input.arcaEnabled),
   };
 }

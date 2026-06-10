@@ -14,6 +14,7 @@ import {
   unauthorizedResponse
 } from "../_shared/responses";
 import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function GET(request: Request) {
   let tenantId: string;
@@ -36,8 +37,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   let tenantId: string;
+  let userId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER", "INVENTORY"]));
+    ({ tenantId, userId } = await requireRole(["OWNER", "INVENTORY"]));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -57,6 +59,14 @@ export async function POST(request: Request) {
 
   try {
     const product = await createProduct(requestBody as CreateProductInput, tenantId);
+    void logAudit({
+      tenantId,
+      userId,
+      action: "PRODUCT_CREATED",
+      entityType: "Product",
+      entityId: product.id,
+      metadata: { name: product.name }
+    });
     return successResponse(product, 201);
   } catch (error) {
     if (error instanceof ProductValidationError) {

@@ -8,6 +8,7 @@ type UserRecord = {
   name: string;
   email: string;
   role: string;
+  userCode: string | null;
   createdAt: string;
 };
 
@@ -179,6 +180,7 @@ export function UsersList() {
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3 font-medium">Nombre</th>
+              <th className="px-4 py-3 font-medium">Código</th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Rol</th>
               <th className="px-4 py-3 font-medium">Creado</th>
@@ -188,16 +190,21 @@ export function UsersList() {
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-400" colSpan={5}>Cargando…</td>
+                <td className="px-4 py-6 text-center text-slate-400" colSpan={6}>Cargando…</td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-400" colSpan={5}>No hay usuarios para mostrar.</td>
+                <td className="px-4 py-6 text-center text-slate-400" colSpan={6}>No hay usuarios para mostrar.</td>
               </tr>
             ) : (
               users.map((user) => (
                 <tr key={user.id}>
                   <td className="px-4 py-3 font-medium text-slate-800">{user.name || "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-md bg-violet-100 px-2 py-1 font-mono text-xs font-semibold text-violet-700">
+                      {user.userCode ?? "—"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{user.email}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

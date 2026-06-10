@@ -9,11 +9,12 @@ import {
   unauthorizedResponse
 } from "../_shared/responses";
 import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function GET() {
   let tenantId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER"]));
+    ({ tenantId } = await requireRole(["OWNER", "CASHIER"]));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -29,8 +30,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   let tenantId: string;
+  let userId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER"]));
+    ({ tenantId, userId } = await requireRole(["OWNER"]));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -53,6 +55,15 @@ export async function POST(request: Request) {
       requestBody as { name: string; email: string; password: string; role: string },
       tenantId
     );
+    void logAudit({
+      tenantId,
+      userId,
+      userCode: user.userCode,
+      action: "USER_CREATED",
+      entityType: "User",
+      entityId: user.id,
+      metadata: { name: user.name, role: user.role }
+    });
     return successResponse(user, 201);
   } catch (error) {
     if (error instanceof UserValidationError) {

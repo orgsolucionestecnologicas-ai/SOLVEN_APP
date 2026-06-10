@@ -122,10 +122,22 @@ export async function createSale(
     });
     const nextFolio = (lastSale?.folio ?? 0) + 1;
 
+    const receiptPrefix = validatedSale.receiptType === "INVOICE" ? "FAC" : "TKT";
+    const receiptCounter = await transaction.codeCounter.upsert({
+      where: { id: receiptPrefix },
+      create: { id: receiptPrefix, lastVal: 1 },
+      update: { lastVal: { increment: 1 } }
+    });
+    const receiptNumber = receiptCounter.lastVal;
+
     const sale = await transaction.sale.create({
       data: {
         tenantId,
         folio: nextFolio,
+        receiptType: validatedSale.receiptType,
+        receiptNumber,
+        sellerCode: validatedSale.sellerCode || null,
+        sellerId: validatedSale.sellerId || null,
         paymentType: validatedSale.paymentType,
         customerId:
           validatedSale.paymentType === "CREDIT"

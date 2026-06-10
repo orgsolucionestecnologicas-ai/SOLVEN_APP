@@ -29,6 +29,7 @@ import {
 import { formatARS } from "@/lib/format-currency";
 import Link from "next/link";
 import { SalesList } from "./sales-list";
+import { SaleGateModal, type SaleGateResult } from "./sale-gate-modal";
 
 type ProductRecord = {
   id: string;
@@ -84,7 +85,13 @@ function cartItemKey(item: CartItem): string {
 }
 
 type CreateSaleResponse = {
-  data?: { id: string; folio: number };
+  data?: {
+    id: string;
+    folio: number;
+    receiptType: "TICKET" | "INVOICE";
+    receiptNumber: number;
+    sellerCode: string | null;
+  };
   error?: { message: string; details?: string[] };
 };
 
@@ -285,9 +292,15 @@ export function Pos() {
     total: number;
     cartItems: CartItem[];
     paymentMethod: PaymentMethod;
+    receiptType: "TICKET" | "INVOICE";
+    receiptNumber: number;
+    sellerCode: string;
   } | null>(null);
   const [barcodeNotFound, setBarcodeNotFound] = useState(false);
   const [optionalCustomerOpen, setOptionalCustomerOpen] = useState(false);
+  const [saleGateOpen, setSaleGateOpen] = useState(false);
+  const [saleGateResult, setSaleGateResult] = useState<SaleGateResult | null>(null);
+  const [arcaEnabled, setArcaEnabled] = useState(false);
 
   const moreDropdownRef = useRef<HTMLDivElement>(null);
   const applyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -303,6 +316,17 @@ export function Pos() {
       urlCustomerIdRef.current = preselectedCustomerId;
       setPaymentMethod("Fiado");
     }
+  }, []);
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const res = await fetch("/api/settings", { headers: { Accept: "application/json" } });
+        const body = await res.json();
+        if (res.ok && body.data?.arcaEnabled) setArcaEnabled(true);
+      } catch { /* default false */ }
+    }
+    void loadSettings();
   }, []);
 
   useEffect(() => {
@@ -598,6 +622,7 @@ export function Pos() {
     setPromoCodeOpen(false);
     setPromoCodeError(null);
     setOptionalCustomerOpen(false);
+    setSaleGateResult(null);
     try { localStorage.removeItem(CART_KEY); } catch { /* ignore */ }
   }
 
@@ -608,6 +633,13 @@ export function Pos() {
       return;
     }
     clearSale();
+    setSaleGateResult(null);
+    setSaleGateOpen(true);
+  }
+
+  function handleSaleGateConfirm(result: SaleGateResult) {
+    setSaleGateResult(result);
+    setSaleGateOpen(false);
   }
 
   function handleSuspend() {
@@ -808,6 +840,9 @@ export function Pos() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           paymentType: apiPaymentType,
+          sellerCode: saleGateResult?.sellerCode ?? "",
+          sellerId: saleGateResult?.sellerId ?? "",
+          receiptType: saleGateResult?.receiptType ?? "TICKET",
           ...(isFiado ? { customerId: selectedCustomerId } : {}),
           items: cartItems.map((item) =>
             item.serviceId
@@ -860,6 +895,9 @@ export function Pos() {
         total: successTotal,
         cartItems: successCartItems,
         paymentMethod: successPaymentMethod,
+        receiptType: body.data.receiptType,
+        receiptNumber: body.data.receiptNumber,
+        sellerCode: body.data.sellerCode ?? "",
       });
     } catch {
       setSubmitError("No se pudo registrar la venta.");
@@ -1089,7 +1127,7 @@ export function Pos() {
                       const cartItem = cartItems.find((item) => item.productId === product.id);
                       const inCartQty = cartItem?.quantity ?? 0;
                       const isOutOfStock = product.stock === 0;
-                      const canAdd = !isOutOfStock && cashRegisterStatus === "open";
+                      const canAdd = !isOutOfStock && cashRegisterStatus === "open" && saleGateResult !== null;
 
                       return (
                         <div
@@ -1215,7 +1253,7 @@ export function Pos() {
                           ) : null}
                           <button
                             className="flex-shrink-0 rounded-md bg-violet-600 px-2 py-1 text-xs font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
-                            disabled={cashRegisterStatus !== "open"}
+                            disabled={cashRegisterStatus !== "open" || saleGateResult === null}
                             onClick={() => addServiceToCart(service)}
                             type="button"
                           >
@@ -1291,11 +1329,21 @@ export function Pos() {
 
             {/* Cart header */}
             <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-5 py-3">
-              <h2 className="text-sm font-semibold text-slate-950">
+              <h2 className="flex items-center text-sm font-semibold text-slate-950">
                 Venta actual
                 {cartItemCount > 0 ? (
                   <span className="ml-2 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">
                     {cartItemCount}
+                  </span>
+                ) : null}
+                {saleGateResult ? (
+                  <span className="ml-2 flex items-center gap-2">
+                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+                      {saleGateResult.sellerCode}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                      {saleGateResult.receiptType === "INVOICE" ? "Factura" : "Ticket"}
+                    </span>
                   </span>
                 ) : null}
               </h2>
@@ -1875,13 +1923,13 @@ export function Pos() {
               <div className="flex gap-2">
                 <button
                   className={
-                    isSubmitting || cartItems.length === 0 || cashRegisterStatus !== "open"
+                    isSubmitting || cartItems.length === 0 || cashRegisterStatus !== "open" || saleGateResult === null
                       ? "flex flex-1 cursor-not-allowed items-center justify-center rounded-xl bg-slate-200 py-3 text-sm font-bold text-slate-400"
                       : isFiado
                         ? "flex flex-1 items-center justify-center rounded-xl bg-amber-500 py-3 text-sm font-bold text-white transition-all hover:bg-amber-600 active:scale-[0.98]"
                         : "flex flex-1 items-center justify-center rounded-xl bg-violet-600 py-3 text-sm font-bold text-white transition-all hover:bg-violet-700 active:scale-[0.98]"
                   }
-                  disabled={isSubmitting || cartItems.length === 0 || cashRegisterStatus !== "open"}
+                  disabled={isSubmitting || cartItems.length === 0 || cashRegisterStatus !== "open" || saleGateResult === null}
                   type="submit"
                 >
                   {isSubmitting
@@ -2262,13 +2310,22 @@ export function Pos() {
       {showPrintModal ? (
         <PrintModal
           cartItems={showPrintModal.cartItems}
-          folio={showPrintModal.folio}
           paymentMethod={showPrintModal.paymentMethod}
           saleId={showPrintModal.saleId}
           total={showPrintModal.total}
+          receiptType={showPrintModal.receiptType}
+          receiptNumber={showPrintModal.receiptNumber}
+          sellerCode={showPrintModal.sellerCode}
           onClose={() => setShowPrintModal(null)}
         />
       ) : null}
+
+      <SaleGateModal
+        open={saleGateOpen}
+        arcaEnabled={arcaEnabled}
+        onConfirm={handleSaleGateConfirm}
+        onCancel={() => setSaleGateOpen(false)}
+      />
     </>
   );
 }
@@ -2348,22 +2405,27 @@ function ProductsLoadingState() {
 
 function PrintModal({
   saleId,
-  folio,
   total,
   cartItems,
   paymentMethod,
+  receiptType,
+  receiptNumber,
+  sellerCode,
   onClose,
 }: {
   saleId: string;
-  folio: number;
   total: number;
   cartItems: CartItem[];
   paymentMethod: PaymentMethod;
+  receiptType: "TICKET" | "INVOICE";
+  receiptNumber: number;
+  sellerCode: string;
   onClose: () => void;
 }) {
   const [emailSent, setEmailSent] = useState(false);
   const [businessName, setBusinessName] = useState("Mi negocio");
-  const saleNumber = `#${String(folio).padStart(4, "0")}`;
+  const receiptPrefix = receiptType === "INVOICE" ? "FAC" : "TKT";
+  const saleNumber = `${receiptPrefix}-${String(receiptNumber).padStart(4, "0")}`;
   const saleDate = new Intl.DateTimeFormat("es-419", {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit", hour12: true,
@@ -2404,9 +2466,10 @@ function PrintModal({
       .total{font-weight:bold;font-size:13px;border-top:1px dashed #000;padding-top:4px;margin-top:4px}
     </style></head><body>
       <h2>${businessName}</h2>
-      <p class="center">Venta ${saleNumber}</p>
+      <p class="center">${receiptType === "INVOICE" ? "FACTURA" : "TICKET DE VENTA"} ${saleNumber}</p>
       <p class="center">${saleDate}</p>
       <p class="center">Pago: ${paymentMethod}</p>
+      ${sellerCode ? `<p class="center">Vendedor: ${sellerCode}</p>` : ""}
       <hr style="border-style:dashed"/>
       <table><thead><tr><th style="text-align:left">Producto</th><th>Cant.</th><th style="text-align:right">P.Unit</th><th style="text-align:right">Total</th></tr></thead>
       <tbody>${rows}</tbody></table>
@@ -2479,12 +2542,13 @@ function PrintModal({
       <div class="header">
         <div>
           <div class="business">${businessName}</div>
-          <p style="margin:2px 0;color:#64748b;font-size:12px">Comprobante de venta</p>
+          <p style="margin:2px 0;color:#64748b;font-size:12px">${receiptType === "INVOICE" ? "FACTURA" : "TICKET DE VENTA"}</p>
         </div>
         <div class="meta">
           <p><strong>Comprobante ${saleNumber}</strong></p>
           <p>${saleDate}</p>
           <p>Método de pago: ${paymentMethod}</p>
+          ${sellerCode ? `<p>Vendedor: ${sellerCode}</p>` : ""}
         </div>
       </div>
       <table>

@@ -27,6 +27,9 @@ type SaleRecord = {
   totalAmount: string;
   customer: { name: string } | null;
   items: SaleItemRecord[];
+  sellerCode: string | null;
+  receiptType: "TICKET" | "INVOICE";
+  receiptNumber: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -310,12 +313,19 @@ function SaleCard({
             {formatDateTime(sale.saleDate)}
           </span>
           <PaymentTypeBadge paymentType={sale.paymentType} />
+          <ReceiptTypeBadge receiptType={sale.receiptType} />
         </div>
       </div>
 
-      {sale.customer ? (
-        <p className="mt-1 text-xs text-slate-500">{sale.customer.name}</p>
-      ) : null}
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        {sale.customer ? <span>{sale.customer.name}</span> : null}
+        <span className="font-mono">{formatReceiptNumber(sale.receiptType, sale.receiptNumber)}</span>
+        {sale.sellerCode ? (
+          <span className="rounded-full bg-violet-100 px-2 py-0.5 font-mono font-semibold text-violet-700">
+            {sale.sellerCode}
+          </span>
+        ) : null}
+      </div>
 
       <p className="mt-2 truncate text-xs text-slate-600">{productSummary}</p>
 
@@ -384,11 +394,20 @@ function SaleDetailModal({
         </div>
 
         <div className="space-y-4 px-6 py-5">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm text-slate-500">
               {formatDateTime(sale.saleDate)}
             </span>
             <PaymentTypeBadge paymentType={sale.paymentType} />
+            <ReceiptTypeBadge receiptType={sale.receiptType} />
+            <span className="font-mono text-xs text-slate-500">
+              {formatReceiptNumber(sale.receiptType, sale.receiptNumber)}
+            </span>
+            {sale.sellerCode ? (
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 font-mono text-xs font-semibold text-violet-700">
+                {sale.sellerCode}
+              </span>
+            ) : null}
           </div>
 
           {sale.customer ? (
@@ -1120,6 +1139,31 @@ function PaymentTypeBadge({
       {isCredit ? "Fiado" : "Contado"}
     </span>
   );
+}
+
+function ReceiptTypeBadge({
+  receiptType
+}: {
+  receiptType: SaleRecord["receiptType"];
+}) {
+  const isInvoice = receiptType === "INVOICE";
+
+  return (
+    <span
+      className={
+        isInvoice
+          ? "inline-flex rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700"
+          : "inline-flex rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"
+      }
+    >
+      {isInvoice ? "Factura" : "Ticket"}
+    </span>
+  );
+}
+
+function formatReceiptNumber(receiptType: SaleRecord["receiptType"], receiptNumber: number) {
+  const prefix = receiptType === "INVOICE" ? "FAC" : "TKT";
+  return `${prefix}-${String(receiptNumber).padStart(4, "0")}`;
 }
 
 function LoadingState() {

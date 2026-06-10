@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { CashRegisterAlreadyOpenError, CashRegisterValidationError, getCurrentSession, openSession, type OpenSessionInput } from "../../../modules/cash-register";
 import { errorResponse, forbiddenResponse, invalidJsonResponse, successResponse, unauthorizedResponse } from "../_shared/responses";
 import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function GET() {
   let tenantId: string;
@@ -21,8 +22,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   let tenantId: string;
+  let userId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER", "CASHIER"]));
+    ({ tenantId, userId } = await requireRole(["OWNER", "CASHIER"]));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -36,6 +38,14 @@ export async function POST(request: Request) {
   }
   try {
     const session = await openSession(body, tenantId);
+    void logAudit({
+      tenantId,
+      userId,
+      action: "CASH_REGISTER_OPENED",
+      entityType: "CashRegisterSession",
+      entityId: session.id,
+      metadata: { openingAmount: session.openingAmount.toString() }
+    });
     return successResponse(session, 201);
   } catch (err) {
     if (err instanceof CashRegisterValidationError) {

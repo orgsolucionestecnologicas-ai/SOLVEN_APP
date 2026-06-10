@@ -32,7 +32,10 @@ describe("validateCreateSaleInput", () => {
           quantity: 2
         }
       ],
-      paymentType: "CASH"
+      paymentType: "CASH",
+      sellerCode: "",
+      sellerId: "",
+      receiptType: "TICKET"
     });
   });
 
@@ -56,7 +59,37 @@ describe("validateCreateSaleInput", () => {
           productId: "product-1",
           quantity: 2
         }
-      ]
+      ],
+      sellerCode: "",
+      sellerId: "",
+      receiptType: "TICKET"
+    });
+  });
+
+  it("accepts sale input with sellerCode, sellerId and receiptType", () => {
+    expect(
+      validateCreateSaleInput({
+        items: [
+          {
+            productId: "product-1",
+            quantity: 1
+          }
+        ],
+        sellerCode: " VE1234 ",
+        sellerId: " seller-1 ",
+        receiptType: "INVOICE"
+      })
+    ).toEqual({
+      items: [
+        {
+          productId: "product-1",
+          quantity: 1
+        }
+      ],
+      paymentType: "CASH",
+      sellerCode: "VE1234",
+      sellerId: "seller-1",
+      receiptType: "INVOICE"
     });
   });
 
