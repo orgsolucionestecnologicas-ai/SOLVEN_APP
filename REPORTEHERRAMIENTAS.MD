@@ -1,26 +1,36 @@
-# REPORTE BATCH 1 — 2026-06-11
+# REPORTE BATCH 2 — 2026-06-11
 
-## TAREA 1 — API top-products
-✅ Creado `src/app/api/dashboard/top-products/route.ts` con el contenido exacto especificado.
+## TAREA 1 — HERR-06: Stock mínimo
+Completado. Archivos modificados:
+- prisma/schema.prisma (campo `minStock Int @default(0)` en `Product`)
+- src/modules/products/product-validation.ts
+- src/modules/dashboard/dashboard-summary.ts
+- src/app/ui/product-form.tsx
+- src/app/products/[id]/product-edit-view.tsx
+Migración: `20260611211638_add_product_min_stock`
 
-## TAREA 2 — TopProductsPanel dashboard
-✅ Agregado tipo `TopProduct` y reemplazada `TopProductsPanel` para consumir `/api/dashboard/top-products`.
+## TAREA 2 — HERR-07: PDF cotización
+Completado. Archivos creados/modificados:
+- src/app/ui/quote-pdf.tsx (nuevo)
+- src/app/api/quotes/[id]/pdf/route.tsx (nuevo)
+- src/app/ui/quotes-list.tsx (botón "Descargar PDF")
+- package.json / package-lock.json (dependencia @react-pdf/renderer)
 
-## TAREA 3 — AlertsPanel cotizaciones por vencer
-✅ Agregado tipo `ExpiringQuote` y reemplazada `AlertsPanel` para consumir `/api/quotes/expiring`, link cambiado a `/quotes`.
-
-## TAREA 4 — vercel.json cron
-✅ Creado `vercel.json` con cron `/api/cron/expire-quotes` a las 03:00 UTC. JSON validado con `node -e "require('./vercel.json')"`.
-
-## TAREA 5 — Customer phone/email en BD
-✅ `validateUpdateCustomerInput` ahora acepta y valida `phone`/`email`. `EditCustomerModal` inicializa y persiste `phone`/`email` vía PUT a `/api/customers/:id`. Agregado Panel 3: Contacto en `customer-detail.tsx`. Panel "Notas del cliente" sin cambios.
+## TAREA 3 — HERR-09: Pago mixto
+Completado. Archivos modificados:
+- prisma/schema.prisma (enum `SalePaymentType` + `MIXED`, campo `cashAmount` en `Sale`)
+- src/modules/sales/sale-validation.ts
+- src/modules/sales/sale-data-access.ts
+- src/app/ui/pos.tsx
+- src/modules/products/product-validation.test.ts (ajuste por nuevo campo `minStock`)
+Migración: `20260611212624_add_mixed_payment`
 
 ## VALIDACIONES FINALES
-- lint: ✅
-- typecheck: ✅
-- prisma validate: ✅
-- prisma migrate status: ✅ (up to date, 19 migrations)
-- tests: ✅ 188 passed, 0 failed
+- lint: OK
+- typecheck: OK
+- prisma validate: OK
+- prisma migrate status: Database schema is up to date
+- tests: 188 passed, 0 failed
 
 ## GIT
-✅ pendiente de commit en este paso
+Pendiente de commit y push.

@@ -18,14 +18,23 @@ export type DashboardSummary = {
 export async function getDashboardSummary(
   tenantId: string
 ): Promise<DashboardSummary> {
+  const lowStockRaw = await prisma.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*) as count FROM "Product"
+    WHERE "tenantId" = ${tenantId}
+    AND (
+      ("minStock" > 0 AND "stock" <= "minStock")
+      OR ("minStock" = 0 AND "stock" <= ${LOW_STOCK_THRESHOLD})
+    )
+  `;
+  const lowStockProductsCount = Number(lowStockRaw[0].count);
+
   const [
     salesSummary,
     expensesSummary,
     cashInSummary,
     cashOutSummary,
     debtsSummary,
-    totalProducts,
-    lowStockProductsCount
+    totalProducts
   ] = await Promise.all([
     prisma.sale.aggregate({ where: { tenantId }, _sum: { totalAmount: true } }),
     prisma.expense.aggregate({ where: { tenantId }, _sum: { amount: true } }),
@@ -41,8 +50,7 @@ export async function getDashboardSummary(
       where: { tenantId },
       _sum: { remainingAmount: true }
     }),
-    prisma.product.count({ where: { tenantId } }),
-    prisma.product.count({ where: { tenantId, stock: { lte: LOW_STOCK_THRESHOLD } } })
+    prisma.product.count({ where: { tenantId } })
   ]);
 
   const totalSalesAmount = salesSummary._sum.totalAmount ?? zero();

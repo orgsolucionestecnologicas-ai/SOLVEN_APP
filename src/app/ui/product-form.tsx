@@ -58,6 +58,7 @@ type InitialProductData = {
   costPrice: string;
   salePrice: string;
   stock: number;
+  minStock?: number;
   productCode?: string | null;
 };
 
@@ -112,7 +113,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
   });
   const [salePrice, setSalePrice] = useState(initialData?.salePrice ?? "");
   const [stock, setStock] = useState(initialData?.stock !== undefined ? String(initialData.stock) : "0");
-  const [minStock, setMinStock] = useState("0");
+  const [minStock, setMinStock] = useState(initialData?.minStock !== undefined ? String(initialData.minStock) : "0");
   const [stockAlert, setStockAlert] = useState("0");
   const [location, setLocation] = useState("");
   const [supplier, setSupplier] = useState("");
@@ -205,8 +206,8 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
       const url = isEditMode ? `/api/products/${productId}` : "/api/products";
       const method = isEditMode ? "PUT" : "POST";
       const payload = isEditMode
-        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice) }
-        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10) };
+        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), minStock: parseInt(minStock, 10) || 0 }
+        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10), minStock: parseInt(minStock, 10) || 0 };
 
       const response = await fetch(url, {
         method,

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import {
   type CreateSaleInput,
   SaleNoCashRegisterOpenError,
+  type ValidatedMixedSaleInput,
   type ValidatedProductSaleItemInput,
   type ValidatedServiceSaleItemInput,
   type ValidatedSaleItemInput,
@@ -69,7 +70,7 @@ export async function createSale(
 ): Promise<SaleWithItems> {
   const validatedSale = validateCreateSaleInput(saleInput);
 
-  if (validatedSale.paymentType === "CASH") {
+  if (validatedSale.paymentType === "CASH" || validatedSale.paymentType === "MIXED") {
     const openSession = await prisma.cashRegisterSession.findFirst({
       where: { status: "OPEN", tenantId }
     });
@@ -140,8 +141,12 @@ export async function createSale(
         sellerId: validatedSale.sellerId || null,
         paymentType: validatedSale.paymentType,
         customerId:
-          validatedSale.paymentType === "CREDIT"
+          validatedSale.paymentType === "CREDIT" || validatedSale.paymentType === "MIXED"
             ? validatedSale.customerId
+            : null,
+        cashAmount:
+          validatedSale.paymentType === "MIXED"
+            ? new Prisma.Decimal((validatedSale as ValidatedMixedSaleInput).cashAmount)
             : null,
         totalAmount,
         discountAmount
@@ -204,6 +209,33 @@ export async function createSale(
         where: { id: sale.id },
         data: { debt: { connect: { id: debt.id } } }
       });
+    } else if (validatedSale.paymentType === "MIXED") {
+      const cashPart = new Prisma.Decimal(validatedSale.cashAmount);
+      const debtPart = totalAmount.minus(discountAmount).minus(cashPart);
+
+      if (debtPart.lte(0)) {
+        await transaction.cashMovement.create({
+          data: { tenantId, type: "IN", amount: totalAmount, source: "SALE", referenceId: sale.id }
+        });
+      } else {
+        await transaction.cashMovement.create({
+          data: { tenantId, type: "IN", amount: cashPart, source: "SALE", referenceId: sale.id }
+        });
+
+        const debt = await transaction.debt.create({
+          data: {
+            tenantId,
+            customerId: validatedSale.customerId,
+            totalAmount: debtPart,
+            remainingAmount: debtPart
+          }
+        });
+
+        await transaction.sale.update({
+          where: { id: sale.id },
+          data: { debt: { connect: { id: debt.id } } }
+        });
+      }
     } else {
       await transaction.cashMovement.create({
         data: {

@@ -21,6 +21,7 @@ export type CreateProductInput = {
   costPrice: number;
   salePrice: number;
   stock: number;
+  minStock?: number;
   ivaRate?: number;
 };
 
@@ -30,6 +31,7 @@ export type ValidatedProductInput = {
   costPrice: number;
   salePrice: number;
   stock: number;
+  minStock: number;
   ivaRate: number;
 };
 
@@ -63,6 +65,11 @@ export function validateCreateProductInput(
     validationErrors.push("Stock must be a non-negative integer.");
   }
 
+  const minStock =
+    Number.isInteger(productInput.minStock) && (productInput.minStock ?? 0) >= 0
+      ? (productInput.minStock ?? 0)
+      : 0;
+
   const categoryName =
     typeof productInput.categoryName === "string" &&
     (PRODUCT_CATEGORIES as readonly string[]).includes(productInput.categoryName)
@@ -88,6 +95,7 @@ export function validateCreateProductInput(
     costPrice: productInput.costPrice,
     salePrice: productInput.salePrice,
     stock: productInput.stock,
+    minStock,
     ivaRate
   };
 }
@@ -101,14 +109,15 @@ export type UpdateProductInput = {
   categoryName?: string;
   costPrice?: number;
   salePrice?: number;
+  minStock?: number;
   ivaRate?: number;
 };
 
 export function validateUpdateProductInput(
   input: UpdateProductInput
-): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; ivaRate?: number } {
+): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; ivaRate?: number } {
   const errors: string[] = [];
-  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; ivaRate?: number } = {};
+  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; ivaRate?: number } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -147,6 +156,14 @@ export function validateUpdateProductInput(
       errors.push("ivaRate inválido. Valores aceptados: 0, 0.105, 0.21, 0.27");
     } else {
       result.ivaRate = input.ivaRate;
+    }
+  }
+
+  if (input.minStock !== undefined) {
+    if (!Number.isInteger(input.minStock) || input.minStock < 0) {
+      errors.push("minStock must be a non-negative integer.");
+    } else {
+      result.minStock = input.minStock;
     }
   }
 

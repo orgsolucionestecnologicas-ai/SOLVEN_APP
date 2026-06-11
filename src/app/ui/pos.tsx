@@ -143,7 +143,7 @@ type ActivePromotionsResponse = {
 };
 
 type CashPaymentMethod = "Efectivo" | "Tarjeta" | "Transferencia" | "VentaWeb" | "Otro";
-type PaymentMethod = CashPaymentMethod | "Fiado";
+type PaymentMethod = CashPaymentMethod | "Fiado" | "Mixto";
 type ActiveTab = "Venta actual" | "Historial";
 
 type CashPaymentCard = { method: CashPaymentMethod; Icon: LucideIcon };
@@ -254,6 +254,7 @@ export function Pos() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Efectivo");
   const [cashReceived, setCashReceived] = useState("");
+  const [mixedCashAmount, setMixedCashAmount] = useState<number>(0);
 
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [customersLoading, setCustomersLoading] = useState(false);
@@ -420,9 +421,10 @@ export function Pos() {
   }, []);
 
   const isFiado = paymentMethod === "Fiado";
+  const isMixto = paymentMethod === "Mixto";
 
   useEffect(() => {
-    if ((!isFiado && !optionalCustomerOpen) || customersLoaded) return;
+    if ((!isFiado && !isMixto && !optionalCustomerOpen) || customersLoaded) return;
 
     let isActive = true;
     setCustomersLoading(true);
@@ -451,7 +453,7 @@ export function Pos() {
     return () => {
       isActive = false;
     };
-  }, [isFiado, optionalCustomerOpen, customersLoaded]);
+  }, [isFiado, isMixto, optionalCustomerOpen, customersLoaded]);
 
   useEffect(() => {
     if (!urlCustomerIdRef.current || !customersLoaded) return;
@@ -609,6 +611,7 @@ export function Pos() {
     setCartItems([]);
     setPaymentMethod("Efectivo");
     setCashReceived("");
+    setMixedCashAmount(0);
     setCardOperationNumber("");
     setTransferOperationNumber("");
     setSelectedCustomer(null);
@@ -829,10 +832,20 @@ export function Pos() {
       return;
     }
 
+    if (isMixto && !selectedCustomerId) {
+      setSubmitError("Seleccioná un cliente para la venta mixta.");
+      return;
+    }
+
+    if (isMixto && (Number.isNaN(mixedCashAmount) || mixedCashAmount < 0)) {
+      setSubmitError("El monto en efectivo debe ser mayor o igual a 0.");
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
 
-    const apiPaymentType = isFiado ? "CREDIT" : "CASH";
+    const apiPaymentType = isFiado ? "CREDIT" : isMixto ? "MIXED" : "CASH";
 
     try {
       const response = await fetch("/api/sales", {
@@ -844,6 +857,7 @@ export function Pos() {
           sellerId: saleGateResult?.sellerId ?? "",
           receiptType: saleGateResult?.receiptType ?? "TICKET",
           ...(isFiado ? { customerId: selectedCustomerId } : {}),
+          ...(isMixto ? { customerId: selectedCustomerId, cashAmount: mixedCashAmount } : {}),
           items: cartItems.map((item) =>
             item.serviceId
               ? { serviceId: item.serviceId, quantity: item.quantity }
@@ -879,6 +893,7 @@ export function Pos() {
       setCartItems([]);
       setPaymentMethod("Efectivo");
       setCashReceived("");
+      setMixedCashAmount(0);
       setSelectedCustomer(null);
       setCustomerSearch("");
       setApplyResult(null);
@@ -1644,6 +1659,7 @@ export function Pos() {
                         setPaymentMethod(method);
                         setSelectedCustomer(null);
                         setCustomerSearch("");
+                        setMixedCashAmount(0);
                       }}
                       type="button"
                     >
@@ -1675,10 +1691,26 @@ export function Pos() {
                       ? "mt-1.5 flex w-full items-center justify-center rounded-xl border-2 border-amber-400 bg-amber-50 py-2 text-xs font-semibold text-amber-800"
                       : "mt-1.5 flex w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 py-2 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-white"
                   }
-                  onClick={() => setPaymentMethod("Fiado")}
+                  onClick={() => {
+                    setPaymentMethod("Fiado");
+                    setMixedCashAmount(0);
+                  }}
                   type="button"
                 >
                   Venta a crédito (Fiado)
+                </button>
+
+                {/* Mixto — 6th option */}
+                <button
+                  className={
+                    paymentMethod === "Mixto"
+                      ? "mt-1.5 flex w-full items-center justify-center rounded-xl border-2 border-violet-500 bg-violet-50 py-2 text-xs font-semibold text-violet-700"
+                      : "mt-1.5 flex w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 py-2 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-white"
+                  }
+                  onClick={() => setPaymentMethod("Mixto")}
+                  type="button"
+                >
+                  Pago mixto (efectivo + cuenta corriente)
                 </button>
               </div>
 
@@ -1753,8 +1785,40 @@ export function Pos() {
                 </div>
               ) : null}
 
-              {/* Optional customer selector — non-Fiado */}
-              {!isFiado ? (
+              {/* Monto en efectivo + saldo a cuenta corriente — Mixto */}
+              {isMixto ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="flex-shrink-0 text-xs font-medium text-slate-600">
+                      Monto en efectivo
+                    </label>
+                    <input
+                      className="w-28 rounded-lg border border-slate-200 px-3 py-1.5 text-right text-sm tabular-nums text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                      inputMode="decimal"
+                      min="0"
+                      onChange={(e) => setMixedCashAmount(Number(e.target.value) || 0)}
+                      placeholder="0.00"
+                      step="0.01"
+                      type="number"
+                      value={mixedCashAmount === 0 ? "" : mixedCashAmount}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-600">A cuenta corriente</span>
+                    <span className="tabular-nums text-sm font-semibold text-slate-500">
+                      {formatMoneyNum(Math.max((cartTotal - totalDiscount) - mixedCashAmount, 0))}
+                    </span>
+                  </div>
+                  {mixedCashAmount >= cartTotal - totalDiscount && cartTotal - totalDiscount > 0 ? (
+                    <p className="text-xs text-amber-600">
+                      El monto en efectivo cubre el total. Considerá usar &quot;Efectivo&quot; en su lugar.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Optional customer selector — non-Fiado, non-Mixto */}
+              {!isFiado && !isMixto ? (
                 <div className="border-t border-slate-100 pt-2">
                   {selectedCustomer ? (
                     <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
@@ -1843,8 +1907,8 @@ export function Pos() {
                 </div>
               ) : null}
 
-              {/* Customer search — Fiado only */}
-              {isFiado ? (
+              {/* Customer search — Fiado and Mixto */}
+              {isFiado || isMixto ? (
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Cliente

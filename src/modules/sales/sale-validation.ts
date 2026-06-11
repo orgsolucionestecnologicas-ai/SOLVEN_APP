@@ -4,12 +4,13 @@ export type CreateSaleItemInput = {
   quantity: number;
 };
 
-export type SalePaymentType = "CASH" | "CREDIT";
+export type SalePaymentType = "CASH" | "CREDIT" | "MIXED";
 
 export type CreateSaleInput = {
   items: CreateSaleItemInput[];
   paymentType?: SalePaymentType;
   customerId?: string;
+  cashAmount?: number;
   sellerCode?: string;
   sellerId?: string;
   receiptType?: "TICKET" | "INVOICE";
@@ -46,9 +47,20 @@ export type ValidatedCreditSaleInput = {
   receiptType: "TICKET" | "INVOICE";
 };
 
+export type ValidatedMixedSaleInput = {
+  items: ValidatedSaleItemInput[];
+  paymentType: "MIXED";
+  customerId: string;
+  cashAmount: number;
+  sellerCode: string;
+  sellerId: string;
+  receiptType: "TICKET" | "INVOICE";
+};
+
 export type ValidatedSaleInput =
   | ValidatedCashSaleInput
-  | ValidatedCreditSaleInput;
+  | ValidatedCreditSaleInput
+  | ValidatedMixedSaleInput;
 
 export class SaleNoCashRegisterOpenError extends Error {
   constructor() {
@@ -76,12 +88,23 @@ export function validateCreateSaleInput(
     validationErrors.push("A sale must include at least one item.");
   }
 
-  if (paymentType !== "CASH" && paymentType !== "CREDIT") {
-    validationErrors.push("Sale payment type must be CASH or CREDIT.");
+  if (paymentType !== "CASH" && paymentType !== "CREDIT" && paymentType !== "MIXED") {
+    validationErrors.push("Sale payment type must be CASH, CREDIT or MIXED.");
   }
 
-  if (paymentType === "CREDIT" && customerId.length === 0) {
-    validationErrors.push("Customer id is required for credit sales.");
+  if ((paymentType === "CREDIT" || paymentType === "MIXED") && customerId.length === 0) {
+    validationErrors.push("Customer id is required for credit and mixed sales.");
+  }
+
+  const cashAmount =
+    paymentType === "MIXED"
+      ? typeof saleInput.cashAmount === "number" && saleInput.cashAmount >= 0
+        ? saleInput.cashAmount
+        : -1
+      : 0;
+
+  if (paymentType === "MIXED" && cashAmount < 0) {
+    validationErrors.push("cashAmount must be a non-negative number for mixed sales.");
   }
 
   const items = Array.isArray(saleInput.items) ? saleInput.items : [];
@@ -126,6 +149,18 @@ export function validateCreateSaleInput(
       items: validatedItems,
       paymentType,
       customerId,
+      sellerCode,
+      sellerId,
+      receiptType
+    };
+  }
+
+  if (paymentType === "MIXED") {
+    return {
+      items: validatedItems,
+      paymentType: "MIXED",
+      customerId,
+      cashAmount,
       sellerCode,
       sellerId,
       receiptType

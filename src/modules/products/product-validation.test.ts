@@ -20,6 +20,7 @@ describe("validateCreateProductInput", () => {
       costPrice: 10,
       salePrice: 15,
       stock: 20,
+      minStock: 0,
       ivaRate: 0.21
     });
   });
