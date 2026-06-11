@@ -59,6 +59,21 @@ type Customer = {
   name: string;
 };
 
+type TopProduct = {
+  id: string;
+  name: string;
+  units: number;
+  total: number;
+};
+
+type ExpiringQuote = {
+  id: string;
+  quoteNumber: string;
+  customerName: string;
+  totalAmount: string;
+  validUntil: string;
+};
+
 type Debt = {
   id: string;
   customerId: string;
@@ -469,6 +484,19 @@ function SalesAreaChart({ data }: { data: DayTotal[] }) {
 // ── TopProductsPanel ───────────────────────────────────────────────────────────
 
 function TopProductsPanel() {
+  const [products, setProducts] = useState<TopProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/dashboard/top-products", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: TopProduct[] }) => {
+        if (body.data) setProducts(body.data);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
   return (
     <div className="flex h-full flex-col rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
@@ -477,11 +505,33 @@ function TopProductsPanel() {
           Ver todos
         </Link>
       </div>
-      <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-slate-200">
-        <p className="px-4 text-center text-sm text-slate-400">
-          Datos de líneas de venta próximamente disponibles
-        </p>
-      </div>
+      {isLoading ? (
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+        </div>
+      ) : products.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-slate-200">
+          <p className="px-4 text-center text-sm text-slate-400">
+            Sin datos de ventas en los últimos 30 días
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {products.map((prod, i) => (
+            <li key={prod.id} className="flex items-center gap-3">
+              <span className="w-5 flex-shrink-0 text-xs font-bold text-slate-400">{i + 1}</span>
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-violet-100 text-xs font-bold text-violet-700">
+                {prod.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-slate-800">{prod.name}</p>
+                <p className="text-[11px] text-slate-400">{formatARS(prod.total)}</p>
+              </div>
+              <span className="flex-shrink-0 text-xs font-semibold text-slate-700">{prod.units} uds.</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -540,13 +590,24 @@ function AlertsPanel({
   lowStockCount: number;
   pendingDebtsCount: number;
 }) {
-  const hasAlerts = lowStockCount > 0 || pendingDebtsCount > 0;
+  const [expiringQuotes, setExpiringQuotes] = useState<ExpiringQuote[]>([]);
+
+  useEffect(() => {
+    fetch("/api/quotes/expiring", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: ExpiringQuote[] }) => {
+        if (body.data) setExpiringQuotes(body.data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const hasAlerts = lowStockCount > 0 || pendingDebtsCount > 0 || expiringQuotes.length > 0;
 
   return (
     <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-900">Alertas importantes</p>
-        <Link href="/products" className="text-xs font-medium text-violet-600 hover:text-violet-700">
+        <Link href="/quotes" className="text-xs font-medium text-violet-600 hover:text-violet-700">
           Ver todas
         </Link>
       </div>
@@ -573,6 +634,20 @@ function AlertsPanel({
                 <p className="mt-0.5 text-xs text-yellow-600">
                   {pendingDebtsCount} {pendingDebtsCount === 1 ? "deuda activa" : "deudas activas"} sin saldar
                 </p>
+              </div>
+            </li>
+          ) : null}
+          {expiringQuotes.length > 0 ? (
+            <li className="flex items-start gap-3 rounded-lg bg-violet-50 p-3">
+              <span className="mt-0.5 flex-shrink-0 text-violet-500">📋</span>
+              <div>
+                <p className="text-xs font-semibold text-violet-800">Cotizaciones por vencer</p>
+                <p className="mt-0.5 text-xs text-violet-600">
+                  {expiringQuotes.length} {expiringQuotes.length === 1 ? "cotización vence" : "cotizaciones vencen"} en las próximas 24 hs
+                </p>
+                <Link href="/quotes" className="mt-1 block text-[11px] font-medium text-violet-700 hover:underline">
+                  Ver cotizaciones →
+                </Link>
               </div>
             </li>
           ) : null}

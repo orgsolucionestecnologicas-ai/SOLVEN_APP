@@ -19,6 +19,8 @@ export class CustomerValidationError extends Error {
 
 export type UpdateCustomerInput = {
   name?: string;
+  phone?: string;
+  email?: string;
 };
 
 export function validateCreateCustomerInput(
@@ -54,9 +56,9 @@ export function validateCreateCustomerInput(
 
 export function validateUpdateCustomerInput(
   input: UpdateCustomerInput
-): { name?: string } {
+): { name?: string; phone?: string | null; email?: string | null } {
   const validationErrors: string[] = [];
-  const result: { name?: string } = {};
+  const result: { name?: string; phone?: string | null; email?: string | null } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -65,6 +67,14 @@ export function validateUpdateCustomerInput(
     } else {
       result.name = name;
     }
+  }
+
+  if (input.phone !== undefined) {
+    result.phone = typeof input.phone === "string" ? input.phone.trim() || null : null;
+  }
+
+  if (input.email !== undefined) {
+    result.email = typeof input.email === "string" ? input.email.trim() || null : null;
   }
 
   if (validationErrors.length > 0) {

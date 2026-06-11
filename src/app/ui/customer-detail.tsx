@@ -25,6 +25,8 @@ import { formatARS as fmtMoney } from "@/lib/format-currency";
 type CustomerRecord = {
   id: string;
   name: string;
+  phone?: string | null;
+  email?: string | null;
   customerCode?: string;
   createdAt: string;
   updatedAt: string;
@@ -532,6 +534,27 @@ export function CustomerDetail() {
             </button>
           </div>
 
+          {/* Panel 3: Contacto */}
+          {(customer.phone ?? customer.email) ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <h3 className="mb-3 text-sm font-semibold text-slate-950">Contacto</h3>
+              <div className="space-y-2">
+                {customer.phone ? (
+                  <div className="flex items-center gap-2">
+                    <Phone size={13} className="flex-shrink-0 text-slate-400" />
+                    <span className="text-xs text-slate-700">{customer.phone}</span>
+                  </div>
+                ) : null}
+                {customer.email ? (
+                  <div className="flex items-center gap-2">
+                    <Mail size={13} className="flex-shrink-0 text-slate-400" />
+                    <span className="text-xs text-slate-700">{customer.email}</span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
           {/* Panel 3: Notas */}
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="mb-2 flex items-center justify-between">
@@ -1012,26 +1035,10 @@ function EditCustomerModal({
   onSuccess: () => void;
 }) {
   const [name, setName] = useState(customer.name);
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [ciudad, setCiudad] = useState("");
-  const [postal, setPostal] = useState("");
-  const [direccion, setDireccion] = useState("");
-  const [cedulaDisplay, setCedulaDisplay] = useState("");
+  const [phone, setPhone] = useState(customer.phone ?? "");
+  const [email, setEmail] = useState(customer.email ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const extra = readCustomerExtra(customer.id);
-    setPhone(extra.phone);
-    setEmail(extra.email);
-    setCiudad(extra.ciudad);
-    setPostal(extra.postal);
-    setDireccion(extra.direccion);
-    setCedulaDisplay(
-      extra.cedula || `001-${customer.id.slice(-7, -3)}-${customer.id.slice(-3)}`
-    );
-  }, [customer.id]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -1041,14 +1048,17 @@ function EditCustomerModal({
       const res = await fetch(`/api/customers/${customer.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim() })
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.trim() || null,
+          email: email.trim() || null,
+        })
       });
       const body = (await res.json()) as ApiResponse<CustomerRecord>;
       if (!res.ok || !body.data) {
         setSubmitError(body.error?.details?.[0] ?? body.error?.message ?? "No se pudo actualizar el cliente.");
         return;
       }
-      saveCustomerExtra(customer.id, { phone, email, ciudad, postal, direccion, cedula: cedulaDisplay });
       onSuccess();
     } catch {
       setSubmitError("No se pudo actualizar el cliente.");
@@ -1093,7 +1103,7 @@ function EditCustomerModal({
                 disabled={isSubmitting}
                 id="edit-phone"
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="809-000-0000"
+                placeholder="Ej. +54 9 11 1234-5678"
                 type="tel"
                 value={phone}
               />
@@ -1119,84 +1129,25 @@ function EditCustomerModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-ciudad">
-                Ciudad
-              </label>
-              <input
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
-                disabled={isSubmitting}
-                id="edit-ciudad"
-                onChange={(e) => setCiudad(e.target.value)}
-                placeholder="Ej. Buenos Aires"
-                type="text"
-                value={ciudad}
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-postal">
-                Código postal
-              </label>
-              <input
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
-                disabled={isSubmitting}
-                id="edit-postal"
-                onChange={(e) => setPostal(e.target.value)}
-                placeholder="Ej. 1043"
-                type="text"
-                value={postal}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-direccion">
-              Dirección
-              <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
-            </label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
-              <input
-                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
-                disabled={isSubmitting}
-                id="edit-direccion"
-                onChange={(e) => setDireccion(e.target.value)}
-                placeholder="Av. Principal #123..."
-                type="text"
-                value={direccion}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-cedula">
-              Cédula / RNC
-              <span className="ml-1.5 text-xs font-normal text-slate-400">(no editable)</span>
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={13} />
-              <input
-                className="w-full cursor-not-allowed rounded-md border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-400"
-                disabled
-                id="edit-cedula"
-                readOnly
-                type="text"
-                value={cedulaDisplay}
-              />
-            </div>
-          </div>
-
           {submitError ? (
             <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
               <p className="text-sm text-rose-900">{submitError}</p>
             </div>
           ) : null}
           <div className="flex justify-end gap-3 pt-2">
-            <button className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100" disabled={isSubmitting} onClick={onClose} type="button">
+            <button
+              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              disabled={isSubmitting}
+              onClick={onClose}
+              type="button"
+            >
               Cancelar
             </button>
-            <button className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50" disabled={isSubmitting} type="submit">
+            <button
+              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              disabled={isSubmitting}
+              type="submit"
+            >
               {isSubmitting ? "Guardando..." : "Guardar cambios"}
             </button>
           </div>

@@ -4,7 +4,8 @@
       "Bash(node -e \"const lr = require\\('/home/diegogama/Escritorio/SOLVEN_APP/node_modules/lucide-react'\\); console.log\\(['Box','Save','Trash2','ChevronDown','Upload','FileUp','PackageCheck','PackagePlus','ClipboardList'].filter\\(k => lr[k]\\).join\\(', '\\)\\)\")",
       "Bash(mkdir -p /home/diegogama/Escritorio/SOLVEN_APP/src/app/customers/\\\\[id\\\\]/payment)",
       "Bash(xdg-open http://localhost:3001)",
-      "Bash(python3 -c \"import sys,json; s=json.load\\(sys.stdin\\)['scripts']; print\\(s.get\\('build','MISSING'\\)\\); print\\(s.get\\('start','MISSING'\\)\\)\")"
+      "Bash(python3 -c \"import sys,json; s=json.load\\(sys.stdin\\)['scripts']; print\\(s.get\\('build','MISSING'\\)\\); print\\(s.get\\('start','MISSING'\\)\\)\")",
+      "Bash(node -e \"require\\('./vercel.json'\\); console.log\\('OK'\\)\")"
     ],
     "additionalDirectories": [
       "/home/diegogama/Escritorio/SOLVEN_APP/src/app/customers/[id]"
