@@ -129,3 +129,62 @@ No se modificaron otros archivos.
 - `npm run lint` — sin errores.
 - `npm run typecheck` — sin errores.
 - `npm run build` — compila sin errores nuevos.
+
+---
+
+## Iteración v3 — 2026-06-12
+
+### 1. Cambios concretos al mock de "Así se ve SOLVEN por dentro"
+
+- **Marco navegador**: rediseñado con 3 dots de 12px (`#FF5F57` / `#FEBC2E` / `#28C840`), flechas
+  decorativas izquierda/derecha (chevrons), pill de URL centrado (`#F1F3F5`, borde `#E5E7EB`, radio 6px,
+  icono de candado + texto) y un icono `+` decorativo a la derecha. Topbar blanca, 40px de alto,
+  borde inferior `#E5E7EB`.
+- **Sidebar fiel al producto real** (220px): logo cuadrado violeta `#7C3AED` con `S` + texto `SOLVEN`,
+  buscador placeholder `Buscar...`, y los 13 items exactos de `navItems` (`AppShell`) en el orden real:
+  Inicio (activo), Ventas, Devoluciones, Productos, Servicios, Inventario, Clientes, Caja, Cotizaciones,
+  Reportes, Promociones, Configuración, Usuarios — cada uno con su icono SVG inline equivalente a Lucide.
+  Item activo con fondo `#F5F3FF`, texto/icono `#7C3AED` y borde izquierdo violeta. Bloque inferior con
+  avatar circular violeta `JR` + `Juan Rodríguez` / `Propietario`.
+- **Contenido principal** replica `DashboardSummary`:
+  - Header: `Hola, Juan 👋` + subtítulo, y a la derecha icono de calendario + `Viernes, 12 junio 2026`.
+  - 4 KPI cards: Ventas del día ($248.500, con delta `▲ $42.300 vs ayer` y sparkline violeta),
+    Ventas del mes ($4.187.250, sparkline verde), Ganancia del día ($96.840, sparkline azul),
+    Productos bajos (12, con link `Ver inventario →` en naranja).
+  - Grilla principal: gráfico de área "Ventas de los últimos 7 días" (SVG 480×180, gradiente violeta,
+    grid lines y labels en pesos, 7 días en español, polilínea + puntos) + panel "Productos más vendidos"
+    con los 5 productos argentinos (Coca Cola 2.25L, Pan Lactal Bimbo, Yerba Rosamonte 1kg,
+    Cerveza Quilmes 1L, Leche La Serenísima 1L).
+  - Fila de 3 paneles: Movimientos de caja (4 filas con iconos ↑/↓ verde/rojo), Alertas importantes
+    (3 bloques de color: stock bajo, pagos pendientes, cotizaciones por vencer) y Resumen rápido
+    (5 filas label/valor, "Ventas pendientes" en rojo).
+  - Acciones rápidas: grilla de 6 botones (Nueva venta, Nuevo producto, Abrir caja, Ver reportes,
+    Nuevo cliente, Ajuste de stock) con iconos violeta.
+- **Paleta del mock**: se usa el violeta real del producto (`#7C3AED` y derivados) como excepción
+  deliberada dentro del marco, manteniendo el azul `--accent` fuera de él en el resto de la landing.
+- **Accesibilidad**: contenedor del mock con `aria-hidden="true"` + texto `sr-only` descriptivo.
+- **Mobile**: el marco usa `overflow-x: auto` con `min-width: 960px` en el body del mock para preservar
+  la fidelidad del dashboard sin reflow.
+
+### 2. Confirmación de la URL
+
+- La pill del marco navegador muestra exactamente `solvenrs.com` (sin `https://`, sin `/dashboard`).
+
+### 3. Confirmaciones
+
+- La tarjeta de precio horizontal (`.pricing-block`) no fue tocada.
+- Las secciones de v2 (Industrias, Infraestructura, Presencia/Alcance, Compañía, top bar oscuro,
+  footer de 5 columnas, dividers) permanecen intactas.
+- No se introdujo `lucide-react` en `page.tsx`; todos los iconos del mock son SVG inline.
+
+### 4. Desvíos respecto a la orden
+
+- El icono de "perfil" del topbar se implementó como un símbolo `+` decorativo (la orden permitía
+  "+ o perfil placeholder, decorativo"), por simplicidad y consistencia con el resto de iconos lineales.
+- Sin más desvíos.
+
+### 5. Validación
+
+- `npm run lint` — sin errores.
+- `npm run typecheck` — sin errores.
+- `npm run build` — compila sin errores nuevos.

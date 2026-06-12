@@ -24,7 +24,10 @@ type IconName =
   | "check" | "arrow-right" | "menu" | "zap" | "store"
   | "smartphone" | "shield" | "trending-up" | "alert-triangle"
   | "check-circle" | "social"
-  | "shopping-bag" | "cross" | "wrench" | "shirt" | "utensils" | "settings";
+  | "shopping-bag" | "cross" | "wrench" | "shirt" | "utensils" | "settings"
+  | "home" | "rotate-ccw" | "layers" | "file-text" | "user-cog"
+  | "credit-card" | "dollar-sign" | "calendar" | "search" | "lock"
+  | "chevron-left" | "chevron-right" | "user-plus" | "refresh-cw" | "plus";
 
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const common = {
@@ -207,10 +210,192 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
       );
+    case "home":
+      return (
+        <svg {...common}>
+          <path d="M3 9.5 12 2l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" />
+        </svg>
+      );
+    case "rotate-ccw":
+      return (
+        <svg {...common}>
+          <path d="M3 12a9 9 0 1 0 2.64-6.36L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+      );
+    case "layers":
+      return (
+        <svg {...common}>
+          <path d="m12.83 2.18-8.57 3.9a1 1 0 0 0 0 1.84l8.57 3.9a2 2 0 0 0 1.66 0l8.57-3.9a1 1 0 0 0 0-1.84l-8.57-3.9a2 2 0 0 0-1.66 0z" />
+          <path d="m2.26 12.18 8.57 3.9a2 2 0 0 0 1.66 0l8.57-3.9" />
+          <path d="m2.26 17.18 8.57 3.9a2 2 0 0 0 1.66 0l8.57-3.9" />
+        </svg>
+      );
+    case "file-text":
+      return (
+        <svg {...common}>
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+          <path d="M14 2v6h6" />
+          <path d="M16 13H8M16 17H8M10 9H8" />
+        </svg>
+      );
+    case "user-cog":
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="7" r="4" />
+          <path d="M2 21v-2a4 4 0 0 1 4-4h3" />
+          <circle cx="18" cy="17" r="3" />
+          <path d="M18 13v1M18 20v1M14.6 15l.9.5M21.5 18.5l.9.5M21.4 15l-.9.5M14.5 18.5l-.9.5" />
+        </svg>
+      );
+    case "credit-card":
+      return (
+        <svg {...common}>
+          <rect x="2" y="5" width="20" height="14" rx="2" />
+          <path d="M2 10h20" />
+        </svg>
+      );
+    case "dollar-sign":
+      return (
+        <svg {...common}>
+          <path d="M12 2v20" />
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 1 1 0 7H6" />
+        </svg>
+      );
+    case "calendar":
+      return (
+        <svg {...common}>
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <path d="M16 2v4M8 2v4M3 10h18" />
+        </svg>
+      );
+    case "search":
+      return (
+        <svg {...common}>
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
+      );
+    case "lock":
+      return (
+        <svg {...common}>
+          <rect x="3" y="11" width="18" height="11" rx="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      );
+    case "chevron-left":
+      return (
+        <svg {...common}>
+          <path d="M15 18 9 12l6-6" />
+        </svg>
+      );
+    case "chevron-right":
+      return (
+        <svg {...common}>
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      );
+    case "user-plus":
+      return (
+        <svg {...common}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M19 8v6M22 11h-6" />
+        </svg>
+      );
+    case "refresh-cw":
+      return (
+        <svg {...common}>
+          <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+          <path d="M21 3v5h-5" />
+          <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+          <path d="M3 21v-5h5" />
+        </svg>
+      );
+    case "plus":
+      return (
+        <svg {...common}>
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      );
   }
 }
 
+const sidebarItemsV2: { label: string; icon: IconName }[] = [
+  { label: "Inicio", icon: "home" },
+  { label: "Ventas", icon: "cart" },
+  { label: "Devoluciones", icon: "rotate-ccw" },
+  { label: "Productos", icon: "box" },
+  { label: "Servicios", icon: "wrench" },
+  { label: "Inventario", icon: "layers" },
+  { label: "Clientes", icon: "users" },
+  { label: "Caja", icon: "credit-card" },
+  { label: "Cotizaciones", icon: "file-text" },
+  { label: "Reportes", icon: "chart" },
+  { label: "Promociones", icon: "tag" },
+  { label: "Configuración", icon: "settings" },
+  { label: "Usuarios", icon: "user-cog" },
+];
+
+const quickActionsV2: { label: string; icon: IconName }[] = [
+  { label: "Nueva venta", icon: "cart" },
+  { label: "Nuevo producto", icon: "box" },
+  { label: "Abrir caja", icon: "credit-card" },
+  { label: "Ver reportes", icon: "chart" },
+  { label: "Nuevo cliente", icon: "user-plus" },
+  { label: "Ajuste de stock", icon: "refresh-cw" },
+];
+
+const topProductsV2 = [
+  { name: "Coca Cola 2.25L", total: "$ 89.400", units: "42 uds.", initial: "C" },
+  { name: "Pan Lactal Bimbo", total: "$ 67.200", units: "38 uds.", initial: "P" },
+  { name: "Yerba Rosamonte 1kg", total: "$ 54.800", units: "24 uds.", initial: "Y" },
+  { name: "Cerveza Quilmes 1L", total: "$ 48.600", units: "22 uds.", initial: "C" },
+  { name: "Leche La Serenísima 1L", total: "$ 41.250", units: "18 uds.", initial: "L" },
+];
+
+const cashMovementsV2: { label: string; time: string; amount: string; type: "in" | "out" }[] = [
+  { label: "Venta", time: "14:32 PM", amount: "+$ 12.400", type: "in" },
+  { label: "Pago de deuda", time: "13:15 PM", amount: "+$ 8.900", type: "in" },
+  { label: "Gasto", time: "11:48 AM", amount: "-$ 3.200", type: "out" },
+  { label: "Venta", time: "10:22 AM", amount: "+$ 5.750", type: "in" },
+];
+
+const weeklySalesData = [78000, 95000, 142000, 118000, 165000, 198000, 248500];
+const weeklySalesDays = ["Sáb 6", "Dom 7", "Lun 8", "Mar 9", "Mié 10", "Jue 11", "Vie 12"];
+
+function sparkPoints(data: number[]) {
+  const w = 80;
+  const h = 28;
+  const pad = 2;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  return data
+    .map((v, i) => {
+      const x = pad + (i * (w - pad * 2)) / (data.length - 1);
+      const y = h - pad - ((v - min) / range) * (h - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
+
+function weeklyChartPoints(data: number[], maxVal: number) {
+  const w = 430;
+  const h = 140;
+  const x0 = 40;
+  const y0 = 10;
+  return data.map((v, i) => ({
+    x: Number((x0 + (i * w) / (data.length - 1)).toFixed(1)),
+    y: Number((y0 + (1 - v / maxVal) * h).toFixed(1)),
+  }));
+}
+
 export default function LandingPage() {
+  const weeklyPoints = weeklyChartPoints(weeklySalesData, 240000);
+  const weeklyPolyline = weeklyPoints.map((p) => `${p.x},${p.y}`).join(" ");
+  const weeklyArea = `M${weeklyPoints[0].x},150 L${weeklyPoints.map((p) => `${p.x},${p.y}`).join(" L")} L${weeklyPoints[weeklyPoints.length - 1].x},150 Z`;
+
   return (
     <div className={`landing-root ${sora.variable} ${dmSans.variable}`}>
       {/* TOP BAR */}
@@ -342,65 +527,232 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="product-mock fade-in">
+          <div className="product-mock fade-in" aria-hidden="true">
             <div className="product-mock-topbar">
-              <div className="product-mock-dot red" />
-              <div className="product-mock-dot yellow" />
-              <div className="product-mock-dot green" />
-              <div className="product-mock-url">solven-app.vercel.app/dashboard</div>
+              <div className="product-mock-dots">
+                <span className="product-mock-dot red" />
+                <span className="product-mock-dot yellow" />
+                <span className="product-mock-dot green" />
+              </div>
+              <span className="product-mock-nav-btn"><Icon name="chevron-left" size={14} /></span>
+              <span className="product-mock-nav-btn"><Icon name="chevron-right" size={14} /></span>
+              <div className="product-mock-url">
+                <Icon name="lock" size={11} />
+                <span>solvenrs.com</span>
+              </div>
+              <span className="product-mock-profile"><Icon name="plus" size={14} /></span>
             </div>
             <div className="product-mock-body">
-              <div className="product-sidebar">
-                {["Inicio", "Ventas", "Productos", "Clientes", "Caja", "Reportes", "Promociones", "Gastos"].map((item, i) => (
-                  <div key={item} className={`product-sidebar-item${i === 0 ? " active" : ""}`}>{item}</div>
-                ))}
-              </div>
-              <div className="product-main">
-                <div className="product-main-header">
-                  <div className="product-main-title">Hola, Propietario</div>
-                  <div className="product-main-sub">Aquí tienes el resumen de tu negocio</div>
-                </div>
-                <div className="product-kpis">
-                  <div className="product-kpi">
-                    <div className="product-kpi-label">Ventas del día</div>
-                    <div className="product-kpi-value">$2.450</div>
+              <div className="product-sidebar-v2">
+                <div className="product-sidebar-top">
+                  <div className="product-sidebar-brand">
+                    <div className="product-sidebar-logo">S</div>
+                    <span className="product-sidebar-name">SOLVEN</span>
                   </div>
-                  <div className="product-kpi">
-                    <div className="product-kpi-label">Ventas del mes</div>
-                    <div className="product-kpi-value">$38.750</div>
-                  </div>
-                  <div className="product-kpi">
-                    <div className="product-kpi-label">Ganancia del día</div>
-                    <div className="product-kpi-value">$980</div>
-                  </div>
-                  <div className="product-kpi">
-                    <div className="product-kpi-label">Stock bajo</div>
-                    <div className="product-kpi-value">12</div>
+                  <div className="product-sidebar-search">
+                    <Icon name="search" size={14} />
+                    <span>Buscar...</span>
                   </div>
                 </div>
-                <div className="product-chart">
-                  {[40, 55, 35, 70, 60, 90, 75, 85, 65, 95, 80, 100].map((h, i) => (
-                    <div
-                      key={i}
-                      className={`product-bar${i === 11 ? " accent" : ""}`}
-                      style={{ height: `${h}%` }}
-                    />
+                <div className="product-sidebar-nav">
+                  {sidebarItemsV2.map((item, i) => (
+                    <div key={item.label} className={`product-sidebar-item-v2${i === 0 ? " active" : ""}`}>
+                      <Icon name={item.icon} size={18} />
+                      <span>{item.label}</span>
+                    </div>
                   ))}
                 </div>
-                <table className="product-table">
-                  <thead>
-                    <tr><th>Ticket</th><th>Cliente</th><th>Monto</th><th>Estado</th></tr>
-                  </thead>
-                  <tbody>
-                    <tr><td>#0421</td><td>María Rodríguez</td><td>$5.450</td><td><span className="product-status">Cobrado</span></td></tr>
-                    <tr><td>#0420</td><td>Carlos Gómez</td><td>$2.100</td><td><span className="product-status pending">Pendiente</span></td></tr>
-                    <tr><td>#0419</td><td>Laura Andrade</td><td>$8.900</td><td><span className="product-status">Cobrado</span></td></tr>
-                    <tr><td>#0418</td><td>Mostrador</td><td>$1.350</td><td><span className="product-status">Cobrado</span></td></tr>
-                  </tbody>
-                </table>
+                <div className="product-sidebar-bottom">
+                  <div className="product-sidebar-avatar">JR</div>
+                  <div>
+                    <div className="product-sidebar-username">Juan Rodríguez</div>
+                    <div className="product-sidebar-userrole">Propietario</div>
+                  </div>
+                </div>
+              </div>
+              <div className="product-main-v2">
+                <div className="product-main-header-v2">
+                  <div>
+                    <div className="product-main-title-v2">Hola, Juan 👋</div>
+                    <div className="product-main-sub-v2">Aquí tienes el resumen de tu negocio</div>
+                  </div>
+                  <div className="product-main-date">
+                    <Icon name="calendar" size={15} />
+                    <span>Viernes, 12 junio 2026</span>
+                  </div>
+                </div>
+
+                <div className="product-main-content">
+                  <div className="product-kpis-v2">
+                    <div className="product-kpi-v2">
+                      <div className="product-kpi-v2-head">
+                        <div>
+                          <div className="product-kpi-v2-label">Ventas del día</div>
+                          <div className="product-kpi-v2-value">$ 248.500</div>
+                          <div className="product-kpi-v2-delta">▲ $42.300 vs ayer</div>
+                        </div>
+                        <div className="product-kpi-v2-icon violet"><Icon name="dollar-sign" size={18} /></div>
+                      </div>
+                      <svg className="product-kpi-v2-spark" viewBox="0 0 80 28">
+                        <polyline fill="none" points={sparkPoints([78, 95, 142, 118, 165, 198, 248])} stroke="#7C3AED" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} />
+                      </svg>
+                    </div>
+                    <div className="product-kpi-v2">
+                      <div className="product-kpi-v2-head">
+                        <div>
+                          <div className="product-kpi-v2-label">Ventas del mes</div>
+                          <div className="product-kpi-v2-value">$ 4.187.250</div>
+                        </div>
+                        <div className="product-kpi-v2-icon green"><Icon name="shopping-bag" size={18} /></div>
+                      </div>
+                      <svg className="product-kpi-v2-spark" viewBox="0 0 80 28">
+                        <polyline fill="none" points={sparkPoints([120, 140, 168, 155, 182, 210, 238])} stroke="#16A34A" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} />
+                      </svg>
+                    </div>
+                    <div className="product-kpi-v2">
+                      <div className="product-kpi-v2-head">
+                        <div>
+                          <div className="product-kpi-v2-label">Ganancia del día</div>
+                          <div className="product-kpi-v2-value">$ 96.840</div>
+                        </div>
+                        <div className="product-kpi-v2-icon blue"><Icon name="trending-up" size={18} /></div>
+                      </div>
+                      <svg className="product-kpi-v2-spark" viewBox="0 0 80 28">
+                        <polyline fill="none" points={sparkPoints([32, 38, 52, 44, 68, 82, 96])} stroke="#2563EB" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} />
+                      </svg>
+                    </div>
+                    <div className="product-kpi-v2">
+                      <div className="product-kpi-v2-head">
+                        <div>
+                          <div className="product-kpi-v2-label">Productos bajos</div>
+                          <div className="product-kpi-v2-value">12</div>
+                        </div>
+                        <div className="product-kpi-v2-icon orange"><Icon name="box" size={18} /></div>
+                      </div>
+                      <div className="product-kpi-v2-link">Ver inventario →</div>
+                    </div>
+                  </div>
+
+                  <div className="product-grid-v2">
+                    <div className="product-card-v2 product-chart-card-v2">
+                      <div className="product-card-v2-title">Ventas de los últimos 7 días</div>
+                      <svg className="product-weekly-chart" viewBox="0 0 480 180">
+                        {[10, 45, 80, 115, 150].map((y) => (
+                          <line key={y} stroke="#E2E8F0" strokeWidth={1} x1="40" x2="470" y1={y} y2={y} />
+                        ))}
+                        {["$240K", "$180K", "$120K", "$60K", "$0"].map((label, i) => (
+                          <text dominantBaseline="middle" fill="#94A3B8" fontSize="10" key={label} textAnchor="end" x="34" y={10 + i * 35}>{label}</text>
+                        ))}
+                        <defs>
+                          <linearGradient id="violet-fill" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.18} />
+                            <stop offset="100%" stopColor="#7C3AED" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <path d={weeklyArea} fill="url(#violet-fill)" />
+                        <polyline fill="none" points={weeklyPolyline} stroke="#7C3AED" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+                        {weeklyPoints.map((p, i) => (
+                          <circle cx={p.x} cy={p.y} fill="#7C3AED" key={i} r={3} />
+                        ))}
+                        {weeklySalesDays.map((day, i) => (
+                          <text fill="#94A3B8" fontSize="10" key={day} textAnchor="middle" x={weeklyPoints[i].x} y="172">{day}</text>
+                        ))}
+                      </svg>
+                    </div>
+
+                    <div className="product-card-v2 product-top-products-v2">
+                      <div className="product-card-v2-header">
+                        <div className="product-card-v2-title">Productos más vendidos</div>
+                        <span className="product-card-v2-link">Ver todos</span>
+                      </div>
+                      <div className="product-top-list">
+                        {topProductsV2.map((p, i) => (
+                          <div className="product-top-item" key={p.name}>
+                            <div className="product-top-rank">{i + 1}</div>
+                            <div className="product-top-avatar">{p.initial}</div>
+                            <div className="product-top-info">
+                              <div className="product-top-name">{p.name}</div>
+                              <div className="product-top-total">{p.total}</div>
+                            </div>
+                            <div className="product-top-units">{p.units}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="product-panels-v2">
+                    <div className="product-card-v2">
+                      <div className="product-card-v2-header">
+                        <div className="product-card-v2-title">Movimientos de caja</div>
+                        <span className="product-card-v2-link">Ver todos</span>
+                      </div>
+                      <div className="product-cash-list">
+                        {cashMovementsV2.map((m, i) => (
+                          <div className="product-cash-item" key={i}>
+                            <div className={`product-cash-icon ${m.type}`}>{m.type === "in" ? "↑" : "↓"}</div>
+                            <div className="product-cash-info">
+                              <div className="product-cash-label">{m.type === "in" ? "↑" : "↓"} {m.label}</div>
+                              <div className="product-cash-time">{m.time}</div>
+                            </div>
+                            <div className={`product-cash-amount ${m.type}`}>{m.amount}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="product-card-v2">
+                      <div className="product-card-v2-header">
+                        <div className="product-card-v2-title">Alertas importantes</div>
+                        <span className="product-card-v2-link">Ver todas</span>
+                      </div>
+                      <div className="product-alerts">
+                        <div className="product-alert orange">
+                          <div className="product-alert-title">⚠ Stock bajo</div>
+                          <div className="product-alert-text">12 productos con stock ≤ 5</div>
+                        </div>
+                        <div className="product-alert yellow">
+                          <div className="product-alert-title">! Pagos pendientes</div>
+                          <div className="product-alert-text">5 deudas activas sin saldar</div>
+                        </div>
+                        <div className="product-alert violet">
+                          <div className="product-alert-title">📋 Cotizaciones por vencer</div>
+                          <div className="product-alert-text">2 cotizaciones vencen en las próximas 24 hs</div>
+                          <div className="product-alert-link">Ver cotizaciones →</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="product-card-v2">
+                      <div className="product-card-v2-title">Resumen rápido</div>
+                      <div className="product-summary-list">
+                        <div className="product-summary-row"><span>Ventas de hoy</span><span>$ 248.500</span></div>
+                        <div className="product-summary-row"><span>Ganancia de hoy</span><span>$ 96.840</span></div>
+                        <div className="product-summary-row"><span>Productos en inventario</span><span>327</span></div>
+                        <div className="product-summary-row"><span>Clientes registrados</span><span>184</span></div>
+                        <div className="product-summary-row"><span>Ventas pendientes</span><span className="danger">5</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="product-quick-actions">
+                    <div className="product-card-v2-title">Acciones rápidas</div>
+                    <div className="product-quick-grid">
+                      {quickActionsV2.map((a) => (
+                        <div className="product-quick-item" key={a.label}>
+                          <Icon name={a.icon} size={20} />
+                          <span>{a.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+          <span className="sr-only">
+            Captura del panel principal de SOLVEN mostrando ventas del día, gráfico de los últimos 7 días, productos más vendidos y alertas operativas.
+          </span>
 
           <div className="product-claims">
             Multiusuario con roles · Auditoría completa · Backups automáticos · Acceso desde cualquier dispositivo
