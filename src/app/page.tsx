@@ -23,7 +23,8 @@ type IconName =
   | "cart" | "box" | "users" | "wallet" | "tag" | "chart"
   | "check" | "arrow-right" | "menu" | "zap" | "store"
   | "smartphone" | "shield" | "trending-up" | "alert-triangle"
-  | "check-circle" | "social";
+  | "check-circle" | "social"
+  | "shopping-bag" | "cross" | "wrench" | "shirt" | "utensils" | "settings";
 
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const common = {
@@ -164,22 +165,76 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
           <path d="M8 12h8M12 8v8" />
         </svg>
       );
+    case "shopping-bag":
+      return (
+        <svg {...common}>
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+          <path d="M3 6h18" />
+          <path d="M16 10a4 4 0 0 1-8 0" />
+        </svg>
+      );
+    case "cross":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M12 8v8M8 12h8" />
+        </svg>
+      );
+    case "wrench":
+      return (
+        <svg {...common}>
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z" />
+        </svg>
+      );
+    case "shirt":
+      return (
+        <svg {...common}>
+          <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
+        </svg>
+      );
+    case "utensils":
+      return (
+        <svg {...common}>
+          <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+          <path d="M7 2v20" />
+          <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+      );
   }
 }
 
 export default function LandingPage() {
   return (
     <div className={`landing-root ${sora.variable} ${dmSans.variable}`}>
+      {/* TOP BAR */}
+      <div className="top-bar">
+        SOLVEN para empresas — Implementación asistida, capacitación y soporte dedicado.
+        <a href="#precio">Hablar con ventas →</a>
+      </div>
+
       {/* NAV */}
       <nav>
-        <Link href="/" className="nav-logo">
-          <div className="nav-logo-icon">S</div>
-          <span className="nav-logo-text">SOLVEN</span>
-        </Link>
+        <div className="nav-left">
+          <Link href="/" className="nav-logo">
+            <div className="nav-logo-icon">S</div>
+            <span className="nav-logo-text">SOLVEN</span>
+          </Link>
+          <div className="nav-divider" />
+          <span className="nav-tag">Empresa</span>
+        </div>
 
         <ul className="nav-links">
           <li><a href="#features">Plataforma</a></li>
           <li><a href="#modulos">Módulos</a></li>
+          <li><a href="#industrias">Industrias</a></li>
+          <li><a href="#infraestructura">Seguridad</a></li>
           <li><a href="#porque">Por qué SOLVEN</a></li>
           <li><a href="#precio">Precio</a></li>
           <li><a href="#recursos">Recursos</a></li>
@@ -197,6 +252,8 @@ export default function LandingPage() {
         <div className="nav-mobile-menu">
           <a href="#features">Plataforma</a>
           <a href="#modulos">Módulos</a>
+          <a href="#industrias">Industrias</a>
+          <a href="#infraestructura">Seguridad</a>
           <a href="#porque">Por qué SOLVEN</a>
           <a href="#precio">Precio</a>
           <a href="#recursos">Recursos</a>
@@ -210,8 +267,7 @@ export default function LandingPage() {
         <div className="hero-bg-pattern" />
         <div className="container hero-grid">
           <div>
-            <div className="eyebrow">Plataforma de gestión comercial</div>
-            <h1>Software de gestión empresarial para comercios que operan en serio.</h1>
+            <h1>Software de gestión empresarial para comercios.</h1>
             <p className="hero-sub">
               SOLVEN unifica ventas, inventario, caja, clientes y reportes en una única plataforma.
               Diseñada para dueños que necesitan decisiones basadas en datos, no en intuición.
@@ -275,17 +331,84 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* TRUST STRIP */}
-      <section className="trust-strip">
+      {/* PRODUCTO */}
+      <section className="section">
         <div className="container">
-          <div className="trust-strip-label">Comercios que ya operan con SOLVEN</div>
-          <div className="trust-logos">
-            {["NORTE COMERCIAL", "ALMACÉN CENTRAL", "FARMA PLUS", "MINIMARKET 24", "DISTRIBUIDORA SUR", "KIOSCO EXPRESS"].map((name) => (
-              <span key={name} className="trust-logo">{name}</span>
-            ))}
+          <div className="section-head center">
+            <div className="eyebrow">En producción</div>
+            <h2>Así se ve SOLVEN por dentro.</h2>
+            <p className="section-sub">
+              Una interfaz pensada para que el operador del comercio decida rápido y bien.
+            </p>
+          </div>
+
+          <div className="product-mock fade-in">
+            <div className="product-mock-topbar">
+              <div className="product-mock-dot red" />
+              <div className="product-mock-dot yellow" />
+              <div className="product-mock-dot green" />
+              <div className="product-mock-url">solven-app.vercel.app/dashboard</div>
+            </div>
+            <div className="product-mock-body">
+              <div className="product-sidebar">
+                {["Inicio", "Ventas", "Productos", "Clientes", "Caja", "Reportes", "Promociones", "Gastos"].map((item, i) => (
+                  <div key={item} className={`product-sidebar-item${i === 0 ? " active" : ""}`}>{item}</div>
+                ))}
+              </div>
+              <div className="product-main">
+                <div className="product-main-header">
+                  <div className="product-main-title">Hola, Propietario</div>
+                  <div className="product-main-sub">Aquí tienes el resumen de tu negocio</div>
+                </div>
+                <div className="product-kpis">
+                  <div className="product-kpi">
+                    <div className="product-kpi-label">Ventas del día</div>
+                    <div className="product-kpi-value">$2.450</div>
+                  </div>
+                  <div className="product-kpi">
+                    <div className="product-kpi-label">Ventas del mes</div>
+                    <div className="product-kpi-value">$38.750</div>
+                  </div>
+                  <div className="product-kpi">
+                    <div className="product-kpi-label">Ganancia del día</div>
+                    <div className="product-kpi-value">$980</div>
+                  </div>
+                  <div className="product-kpi">
+                    <div className="product-kpi-label">Stock bajo</div>
+                    <div className="product-kpi-value">12</div>
+                  </div>
+                </div>
+                <div className="product-chart">
+                  {[40, 55, 35, 70, 60, 90, 75, 85, 65, 95, 80, 100].map((h, i) => (
+                    <div
+                      key={i}
+                      className={`product-bar${i === 11 ? " accent" : ""}`}
+                      style={{ height: `${h}%` }}
+                    />
+                  ))}
+                </div>
+                <table className="product-table">
+                  <thead>
+                    <tr><th>Ticket</th><th>Cliente</th><th>Monto</th><th>Estado</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>#0421</td><td>María Rodríguez</td><td>$5.450</td><td><span className="product-status">Cobrado</span></td></tr>
+                    <tr><td>#0420</td><td>Carlos Gómez</td><td>$2.100</td><td><span className="product-status pending">Pendiente</span></td></tr>
+                    <tr><td>#0419</td><td>Laura Andrade</td><td>$8.900</td><td><span className="product-status">Cobrado</span></td></tr>
+                    <tr><td>#0418</td><td>Mostrador</td><td>$1.350</td><td><span className="product-status">Cobrado</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div className="product-claims">
+            Multiusuario con roles · Auditoría completa · Backups automáticos · Acceso desde cualquier dispositivo
           </div>
         </div>
       </section>
+
+      <div className="section-divider">· Plataforma ·</div>
 
       {/* PLATAFORMA (bento) */}
       <section className="section" id="features">
@@ -371,6 +494,55 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <div className="section-divider">· Industrias ·</div>
+
+      {/* INDUSTRIAS */}
+      <section className="section" id="industrias">
+        <div className="container">
+          <div className="section-head center">
+            <div className="eyebrow">Industrias</div>
+            <h2>Una plataforma. Múltiples verticales.</h2>
+            <p className="section-sub">
+              SOLVEN se adapta a los modelos operativos de cada rubro, sin necesidad de
+              configuración técnica.
+            </p>
+          </div>
+
+          <div className="industries-grid fade-in">
+            <div className="industry-card">
+              <div className="industry-icon"><Icon name="shopping-bag" size={20} /></div>
+              <div className="industry-title">Retail y abarrotes</div>
+              <div className="industry-desc">Catálogo amplio, rotación alta, ventas por código de barras.</div>
+            </div>
+            <div className="industry-card">
+              <div className="industry-icon"><Icon name="cross" size={20} /></div>
+              <div className="industry-title">Farmacia y perfumería</div>
+              <div className="industry-desc">Trazabilidad de lote, ventas con receta, control de stock crítico.</div>
+            </div>
+            <div className="industry-card">
+              <div className="industry-icon"><Icon name="wrench" size={20} /></div>
+              <div className="industry-title">Ferretería y materiales</div>
+              <div className="industry-desc">Catálogo técnico, ventas por bulto y unidad, presupuestos.</div>
+            </div>
+            <div className="industry-card">
+              <div className="industry-icon"><Icon name="shirt" size={20} /></div>
+              <div className="industry-title">Indumentaria y calzado</div>
+              <div className="industry-desc">Variantes por talle/color, temporada y rotación.</div>
+            </div>
+            <div className="industry-card">
+              <div className="industry-icon"><Icon name="utensils" size={20} /></div>
+              <div className="industry-title">Gastronomía y kioscos</div>
+              <div className="industry-desc">Alta frecuencia de venta, productos perecederos, turnos de caja.</div>
+            </div>
+            <div className="industry-card">
+              <div className="industry-icon"><Icon name="settings" size={20} /></div>
+              <div className="industry-title">Servicios y mantenimiento</div>
+              <div className="industry-desc">Cotizaciones, órdenes de trabajo, cuenta corriente de clientes.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ARQUITECTURA */}
       <section className="section alt" id="modulos">
         <div className="container">
@@ -417,6 +589,47 @@ export default function LandingPage() {
               <div className="arch-node-desc">Registro por categoría con impacto en resultados.</div>
             </div>
           </div>
+
+          <div className="section-head center" id="infraestructura" style={{ marginTop: 64, marginBottom: 40 }}>
+            <div className="eyebrow">Infraestructura</div>
+            <h2>Construido sobre infraestructura de clase empresarial.</h2>
+          </div>
+
+          <div className="infra-band fade-in">
+            <div className="infra-col">
+              <div className="infra-title">Disponibilidad 99.9%</div>
+              <div className="infra-desc">Arquitectura distribuida con redundancia y monitoreo activo 24/7.</div>
+            </div>
+            <div className="infra-col">
+              <div className="infra-title">Cifrado de extremo a extremo</div>
+              <div className="infra-desc">TLS 1.3 en tránsito, cifrado en reposo, llaves rotativas.</div>
+            </div>
+            <div className="infra-col">
+              <div className="infra-title">Cumplimiento normativo</div>
+              <div className="infra-desc">Marco compatible con AFIP, RG factura electrónica y normativa de protección de datos.</div>
+            </div>
+            <div className="infra-col">
+              <div className="infra-title">Backups continuos</div>
+              <div className="infra-desc">Respaldos automáticos con retención y recuperación punto en el tiempo.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* PRESENCIA / ALCANCE */}
+      <section className="presence-band">
+        <div className="container presence-grid">
+          {[
+            { number: "+12", label: "Provincias con comercios activos" },
+            { number: "24/7", label: "Cobertura operativa de la plataforma" },
+            { number: "99.9%", label: "Disponibilidad de servicio" },
+            { number: "< 5 min", label: "Tiempo medio de respuesta del soporte" },
+          ].map(({ number, label }) => (
+            <div key={label} className="presence-item fade-in">
+              <div className="presence-number">{number}</div>
+              <div className="presence-label">{label}</div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -602,6 +815,43 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <div className="section-divider">· Compañía ·</div>
+
+      {/* COMPAÑÍA */}
+      <section className="section">
+        <div className="container">
+          <div className="company-grid fade-in">
+            <div className="company-card">
+              <div className="company-eyebrow">Compañía</div>
+              <div className="company-title">Construida en Argentina, pensada para Latinoamérica.</div>
+              <p className="company-desc">
+                SOLVEN nace de operar con los comercios reales que mueven la economía local. Cada
+                decisión de producto se valida en piso de venta antes de llegar a la plataforma.
+              </p>
+              <a href="#" className="company-link">Conocer la compañía →</a>
+            </div>
+            <div className="company-card">
+              <div className="company-eyebrow">Seguridad</div>
+              <div className="company-title">Tus datos, protegidos por diseño.</div>
+              <p className="company-desc">
+                Aplicamos principios de mínimo privilegio, separación de entornos y auditoría
+                continua sobre toda la infraestructura.
+              </p>
+              <a href="#" className="company-link">Política de seguridad →</a>
+            </div>
+            <div className="company-card">
+              <div className="company-eyebrow">Ecosistema</div>
+              <div className="company-title">Una red de implementadores y contadores certificados.</div>
+              <p className="company-desc">
+                Profesionales habilitados para acompañar a los comercios en la puesta en marcha y
+                la operación diaria.
+              </p>
+              <a href="#" className="company-link">Sumarse al programa →</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA FINAL */}
       <section className="cta-section">
         <div className="container">
@@ -627,27 +877,41 @@ export default function LandingPage() {
                 <span className="nav-logo-text" style={{ color: "white" }}>SOLVEN</span>
               </div>
               <p className="footer-tagline">
-                Gestión comercial unificada para comercios físicos que operan en serio.
+                Plataforma de gestión empresarial para comercios.
               </p>
-              <span className="footer-locale">Argentina · Español</span>
+              <span className="footer-locale">Argentina ▾</span>
             </div>
 
             <div className="footer-col">
-              <div className="footer-col-title">Producto</div>
+              <div className="footer-col-title">Plataforma</div>
               <ul>
                 <li><a href="#features">Funciones</a></li>
                 <li><a href="#modulos">Módulos</a></li>
-                <li><a href="#precio">Precio</a></li>
+                <li><a href="#infraestructura">Arquitectura</a></li>
+                <li><a href="#infraestructura">Seguridad</a></li>
                 <li><a href="#recursos">Roadmap</a></li>
               </ul>
             </div>
 
             <div className="footer-col">
-              <div className="footer-col-title">Empresa</div>
+              <div className="footer-col-title">Industrias</div>
+              <ul>
+                <li><a href="#industrias">Retail</a></li>
+                <li><a href="#industrias">Farmacia</a></li>
+                <li><a href="#industrias">Ferretería</a></li>
+                <li><a href="#industrias">Gastronomía</a></li>
+                <li><a href="#industrias">Servicios</a></li>
+              </ul>
+            </div>
+
+            <div className="footer-col">
+              <div className="footer-col-title">Compañía</div>
               <ul>
                 <li><a href="#porque">Sobre SOLVEN</a></li>
+                <li><a href="#">Partners</a></li>
+                <li><a href="#">Prensa</a></li>
+                <li><a href="#">Carreras</a></li>
                 <li><a href="#precio">Contacto</a></li>
-                <li><a href="#recursos">Soporte</a></li>
               </ul>
             </div>
 
@@ -657,12 +921,14 @@ export default function LandingPage() {
                 <li><a href="#">Privacidad</a></li>
                 <li><a href="#">Términos</a></li>
                 <li><a href="#">Cookies</a></li>
+                <li><a href="#">Cumplimiento</a></li>
               </ul>
             </div>
           </div>
 
           <div className="footer-bottom">
             <span className="footer-copy">© 2026 SOLVEN. Todos los derechos reservados.</span>
+            <span className="footer-version">Versión de plataforma 2.0 · Última actualización: 06/2026</span>
             <div className="footer-social">
               <a href="#" aria-label="SOLVEN en LinkedIn"><Icon name="social" size={16} /></a>
               <a href="#" aria-label="SOLVEN en Instagram"><Icon name="social" size={16} /></a>

@@ -61,3 +61,71 @@ No se modificaron otros archivos.
 - `npm run lint` — sin errores.
 - `npm run typecheck` — sin errores.
 - `npm run build` — compila sin errores nuevos.
+
+---
+
+## Iteración v2 — 2026-06-12
+
+### 1. Eliminaciones efectuadas
+
+- Strip de logos "Comercios que ya operan con SOLVEN" (JSX y CSS `.trust-strip*`).
+- Eyebrow superior del hero (`PLATAFORMA DE GESTIÓN COMERCIAL`).
+- H1 del hero reemplazado por: `Software de gestión empresarial para comercios.`
+
+### 2. Secciones nuevas (orden de aparición)
+
+1. **Top bar** oscura fina sobre el nav (`SOLVEN para empresas — ... · Hablar con ventas →`).
+2. **Nav**: SOLVEN + separador vertical + etiqueta `EMPRESA`; nuevos links `Industrias` y `Seguridad`.
+3. **Hero**: sin eyebrow, H1 nuevo, resto igual.
+4. **Producto** (reemplaza la strip de logos): eyebrow `EN PRODUCCIÓN`, H2 `Así se ve SOLVEN por dentro.`,
+   mock grande con topbar de navegador, sidebar de módulos, 4 KPIs, gráfico de 12 barras y tabla
+   "Últimas ventas" (ticket/cliente/monto/estado). Fila de micro-claims debajo.
+5. Divider `· Plataforma ·`.
+6. **Plataforma** (bento, sin cambios de contenido respecto a v1).
+7. Divider `· Industrias ·`.
+8. **Industrias**: grid de 6 verticales (Retail, Farmacia, Ferretería, Indumentaria, Gastronomía, Servicios)
+   con icono SVG monocromo + descripción corta.
+9. **Arquitectura** (hub & spoke, sin cambios) + banda **Infraestructura** debajo (`id="infraestructura"`):
+   eyebrow `INFRAESTRUCTURA`, H2 `Construido sobre infraestructura de clase empresarial.`, 4 columnas
+   separadas por línea vertical (Disponibilidad 99.9%, Cifrado extremo a extremo, Cumplimiento normativo, Backups continuos).
+10. **Presencia / Alcance**: banda oscura con 4 indicadores (`+12` provincias, `24/7`, `99.9%`, `< 5 min`).
+11. **Por qué SOLVEN**, **Indicadores**, **Testimonios** — sin cambios.
+12. **Precio** — sin cambios (tarjeta horizontal intacta, tal como exige la orden).
+13. Divider `· Compañía ·`.
+14. **Compañía**: 3 bloques planos (Sobre SOLVEN, Seguridad y confianza, Programa de partners) con link `→`.
+15. **CTA final** — sin cambios.
+16. **Footer** ampliado a 5 columnas (Marca, Plataforma, Industrias, Compañía, Legal) + línea de versión
+    `Versión de plataforma 2.0 · Última actualización: 06/2026` centrada en la línea inferior.
+
+### 3. Cambios a nav, top bar y footer
+
+- Top bar: 32px, fondo `--bg-dark`, mensaje centrado y link `Hablar con ventas →` alineado a la derecha
+  (oculto en mobile ≤720px para evitar solapamiento).
+- Nav: logo + separador 1px + `EMPRESA` en eyebrow style (no es link); se ocultan junto con `nav-links` en mobile.
+- Footer: grid `1.3fr 1fr 1fr 1fr 1fr` en desktop, colapsa a 3/2/1 columnas en 1024/720/480px.
+  `footer-bottom` ahora es un grid de 3 columnas (copyright | versión | iconos sociales), centrado en mobile.
+
+### 4. Vista conceptual de los bloques nuevos
+
+- **Producto**: tarjeta con marco de navegador (3 dots + URL), sidebar oscura con 8 módulos
+  (item activo con borde izquierdo azul), header de saludo, 4 KPI cards, gráfico de barras grises
+  con la última barra en azul, y tabla de 4 ventas recientes con badges de estado (Cobrado/Pendiente).
+- **Industrias**: grid 3×2 de tarjetas planas con borde 1px compartido, icono 40px, título y descripción.
+- **Infraestructura**: encabezado centrado + 4 columnas de texto separadas por líneas verticales finas.
+- **Presencia / Alcance**: franja `--bg-dark`, 4 números grandes blancos con label eyebrow translúcido.
+- **Compañía**: 3 tarjetas planas con eyebrow de color acento, título en Sora 600, párrafo y link con flecha.
+
+### 5. Desvíos respecto a la orden
+
+- El divider `.section-divider` se usó en 3 puntos (`Plataforma`, `Industrias`, `Compañía`) como pide el
+  ejemplo de la orden; no se agregó en más lugares para no sobrecargar el ritmo visual.
+- La banda de Infraestructura se mantuvo dentro de la misma `<section>` que el diagrama Arquitectura
+  (comparten fondo `--bg-alt`) en lugar de ser una sección independiente, ya que la orden la describe
+  como "banda complementaria debajo del diagrama".
+- Sin más desvíos: tarjeta de precio horizontal sin modificar, sin violetas/morados introducidos, sin emojis.
+
+### 6. Validación
+
+- `npm run lint` — sin errores.
+- `npm run typecheck` — sin errores.
+- `npm run build` — compila sin errores nuevos.
