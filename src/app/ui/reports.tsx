@@ -45,7 +45,7 @@ type SaleRecord = {
     quantity: number;
     unitPrice: string;
     total: string;
-    product: { name: string };
+    product: { name: string; costPrice: string } | null;
   }>;
 };
 
@@ -249,6 +249,13 @@ function getPeriodRange(period: Period, customStart: string, customEnd: string):
     };
   }
   return getMonthRange(0);
+}
+
+function downloadReportCsv(type: string, from?: string, to?: string) {
+  const params = new URLSearchParams({ type });
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  window.location.href = `/api/reports/export?${params.toString()}`;
 }
 
 export function Reports() {
@@ -820,6 +827,7 @@ function CategoryDonutPanel({ sales }: { sales: SaleRecord[] }) {
     const totals: Record<string, number> = {};
     for (const sale of sales) {
       for (const item of sale.items) {
+        if (!item.product) continue;
         const rawCat = getProductCategory(item.product.name);
         const cat = getChartCategory(rawCat);
         totals[cat] = (totals[cat] ?? 0) + Number(item.total);
@@ -1002,6 +1010,7 @@ function TopProductsPanel({ sales }: { sales: SaleRecord[] }) {
     const byName = new Map<string, { name: string; units: number; total: number }>();
     for (const sale of sales) {
       for (const item of sale.items) {
+        if (!item.product) continue;
         const name = item.product.name;
         const existing = byName.get(name) ?? { name, units: 0, total: 0 };
         byName.set(name, {
@@ -1342,6 +1351,7 @@ function KeyIndicatorsPanel({ sales }: { sales: SaleRecord[] }) {
       byDay.set(dayKey, (byDay.get(dayKey) ?? 0) + Number(sale.totalAmount));
       byHour[d.getHours()] += Number(sale.totalAmount);
       for (const item of sale.items) {
+        if (!item.product) continue;
         const cat = getProductCategory(item.product.name);
         byCat[cat] = (byCat[cat] ?? 0) + Number(item.total);
       }
@@ -1443,6 +1453,19 @@ function VentasTab({ sales }: { sales: SaleRecord[] }) {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-600">
+          <span className="font-semibold text-slate-900">{sales.length}</span> ventas en el período
+        </p>
+        <button
+          className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700"
+          onClick={() => downloadReportCsv("ventas")}
+          type="button"
+        >
+          <Download size={14} />
+          Exportar CSV
+        </button>
+      </div>
       <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
         Los servicios vendidos se registran junto a las ventas de productos.
       </p>
@@ -1575,6 +1598,7 @@ function ProductosTab({ sales, products }: { sales: SaleRecord[]; products: Prod
     const byName = new Map<string, { name: string; category: string; units: number; revenue: number }>();
     for (const sale of sales) {
       for (const item of sale.items) {
+        if (!item.product) continue;
         const name = item.product.name;
         const category = getProductCategory(name);
         const existing = byName.get(name) ?? { name, category, units: 0, revenue: 0 };
@@ -1596,6 +1620,19 @@ function ProductosTab({ sales, products }: { sales: SaleRecord[]; products: Prod
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-600">
+          <span className="font-semibold text-slate-900">{products.length}</span> productos
+        </p>
+        <button
+          className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700"
+          onClick={() => downloadReportCsv("productos")}
+          type="button"
+        >
+          <Download size={14} />
+          Exportar CSV
+        </button>
+      </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Productos en catálogo</p>
@@ -2111,6 +2148,7 @@ function RentabilidadTab({
       const d = new Date(sale.saleDate);
       if (d < currStart || d > currEnd) continue;
       for (const item of sale.items) {
+        if (!item.product) continue;
         const cat = getChartCategory(getProductCategory(item.product.name));
         byCat[cat] = (byCat[cat] ?? 0) + Number(item.total);
       }
@@ -2136,6 +2174,31 @@ function RentabilidadTab({
       .filter((s) => { const d = new Date(s.saleDate); return d >= currStart && d <= currEnd && s.paymentType === "CREDIT"; })
       .reduce((s, x) => s + Number(x.totalAmount), 0);
     return { cash, credit };
+  }, [sales, currStart, currEnd]);
+
+  const productProfitability = useMemo(() => {
+    const byProduct: Record<string, { name: string; revenue: number; cost: number; qty: number }> = {};
+    for (const sale of sales) {
+      const d = new Date(sale.saleDate);
+      if (d < currStart || d > currEnd) continue;
+      for (const item of sale.items) {
+        if (!item.product) continue;
+        const key = item.product.name;
+        const rev = Number(item.total);
+        const cost = Number(item.product.costPrice) * item.quantity;
+        if (!byProduct[key]) byProduct[key] = { name: key, revenue: 0, cost: 0, qty: 0 };
+        byProduct[key].revenue += rev;
+        byProduct[key].cost += cost;
+        byProduct[key].qty += item.quantity;
+      }
+    }
+    return Object.values(byProduct)
+      .map((p) => ({
+        ...p,
+        profit: p.revenue - p.cost,
+        margin: p.revenue > 0 ? ((p.revenue - p.cost) / p.revenue) * 100 : 0,
+      }))
+      .sort((a, b) => b.profit - a.profit);
   }, [sales, currStart, currEnd]);
 
   return (
@@ -2295,6 +2358,47 @@ function RentabilidadTab({
           </div>
         </div>
       )}
+
+      {productProfitability.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h3 className="text-sm font-semibold text-slate-950">Rentabilidad por producto</h3>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Margen real = (precio de venta − costo) × unidades vendidas en el período.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Producto</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Unidades</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Ingresos</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Costo</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Ganancia</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Margen %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productProfitability.map((p) => (
+                  <tr className="border-b border-slate-50 hover:bg-slate-50" key={p.name}>
+                    <td className="px-4 py-2.5 text-xs font-medium text-slate-800">{p.name}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-slate-600">{p.qty}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-slate-700">{formatMoney(p.revenue)}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-slate-700">{formatMoney(p.cost)}</td>
+                    <td className={`px-4 py-2.5 text-right text-xs font-semibold ${p.profit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                      {formatMoney(p.profit)}
+                    </td>
+                    <td className={`px-4 py-2.5 text-right text-xs font-semibold ${p.margin >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                      {p.margin.toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2369,6 +2473,7 @@ function ReporteMensualTab({
     const byName = new Map<string, { name: string; units: number; total: number }>();
     for (const sale of currentSales) {
       for (const item of sale.items) {
+        if (!item.product) continue;
         const name = item.product.name;
         const e = byName.get(name) ?? { name, units: 0, total: 0 };
         byName.set(name, { name, units: e.units + item.quantity, total: e.total + Number(item.total) });
@@ -2696,6 +2801,7 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
     const byName = new Map<string, { name: string; category: string; units: number; revenue: number; costTotal: number }>();
     for (const sale of sales) {
       for (const item of sale.items) {
+        if (!item.product) continue;
         const name = item.product.name;
         const prod = productMap.get(name);
         const category = getProductCategory(name);
@@ -2993,6 +3099,7 @@ function RecomendacionesTab({
     const m = new Map<string, { units: number; revenue: number }>();
     for (const sale of currentSales) {
       for (const item of sale.items) {
+        if (!item.product) continue;
         const e = m.get(item.product.name) ?? { units: 0, revenue: 0 };
         m.set(item.product.name, { units: e.units + item.quantity, revenue: e.revenue + Number(item.total) });
       }
@@ -3021,7 +3128,7 @@ function RecomendacionesTab({
     const last7Names = new Set<string>();
     for (const sale of sales) {
       if (last7.some((day) => isSameLocalDay(new Date(sale.saleDate), day))) {
-        for (const item of sale.items) last7Names.add(item.product.name);
+        for (const item of sale.items) if (item.product) last7Names.add(item.product.name);
       }
     }
     const noRecentSales = products.filter((p) => !last7Names.has(p.name) && p.stock > 0);

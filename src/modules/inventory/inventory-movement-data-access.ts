@@ -25,3 +25,13 @@ export async function listInventoryMovements(tenantId: string) {
     include: { product: { select: { name: true } } }
   });
 }
+
+export async function listInventoryMovementsByProduct(
+  productId: string,
+  tenantId: string
+) {
+  return prisma.inventoryMovement.findMany({
+    where: { productId, tenantId },
+    orderBy: { movementDate: "desc" },
+  });
+}

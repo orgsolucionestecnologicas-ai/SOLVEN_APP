@@ -1,4 +1,4 @@
-export { listInventoryMovements, recordInventoryMovement } from "./inventory-movement-data-access";
+export { listInventoryMovements, listInventoryMovementsByProduct, recordInventoryMovement } from "./inventory-movement-data-access";
 export {
   adjustProductStock,
   type ProductStockAdjustment

@@ -1,29 +1,22 @@
-# REPORTE BATCH 2 — 2026-06-11
+# REPORTE BATCH 3 — 2026-06-12
 
-## TAREA 1 — HERR-06: Stock mínimo
+## HERR-08: Rentabilidad por producto
 Completado. Archivos modificados:
-- prisma/schema.prisma (campo `minStock Int @default(0)` en `Product`)
-- src/modules/products/product-validation.ts
-- src/modules/dashboard/dashboard-summary.ts
-- src/app/ui/product-form.tsx
-- src/app/products/[id]/product-edit-view.tsx
-Migración: `20260611211638_add_product_min_stock`
+- src/modules/sales/sale-data-access.ts (`SaleListRecord.items.product` incluye `costPrice`, include de `listSales` actualizado)
+- src/app/ui/reports.tsx (`SaleRecord.items.product` ahora `{ name, costPrice } | null`; tabla "Rentabilidad por producto" en RentabilidadTab; ajustes de null-check en CategoryDonutPanel, TopProductsPanel, ProductosTab y otros paneles que leían `item.product.name`)
 
-## TAREA 2 — HERR-07: PDF cotización
+## HERR-10: Historial de movimientos de inventario por producto
 Completado. Archivos creados/modificados:
-- src/app/ui/quote-pdf.tsx (nuevo)
-- src/app/api/quotes/[id]/pdf/route.tsx (nuevo)
-- src/app/ui/quotes-list.tsx (botón "Descargar PDF")
-- package.json / package-lock.json (dependencia @react-pdf/renderer)
+- src/modules/inventory/inventory-movement-data-access.ts (nueva función `listInventoryMovementsByProduct`)
+- src/modules/inventory/index.ts (export agregado)
+- src/app/api/products/[id]/movements/route.ts (nuevo)
+- src/app/ui/product-detail.tsx (nuevo, `ProductMovementsTimeline`)
+- src/app/products/[id]/product-edit-view.tsx (renderiza timeline debajo del formulario)
 
-## TAREA 3 — HERR-09: Pago mixto
-Completado. Archivos modificados:
-- prisma/schema.prisma (enum `SalePaymentType` + `MIXED`, campo `cashAmount` en `Sale`)
-- src/modules/sales/sale-validation.ts
-- src/modules/sales/sale-data-access.ts
-- src/app/ui/pos.tsx
-- src/modules/products/product-validation.test.ts (ajuste por nuevo campo `minStock`)
-Migración: `20260611212624_add_mixed_payment`
+## HERR-11: Exportación CSV de ventas y productos
+Completado. Archivos creados/modificados:
+- src/app/api/reports/export/route.ts (nuevo)
+- src/app/ui/reports.tsx (helper `downloadReportCsv`, botón "Exportar CSV" en VentasTab y ProductosTab)
 
 ## VALIDACIONES FINALES
 - lint: OK
@@ -33,4 +26,4 @@ Migración: `20260611212624_add_mixed_payment`
 - tests: 188 passed, 0 failed
 
 ## GIT
-Pendiente de commit y push.
+Commit y push a origin/main.

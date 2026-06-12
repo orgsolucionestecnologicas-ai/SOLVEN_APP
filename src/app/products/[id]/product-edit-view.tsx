@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { ProductForm } from "../../ui/product-form";
+import { ProductMovementsTimeline } from "../../ui/product-detail";
 
 type ProductData = {
   id: string;
@@ -53,17 +54,20 @@ export function ProductEditView({ productId }: { productId: string }) {
   }
 
   return (
-    <ProductForm
-      initialData={{
-        name: product.name,
-        categoryName: product.categoryName,
-        costPrice: product.costPrice,
-        salePrice: product.salePrice,
-        stock: product.stock,
-        minStock: product.minStock,
-        productCode: product.productCode
-      }}
-      productId={productId}
-    />
+    <div>
+      <ProductForm
+        initialData={{
+          name: product.name,
+          categoryName: product.categoryName,
+          costPrice: product.costPrice,
+          salePrice: product.salePrice,
+          stock: product.stock,
+          minStock: product.minStock,
+          productCode: product.productCode
+        }}
+        productId={productId}
+      />
+      <ProductMovementsTimeline productId={productId} />
+    </div>
   );
 }
