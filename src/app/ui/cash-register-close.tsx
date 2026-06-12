@@ -277,6 +277,7 @@ export function CashRegisterClose({
         return;
       }
       setIsSuccess(true);
+      window.dispatchEvent(new Event("cash-register-closed"));
       setTimeout(() => onClosed(), 2000);
     } catch {
       setError("No se pudo conectar con el servidor.");

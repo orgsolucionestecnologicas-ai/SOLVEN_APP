@@ -1,265 +1,331 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { searchHelp } from "@/lib/help-search";
-import type { HelpEntry } from "@/lib/help-knowledge-base";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-type Message = {
+type ChatMessage = {
   id: number;
   role: "user" | "assistant";
   text: string;
-  entry?: HelpEntry;
-  confidence?: "high" | "medium" | "low";
+  data?: Record<string, string | number | boolean | null>[];
+  navigation?: { label: string; route: string };
+  isError?: boolean;
   isReset?: boolean;
 };
 
+type NoaResponse = {
+  reply?: string;
+  data?: Record<string, string | number | boolean | null>[];
+  navigation?: { label: string; route: string };
+  error?: string;
+};
+
+const STORAGE_KEY = "solven_noa_chat";
+const INACTIVITY_MS = 10 * 60 * 1000;
+const CHECK_INTERVAL_MS = 30 * 1000;
+
 const WELCOME =
-  "¡Hola! Soy tu asistente de ayuda. Preguntame sobre cualquier función de SOLVEN — ventas, caja, inventario, clientes y más.";
-
-const NO_RESULT =
-  "No encontré una respuesta exacta para eso. Podés escribirnos a orgsolucionestecnologicas@gmail.com y te ayudamos.";
-
-const LOW_CONFIDENCE_PREFIX =
-  "No estoy 100% seguro, pero esto puede ayudarte: ";
-
-const RESET_NOTICE =
-  "⏱️ La conversación se reinició por inactividad. ¡Hola de nuevo!";
+  "Hola, soy NOA. Preguntame sobre ventas, stock, caja, clientes, deudas, reportes o como usar SOLVEN.";
+const RESET_NOTICE = "La conversacion se reinicio por inactividad. Hola de nuevo.";
+const CASH_CLOSED_WELCOME = "Caja cerrada OK. Arrancamos de cero. En que te ayudo?";
+const NETWORK_ERROR = "No me pude conectar. Revisa tu conexion e intenta de nuevo.";
 
 const SUGGESTIONS = [
-  "¿Cómo cierro la caja?",
-  "¿Cómo cargo un producto?",
-  "¿Cómo registro una venta?",
-  "¿Cómo veo los reportes?",
+  "Que vendi hoy?",
+  "Que producto no tiene stock?",
+  "Cuanta plata hay en caja?",
+  "Quien me debe plata?",
 ];
 
-const INACTIVITY_MS = 10 * 60 * 1000; // 10 minutos
-const CHECK_INTERVAL_MS = 30 * 1000;  // check cada 30 seg
+let messageId = 0;
 
-let msgId = 0;
 function nextId() {
-  return ++msgId;
+  messageId += 1;
+  return messageId;
 }
 
-function makeWelcome(): Message {
-  return { id: nextId(), role: "assistant", text: WELCOME };
+function welcomeMessage(text = WELCOME): ChatMessage {
+  return { id: nextId(), role: "assistant", text };
+}
+
+function loadMessages() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ChatMessage[];
+    if (!Array.isArray(parsed)) return null;
+    return parsed
+      .filter((message) => message.role === "user" || message.role === "assistant")
+      .map((message) => ({ ...message, id: nextId() }));
+  } catch {
+    return null;
+  }
+}
+
+function valueText(value: string | number | boolean | null) {
+  if (value === null || value === "") return "-";
+  if (typeof value === "boolean") return value ? "Si" : "No";
+  return String(value);
 }
 
 export function HelpChat() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([makeWelcome()]);
-  const [searching, setSearching] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage()]);
+  const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const lastActivityRef = useRef<number>(Date.now());
+  const lastActivityRef = useRef(Date.now());
   const hasUserMessageRef = useRef(false);
+  const lastQuestionRef = useRef<string | null>(null);
 
-  // Scroll al fondo cuando cambian mensajes o se abre
   useEffect(() => {
-    if (open) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const stored = loadMessages();
+    if (stored?.length) {
+      hasUserMessageRef.current = stored.some((message) => message.role === "user");
+      setMessages(stored);
     }
-  }, [messages, open]);
+  }, []);
 
-  // Auto-reset por inactividad
-  const resetConversation = useCallback(() => {
+  useEffect(() => {
+    try {
+      const toStore = messages
+        .filter((message) => !message.isError && !message.isReset)
+        .map(({ role, text, data, navigation }) => ({ role, text, data, navigation }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+    } catch {
+      return;
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, open, loading]);
+
+  const clearChat = useCallback((welcomeText: string, withResetNotice: boolean) => {
     hasUserMessageRef.current = false;
     lastActivityRef.current = Date.now();
+    lastQuestionRef.current = null;
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      return;
+    }
     setMessages([
-      { id: nextId(), role: "assistant", text: RESET_NOTICE, isReset: true },
-      makeWelcome(),
+      ...(withResetNotice
+        ? [{ id: nextId(), role: "assistant" as const, text: RESET_NOTICE, isReset: true }]
+        : []),
+      welcomeMessage(welcomeText),
     ]);
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Solo resetear si hay historial de mensajes del usuario
+    const interval = window.setInterval(() => {
       if (!hasUserMessageRef.current) return;
-
-      const elapsed = Date.now() - lastActivityRef.current;
-      if (elapsed >= INACTIVITY_MS) {
-        resetConversation();
+      if (Date.now() - lastActivityRef.current >= INACTIVITY_MS) {
+        clearChat(WELCOME, true);
       }
     }, CHECK_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [clearChat]);
 
-    return () => clearInterval(interval);
-  }, [resetConversation]);
+  useEffect(() => {
+    const onCashRegisterClosed = () => clearChat(CASH_CLOSED_WELCOME, false);
+    window.addEventListener("cash-register-closed", onCashRegisterClosed);
+    return () => window.removeEventListener("cash-register-closed", onCashRegisterClosed);
+  }, [clearChat]);
 
-  function handleSend(text: string) {
-    const q = text.trim();
-    if (!q || searching) return;
+  async function askNoa(question: string) {
+    const page = pathname?.split("/").filter(Boolean)[0] ?? "dashboard";
+    const response = await fetch("/api/noa/internal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: question, context: { page } }),
+    });
+    const body = (await response.json().catch(() => null)) as NoaResponse | null;
+    if (!response.ok) throw new Error(body?.error ?? NETWORK_ERROR);
+    return body;
+  }
 
-    // Registrar actividad
-    lastActivityRef.current = Date.now();
+  async function handleSend(value: string) {
+    const question = value.trim();
+    if (!question || loading) return;
+
     hasUserMessageRef.current = true;
-
-    setMessages((prev) => [...prev, { id: nextId(), role: "user", text: q }]);
+    lastActivityRef.current = Date.now();
+    lastQuestionRef.current = question;
     setInput("");
-    setSearching(true);
+    setLoading(true);
+    setMessages((current) => [...current, { id: nextId(), role: "user", text: question }]);
 
-    setTimeout(() => {
-      const results = searchHelp(q);
-      const best = results[0];
+    try {
+      const body = await askNoa(question);
+      setMessages((current) => [
+        ...current,
+        {
+          id: nextId(),
+          role: "assistant",
+          text: body?.reply ?? NETWORK_ERROR,
+          data: body?.data,
+          navigation: body?.navigation,
+        },
+      ]);
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: nextId(),
+          role: "assistant",
+          text: error instanceof Error ? error.message : NETWORK_ERROR,
+          isError: true,
+        },
+      ]);
+    } finally {
+      setLoading(false);
+      lastActivityRef.current = Date.now();
+    }
+  }
 
-      if (best) {
-        const isLowConfidence = best.confidence === "low";
-        const responseText = isLowConfidence
-          ? LOW_CONFIDENCE_PREFIX + best.entry.answer.charAt(0).toLowerCase() + best.entry.answer.slice(1)
-          : best.entry.answer;
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: "assistant",
-            text: responseText,
-            entry: isLowConfidence ? undefined : best.entry,
-            confidence: best.confidence,
-          },
-        ]);
-      } else {
-        fetch("/api/help/unanswered", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: q }),
-        }).catch(() => {});
-        setMessages((prev) => [
-          ...prev,
-          { id: nextId(), role: "assistant", text: NO_RESULT },
-        ]);
-      }
-      setSearching(false);
-    }, 400);
+  function handleRetry() {
+    const question = lastQuestionRef.current;
+    if (!question || loading) return;
+    setMessages((current) => current.filter((message) => !message.isError));
+    void handleSend(question);
   }
 
   return (
     <>
-      {/* Botón flotante */}
       <button
         aria-label="Abrir ayuda"
         className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-violet-600 text-white shadow-lg transition-transform hover:scale-105 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((value) => !value)}
         type="button"
       >
-        {open ? (
-          <span className="text-lg font-bold leading-none">✕</span>
-        ) : (
-          <span className="text-2xl font-bold leading-none">?</span>
-        )}
+        <span className="text-2xl font-bold leading-none">{open ? "x" : "?"}</span>
       </button>
 
-      {/* Panel de chat */}
-      {open && (
+      {open ? (
         <div className="fixed bottom-40 right-4 z-40 flex w-80 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-          {/* Header */}
           <div className="flex items-center justify-between bg-violet-600 px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-white">Ayuda SOLVEN</p>
-              <p className="text-xs text-violet-200">Asistente interno</p>
+              <p className="text-sm font-semibold text-white">NOA</p>
+              <p className="text-xs text-violet-200">Asistente operativo</p>
             </div>
             <button
+              aria-label="Cerrar"
               className="text-violet-200 hover:text-white"
               onClick={() => setOpen(false)}
               type="button"
-              aria-label="Cerrar"
             >
-              ✕
+              x
             </button>
           </div>
 
-          {/* Mensajes */}
           <div className="flex max-h-80 flex-col gap-3 overflow-y-auto p-4">
-            {messages.map((msg) => (
+            {messages.map((message) => (
               <div
-                key={msg.id}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                key={message.id}
               >
-                {msg.isReset ? (
-                  // Aviso de reset: centrado y gris
-                  <div className="w-full text-center text-xs text-slate-400 italic py-1">
-                    {msg.text}
+                {message.isReset ? (
+                  <div className="w-full py-1 text-center text-xs italic text-slate-400">
+                    {message.text}
                   </div>
                 ) : (
                   <div
                     className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
-                      msg.role === "user"
+                      message.role === "user"
                         ? "bg-violet-600 text-white"
-                        : "bg-slate-100 text-slate-800"
+                        : message.isError
+                          ? "bg-rose-50 text-rose-700"
+                          : "bg-slate-100 text-slate-800"
                     }`}
                   >
-                    <p>{msg.text}</p>
-
-                    {/* Pasos solo si confianza no es baja */}
-                    {msg.entry?.steps && msg.entry.steps.length > 0 && (
-                      <ol className="mt-2 list-decimal space-y-0.5 pl-4 text-xs">
-                        {msg.entry.steps.map((step, i) => (
-                          <li key={i}>{step}</li>
+                    <p className="whitespace-pre-wrap">{message.text}</p>
+                    {message.data?.length ? (
+                      <div className="mt-2 space-y-1 rounded-lg bg-white/70 p-2 text-xs">
+                        {message.data.slice(0, 3).map((row, index) => (
+                          <div className="border-b border-slate-100 pb-1 last:border-0" key={index}>
+                            {Object.entries(row)
+                              .slice(0, 4)
+                              .map(([key, value]) => (
+                                <p key={key}>
+                                  <span className="font-medium">{key}:</span> {valueText(value)}
+                                </p>
+                              ))}
+                          </div>
                         ))}
-                      </ol>
-                    )}
-
-                    {msg.entry?.tip && (
-                      <p className="mt-2 rounded-lg bg-violet-50 px-2 py-1 text-xs text-violet-700">
-                        💡 {msg.entry.tip}
-                      </p>
-                    )}
-
-                    {/* Indicador de confianza media */}
-                    {msg.confidence === "medium" && msg.role === "assistant" && (
-                      <p className="mt-1 text-xs text-slate-400">
-                        ¿No era esto? Intentá reformular la pregunta.
-                      </p>
-                    )}
+                      </div>
+                    ) : null}
+                    {message.navigation ? (
+                      <Link
+                        className="mt-2 inline-flex rounded-lg bg-violet-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-violet-700"
+                        href={message.navigation.route}
+                      >
+                        {message.navigation.label}
+                      </Link>
+                    ) : null}
+                    {message.isError && lastQuestionRef.current ? (
+                      <button
+                        className="mt-2 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100"
+                        onClick={handleRetry}
+                        type="button"
+                      >
+                        Reintentar
+                      </button>
+                    ) : null}
                   </div>
                 )}
               </div>
             ))}
-
-            {searching && (
+            {loading ? (
               <div className="flex justify-start">
                 <div className="rounded-2xl bg-slate-100 px-3 py-2 text-xs text-slate-500">
-                  Buscando…
+                  Consultando SOLVEN...
                 </div>
               </div>
-            )}
+            ) : null}
             <div ref={bottomRef} />
           </div>
 
-          {/* Sugerencias */}
           <div className="flex flex-wrap gap-1.5 border-t border-slate-100 px-3 pb-2 pt-2">
-            {SUGGESTIONS.map((s) => (
+            {SUGGESTIONS.map((suggestion) => (
               <button
-                key={s}
-                className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs text-violet-700 hover:bg-violet-100"
-                onClick={() => handleSend(s)}
+                className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+                disabled={loading}
+                key={suggestion}
+                onClick={() => void handleSend(suggestion)}
                 type="button"
               >
-                {s}
+                {suggestion}
               </button>
             ))}
           </div>
 
-          {/* Input */}
           <div className="flex items-center gap-2 border-t border-slate-200 px-3 py-3">
             <input
               className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
-              disabled={searching}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend(input)}
-              placeholder="Escribí tu pregunta..."
+              disabled={loading}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void handleSend(input);
+              }}
+              placeholder="Preguntale a NOA..."
               type="text"
               value={input}
             />
             <button
               className="rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
-              disabled={!input.trim() || searching}
-              onClick={() => handleSend(input)}
+              disabled={!input.trim() || loading}
+              onClick={() => void handleSend(input)}
               type="button"
             >
-              →
+              Enviar
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }
