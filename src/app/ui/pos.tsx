@@ -25,8 +25,10 @@ import {
   Users,
   Wallet,
   X,
+  Receipt,
 } from "lucide-react";
 import { formatARS } from "@/lib/format-currency";
+import QRCode from "qrcode";
 import Link from "next/link";
 import { SalesList } from "./sales-list";
 import { SaleGateModal, type SaleGateResult } from "./sale-gate-modal";
@@ -232,6 +234,18 @@ function readSavedCart(): CartItem[] | null {
   }
 }
 
+type InvoiceResult = {
+  id: string;
+  cae: string;
+  caeFchVto: string;
+  voucherNumber: number;
+  voucherType: number;
+  puntoVenta: number;
+  docTipo: number;
+  docNro: string;
+  cuit: string;
+};
+
 export function Pos() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("Venta actual");
 
@@ -296,12 +310,14 @@ export function Pos() {
     receiptType: "TICKET" | "INVOICE";
     receiptNumber: number;
     sellerCode: string;
+    invoice?: InvoiceResult | null;
   } | null>(null);
   const [barcodeNotFound, setBarcodeNotFound] = useState(false);
   const [optionalCustomerOpen, setOptionalCustomerOpen] = useState(false);
   const [saleGateOpen, setSaleGateOpen] = useState(false);
   const [saleGateResult, setSaleGateResult] = useState<SaleGateResult | null>(null);
   const [arcaEnabled, setArcaEnabled] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   const moreDropdownRef = useRef<HTMLDivElement>(null);
   const applyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2380,7 +2396,23 @@ export function Pos() {
           receiptType={showPrintModal.receiptType}
           receiptNumber={showPrintModal.receiptNumber}
           sellerCode={showPrintModal.sellerCode}
+          arcaEnabled={arcaEnabled}
+          invoice={showPrintModal.invoice ?? null}
+          onEmitInvoice={() => setShowInvoiceModal(true)}
           onClose={() => setShowPrintModal(null)}
+        />
+      ) : null}
+
+      {showInvoiceModal && showPrintModal ? (
+        <InvoiceModal
+          saleId={showPrintModal.saleId}
+          total={showPrintModal.total}
+          items={showPrintModal.cartItems}
+          onSuccess={(result) => {
+            setShowPrintModal((prev) => (prev ? { ...prev, invoice: result } : null));
+            setShowInvoiceModal(false);
+          }}
+          onClose={() => setShowInvoiceModal(false)}
         />
       ) : null}
 
@@ -2475,6 +2507,9 @@ function PrintModal({
   receiptType,
   receiptNumber,
   sellerCode,
+  arcaEnabled,
+  invoice,
+  onEmitInvoice,
   onClose,
 }: {
   saleId: string;
@@ -2484,6 +2519,9 @@ function PrintModal({
   receiptType: "TICKET" | "INVOICE";
   receiptNumber: number;
   sellerCode: string;
+  arcaEnabled?: boolean;
+  invoice?: InvoiceResult | null;
+  onEmitInvoice?: () => void;
   onClose: () => void;
 }) {
   const [emailSent, setEmailSent] = useState(false);
@@ -2545,7 +2583,7 @@ function PrintModal({
     </body></html>`);
   }
 
-  function handlePrintInvoice() {
+  async function handlePrintInvoice() {
     const enrichedItems = cartItems.map((item) => {
       const totalFinal = item.unitPrice * item.quantity;
       const neto = item.ivaRate > 0 ? totalFinal / (1 + item.ivaRate) : totalFinal;
@@ -2589,6 +2627,35 @@ function PrintModal({
       ? `<tr><td colspan="6" style="text-align:right;color:#64748b">Descuento</td><td style="text-align:right">-${formatARS(discount)}</td></tr>`
       : "";
 
+    let arcaSection = "";
+    if (invoice?.cae) {
+      const vto = invoice.caeFchVto;
+      const expiry = `${vto.slice(6, 8)}/${vto.slice(4, 6)}/${vto.slice(0, 4)}`;
+      const payload = {
+        ver: 1,
+        fecha: `${vto.slice(0, 4)}-${vto.slice(4, 6)}-${vto.slice(6, 8)}`,
+        cuit: Number(invoice.cuit),
+        ptoVta: invoice.puntoVenta,
+        tipoCmp: invoice.voucherType,
+        nroCmp: invoice.voucherNumber,
+        importe: total,
+        moneda: "PES",
+        ctz: 1,
+        tipoDocRec: invoice.docTipo,
+        nroDocRec: Number(invoice.docNro) || 0,
+        tipoCodAut: "E",
+        codAut: Number(invoice.cae),
+      };
+      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+      const qrDataUrl = await QRCode.toDataURL(
+        `https://www.arca.gob.ar/fe/qr/?p=${encoded}`,
+        { width: 120, margin: 1 }
+      );
+      arcaSection = `<div style="margin-top:16px;padding:12px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc"><div style="display:flex;align-items:flex-start;gap:12px"><img src="${qrDataUrl}" width="80" height="80" style="flex-shrink:0"/><div style="font-size:11px;color:#475569"><p style="font-weight:600;color:#1e293b;margin:0 0 4px">Comprobante Electrónico ARCA/AFIP</p><p style="margin:2px 0">CAE: ${invoice.cae}</p><p style="margin:2px 0">Vencimiento CAE: ${expiry}</p><p style="margin:2px 0">CUIT emisor: ${invoice.cuit}</p><p style="margin:2px 0">Tipo ${invoice.voucherType} · Pto.Vta. ${invoice.puntoVenta} · Nro. ${invoice.voucherNumber}</p></div></div></div>`;
+    }
     openPrintWindow(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
       body{font-family:sans-serif;max-width:900px;margin:0 auto;padding:24px;font-size:13px;color:#1e293b}
       .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
@@ -2649,6 +2716,7 @@ function PrintModal({
         IVA total: ${formatARS(totalIva)} | Neto gravado: ${formatARS(totalNeto)}
       </div>
       <div class="footer">${businessName} · ¡Gracias por su compra!</div>
+      ${arcaSection}
     </body></html>`);
   }
 
@@ -2672,7 +2740,7 @@ function PrintModal({
           </button>
           <button
             className="flex w-full items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={handlePrintInvoice}
+            onClick={() => { void handlePrintInvoice(); }}
             type="button"
           >
             <FileText size={16} className="flex-shrink-0 text-slate-400" />
@@ -2686,6 +2754,24 @@ function PrintModal({
             <MoreHorizontal size={16} className="flex-shrink-0 text-slate-400" />
             {emailSent ? "Próximamente disponible" : "Enviar por email"}
           </button>
+          {invoice?.cae ? (
+            <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+              <p className="text-xs font-semibold text-violet-800">✓ Factura electrónica emitida</p>
+              <p className="mt-0.5 font-mono text-xs text-violet-700">CAE: {invoice.cae}</p>
+              <p className="text-xs text-violet-600">
+                Vto.: {invoice.caeFchVto.slice(6, 8)}/{invoice.caeFchVto.slice(4, 6)}/{invoice.caeFchVto.slice(0, 4)}
+              </p>
+            </div>
+          ) : arcaEnabled ? (
+            <button
+              className="flex w-full items-center gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-left text-sm font-medium text-violet-700 hover:bg-violet-100"
+              onClick={onEmitInvoice}
+              type="button"
+            >
+              <Receipt size={16} className="flex-shrink-0 text-violet-500" />
+              Emitir Factura Electrónica
+            </button>
+          ) : null}
         </div>
         <div className="border-t border-slate-200 px-6 py-3">
           <button
@@ -2694,6 +2780,112 @@ function PrintModal({
             type="button"
           >
             Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InvoiceModal({
+  saleId,
+  total,
+  items,
+  onSuccess,
+  onClose,
+}: {
+  saleId: string;
+  total: number;
+  items: CartItem[];
+  onSuccess: (result: InvoiceResult) => void;
+  onClose: () => void;
+}) {
+  const [docTipo, setDocTipo] = useState(99);
+  const [docNro, setDocNro] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleEmit() {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          saleId,
+          total,
+          docTipo,
+          docNro,
+          items: items.map((item) => ({
+            productName: item.productName,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            ivaRate: item.ivaRate,
+          })),
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) {
+        setError(json?.error?.message ?? "No se pudo emitir la factura.");
+        return;
+      }
+      onSuccess(json.data as InvoiceResult);
+    } catch {
+      setError("No se pudo emitir la factura.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+        <div className="border-b border-slate-200 px-6 py-4">
+          <h3 className="text-base font-semibold text-slate-900">Emitir Factura Electrónica</h3>
+        </div>
+        <div className="space-y-4 px-6 py-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Tipo de comprobante</label>
+            <select
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              value={docTipo}
+              onChange={(e) => setDocTipo(Number(e.target.value))}
+            >
+              <option value={99}>Consumidor Final (sin CUIT/DNI)</option>
+              <option value={96}>DNI</option>
+              <option value={80}>CUIT</option>
+            </select>
+          </div>
+          {docTipo !== 99 ? (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Número de documento</label>
+              <input
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={docNro}
+                onChange={(e) => setDocNro(e.target.value)}
+                placeholder={docTipo === 80 ? "CUIT" : "DNI"}
+              />
+            </div>
+          ) : null}
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        </div>
+        <div className="flex gap-3 border-t border-slate-200 px-6 py-4">
+          <button
+            className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={onClose}
+            type="button"
+            disabled={loading}
+          >
+            Cancelar
+          </button>
+          <button
+            className="flex-1 rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+            onClick={() => { void handleEmit(); }}
+            type="button"
+            disabled={loading}
+          >
+            {loading ? "Emitiendo..." : "Emitir"}
           </button>
         </div>
       </div>

@@ -1,27 +1,20 @@
-# REPORTE BATCH 4 — 2026-06-12
+# REPORTE HERRAMIENTAS — Batch 5 (ARCA-05 a ARCA-10)
 
-## ARCA-03: Schema Prisma — TenantARCAConfig, ARCATokenCache, Invoice
-Completado. Archivos modificados:
-- prisma/schema.prisma (relaciones `arcaConfig`, `arcaTokenCache`, `invoices` en `Tenant`; relación `invoice` en `Sale`; nuevos modelos `TenantARCAConfig`, `ARCATokenCache`, `Invoice`)
-- prisma/migrations/20260612103759_add_arca_invoice_models/ (nueva migración aplicada)
-- package.json / package-lock.json (deps: node-forge, axios, fast-xml-parser, @types/node-forge)
+## Tareas completadas
+- ARCA-05: módulo de autenticación WSAA (arca-errors.ts, token-cache.ts, wsaa-client.ts)
+- ARCA-06: módulo de solicitud de CAE WSFE (voucher-builder.ts, wsfe-client.ts) + exports en arca/index.ts
+- ARCA-07: módulo de emisión de facturas (src/modules/invoices/) + rutas API (/api/invoices, /api/invoices/test)
+- ARCA-08: UI de configuración — sección "Facturación Electrónica" en settings.tsx
+- ARCA-09/10: UI de POS — modal de emisión de factura, código QR AFIP y botón "Emitir Factura Electrónica"
 
-## ARCA-04: Módulo cert-crypto y endpoint de configuración ARCA
-Completado. Archivos creados:
-- src/lib/arca/cert-crypto.ts (encryptCert, decryptCert, isValidCertPem, isValidPrivateKeyPem con AES-256-GCM)
-- src/lib/arca/index.ts (export del módulo)
-- src/lib/arca/cert-crypto.test.ts (10 tests)
-- src/app/api/tenants/arca-config/route.ts (GET/POST configuración ARCA por tenant, OWNER only para POST, nunca expone cert/clave encriptados)
-- src/app/api/tenants/arca-config/cert/route.ts (DELETE certificado, OWNER only)
-- ENV_VARS.md (documentación de ARCA_CERT_ENCRYPTION_KEY y ARCA_ENVIRONMENT)
-- .env.local (ARCA_CERT_ENCRYPTION_KEY de prueba para tests locales)
+## Validación
+- npm run lint: OK
+- npm run typecheck: OK
+- npx prisma validate: OK
+- npx prisma migrate status: esquema actualizado
+- npm test: 198 tests / 39 archivos — todos OK
 
-## VALIDACIONES FINALES
-- lint: OK
-- typecheck: OK
-- prisma validate: OK
-- prisma migrate status: Database schema is up to date (22 migraciones)
-- tests: 198 passed, 0 failed (39 archivos)
-
-## GIT
-Commit y push a origin/main.
+## Notas
+- Se ajustaron rutas de import y firmas de funciones (decryptCert, errorResponse, export type) para coincidir con las convenciones reales del proyecto, ya que la especificación original asumía módulos inexistentes (@/lib/auth-helpers, @/lib/api-helpers).
+- Se corrigió un error de tipos en wsaa-client.ts (signingTime: Date vs string) con un cast.
+- Se corrigió un error de lint en settings.tsx (comillas sin escapar).

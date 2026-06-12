@@ -15,6 +15,7 @@ import {
   Lock,
   Percent,
   Plug,
+  Receipt,
   Settings as SettingsIcon,
   Shield,
   Store,
@@ -108,6 +109,7 @@ const CATEGORIES: Category[] = [
   { id: "inventario", label: "Inventario", icon: Layers },
   { id: "notificaciones", label: "Notificaciones", icon: Bell },
   { id: "integraciones", label: "Integraciones", icon: Plug },
+  { id: "arca", label: "Facturación Electrónica", icon: Receipt },
   { id: "sistema", label: "Sistema", icon: SettingsIcon },
   { id: "seguridad", label: "Seguridad", icon: Shield }
 ];
@@ -785,6 +787,283 @@ function RightSidebar({ activeCategory, businessName }: { activeCategory: string
   );
 }
 
+// ─── Facturación ARCA ────────────────────────────────────────────────────────
+
+function FacturacionARCASection() {
+  const [loading, setLoading] = useState(true);
+  const [arcaEnabled, setArcaEnabled] = useState(false);
+  const [hasCert, setHasCert] = useState(false);
+  const [cuit, setCuit] = useState("");
+  const [puntoVenta, setPuntoVenta] = useState("1");
+  const [condicionIVA, setCondicionIVA] = useState("RI");
+  const [ambiente, setAmbiente] = useState("homo");
+  const [certPem, setCertPem] = useState("");
+  const [keyPem, setKeyPem] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savingCert, setSavingCert] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((b) => {
+        if (typeof b.data?.arcaEnabled === "boolean") setArcaEnabled(b.data.arcaEnabled as boolean);
+      })
+      .catch(() => {});
+
+    fetch("/api/tenants/arca-config", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((b: { data?: { cuit?: string; puntoVenta?: number; condicionIVA?: string; ambiente?: string; hasCert?: boolean } }) => {
+        if (b.data) {
+          setCuit(b.data.cuit ?? "");
+          setPuntoVenta(String(b.data.puntoVenta ?? 1));
+          setCondicionIVA(b.data.condicionIVA ?? "RI");
+          setAmbiente(b.data.ambiente ?? "homo");
+          setHasCert(Boolean(b.data.hasCert));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleToggle(v: boolean) {
+    setArcaEnabled(v);
+    await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ arcaEnabled: v }),
+    }).catch(() => {});
+  }
+
+  async function handleSaveConfig(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const r = await fetch("/api/tenants/arca-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cuit, puntoVenta: Number(puntoVenta), condicionIVA, ambiente }),
+      });
+      const b = (await r.json()) as { error?: string };
+      if (!r.ok) { setError(b.error ?? "Error al guardar"); return; }
+      setSuccess("Configuración guardada correctamente");
+    } finally { setSaving(false); }
+  }
+
+  async function handleSaveCerts(e: FormEvent) {
+    e.preventDefault();
+    if (!certPem.trim() || !keyPem.trim()) { setError("Ingresá el certificado y la clave privada"); return; }
+    setSavingCert(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/tenants/arca-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cuit, puntoVenta: Number(puntoVenta), condicionIVA, ambiente, certPem: certPem.trim(), privateKeyPem: keyPem.trim() }),
+      });
+      const b = (await r.json()) as { error?: string };
+      if (!r.ok) { setError(b.error ?? "Error al guardar certificados"); return; }
+      setHasCert(true);
+      setCertPem("");
+      setKeyPem("");
+      setSuccess("Certificados guardados y encriptados");
+    } finally { setSavingCert(false); }
+  }
+
+  async function handleDeleteCerts() {
+    if (!confirm("¿Eliminar los certificados cargados? Esta acción no se puede deshacer.")) return;
+    await fetch("/api/tenants/arca-config/cert", { method: "DELETE" });
+    setHasCert(false);
+    setSuccess("Certificados eliminados");
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const r = await fetch("/api/invoices/test");
+      const b = (await r.json()) as { error?: string; data?: { wsfe?: { appServer?: string; dbServer?: string } } };
+      if (!r.ok) { setTestResult({ ok: false, msg: b.error ?? "Error" }); return; }
+      const wsfe = b.data?.wsfe;
+      setTestResult({ ok: true, msg: `AppServer: ${wsfe?.appServer ?? "—"} | DbServer: ${wsfe?.dbServer ?? "—"}` });
+    } catch { setTestResult({ ok: false, msg: "Error de red" }); }
+    finally { setTesting(false); }
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center p-12 text-slate-400">Cargando...</div>;
+  }
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h2 className="text-base font-semibold text-slate-900">Facturación Electrónica ARCA/AFIP</h2>
+        <p className="mt-1 text-sm text-slate-500">Emití facturas A, B o C directamente desde el punto de venta.</p>
+      </div>
+
+      {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      {success && <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>}
+
+      {/* Habilitar/deshabilitar */}
+      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+        <div>
+          <p className="text-sm font-medium text-slate-900">Habilitar facturación electrónica</p>
+          <p className="text-xs text-slate-500">Muestra el botón &quot;Emitir Factura&quot; en el POS tras cada venta</p>
+        </div>
+        <ToggleSwitch checked={arcaEnabled} onChange={handleToggle} />
+      </div>
+
+      {/* Datos del emisor */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 className="mb-4 text-sm font-semibold text-slate-800">Datos del emisor</h3>
+        <form onSubmit={handleSaveConfig} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">CUIT (sin guiones)</label>
+              <input
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
+                placeholder="20123456789"
+                value={cuit}
+                onChange={(e) => setCuit(e.target.value)}
+                maxLength={11}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Punto de venta</label>
+              <input
+                type="number"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
+                value={puntoVenta}
+                onChange={(e) => setPuntoVenta(e.target.value)}
+                min={1}
+                max={9999}
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Condición IVA</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
+                value={condicionIVA}
+                onChange={(e) => setCondicionIVA(e.target.value)}
+              >
+                <option value="RI">Responsable Inscripto</option>
+                <option value="MONO">Monotributista</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Ambiente</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
+                value={ambiente}
+                onChange={(e) => setAmbiente(e.target.value)}
+              >
+                <option value="homo">Homologación (testing)</option>
+                <option value="prod">Producción</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+            >
+              {saving ? "Guardando..." : "Guardar datos"}
+            </button>
+            <button
+              type="button"
+              onClick={handleTest}
+              disabled={testing}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {testing ? "Probando..." : "Probar conexión WSFE"}
+            </button>
+          </div>
+          {testResult && (
+            <p className={`text-xs ${testResult.ok ? "text-emerald-600" : "text-red-600"}`}>
+              {testResult.ok ? "✓ " : "✗ "}{testResult.msg}
+            </p>
+          )}
+        </form>
+      </div>
+
+      {/* Certificados */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-800">Certificados digitales</h3>
+          {hasCert ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+              <CheckCircle2 size={12} /> Cargado
+            </span>
+          ) : (
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+              Sin certificado
+            </span>
+          )}
+        </div>
+        {hasCert ? (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">
+              Los certificados están encriptados (AES-256-GCM) y almacenados de forma segura.
+            </p>
+            <button
+              type="button"
+              onClick={handleDeleteCerts}
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            >
+              Eliminar certificados
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSaveCerts} className="space-y-4">
+            <p className="text-xs text-slate-500">
+              Pegá el contenido del certificado (.crt) y la clave privada (.key) emitidos por ARCA/AFIP.
+            </p>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Certificado (.crt)</label>
+              <textarea
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs focus:border-violet-500 focus:outline-none"
+                rows={5}
+                placeholder={"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
+                value={certPem}
+                onChange={(e) => setCertPem(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Clave privada (.key)</label>
+              <textarea
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs focus:border-violet-500 focus:outline-none"
+                rows={5}
+                placeholder={"-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"}
+                value={keyPem}
+                onChange={(e) => setKeyPem(e.target.value)}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={savingCert}
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+            >
+              {savingCert ? "Guardando..." : "Guardar certificados"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Settings Component ──────────────────────────────────────────────────
 
 export function Settings() {
@@ -795,6 +1074,8 @@ export function Settings() {
     switch (activeCategory) {
       case "general":
         return <GeneralSection onBusinessNameChange={setBusinessName} />;
+      case "arca":
+        return <FacturacionARCASection />;
       case "seguridad":
         return <SeguridadSection />;
       case "sistema":
