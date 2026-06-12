@@ -5,7 +5,19 @@
       "Bash(mkdir -p /home/diegogama/Escritorio/SOLVEN_APP/src/app/customers/\\\\[id\\\\]/payment)",
       "Bash(xdg-open http://localhost:3001)",
       "Bash(python3 -c \"import sys,json; s=json.load\\(sys.stdin\\)['scripts']; print\\(s.get\\('build','MISSING'\\)\\); print\\(s.get\\('start','MISSING'\\)\\)\")",
-      "Bash(node -e \"require\\('./vercel.json'\\); console.log\\('OK'\\)\")"
+      "Bash(node -e \"require\\('./vercel.json'\\); console.log\\('OK'\\)\")",
+      "Bash(npm install *)",
+      "Bash(git restore *)",
+      "Bash(grep -n \"^import\\\\|^} from \\\\\"lucide-react\\\\\"\\\\|format-currency\\\\|export function Pos\\\\|showPrintModal\\\\|arcaEnabled\\\\|moreDropdownRef\\\\|function PrintModal\\\\|function handlePrintInvoice\\\\|function formatMoney\\\\|openPrintWindow\\(\\\\`\\\\|<div class=\\\\\"footer\\\\\"\\\\|Print modal\\\\|SaleGateModal\\\\|Imprimir factura\\\\|Enviar por email\\\\|onClick={handlePrintInvoice}\\\\|border-t border-slate-200 px-6 py-3\" src/app/ui/pos.tsx)",
+      "Bash(awk -F: '$1>=2480 && $1<=2530')",
+      "Bash(grep -n \"function handlePrintInvoice\\\\|openPrintWindow\\(\\\\`\\\\|class=\\\\\"footer\\\\\"\\\\|</body></html>\\\\`\\);\\\\|^  }\" src/app/ui/pos.tsx)",
+      "Bash(awk -F: '$1>=2550 && $1<=2700')",
+      "Bash(Remove-Item HERRAMIENTAS.MD -Force)",
+      "Bash(rm -f HERRAMIENTAS.MD)",
+      "Bash(Get-Content .gitignore)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "Bash(jobs)",
+      "PowerShell(Stop-Process -Id 4672,11252,13400 -Force -ErrorAction SilentlyContinue)"
     ],
     "additionalDirectories": [
       "/home/diegogama/Escritorio/SOLVEN_APP/src/app/customers/[id]"
