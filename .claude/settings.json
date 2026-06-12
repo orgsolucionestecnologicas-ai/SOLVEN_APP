@@ -17,7 +17,10 @@
       "Bash(Get-Content .gitignore)",
       "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
       "Bash(jobs)",
-      "PowerShell(Stop-Process -Id 4672,11252,13400 -Force -ErrorAction SilentlyContinue)"
+      "PowerShell(Stop-Process -Id 4672,11252,13400 -Force -ErrorAction SilentlyContinue)",
+      "Bash(break)",
+      "Bash(Remove-Item ORDEN.md -Force)",
+      "Bash(rm -f ORDEN.md)"
     ],
     "additionalDirectories": [
       "/home/diegogama/Escritorio/SOLVEN_APP/src/app/customers/[id]"
