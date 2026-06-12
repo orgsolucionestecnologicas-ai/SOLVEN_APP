@@ -97,6 +97,9 @@ model Tenant {
   onboardingCompleted  Boolean @default(false)
   quotes               Quote[]
   auditLogs            AuditLog[]
+  arcaConfig           TenantARCAConfig?
+  arcaTokenCache       ARCATokenCache?
+  invoices             Invoice[]
 }
 
 model User {
@@ -165,6 +168,7 @@ model Sale {
   items           SaleItem[]
   promotionUsages PromotionUsage[]
   returns         Return[]
+  invoice         Invoice?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -532,4 +536,53 @@ model AuditLog {
   @@index([tenantId])
   @@index([tenantId, action])
   @@index([tenantId, createdAt])
+}
+
+model TenantARCAConfig {
+  id                  String   @id @default(cuid())
+  tenantId            String   @unique
+  cuit                String
+  puntoVenta          Int
+  condicionIVA        String   // "RI" | "MONO"
+  certEncrypted       String?  @db.Text
+  privateKeyEncrypted String?  @db.Text
+  ambiente            String   @default("homo") // "homo" | "prod"
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant              Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model ARCATokenCache {
+  id        String   @id @default(cuid())
+  tenantId  String   @unique
+  token     String   @db.Text
+  sign      String   @db.Text
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  tenantId      String
+  saleId        String?  @unique
+  cae           String
+  caeFchVto     String   // YYYYMMDD
+  voucherNumber Int
+  voucherType   Int      // 1=Factura A, 6=Factura B, 11=Factura C
+  puntoVenta    Int
+  docTipo       Int      // 80=CUIT, 96=DNI, 99=Consumidor Final
+  docNro        String   // "0" para consumidor final
+  impTotal      Decimal  @db.Decimal(12, 2)
+  impNeto       Decimal  @db.Decimal(12, 2)
+  impIVA        Decimal  @db.Decimal(12, 2)
+  impOpEx       Decimal  @db.Decimal(12, 2)
+  createdAt     DateTime @default(now())
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  sale          Sale?    @relation(fields: [saleId], references: [id])
+
+  @@index([tenantId])
 }

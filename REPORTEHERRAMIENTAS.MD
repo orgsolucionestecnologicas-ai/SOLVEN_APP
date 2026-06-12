@@ -1,29 +1,27 @@
-# REPORTE BATCH 3 — 2026-06-12
+# REPORTE BATCH 4 — 2026-06-12
 
-## HERR-08: Rentabilidad por producto
+## ARCA-03: Schema Prisma — TenantARCAConfig, ARCATokenCache, Invoice
 Completado. Archivos modificados:
-- src/modules/sales/sale-data-access.ts (`SaleListRecord.items.product` incluye `costPrice`, include de `listSales` actualizado)
-- src/app/ui/reports.tsx (`SaleRecord.items.product` ahora `{ name, costPrice } | null`; tabla "Rentabilidad por producto" en RentabilidadTab; ajustes de null-check en CategoryDonutPanel, TopProductsPanel, ProductosTab y otros paneles que leían `item.product.name`)
+- prisma/schema.prisma (relaciones `arcaConfig`, `arcaTokenCache`, `invoices` en `Tenant`; relación `invoice` en `Sale`; nuevos modelos `TenantARCAConfig`, `ARCATokenCache`, `Invoice`)
+- prisma/migrations/20260612103759_add_arca_invoice_models/ (nueva migración aplicada)
+- package.json / package-lock.json (deps: node-forge, axios, fast-xml-parser, @types/node-forge)
 
-## HERR-10: Historial de movimientos de inventario por producto
-Completado. Archivos creados/modificados:
-- src/modules/inventory/inventory-movement-data-access.ts (nueva función `listInventoryMovementsByProduct`)
-- src/modules/inventory/index.ts (export agregado)
-- src/app/api/products/[id]/movements/route.ts (nuevo)
-- src/app/ui/product-detail.tsx (nuevo, `ProductMovementsTimeline`)
-- src/app/products/[id]/product-edit-view.tsx (renderiza timeline debajo del formulario)
-
-## HERR-11: Exportación CSV de ventas y productos
-Completado. Archivos creados/modificados:
-- src/app/api/reports/export/route.ts (nuevo)
-- src/app/ui/reports.tsx (helper `downloadReportCsv`, botón "Exportar CSV" en VentasTab y ProductosTab)
+## ARCA-04: Módulo cert-crypto y endpoint de configuración ARCA
+Completado. Archivos creados:
+- src/lib/arca/cert-crypto.ts (encryptCert, decryptCert, isValidCertPem, isValidPrivateKeyPem con AES-256-GCM)
+- src/lib/arca/index.ts (export del módulo)
+- src/lib/arca/cert-crypto.test.ts (10 tests)
+- src/app/api/tenants/arca-config/route.ts (GET/POST configuración ARCA por tenant, OWNER only para POST, nunca expone cert/clave encriptados)
+- src/app/api/tenants/arca-config/cert/route.ts (DELETE certificado, OWNER only)
+- ENV_VARS.md (documentación de ARCA_CERT_ENCRYPTION_KEY y ARCA_ENVIRONMENT)
+- .env.local (ARCA_CERT_ENCRYPTION_KEY de prueba para tests locales)
 
 ## VALIDACIONES FINALES
 - lint: OK
 - typecheck: OK
 - prisma validate: OK
-- prisma migrate status: Database schema is up to date
-- tests: 188 passed, 0 failed
+- prisma migrate status: Database schema is up to date (22 migraciones)
+- tests: 198 passed, 0 failed (39 archivos)
 
 ## GIT
 Commit y push a origin/main.
