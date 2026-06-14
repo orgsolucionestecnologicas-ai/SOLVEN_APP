@@ -21,48 +21,63 @@ export async function registerDebtPayment(
 ): Promise<DebtPayment> {
   const validatedPayment = validateRegisterDebtPaymentInput(paymentInput);
 
-  return prisma.$transaction(async (transaction) => {
-    const debt = await transaction.debt.findUniqueOrThrow({
-      where: { id: validatedPayment.debtId }
-    });
-    const paymentAmount = new Prisma.Decimal(validatedPayment.amount);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await prisma.$transaction(async (transaction) => {
+        const debt = await transaction.debt.findUniqueOrThrow({
+          where: { id: validatedPayment.debtId }
+        });
+        const paymentAmount = new Prisma.Decimal(validatedPayment.amount);
 
-    if (paymentAmount.greaterThan(debt.remainingAmount)) {
-      throw new DebtPaymentAmountError();
-    }
+        if (paymentAmount.greaterThan(debt.remainingAmount)) {
+          throw new DebtPaymentAmountError();
+        }
 
-    const debtUpdate = await transaction.debt.updateMany({
-      where: {
-        id: validatedPayment.debtId,
-        remainingAmount: { gte: paymentAmount }
-      },
-      data: { remainingAmount: { decrement: paymentAmount } }
-    });
+        const debtUpdate = await transaction.debt.updateMany({
+          where: {
+            id: validatedPayment.debtId,
+            remainingAmount: { gte: paymentAmount }
+          },
+          data: { remainingAmount: { decrement: paymentAmount } }
+        });
 
-    if (debtUpdate.count === 0) {
-      throw new DebtPaymentAmountError();
-    }
+        if (debtUpdate.count === 0) {
+          throw new DebtPaymentAmountError();
+        }
 
-    const debtPayment = await transaction.debtPayment.create({
-      data: {
-        tenantId,
-        debtId: validatedPayment.debtId,
-        amount: validatedPayment.amount
+        const debtPayment = await transaction.debtPayment.create({
+          data: {
+            tenantId,
+            debtId: validatedPayment.debtId,
+            amount: validatedPayment.amount
+          }
+        });
+        const cashMovement = validateCreateCashMovementInput({
+          type: "IN",
+          amount: validatedPayment.amount,
+          source: "DEBT_PAYMENT",
+          referenceId: debtPayment.id
+        });
+
+        await transaction.cashMovement.create({
+          data: { ...cashMovement, tenantId }
+        });
+
+        return debtPayment;
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034" &&
+        attempt < 2
+      ) {
+        continue;
       }
-    });
-    const cashMovement = validateCreateCashMovementInput({
-      type: "IN",
-      amount: validatedPayment.amount,
-      source: "DEBT_PAYMENT",
-      referenceId: debtPayment.id
-    });
+      throw error;
+    }
+  }
 
-    await transaction.cashMovement.create({
-      data: { ...cashMovement, tenantId }
-    });
-
-    return debtPayment;
-  });
+  throw new Error("Debt payment transaction failed.");
 }
 
 export async function listDebtPayments(tenantId: string): Promise<DebtPayment[]> {

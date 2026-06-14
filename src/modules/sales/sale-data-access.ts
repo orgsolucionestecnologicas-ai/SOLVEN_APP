@@ -268,7 +268,7 @@ export async function createSale(
       where: { id: sale.id },
       include: { items: true }
     });
-  }, { timeout: 15000 });
+  }, { timeout: 30000 });
 }
 
 export type PaginationParams = { page?: number; limit?: number; from?: Date; to?: Date };

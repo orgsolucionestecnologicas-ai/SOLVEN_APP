@@ -11,7 +11,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "prisma:validate": "prisma validate",
-    "reset:users": "node --env-file=.env scripts/reset-users.mjs"
+    "reset:users": "node --env-file=.env scripts/reset-users.mjs",
+    "seed:icase": "node --env-file=.env scripts/seed-icase.mjs",
+    "swap:user": "node --env-file=.env scripts/swap-user.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
