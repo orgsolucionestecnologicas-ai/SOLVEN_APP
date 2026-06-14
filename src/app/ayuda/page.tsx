@@ -1,10 +1,6 @@
-import { AppShell } from "../ui/app-shell";
-import { HelpPageContent } from "../ui/help-page";
+// Centro de ayuda eliminado — se rediseñará en fase 2.
+import { redirect } from "next/navigation";
 
 export default function AyudaPage() {
-  return (
-    <AppShell activeSection="ayuda" eyebrow="Sistema" title="Centro de ayuda">
-      <HelpPageContent />
-    </AppShell>
-  );
+  redirect("/dashboard");
 }

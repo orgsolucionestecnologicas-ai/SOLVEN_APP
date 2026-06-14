@@ -93,7 +93,6 @@ model Tenant {
   inventoryMovements InventoryMovement[]
   storeSettings        StoreSettings?
   subscription         Subscription?
-  helpQueries          HelpQuery[]
   onboardingCompleted  Boolean @default(false)
   quotes               Quote[]
   auditLogs            AuditLog[]
@@ -464,18 +463,6 @@ model Subscription {
   updatedAt            DateTime           @updatedAt
 }
 
-
-model HelpQuery {
-  id        String   @id @default(cuid())
-  tenantId  String
-  question  String
-  createdAt DateTime @default(now())
-
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-
-  @@index([tenantId])
-  @@index([createdAt])
-}
 
 model Quote {
   id              String      @id @default(cuid())

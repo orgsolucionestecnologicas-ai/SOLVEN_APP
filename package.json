@@ -10,7 +10,8 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "prisma:validate": "prisma validate"
+    "prisma:validate": "prisma validate",
+    "reset:users": "node --env-file=.env scripts/reset-users.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",

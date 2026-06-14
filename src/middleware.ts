@@ -22,15 +22,18 @@ function rateLimit(ip: string, route: string, limit: number, windowMs: number): 
   return true;
 }
 
-const PUBLIC_PATHS = ["/", "/login", "/register", "/suscripcion-vencida"];
+const PUBLIC_PATHS = ["/", "/login", "/register", "/pricing", "/onboarding", "/suscripcion-vencida"];
 const WEBHOOK_PREFIX = "/api/webhooks/";
 const AUTH_PREFIX = "/api/auth/";
+const CRON_PREFIX = "/api/cron/";
 
 function isPublic(pathname: string): boolean {
   return (
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith(WEBHOOK_PREFIX) ||
-    pathname.startsWith(AUTH_PREFIX)
+    pathname.startsWith(AUTH_PREFIX) ||
+    pathname.startsWith(CRON_PREFIX) ||
+    pathname === "/api/noa"
   );
 }
 

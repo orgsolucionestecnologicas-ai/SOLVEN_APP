@@ -17,7 +17,7 @@ import {
 export async function POST(request: Request) {
   let tenantId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER", "ADMIN", "CASHIER"]));
+    ({ tenantId } = await requireRole(["OWNER", "CASHIER"]));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();

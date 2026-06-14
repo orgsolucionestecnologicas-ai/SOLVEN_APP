@@ -1,10 +1,6 @@
-import { AppShell } from "../../ui/app-shell";
-import { UnansweredQueries } from "../../ui/unanswered-queries";
+// Eliminado — NOA interno removido del proyecto.
+import { redirect } from "next/navigation";
 
 export default function UnansweredPage() {
-  return (
-    <AppShell activeSection="ayuda" eyebrow="Ayuda" title="Preguntas sin respuesta">
-      <UnansweredQueries />
-    </AppShell>
-  );
+  redirect("/dashboard");
 }
