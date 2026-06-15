@@ -79,17 +79,8 @@ type ApiCategoryTree = {
   subcategories: { id: string; name: string }[];
 };
 
-const DEFAULT_PRODUCT_CATEGORIES = [
-  "Alimentos",
-  "Bebidas",
-  "Lácteos",
-  "Limpieza",
-  "Cuidado Personal",
-  "Hogar",
-  "Panadería",
-  "Snacks",
-  "Otros",
-];
+// Las categorías se gestionan 100% desde la DB (GET /api/categories).
+// No hay categorías predeterminadas hardcodeadas.
 
 const CATEGORY_COLORS: Record<string, string> = {
   Alimentos: "bg-amber-100 text-amber-800",
@@ -198,6 +189,9 @@ export function ProductsInventory() {
     localStorage.setItem("solven_categories", JSON.stringify(customCategories));
   }, [customCategories]);
 
+  // catRefreshKey se incrementa al agregar una categoría para recargar el árbol
+  const [catRefreshKey, setCatRefreshKey] = useState(0);
+
   useEffect(() => {
     async function loadCatTree() {
       try {
@@ -208,7 +202,7 @@ export function ProductsInventory() {
       } catch {}
     }
     void loadCatTree();
-  }, []);
+  }, [catRefreshKey]);
 
   useEffect(() => {
     if (activeMainTab !== "Servicios") return;
@@ -233,13 +227,13 @@ export function ProductsInventory() {
   }, [activeMainTab, refreshKey]);
 
   const allCategories = useMemo(
-    () => ["Todas", ...DEFAULT_PRODUCT_CATEGORIES, ...customCategories],
-    [customCategories]
+    () => ["Todas", ...apiCatTree.map((c) => c.name), ...customCategories],
+    [apiCatTree, customCategories]
   );
 
   const selectableCategories = useMemo(
-    () => [...DEFAULT_PRODUCT_CATEGORIES, ...customCategories],
-    [customCategories]
+    () => [...apiCatTree.map((c) => c.name), ...customCategories],
+    [apiCatTree, customCategories]
   );
 
   const categoryCounts = useMemo(() => {
@@ -897,10 +891,12 @@ export function ProductsInventory() {
 
       {showCategoryManager ? (
         <CategoryManagerModal
+          apiCategories={apiCatTree}
           customCategories={customCategories}
           onAddCategory={(name) =>
             setCustomCategories((prev) => [...prev, name])
           }
+          onCategoryAdded={() => setCatRefreshKey((k) => k + 1)}
           onClose={() => setShowCategoryManager(false)}
           onDeleteCategory={(name) =>
             setCustomCategories((prev) => prev.filter((c) => c !== name))
@@ -1796,27 +1792,31 @@ function DeleteProductModal({ product, onClose, onSuccess }: DeleteProductModalP
 }
 
 type CategoryManagerModalProps = {
+  apiCategories: ApiCategoryTree[];
   customCategories: string[];
   products: ProductRecord[];
   onAddCategory: (name: string) => void;
+  onCategoryAdded: () => void;
   onDeleteCategory: (name: string) => void;
   onClose: () => void;
 };
 
 function CategoryManagerModal({
+  apiCategories,
   customCategories,
   products,
-  onAddCategory,
+  onCategoryAdded,
   onDeleteCategory,
   onClose
 }: CategoryManagerModalProps) {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
+  const [addLoading, setAddLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const allExisting = [...DEFAULT_PRODUCT_CATEGORIES, ...customCategories];
+  const allExisting = [...apiCategories.map((c) => c.name), ...customCategories];
 
-  function handleAdd() {
+  async function handleAdd() {
     const trimmed = newCategoryName.trim();
     if (!trimmed) {
       setAddError("El nombre no puede estar vacío.");
@@ -1826,9 +1826,26 @@ function CategoryManagerModal({
       setAddError("Ya existe una categoría con ese nombre.");
       return;
     }
-    onAddCategory(trimmed);
-    setNewCategoryName("");
-    setAddError(null);
+    setAddLoading(true);
+    try {
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string };
+        setAddError(body.error ?? "Error al crear la categoría.");
+        return;
+      }
+      setNewCategoryName("");
+      setAddError(null);
+      onCategoryAdded(); // recarga el árbol en el padre
+    } catch {
+      setAddError("Error de conexión.");
+    } finally {
+      setAddLoading(false);
+    }
   }
 
   function handleDelete(cat: string) {
@@ -1866,22 +1883,26 @@ function CategoryManagerModal({
         </div>
 
         <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Predeterminadas
-          </p>
-          <ul className="mb-5 space-y-0.5">
-            {DEFAULT_PRODUCT_CATEGORIES.map((cat) => (
-              <li
-                className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-700"
-                key={cat}
-              >
-                <span>{cat}</span>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                  Predeterminada
-                </span>
-              </li>
-            ))}
-          </ul>
+          {apiCategories.length > 0 ? (
+            <>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Categorías actuales
+              </p>
+              <ul className="mb-5 space-y-0.5">
+                {apiCategories.map((cat) => (
+                  <li
+                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-700"
+                    key={cat.id}
+                  >
+                    <span>{cat.name}</span>
+                    <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-600">
+                      {products.filter((p) => p.categoryName === cat.name).length} productos
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
 
           {customCategories.length > 0 ? (
             <>
@@ -1937,11 +1958,12 @@ function CategoryManagerModal({
                 value={newCategoryName}
               />
               <button
-                className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
-                onClick={handleAdd}
+                className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                disabled={addLoading}
+                onClick={() => void handleAdd()}
                 type="button"
               >
-                Agregar
+                {addLoading ? "Guardando..." : "Agregar"}
               </button>
             </div>
             {addError ? (
