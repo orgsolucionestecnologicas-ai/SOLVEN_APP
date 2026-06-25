@@ -149,7 +149,10 @@ export async function createSale(
             ? new Prisma.Decimal((validatedSale as ValidatedMixedSaleInput).cashAmount)
             : null,
         totalAmount,
-        discountAmount
+        discountAmount,
+        paymentDetails: validatedSale.paymentDetails
+          ? (validatedSale.paymentDetails as Prisma.InputJsonValue)
+          : Prisma.JsonNull
       }
     });
 

@@ -14,6 +14,7 @@ export type CreateSaleInput = {
   sellerCode?: string;
   sellerId?: string;
   receiptType?: "TICKET" | "INVOICE";
+  paymentDetails?: { method: string; amount: number; reference?: string }[];
 };
 
 export type ValidatedProductSaleItemInput = {
@@ -36,6 +37,7 @@ export type ValidatedCashSaleInput = {
   sellerCode: string;
   sellerId: string;
   receiptType: "TICKET" | "INVOICE";
+  paymentDetails?: { method: string; amount: number; reference?: string }[];
 };
 
 export type ValidatedCreditSaleInput = {
@@ -45,6 +47,7 @@ export type ValidatedCreditSaleInput = {
   sellerCode: string;
   sellerId: string;
   receiptType: "TICKET" | "INVOICE";
+  paymentDetails?: { method: string; amount: number; reference?: string }[];
 };
 
 export type ValidatedMixedSaleInput = {
@@ -55,6 +58,7 @@ export type ValidatedMixedSaleInput = {
   sellerCode: string;
   sellerId: string;
   receiptType: "TICKET" | "INVOICE";
+  paymentDetails?: { method: string; amount: number; reference?: string }[];
 };
 
 export type ValidatedSaleInput =
@@ -151,7 +155,8 @@ export function validateCreateSaleInput(
       customerId,
       sellerCode,
       sellerId,
-      receiptType
+      receiptType,
+      paymentDetails: saleInput.paymentDetails
     };
   }
 
@@ -163,7 +168,8 @@ export function validateCreateSaleInput(
       cashAmount,
       sellerCode,
       sellerId,
-      receiptType
+      receiptType,
+      paymentDetails: saleInput.paymentDetails
     };
   }
 
@@ -172,6 +178,7 @@ export function validateCreateSaleInput(
     paymentType: "CASH",
     sellerCode,
     sellerId,
-    receiptType
+    receiptType,
+    paymentDetails: saleInput.paymentDetails
   };
 }
