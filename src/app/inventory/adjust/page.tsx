@@ -3,7 +3,7 @@ import { InventoryAdjustForm } from "../../ui/inventory-adjust-form";
 
 export default function InventoryAdjustPage() {
   return (
-    <AppShell activeSection="inventory">
+    <AppShell activeSection="products">
       <InventoryAdjustForm />
     </AppShell>
   );

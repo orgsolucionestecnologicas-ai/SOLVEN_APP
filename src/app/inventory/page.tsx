@@ -1,10 +1,5 @@
-import { AppShell } from "../ui/app-shell";
-import { Inventory } from "../ui/inventory";
+import { redirect } from "next/navigation";
 
 export default function InventoryPage() {
-  return (
-    <AppShell activeSection="inventory">
-      <Inventory />
-    </AppShell>
-  );
+  redirect("/products");
 }

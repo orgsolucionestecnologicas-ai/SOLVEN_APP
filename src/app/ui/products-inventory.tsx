@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { InventoryTab } from "../products/components/InventoryTab";
 
 type ProductRecord = {
   id: string;
@@ -125,7 +126,7 @@ export function ProductsInventory() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"Productos" | "Servicios">("Productos");
+  const [activeMainTab, setActiveMainTab] = useState<"Productos" | "Servicios" | "Inventario">("Productos");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [services, setServices] = useState<ServiceRecord[]>([]);
@@ -389,7 +390,7 @@ export function ProductsInventory() {
       {/* Main tabs */}
       <div className="border-b border-slate-200 px-6">
         <div className="flex">
-          {(["Productos", "Servicios"] as const).map((tab) => (
+          {(["Productos", "Servicios", "Inventario"] as const).map((tab) => (
             <button
               key={tab}
               className={
@@ -485,8 +486,11 @@ export function ProductsInventory() {
         </div>
       ) : null}
 
+      {/* Inventory panel */}
+      {activeMainTab === "Inventario" ? <InventoryTab /> : null}
+
       {/* Body */}
-      <div className={`flex border-t border-slate-200 ${activeMainTab === "Servicios" ? "hidden" : ""}`}>
+      <div className={`flex border-t border-slate-200 ${activeMainTab !== "Productos" ? "hidden" : ""}`}>
         {/* Left sidebar */}
         <aside className="w-52 shrink-0 border-r border-slate-200 px-3 py-4 lg:w-60">
           <div className="mb-3 flex items-center justify-between">

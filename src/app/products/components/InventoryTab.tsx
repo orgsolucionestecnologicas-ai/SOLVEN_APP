@@ -136,7 +136,7 @@ const dateFormatter = new Intl.DateTimeFormat("es-419", {
 
 const numberFormatter = new Intl.NumberFormat("es-419", { maximumFractionDigits: 0 });
 
-export function Inventory() {
+export function InventoryTab() {
   const router = useRouter();
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [movements, setMovements] = useState<InventoryMovementRecord[]>([]);
