@@ -1,10 +1,10 @@
-import { AppShell } from "../ui/app-shell";
-import { Settings } from "../ui/settings";
+import { Suspense } from "react";
+import { SettingsContent } from "./components/SettingsContent";
 
 export default function SettingsPage() {
   return (
-    <AppShell activeSection="settings" eyebrow="Sistema" title="Configuración">
-      <Settings />
-    </AppShell>
+    <Suspense fallback={null}>
+      <SettingsContent />
+    </Suspense>
   );
 }

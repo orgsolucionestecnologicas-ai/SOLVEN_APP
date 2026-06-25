@@ -18,8 +18,6 @@ import {
   Shield,
   ShoppingCart,
   Tag,
-  User,
-  UserCog,
   Users,
   Wrench,
 } from "lucide-react";
@@ -27,7 +25,6 @@ import { LogoutButton } from "./logout-button";
 
 type ActiveSection =
   | "cashMovements"
-  | "cuenta"
   | "customers"
   | "dashboard"
   | "debts"
@@ -40,8 +37,7 @@ type ActiveSection =
   | "returns"
   | "sales"
   | "services"
-  | "settings"
-  | "usuarios";
+  | "settings";
 
 type AppShellProps = {
   activeSection: ActiveSection;
@@ -78,9 +74,7 @@ const navItems: NavItem[] = [
   { type: "link",     href: "/quotes",          label: "Cotizaciones",  section: "quotes",        Icon: FileText },
   { type: "link",     href: "/reports",         label: "Reportes",      section: "reports",       Icon: BarChart2 },
   { type: "link",     href: "/promotions",      label: "Promociones",   section: "promotions",    Icon: Tag },
-  { type: "link",     href: "/settings",        label: "Configuración", section: "settings",      Icon: Settings,  hiddenForRoles: ["CASHIER", "READONLY"] },
-  { type: "link",     href: "/usuarios",        label: "Usuarios",      section: "usuarios",      Icon: UserCog,   hiddenForRoles: ["CASHIER", "INVENTORY", "READONLY"] },
-  { type: "link",     href: "/cuenta",           label: "Mi cuenta",     section: "cuenta",        Icon: User },
+  { type: "link",     href: "/settings",        label: "Ajustes",       section: "settings",      Icon: Settings },
   { type: "disabled",                           label: "Licencia",                                Icon: Shield },
 ];
 
