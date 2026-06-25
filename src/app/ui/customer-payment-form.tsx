@@ -75,21 +75,6 @@ function getAvatarColor(name: string): string {
   return AVATAR_COLORS[sum % AVATAR_COLORS.length];
 }
 
-function getCustomerPhone(id: string): string {
-  const hex = id.replace(/[^0-9a-f]/gi, "");
-  const n1 = parseInt(hex.slice(-6, -3) || "000", 16) % 1000;
-  const n2 = parseInt(hex.slice(-3) || "000", 16) % 10000;
-  return `809-${String(n1).padStart(3, "0")}-${String(n2).padStart(4, "0")}`;
-}
-
-function getCustomerEmail(name: string): string {
-  const normalize = (w: string) =>
-    w.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]/g, "");
-  const parts = name.toLowerCase().trim().split(/\s+/).map(normalize).filter(Boolean);
-  if (parts.length >= 2) return `${parts[0]}.${parts[1]}@email.com`;
-  return `${parts[0] ?? "cliente"}@email.com`;
-}
-
 function todayISODate(): string {
   const d = new Date();
   return d.toISOString().split("T")[0];
@@ -299,10 +284,8 @@ export function CustomerPaymentForm() {
 
   const avatarColor = getAvatarColor(customer.name);
   const initials = getInitials(customer.name);
-  const phone = getCustomerPhone(customer.id);
-  const email = getCustomerEmail(customer.name);
-  const creditLimit = 10000;
-  const creditAvailable = Math.max(0, creditLimit - totalRemaining);
+  const creditLimit = null; // Sin límite definido hasta implementar por cliente
+  const creditAvailable = creditLimit != null ? Math.max(0, creditLimit - totalRemaining) : null;
   const lastSaleDate = null;
 
   return (
@@ -361,7 +344,6 @@ export function CustomerPaymentForm() {
                         Activo
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500">{phone} · {email}</p>
                   </div>
                 </div>
                 <Link
@@ -565,8 +547,8 @@ export function CustomerPaymentForm() {
                 <p className="mt-1 text-xl font-bold text-rose-600">{fmtMoney(totalRemaining)}</p>
               </div>
               <div className="mt-3 space-y-2">
-                <SidebarRow label="Límite de crédito" value={fmtMoney(10000)} />
-                <SidebarRow label="Disponible" value={fmtMoney(creditAvailable)} />
+                <SidebarRow label="Límite de crédito" value={creditLimit != null ? fmtMoney(creditLimit) : "—"} />
+                <SidebarRow label="Disponible" value={creditAvailable != null ? fmtMoney(creditAvailable) : "—"} />
                 <SidebarRow label="Total compras" value={fmtMoney(allSalesTotal)} />
                 <SidebarRow label="Total pagado" value={fmtMoney(totalPaid)} />
                 <SidebarRow label="Última compra" value={lastSaleDate ? fmtDate(lastSaleDate) : "—"} />
@@ -586,7 +568,7 @@ export function CustomerPaymentForm() {
                         <Wallet className="text-emerald-600" size={13} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-slate-950">Efectivo</p>
+                        <p className="text-xs font-medium text-slate-950">Pago registrado</p>
                         <p className="text-[10px] text-slate-400">{fmtDate(p.paymentDate)}</p>
                       </div>
                       <div className="text-right">

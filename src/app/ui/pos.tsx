@@ -784,7 +784,7 @@ export function Pos() {
           quantity: 1,
           unitPrice: Number(product.salePrice),
           maxStock: product.stock,
-          ivaRate: Number(product.ivaRate) ?? 0.21,
+          ivaRate: product.ivaRate != null ? Number(product.ivaRate) : 0.21,
         },
       ];
     });
@@ -884,6 +884,13 @@ export function Pos() {
                 promotionIds: displayedAppliedPromotions.map((p) => p.promotionId),
                 discountAmount: totalDiscount,
               }
+            : {}),
+          ...(noteText.trim() ? { note: noteText.trim() } : {}),
+          ...(paymentMethod === "Tarjeta" && cardOperationNumber.trim()
+            ? { operationNumber: cardOperationNumber.trim() }
+            : {}),
+          ...(paymentMethod === "Transferencia" && transferOperationNumber.trim()
+            ? { operationNumber: transferOperationNumber.trim() }
             : {}),
         }),
       });
@@ -1007,7 +1014,7 @@ export function Pos() {
                   Suspender venta
                 </button>
                 <button
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                  className="hidden h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
                   type="button"
                 >
                   <MoreHorizontal size={15} />
@@ -1302,7 +1309,7 @@ export function Pos() {
                 <QuickActionButton
                   Icon={Users}
                   label="Buscar cliente"
-                  onClick={() => setPaymentMethod("Fiado")}
+                  onClick={() => setOptionalCustomerOpen(true)}
                 />
                 <QuickActionButton
                   Icon={FileText}
@@ -1403,7 +1410,16 @@ export function Pos() {
             </div>
 
             {/* Cart table */}
-            {cartItems.length === 0 ? (
+            {!saleGateResult && cartItems.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center py-10 text-center text-slate-400">
+                <p className="text-sm font-medium">
+                  Hacé clic en <strong>Nueva venta</strong> para comenzar
+                </p>
+                <p className="mt-1 text-xs">
+                  Debés seleccionar el vendedor y tipo de comprobante primero.
+                </p>
+              </div>
+            ) : cartItems.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
                   <ShoppingCart size={18} className="text-slate-400" />

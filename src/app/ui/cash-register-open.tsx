@@ -147,7 +147,7 @@ export function CashRegisterOpen({ onOpened }: { onOpened: () => void }) {
             </div>
           </div>
           <button
-            className="inline-flex items-center gap-1.5 text-sm text-violet-600 hover:text-violet-800"
+            className="hidden items-center gap-1.5 text-sm text-violet-600 hover:text-violet-800"
             type="button"
           >
             <HelpCircle size={15} />

@@ -4,10 +4,10 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronLeft,
+  EyeOff,
   Lock,
   Plus,
   Printer,
-  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -418,11 +418,11 @@ export function CashRegisterClose({
                   />
                   <SalesSummaryCard
                     amount={0}
-                    bgClass="bg-slate-50"
+                    bgClass="bg-slate-50 opacity-50"
                     count={0}
-                    label="Devoluciones"
+                    label="Devoluciones (próx.)"
                     pct={0}
-                    textClass="text-slate-700"
+                    textClass="text-slate-400"
                   />
                 </div>
               )}
@@ -621,7 +621,7 @@ export function CashRegisterClose({
                               title="Ocultar de esta vista"
                               type="button"
                             >
-                              <Trash2 size={13} />
+                              <EyeOff size={13} />
                             </button>
                           </td>
                         </tr>

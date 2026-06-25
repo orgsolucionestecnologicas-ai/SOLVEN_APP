@@ -282,7 +282,7 @@ export function CashMovementsList() {
           </button>
           <button
             className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => window.print()}
+            onClick={() => alert("Exportar estará disponible próximamente.")}
             type="button"
           >
             <Download size={13} />
@@ -396,7 +396,7 @@ export function CashMovementsList() {
               />
             </div>
             <button
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              className="hidden items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
               type="button"
             >
               <Filter size={13} />
@@ -481,7 +481,7 @@ export function CashMovementsList() {
                                 <Eye size={13} />
                               </button>
                               <button
-                                className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                className="hidden rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                                 type="button"
                               >
                                 <MoreHorizontal size={13} />
@@ -604,7 +604,7 @@ export function CashMovementsList() {
             <div className="rounded-xl border border-slate-200 bg-white p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Categorías más usadas</h3>
               <CategoryBreakdown categorySums={categorySums} />
-              <button className="mt-3 text-xs font-medium text-violet-600 hover:text-violet-800" type="button">
+              <button className="mt-3 hidden text-xs font-medium text-violet-600 hover:text-violet-800" type="button">
                 Ver todas las categorías →
               </button>
             </div>
