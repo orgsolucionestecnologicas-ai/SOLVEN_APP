@@ -4,13 +4,11 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Barcode,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
-  CreditCard,
   FileText,
-  Globe,
-  Landmark,
   MoreHorizontal,
   Package,
   PauseCircle,
@@ -23,7 +21,6 @@ import {
   Trash2,
   UserPlus,
   Users,
-  Wallet,
   X,
   Receipt,
 } from "lucide-react";
@@ -53,31 +50,14 @@ function localId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-const PAYMENT_METHOD_CONFIG: {
-  method: PaymentMethodKey;
-  label: string;
-  Icon: LucideIcon;
-}[] = [
-  { method: "Efectivo",      label: "Efectivo",      Icon: Wallet          },
-  { method: "Tarjeta",       label: "Tarjeta",        Icon: CreditCard      },
-  { method: "Transferencia", label: "Transf.",        Icon: Landmark        },
-  { method: "VentaWeb",      label: "Web",            Icon: Globe           },
-  { method: "Otro",          label: "Otro",           Icon: MoreHorizontal  },
-  { method: "Fiado",         label: "Fiado",          Icon: UserPlus        },
+const PAYMENT_METHOD_CONFIG: { method: PaymentMethodKey; label: string }[] = [
+  { method: "Efectivo",      label: "Efectivo"       },
+  { method: "Tarjeta",       label: "Tarjeta"        },
+  { method: "Transferencia", label: "Transferencia"  },
+  { method: "VentaWeb",      label: "Venta web"      },
+  { method: "Otro",          label: "Otro"           },
+  { method: "Fiado",         label: "Fiado (crédito)" },
 ];
-
-// Clases Tailwind completas para evitar purge en build
-const PAYMENT_METHOD_STYLE: Record<
-  PaymentMethodKey,
-  { pill: string; icon: string }
-> = {
-  Efectivo:      { pill: "bg-emerald-50 border-emerald-200 text-emerald-700", icon: "text-emerald-600" },
-  Tarjeta:       { pill: "bg-violet-50  border-violet-200  text-violet-700",  icon: "text-violet-600"  },
-  Transferencia: { pill: "bg-blue-50    border-blue-200    text-blue-700",    icon: "text-blue-600"    },
-  VentaWeb:      { pill: "bg-cyan-50    border-cyan-200    text-cyan-700",    icon: "text-cyan-600"    },
-  Otro:          { pill: "bg-slate-50   border-slate-200   text-slate-600",   icon: "text-slate-500"   },
-  Fiado:         { pill: "bg-amber-50   border-amber-200   text-amber-700",   icon: "text-amber-600"   },
-};
 
 type ProductRecord = {
   id: string;
@@ -1746,6 +1726,8 @@ export function Pos() {
                   disabled={cartItems.length === 0 || cashRegisterStatus !== "open" || saleGateResult === null}
                   onClick={() => {
                     setSubmitError(null);
+                    setPaymentSplits([{ id: localId(), method: "Efectivo", amount: cartNet.toFixed(2) }]);
+                    setCashReceived("");
                     setShowPaymentModal(true);
                   }}
                   type="button"
@@ -2159,30 +2141,31 @@ export function Pos() {
         onCancel={() => setSaleGateOpen(false)}
       />
 
-      {/* ════════════════════════════════════════════════════
+      {/* ══════════════════════════════════════════════
           MODAL DE COBRO
-      ════════════════════════════════════════════════════ */}
+      ══════════════════════════════════════════════ */}
       {showPaymentModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowPaymentModal(false);
-          }}
+          className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center bg-black/50 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowPaymentModal(false); }}
         >
-          <div
-            className="flex w-full max-w-md flex-col rounded-2xl bg-white shadow-2xl"
-            style={{ maxHeight: "90dvh" }}
-          >
+          <div className="flex w-full max-w-lg flex-col rounded-2xl bg-white shadow-2xl"
+               style={{ maxHeight: "92dvh" }}>
+
             {/* ── Header ── */}
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
               <div>
-                <h2 className="text-lg font-bold text-slate-950">Cobrar</h2>
-                <p className="text-xs text-slate-400">Seleccioná los métodos de pago</p>
+                <h2 className="text-xl font-bold text-slate-950">Cobrar</h2>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Agregá los métodos y montos de pago
+                </p>
               </div>
               <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Total</p>
-                  <p className="text-xl font-bold tabular-nums text-slate-950">
+                <div className="rounded-xl bg-slate-50 px-4 py-2 text-right">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Total
+                  </p>
+                  <p className="text-2xl font-bold tabular-nums text-slate-950">
                     {formatMoneyNum(cartNet)}
                   </p>
                 </div>
@@ -2192,146 +2175,93 @@ export function Pos() {
                   className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
                   onClick={() => setShowPaymentModal(false)}
                 >
-                  <X size={18} />
+                  <X size={20} />
                 </button>
               </div>
             </div>
 
-            {/* ── Body (scrollable) ── */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-              {/* Selector de métodos — siempre visible, permite repetir método */}
-              <div>
-                <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  ¿Cómo paga?
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {PAYMENT_METHOD_CONFIG.map(({ method, label, Icon }) => (
-                    <button
-                      key={method}
-                      type="button"
-                      className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-medium text-slate-700 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-colors active:scale-[0.97]"
-                      onClick={() =>
-                        setPaymentSplits(prev => [
-                          ...prev,
-                          { id: localId(), method, amount: "" },
-                        ])
-                      }
-                    >
-                      <Icon size={14} className="shrink-0 text-slate-400" />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            {/* ── Body scrollable ── */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
 
-              {/* Splits activos */}
-              {paymentSplits.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                      Desglose
-                    </p>
-                    <span
-                      className={`text-xs font-semibold tabular-nums ${
-                        Math.abs(remaining) < 0.01
-                          ? "text-emerald-600"
-                          : remaining > 0
-                            ? "text-amber-600"
-                            : "text-rose-600"
-                      }`}
-                    >
-                      {Math.abs(remaining) < 0.01
-                        ? "✓ Completo"
-                        : remaining > 0
-                          ? `Faltan ${formatMoneyNum(remaining)}`
-                          : `Excedido ${formatMoneyNum(-remaining)}`}
-                    </span>
-                  </div>
+              {/* ── Filas de pago ── */}
+              <div className="space-y-3">
+                {paymentSplits.map((split, splitIndex) => {
+                  const showReference  = split.method === "Tarjeta" || split.method === "Transferencia";
+                  const showCashHelper = split.method === "Efectivo";
+                  const parsedAmount   = parseFloat(split.amount) || 0;
+                  const cashNum        = parseFloat(cashReceived) || 0;
 
-                  {paymentSplits.map((split, index) => {
-                    const cfg              = PAYMENT_METHOD_CONFIG.find(c => c.method === split.method)!;
-                    const styles           = PAYMENT_METHOD_STYLE[split.method];
-                    const isOnly           = paymentSplits.length === 1;
-                    const isFiadoSplit     = split.method === "Fiado";
-                    const showAmountInput  = !(isFiadoSplit && isOnly);
-                    const showReference    = split.method === "Tarjeta" || split.method === "Transferencia";
-                    const showCashHelper   = split.method === "Efectivo";
-                    const parsedAmount     = parseFloat(split.amount) || 0;
-                    const cashReceivedNum  = parseFloat(cashReceived) || 0;
-
-                    return (
-                      <div
-                        key={split.id}
-                        className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm space-y-2"
-                      >
-                        {/* Fila: pill + monto + quitar */}
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 flex-shrink-0 ${styles.pill}`}
-                          >
-                            <cfg.Icon size={12} className={styles.icon} />
-                            <span className="text-[11px] font-semibold">{cfg.label}</span>
-                          </div>
-
-                          {showAmountInput ? (
-                            <div className="relative flex-1">
-                              <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                                $
-                              </span>
-                              <input
-                                className="w-full rounded-lg border border-slate-200 pl-6 pr-3 py-1.5 text-right text-sm tabular-nums text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
-                                inputMode="decimal"
-                                min="0"
-                                placeholder={
-                                  remaining > 0.005 && index === paymentSplits.length - 1
-                                    ? remaining.toFixed(2)
-                                    : "0.00"
-                                }
-                                step="0.01"
-                                type="number"
-                                value={split.amount}
-                                onChange={(e) =>
-                                  setPaymentSplits(prev =>
-                                    prev.map(p =>
-                                      p.id === split.id ? { ...p, amount: e.target.value } : p
-                                    )
-                                  )
-                                }
-                                onFocus={() => {
-                                  if (!split.amount && remaining > 0.005) {
-                                    setPaymentSplits(prev =>
-                                      prev.map(p =>
-                                        p.id === split.id
-                                          ? { ...p, amount: remaining.toFixed(2) }
-                                          : p
-                                      )
-                                    );
-                                  }
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <span className="flex-1 text-right text-sm font-semibold tabular-nums text-amber-700">
-                              {formatMoneyNum(cartNet)}
-                            </span>
-                          )}
-
-                          <button
-                            type="button"
-                            aria-label="Quitar"
-                            className="flex-shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"
-                            onClick={() =>
-                              setPaymentSplits(prev => prev.filter(p => p.id !== split.id))
+                  return (
+                    <div key={split.id} className="space-y-2">
+                      {/* Fila principal: monto + select + quitar */}
+                      <div className="flex items-center gap-2">
+                        {/* Monto */}
+                        <div className="relative w-40 flex-shrink-0">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400">
+                            $
+                          </span>
+                          <input
+                            autoFocus={splitIndex === paymentSplits.length - 1}
+                            className="w-full rounded-xl border border-slate-200 bg-white pl-7 pr-3 py-2.5 text-right text-sm tabular-nums font-medium text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                            inputMode="decimal"
+                            min="0"
+                            placeholder="0.00"
+                            step="0.01"
+                            type="number"
+                            value={split.amount}
+                            onChange={(e) =>
+                              setPaymentSplits(prev =>
+                                prev.map(p => p.id === split.id ? { ...p, amount: e.target.value } : p)
+                              )
                             }
-                          >
-                            <X size={14} />
-                          </button>
+                          />
                         </div>
 
-                        {/* N° de operación (Tarjeta / Transferencia) */}
-                        {showReference && (
+                        {/* Dropdown de método */}
+                        <div className="relative flex-1">
+                          <select
+                            className="w-full appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2.5 text-sm font-medium text-slate-700 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 cursor-pointer"
+                            value={split.method}
+                            onChange={(e) =>
+                              setPaymentSplits(prev =>
+                                prev.map(p =>
+                                  p.id === split.id
+                                    ? { ...p, method: e.target.value as PaymentMethodKey, reference: "" }
+                                    : p
+                                )
+                              )
+                            }
+                          >
+                            {PAYMENT_METHOD_CONFIG.map(cfg => (
+                              <option key={cfg.method} value={cfg.method}>
+                                {cfg.label}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                            size={15}
+                          />
+                        </div>
+
+                        {/* Quitar fila */}
+                        <button
+                          type="button"
+                          aria-label="Quitar"
+                          className="flex-shrink-0 rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"
+                          onClick={() =>
+                            setPaymentSplits(prev => prev.filter(p => p.id !== split.id))
+                          }
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      {/* N° de operación (Tarjeta / Transferencia) */}
+                      {showReference && (
+                        <div className="pl-2">
                           <input
-                            className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                             placeholder={
                               split.method === "Tarjeta"
                                 ? "N° de operación (opcional)"
@@ -2341,21 +2271,22 @@ export function Pos() {
                             value={split.reference ?? ""}
                             onChange={(e) =>
                               setPaymentSplits(prev =>
-                                prev.map(p =>
-                                  p.id === split.id ? { ...p, reference: e.target.value } : p
-                                )
+                                prev.map(p => p.id === split.id ? { ...p, reference: e.target.value } : p)
                               )
                             }
                           />
-                        )}
+                        </div>
+                      )}
 
-                        {/* Efectivo recibido + cambio */}
-                        {showCashHelper && (
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between gap-3">
-                              <label className="flex-shrink-0 text-xs text-slate-500">Recibido</label>
+                      {/* Efectivo recibido + cambio */}
+                      {showCashHelper && (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-2">
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-slate-500">Recibido</label>
+                            <div className="relative">
+                              <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
                               <input
-                                className="w-28 rounded-lg border border-slate-200 px-3 py-1 text-right text-sm tabular-nums text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                                className="w-28 rounded-xl border border-slate-200 bg-white pl-6 pr-3 py-1.5 text-right text-sm tabular-nums text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                                 inputMode="decimal"
                                 min="0"
                                 placeholder="0.00"
@@ -2365,48 +2296,86 @@ export function Pos() {
                                 onChange={(e) => setCashReceived(e.target.value)}
                               />
                             </div>
-                            {cashReceivedNum > 0 && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-slate-500">Cambio</span>
-                                <span
-                                  className={`text-sm font-semibold tabular-nums ${
-                                    cashReceivedNum >= (parsedAmount || cartNet)
-                                      ? "text-emerald-600"
-                                      : "text-rose-600"
-                                  }`}
-                                >
-                                  {formatMoneyNum(
-                                    Math.max(cashReceivedNum - (parsedAmount || cartNet), 0)
-                                  )}
-                                </span>
-                              </div>
-                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          {cashNum > 0 && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-slate-500">Cambio</span>
+                              <span
+                                className={`text-sm font-semibold tabular-nums ${
+                                  cashNum >= (parsedAmount || cartNet)
+                                    ? "text-emerald-600"
+                                    : "text-rose-600"
+                                }`}
+                              >
+                                {formatMoneyNum(
+                                  Math.max(cashNum - (parsedAmount || cartNet), 0)
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── Botón agregar método ── */}
+              <button
+                type="button"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-medium text-slate-500 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 transition-colors"
+                onClick={() =>
+                  setPaymentSplits(prev => [
+                    ...prev,
+                    { id: localId(), method: "Efectivo", amount: remaining > 0.005 ? remaining.toFixed(2) : "" },
+                  ])
+                }
+              >
+                <Plus size={15} />
+                Agregar método de pago
+              </button>
+
+              {/* ── Balance ── */}
+              {paymentSplits.length > 0 && (
+                <div
+                  className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold ${
+                    Math.abs(remaining) < 0.01
+                      ? "bg-emerald-50 text-emerald-700"
+                      : remaining > 0
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-rose-50 text-rose-700"
+                  }`}
+                >
+                  <span>
+                    {Math.abs(remaining) < 0.01
+                      ? "✓ Monto completo"
+                      : remaining > 0
+                        ? "Pendiente por asignar"
+                        : "Monto excedido"}
+                  </span>
+                  <span className="tabular-nums">
+                    {Math.abs(remaining) < 0.01
+                      ? formatMoneyNum(cartNet)
+                      : formatMoneyNum(Math.abs(remaining))}
+                  </span>
                 </div>
               )}
 
-              {/* Cliente — obligatorio con Fiado, opcional en el resto */}
+              {/* ── Cliente — obligatorio con Fiado, opcional en el resto ── */}
               {hasFiado ? (
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Cliente <span className="text-rose-400">*</span>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Cliente <span className="text-rose-400 font-bold">*</span>
                   </label>
                   {selectedCustomer ? (
-                    <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                    <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                       <span className="text-sm font-medium text-amber-800">
                         {selectedCustomer.name}
                       </span>
                       <button
-                        className="text-amber-400 hover:text-amber-600"
-                        onClick={() => {
-                          setSelectedCustomer(null);
-                          setCustomerSearch("");
-                        }}
                         type="button"
+                        className="text-amber-400 hover:text-amber-600 transition-colors"
+                        onClick={() => { setSelectedCustomer(null); setCustomerSearch(""); }}
                       >
                         <X size={14} />
                       </button>
@@ -2419,12 +2388,9 @@ export function Pos() {
                         <>
                           <input
                             autoFocus
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 pr-9 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 pr-10 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                             onBlur={() => setTimeout(() => setCustomerSearchOpen(false), 150)}
-                            onChange={(e) => {
-                              setCustomerSearch(e.target.value);
-                              setCustomerSearchOpen(true);
-                            }}
+                            onChange={(e) => { setCustomerSearch(e.target.value); setCustomerSearchOpen(true); }}
                             onFocus={() => setCustomerSearchOpen(true)}
                             placeholder="Buscar cliente..."
                             type="text"
@@ -2439,13 +2405,13 @@ export function Pos() {
                               {filteredCustomers.map((c) => (
                                 <li key={c.id}>
                                   <button
-                                    className="w-full px-3 py-2.5 text-left text-sm hover:bg-violet-50"
+                                    type="button"
+                                    className="w-full px-4 py-2.5 text-left text-sm hover:bg-violet-50"
                                     onMouseDown={() => {
                                       setSelectedCustomer(c);
                                       setCustomerSearch("");
                                       setCustomerSearchOpen(false);
                                     }}
-                                    type="button"
                                   >
                                     {c.name}
                                   </button>
@@ -2533,7 +2499,7 @@ export function Pos() {
                 </div>
               )}
 
-              {/* Error de submit */}
+              {/* ── Error ── */}
               {submitError && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
                   <p className="text-sm font-medium text-rose-900">{submitError}</p>
@@ -2570,7 +2536,9 @@ export function Pos() {
               >
                 {isSubmitting
                   ? "Procesando..."
-                  : `Confirmar cobro ${Math.abs(remaining) < 0.01 && paymentSplits.length > 0 ? formatMoneyNum(cartNet) : ""}`}
+                  : Math.abs(remaining) < 0.01 && paymentSplits.length > 0
+                    ? `Confirmar cobro — ${formatMoneyNum(cartNet)}`
+                    : "Confirmar cobro"}
               </button>
             </div>
           </div>

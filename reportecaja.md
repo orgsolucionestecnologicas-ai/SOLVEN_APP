@@ -1,41 +1,40 @@
-# Reporte — Modal de cobro con splits combinables
+# Reporte — Modal de cobro con filas (monto + dropdown)
 
-Fecha: 2026-06-25
-Orden ejecutada: cambioscaja.md ("Modal de cobro + sistema de splits")
+Fecha: 2026-06-28
+Orden ejecutada: cambioscaja.md ("Modal de cobro — filas con dropdown")
 
 ## Resumen
-El selector de métodos de pago se movió de la barra lateral a un modal
-centrado, abierto desde el botón "Cobrar". Ahora se puede repetir el mismo
-método más de una vez (ej. dos tarjetas) y no hay método por defecto: el
-cajero arma el desglose desde cero dentro del modal.
+Se rediseñó el modal de cobro: en vez de la grilla de métodos con cards/pills
+de color, cada método de pago es ahora una fila `[monto] + [dropdown] + [✕]`.
+El cajero agrega filas con el botón "Agregar método de pago". Al abrir el
+modal desde "Cobrar" se precarga una fila de Efectivo con el monto total,
+editable o reemplazable por cualquier combinación de métodos.
 
 ## Cambios
-- `prisma/schema.prisma`, `sale-validation.ts`, `sale-data-access.ts` — ya
-  satisfechos por la orden anterior (`paymentDetails Json?`); sin cambios.
 - `src/app/ui/pos.tsx`:
-  - `PaymentSplit` ahora incluye `id` (vía `localId()`) para soportar
-    métodos repetidos con key estable en React.
-  - Nuevo estado `showPaymentModal`; `paymentSplits` inicia vacío (sin
-    método por defecto), salvo precarga de Fiado vía `?customerId=`.
-  - `handleSubmit` se separó en `submitSale()` (lógica) + wrapper de evento;
-    se agregó validación "Seleccioná al menos un método de pago."
-  - Barra lateral: se eliminó el bloque de métodos de pago, el selector de
-    cliente y el error de submit — el formulario solo muestra Totales y la
-    fila del botón Cobrar.
-  - Botón "Cobrar" pasó a `type="button"` y abre el modal en vez de
-    enviar el formulario directamente.
-  - Modal nuevo: grilla de métodos (siempre agrega un split nuevo, sin
-    deduplicar), lista de splits con monto/referencia/cambio de efectivo,
-    selector de cliente (obligatorio con Fiado, opcional en el resto),
-    error de submit y footer con Cancelar/Confirmar cobro.
-  - Variable `isFiado` quedó sin uso tras el cambio del botón y se eliminó.
+  - `PAYMENT_METHOD_CONFIG` simplificado: sin campo `Icon`, solo
+    `{ method, label }`. Se eliminó `PAYMENT_METHOD_STYLE` (pills de color),
+    ya sin uso en el nuevo diseño.
+  - Imports de lucide-react: se agregó `ChevronDown`; se quitaron
+    `CreditCard`, `Globe`, `Landmark`, `Wallet` (solo se usaban para los
+    íconos por método del diseño anterior).
+  - Botón "Cobrar": ahora precarga `paymentSplits` con una fila Efectivo por
+    el monto total (`cartNet`) antes de abrir el modal.
+  - Modal de cobro reescrito por completo: filas con input de monto +
+    `<select>` de método + botón quitar; N° de operación para
+    Tarjeta/Transferencia; recibido/cambio para Efectivo; indicador de
+    balance (completo/pendiente/excedido); selector de cliente (obligatorio
+    con Fiado, opcional en el resto — preservado del diseño anterior);
+    footer con Cancelar/Confirmar cobro.
+  - Resto del estado, helpers (`cartNet`, `hasFiado`, `onlyFiado`, etc.) y
+    `submitSale()` ya estaban correctos desde la orden anterior — sin
+    cambios.
 
 ## Observaciones
-- El selector de cliente opcional (ventas sin Fiado) se conservó dentro del
-  modal por decisión explícita del usuario, en vez de eliminarse como
-  sugería la orden — ver aclaración pedida durante la ejecución. El
-  quick-action "Buscar cliente" ahora también abre el modal para que ese
-  selector sea alcanzable.
+- El selector de cliente opcional para ventas sin Fiado se mantuvo dentro
+  del nuevo modal (decisión del usuario en la orden previa); la orden actual
+  no lo mencionaba pero tampoco pedía quitarlo.
+- "Pagos a cuenta" quedó fuera de esta orden, como se indicó explícitamente.
 - No existen tests unitarios de `pos.tsx` (componente de UI); la cobertura
   se valida con `tsc --noEmit`, `lint` y la suite de integración existente,
   que no se ve afectada porque el contrato de `/api/sales` no cambió.
