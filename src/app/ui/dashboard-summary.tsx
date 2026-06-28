@@ -84,6 +84,8 @@ type Debt = {
 
 type DayTotal = { date: string; total: number };
 
+type DateFilter = "today" | "week" | "month" | "custom";
+
 type DashboardState = {
   summary: Summary | null;
   sales: Sale[] | null;
@@ -106,19 +108,38 @@ export function DashboardSummary() {
     debts: null,
     loading: true,
   });
+  const [dateFilter, setDateFilter] = useState<DateFilter>("today");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   useEffect(() => {
     let active = true;
 
+    // Calcular rango según filtro
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    let from = todayStr;
+    let to   = todayStr;
+
+    if (dateFilter === "week") {
+      from = new Date(today.getTime() - 6 * 86_400_000).toISOString().slice(0, 10);
+    } else if (dateFilter === "month") {
+      from = `${todayStr.slice(0, 7)}-01`;
+    } else if (dateFilter === "custom") {
+      if (!customFrom || !customTo) return; // esperar a que completen ambas fechas
+      from = customFrom;
+      to   = customTo;
+    }
+
     async function load() {
       const [summaryRes, salesRes, cashRes, productsRes, customersRes, debtsRes] =
         await Promise.allSettled([
-          fetch("/api/dashboard/summary", { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/sales",             { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/cash-movements",    { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/products",          { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/customers",         { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/debts",             { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/dashboard/summary",                               { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch(`/api/sales?from=${from}&to=${to}&limit=500`,           { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch(`/api/cash-movements?from=${from}&to=${to}&limit=500`,  { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/products",                                        { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/customers",                                       { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/debts",                                           { headers: { Accept: "application/json" } }).then((r) => r.json()),
         ]);
 
       if (!active) return;
@@ -136,7 +157,7 @@ export function DashboardSummary() {
 
     void load();
     return () => { active = false; };
-  }, []);
+  }, [dateFilter, customFrom, customTo]);
 
   if (state.loading) {
     return <DashboardSkeleton />;
@@ -147,25 +168,35 @@ export function DashboardSummary() {
   const now = new Date();
   const todayStr     = now.toISOString().slice(0, 10);
   const yesterdayStr = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
-  const monthStr     = todayStr.slice(0, 7);
   const last7Dates   = Array.from({ length: 7 }, (_, i) =>
     new Date(now.getTime() - (6 - i) * 86_400_000).toISOString().slice(0, 10)
   );
 
+  // Label del período según filtro activo
+  const periodLabel = dateFilter === "today" ? "del día"
+    : dateFilter === "week" ? "de la semana"
+    : dateFilter === "month" ? "del mes"
+    : "del período";
+
   const allSales = state.sales ?? [];
   const allCash  = state.cashMovements ?? [];
 
-  const todaySalesTotal     = sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === todayStr));
-  const yesterdaySalesTotal = sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === yesterdayStr));
-  const monthSalesTotal     = sumSales(allSales.filter((s) => s.saleDate.slice(0, 7) === monthStr));
+  // El fetch ya filtra por rango → allSales es el universo del período
+  const periodSalesTotal = sumSales(allSales);
+  const periodCashOut    = allCash.filter((m) => m.type === "OUT").reduce((s, m) => s + Number(m.amount), 0);
+  const periodProfit     = periodSalesTotal - periodCashOut;
 
-  const todayCashOut = allCash
-    .filter((m) => m.movementDate.slice(0, 10) === todayStr && m.type === "OUT")
-    .reduce((s, m) => s + Number(m.amount), 0);
-  const todayProfit = todaySalesTotal - todayCashOut;
+  // Comparativa vs ayer (solo relevante en filtro "today")
+  const yesterdaySalesTotal = sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === yesterdayStr));
+  const todayVsDiff    = dateFilter === "today" ? (periodSalesTotal - yesterdaySalesTotal) : 0;
+  const todayVsLabel   = dateFilter === "today" && yesterdaySalesTotal > 0
+    ? `${todayVsDiff >= 0 ? "▲" : "▼"} ${formatCompact(Math.abs(todayVsDiff))} vs ayer`
+    : null;
+  const todayVsPositive = todayVsDiff >= 0;
 
   const pendingDebtsCount = (state.debts ?? []).filter((d) => Number(d.remainingAmount) > 0).length;
 
+  // Gráfico de los últimos 7 días (independiente del filtro — vista histórica fija)
   const salesByDay: DayTotal[] = last7Dates.map((date) => ({
     date,
     total: sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === date)),
@@ -178,16 +209,20 @@ export function DashboardSummary() {
     return salesByDay[i].total - dayOut;
   });
 
-  const monthDailyMap: Record<string, number> = {};
-  for (const s of allSales.filter((s) => s.saleDate.slice(0, 7) === monthStr)) {
+  // Sparkline del período para los KPIs
+  const periodDailyMap: Record<string, number> = {};
+  for (const s of allSales) {
     const d = s.saleDate.slice(0, 10);
-    monthDailyMap[d] = (monthDailyMap[d] ?? 0) + Number(s.totalAmount);
+    periodDailyMap[d] = (periodDailyMap[d] ?? 0) + Number(s.totalAmount);
   }
-  const monthSparkData = Object.values(monthDailyMap);
+  const periodSparkData = Object.values(periodDailyMap);
 
-  const todayVsDiff    = todaySalesTotal - yesterdaySalesTotal;
-  const todayVsLabel   = yesterdaySalesTotal > 0 ? `${todayVsDiff >= 0 ? "▲" : "▼"} ${formatCompact(Math.abs(todayVsDiff))} vs ayer` : null;
-  const todayVsPositive = todayVsDiff >= 0;
+  // Gastos por día (últimos 7) para el sparkline de la tarjeta de gastos
+  const cashOutByDay = last7Dates.map((date) =>
+    allCash
+      .filter((m) => m.movementDate.slice(0, 10) === date && m.type === "OUT")
+      .reduce((s, m) => s + Number(m.amount), 0)
+  );
 
   return (
     <div className="min-h-full bg-slate-50">
@@ -206,33 +241,45 @@ export function DashboardSummary() {
       </div>
 
       <div className="space-y-6 px-6 py-6">
+        {/* ── Filtro de fecha ── */}
+        <DateFilterPicker
+          value={dateFilter}
+          onChange={setDateFilter}
+          customFrom={customFrom}
+          customTo={customTo}
+          onCustomFromChange={setCustomFrom}
+          onCustomToChange={setCustomTo}
+        />
+
         {/* ── Metric cards ── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
-            title="Ventas del día"
-            value={formatARS(todaySalesTotal)}
+            title={`Ventas ${periodLabel}`}
+            value={formatARS(periodSalesTotal)}
             IconEl={<DollarSign size={18} />}
             iconBg="bg-violet-100"
             iconColor="text-violet-600"
             trendLabel={todayVsLabel}
             trendPositive={todayVsPositive}
-            sparkData={salesByDay.map((d) => d.total)}
+            sparkData={periodSparkData.length > 1 ? periodSparkData : salesByDay.map((d) => d.total)}
             sparkColor="#7c3aed"
+            href="/sales"
           />
           <MetricCard
-            title="Ventas del mes"
-            value={formatARS(monthSalesTotal)}
+            title={`Gastos ${periodLabel}`}
+            value={formatARS(periodCashOut)}
             IconEl={<ShoppingBag size={18} />}
             iconBg="bg-green-100"
             iconColor="text-green-600"
             trendLabel={null}
-            trendPositive={true}
-            sparkData={monthSparkData}
+            trendPositive={false}
+            sparkData={cashOutByDay}
             sparkColor="#16a34a"
+            href="/expenses"
           />
           <MetricCard
-            title="Ganancia del día"
-            value={formatARS(todayProfit)}
+            title={`Ganancia ${periodLabel}`}
+            value={formatARS(periodProfit)}
             IconEl={<TrendingUp size={18} />}
             iconBg="bg-blue-100"
             iconColor="text-blue-600"
@@ -240,6 +287,7 @@ export function DashboardSummary() {
             trendPositive={true}
             sparkData={profitByDay}
             sparkColor="#2563eb"
+            href="/sales"
           />
           {/* Low stock card */}
           <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
@@ -281,8 +329,8 @@ export function DashboardSummary() {
             pendingDebtsCount={pendingDebtsCount}
           />
           <QuickSummaryPanel
-            todaySalesTotal={todaySalesTotal}
-            todayProfit={todayProfit}
+            todaySalesTotal={periodSalesTotal}
+            todayProfit={periodProfit}
             totalProducts={state.summary?.totalProducts ?? (state.products?.length ?? 0)}
             totalCustomers={(state.customers ?? []).length}
             pendingDebtsCount={pendingDebtsCount}
@@ -299,7 +347,7 @@ export function DashboardSummary() {
 // ── MetricCard ─────────────────────────────────────────────────────────────────
 
 function MetricCard({
-  title, value, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor,
+  title, value, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor, href,
 }: {
   title: string;
   value: string;
@@ -310,9 +358,10 @@ function MetricCard({
   trendPositive: boolean;
   sparkData: number[];
   sparkColor: string;
+  href?: string;
 }) {
-  return (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+  const inner = (
+    <>
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-slate-500">{title}</p>
@@ -332,6 +381,77 @@ function MetricCard({
           <SparkLine data={sparkData} color={sparkColor} />
         </div>
       ) : null}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="block cursor-pointer rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-shadow hover:ring-2 hover:ring-violet-500/30"
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      {inner}
+    </div>
+  );
+}
+
+// ── DateFilterPicker ───────────────────────────────────────────────────────────
+
+function DateFilterPicker({
+  value, onChange, customFrom, customTo, onCustomFromChange, onCustomToChange,
+}: {
+  value: DateFilter;
+  onChange: (v: DateFilter) => void;
+  customFrom: string;
+  customTo: string;
+  onCustomFromChange: (v: string) => void;
+  onCustomToChange: (v: string) => void;
+}) {
+  const options: { key: DateFilter; label: string }[] = [
+    { key: "today",  label: "Hoy" },
+    { key: "week",   label: "Esta semana" },
+    { key: "month",  label: "Este mes" },
+    { key: "custom", label: "Personalizado" },
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.key}
+          onClick={() => onChange(opt.key)}
+          className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+            value === opt.key
+              ? "bg-violet-600 text-white shadow-sm"
+              : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+      {value === "custom" && (
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => onCustomFromChange(e.target.value)}
+            className="rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+          />
+          <span className="text-sm text-slate-400">→</span>
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => onCustomToChange(e.target.value)}
+            className="rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -712,12 +832,12 @@ const quickActions = [
 
 function QuickActions() {
   return (
-    <div>
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
       <p className="mb-3 text-sm font-semibold text-slate-900">Acciones rápidas</p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-3 gap-3">
         {quickActions.map((action) => (
           <Link
-            key={action.label}
+            key={action.href}
             href={action.href}
             className="flex flex-col items-center gap-2 rounded-xl border border-slate-100 bg-white p-4 shadow-sm hover:border-violet-200 hover:bg-violet-50"
           >
@@ -730,7 +850,7 @@ function QuickActions() {
   );
 }
 
-// ── DashboardSkeleton ──────────────────────────────────────────────────────────
+// ── DashboardSkeleton ──────────────────────────────────────────────────────────────────────────────
 
 function DashboardSkeleton() {
   return (
@@ -754,7 +874,7 @@ function DashboardSkeleton() {
   );
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────────────────────
 
 function sumSales(sales: Sale[]): number {
   return sales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
