@@ -1348,10 +1348,7 @@ export function Pos() {
                 <QuickActionButton
                   Icon={Users}
                   label="Buscar cliente"
-                  onClick={() => {
-                    setOptionalCustomerOpen(true);
-                    setShowPaymentModal(true);
-                  }}
+                  onClick={() => setOptionalCustomerOpen(true)}
                 />
                 <QuickActionButton
                   Icon={FileText}
@@ -1714,6 +1711,143 @@ export function Pos() {
                   </div>
                 </div>
               </div>
+
+              {/* Cliente — obligatorio con Fiado, opcional en el resto */}
+              {hasFiado ? (
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Cliente <span className="text-rose-400 font-bold">*</span>
+                  </label>
+                  {selectedCustomer ? (
+                    <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                      <span className="text-sm font-medium text-amber-800">
+                        {selectedCustomer.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-amber-400 hover:text-amber-600 transition-colors"
+                        onClick={() => { setSelectedCustomer(null); setCustomerSearch(""); }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      {customersLoading ? (
+                        <p className="text-xs text-slate-400">Cargando clientes...</p>
+                      ) : (
+                        <>
+                          <input
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-9 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                            onBlur={() => setTimeout(() => setCustomerSearchOpen(false), 150)}
+                            onChange={(e) => { setCustomerSearch(e.target.value); setCustomerSearchOpen(true); }}
+                            onFocus={() => setCustomerSearchOpen(true)}
+                            placeholder="Buscar cliente..."
+                            type="text"
+                            value={customerSearch}
+                          />
+                          <Search
+                            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                            size={14}
+                          />
+                          {customerSearchOpen && filteredCustomers.length > 0 && (
+                            <ul className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                              {filteredCustomers.map((c) => (
+                                <li key={c.id}>
+                                  <button
+                                    type="button"
+                                    className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50"
+                                    onMouseDown={() => {
+                                      setSelectedCustomer(c);
+                                      setCustomerSearch("");
+                                      setCustomerSearchOpen(false);
+                                    }}
+                                  >
+                                    {c.name}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  {selectedCustomer ? (
+                    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
+                      <span className="text-xs text-slate-600">{selectedCustomer.name}</span>
+                      <button
+                        className="text-slate-400 hover:text-slate-600"
+                        onClick={() => {
+                          setSelectedCustomer(null);
+                          setCustomerSearch("");
+                          setOptionalCustomerOpen(false);
+                        }}
+                        type="button"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : optionalCustomerOpen ? (
+                    <div className="relative">
+                      {customersLoading ? (
+                        <p className="text-xs text-slate-400">Cargando clientes...</p>
+                      ) : (
+                        <>
+                          <input
+                            autoFocus
+                            className="w-full rounded-lg border border-slate-200 px-3 py-1.5 pr-8 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                            onBlur={() => setTimeout(() => setCustomerSearchOpen(false), 150)}
+                            onChange={(e) => {
+                              setCustomerSearch(e.target.value);
+                              setCustomerSearchOpen(true);
+                            }}
+                            onFocus={() => setCustomerSearchOpen(true)}
+                            placeholder="Buscar cliente..."
+                            type="text"
+                            value={customerSearch}
+                          />
+                          <Search
+                            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                            size={14}
+                          />
+                          {customerSearchOpen && filteredCustomers.length > 0 ? (
+                            <ul className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                              {filteredCustomers.map((c) => (
+                                <li key={c.id}>
+                                  <button
+                                    className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50"
+                                    onMouseDown={() => {
+                                      setSelectedCustomer(c);
+                                      setCustomerSearch("");
+                                      setCustomerSearchOpen(false);
+                                    }}
+                                    type="button"
+                                  >
+                                    {c.name}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      className="flex w-full items-center gap-1.5 text-xs text-slate-400 hover:text-violet-600 transition-colors"
+                      onClick={() => setOptionalCustomerOpen(true)}
+                      type="button"
+                    >
+                      <UserPlus size={12} />
+                      Agregar cliente (opcional)
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Cobrar button row */}
               <div className="flex gap-2">
@@ -2190,37 +2324,16 @@ export function Pos() {
                   const showCashHelper = split.method === "Efectivo";
                   const parsedAmount   = parseFloat(split.amount) || 0;
                   const cashNum        = parseFloat(cashReceived) || 0;
+                  const vuelto         = cashNum > 0 ? Math.max(0, cashNum - parsedAmount) : null;
 
                   return (
-                    <div key={split.id} className="space-y-2">
-                      {/* Fila principal: monto + select + quitar */}
+                    <div key={split.id} className="space-y-1.5">
+                      {/* Fila principal: método → monto → quitar */}
                       <div className="flex items-center gap-2">
-                        {/* Monto */}
-                        <div className="relative w-40 flex-shrink-0">
-                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400">
-                            $
-                          </span>
-                          <input
-                            autoFocus={splitIndex === paymentSplits.length - 1}
-                            className="w-full rounded-xl border border-slate-200 bg-white pl-7 pr-3 py-2.5 text-right text-sm tabular-nums font-medium text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
-                            inputMode="decimal"
-                            min="0"
-                            placeholder="0.00"
-                            step="0.01"
-                            type="number"
-                            value={split.amount}
-                            onChange={(e) =>
-                              setPaymentSplits(prev =>
-                                prev.map(p => p.id === split.id ? { ...p, amount: e.target.value } : p)
-                              )
-                            }
-                          />
-                        </div>
-
                         {/* Dropdown de método */}
-                        <div className="relative flex-1">
+                        <div className="relative min-w-0 flex-1">
                           <select
-                            className="w-full appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2.5 text-sm font-medium text-slate-700 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 cursor-pointer"
+                            className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-3 pr-7 text-sm font-medium text-slate-700 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 cursor-pointer"
                             value={split.method}
                             onChange={(e) =>
                               setPaymentSplits(prev =>
@@ -2239,8 +2352,30 @@ export function Pos() {
                             ))}
                           </select>
                           <ChevronDown
-                            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-                            size={15}
+                            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+                            size={14}
+                          />
+                        </div>
+
+                        {/* Monto */}
+                        <div className="relative w-36 flex-shrink-0">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                            $
+                          </span>
+                          <input
+                            autoFocus={splitIndex === paymentSplits.length - 1}
+                            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-7 pr-3 text-right text-sm tabular-nums font-medium text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                            inputMode="decimal"
+                            min="0"
+                            placeholder="0.00"
+                            step="0.01"
+                            type="number"
+                            value={split.amount}
+                            onChange={(e) =>
+                              setPaymentSplits(prev =>
+                                prev.map(p => p.id === split.id ? { ...p, amount: e.target.value } : p)
+                              )
+                            }
                           />
                         </div>
 
@@ -2253,15 +2388,15 @@ export function Pos() {
                             setPaymentSplits(prev => prev.filter(p => p.id !== split.id))
                           }
                         >
-                          <X size={16} />
+                          <X size={15} />
                         </button>
                       </div>
 
-                      {/* N° de operación (Tarjeta / Transferencia) */}
+                      {/* N° de operación — solo Tarjeta / Transferencia */}
                       {showReference && (
-                        <div className="pl-2">
+                        <div className="pl-1">
                           <input
-                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                             placeholder={
                               split.method === "Tarjeta"
                                 ? "N° de operación (opcional)"
@@ -2278,40 +2413,27 @@ export function Pos() {
                         </div>
                       )}
 
-                      {/* Efectivo recibido + cambio */}
+                      {/* Recibido / Vuelto — solo Efectivo, compacto e inline */}
                       {showCashHelper && (
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-2">
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-slate-500">Recibido</label>
-                            <div className="relative">
-                              <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
-                              <input
-                                className="w-28 rounded-xl border border-slate-200 bg-white pl-6 pr-3 py-1.5 text-right text-sm tabular-nums text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
-                                inputMode="decimal"
-                                min="0"
-                                placeholder="0.00"
-                                step="0.01"
-                                type="number"
-                                value={cashReceived}
-                                onChange={(e) => setCashReceived(e.target.value)}
-                              />
-                            </div>
+                        <div className="flex items-center gap-3 pl-1">
+                          <span className="text-xs text-slate-400">Recibido</span>
+                          <div className="relative">
+                            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
+                            <input
+                              className="w-28 rounded-lg border border-slate-200 bg-white py-1.5 pl-6 pr-2 text-right text-xs tabular-nums text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                              inputMode="decimal"
+                              min="0"
+                              placeholder="0.00"
+                              step="0.01"
+                              type="number"
+                              value={cashReceived}
+                              onChange={(e) => setCashReceived(e.target.value)}
+                            />
                           </div>
-                          {cashNum > 0 && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-slate-500">Cambio</span>
-                              <span
-                                className={`text-sm font-semibold tabular-nums ${
-                                  cashNum >= (parsedAmount || cartNet)
-                                    ? "text-emerald-600"
-                                    : "text-rose-600"
-                                }`}
-                              >
-                                {formatMoneyNum(
-                                  Math.max(cashNum - (parsedAmount || cartNet), 0)
-                                )}
-                              </span>
-                            </div>
+                          {vuelto !== null && (
+                            <span className={`text-xs font-semibold tabular-nums ${vuelto >= 0 ? "text-emerald-600" : "text-rose-500"}`}>
+                              Vuelto {formatMoneyNum(vuelto)}
+                            </span>
                           )}
                         </div>
                       )}
@@ -2358,144 +2480,6 @@ export function Pos() {
                       ? formatMoneyNum(cartNet)
                       : formatMoneyNum(Math.abs(remaining))}
                   </span>
-                </div>
-              )}
-
-              {/* ── Cliente — obligatorio con Fiado, opcional en el resto ── */}
-              {hasFiado ? (
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Cliente <span className="text-rose-400 font-bold">*</span>
-                  </label>
-                  {selectedCustomer ? (
-                    <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                      <span className="text-sm font-medium text-amber-800">
-                        {selectedCustomer.name}
-                      </span>
-                      <button
-                        type="button"
-                        className="text-amber-400 hover:text-amber-600 transition-colors"
-                        onClick={() => { setSelectedCustomer(null); setCustomerSearch(""); }}
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      {customersLoading ? (
-                        <p className="text-xs text-slate-400">Cargando clientes...</p>
-                      ) : (
-                        <>
-                          <input
-                            autoFocus
-                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 pr-10 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
-                            onBlur={() => setTimeout(() => setCustomerSearchOpen(false), 150)}
-                            onChange={(e) => { setCustomerSearch(e.target.value); setCustomerSearchOpen(true); }}
-                            onFocus={() => setCustomerSearchOpen(true)}
-                            placeholder="Buscar cliente..."
-                            type="text"
-                            value={customerSearch}
-                          />
-                          <Search
-                            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                            size={15}
-                          />
-                          {customerSearchOpen && filteredCustomers.length > 0 && (
-                            <ul className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-                              {filteredCustomers.map((c) => (
-                                <li key={c.id}>
-                                  <button
-                                    type="button"
-                                    className="w-full px-4 py-2.5 text-left text-sm hover:bg-violet-50"
-                                    onMouseDown={() => {
-                                      setSelectedCustomer(c);
-                                      setCustomerSearch("");
-                                      setCustomerSearchOpen(false);
-                                    }}
-                                  >
-                                    {c.name}
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="border-t border-slate-100 pt-3">
-                  {selectedCustomer ? (
-                    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
-                      <span className="text-xs text-slate-600">{selectedCustomer.name}</span>
-                      <button
-                        className="text-slate-400 hover:text-slate-600"
-                        onClick={() => {
-                          setSelectedCustomer(null);
-                          setCustomerSearch("");
-                          setOptionalCustomerOpen(false);
-                        }}
-                        type="button"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ) : optionalCustomerOpen ? (
-                    <div className="relative">
-                      {customersLoading ? (
-                        <p className="text-xs text-slate-400">Cargando clientes...</p>
-                      ) : (
-                        <>
-                          <input
-                            autoFocus
-                            className="w-full rounded-lg border border-slate-200 px-3 py-1.5 pr-8 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
-                            onBlur={() => setTimeout(() => setCustomerSearchOpen(false), 150)}
-                            onChange={(e) => {
-                              setCustomerSearch(e.target.value);
-                              setCustomerSearchOpen(true);
-                            }}
-                            onFocus={() => setCustomerSearchOpen(true)}
-                            placeholder="Buscar cliente..."
-                            type="text"
-                            value={customerSearch}
-                          />
-                          <Search
-                            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-                            size={14}
-                          />
-                          {customerSearchOpen && filteredCustomers.length > 0 ? (
-                            <ul className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-                              {filteredCustomers.map((c) => (
-                                <li key={c.id}>
-                                  <button
-                                    className="w-full px-3 py-2.5 text-left text-sm hover:bg-violet-50"
-                                    onMouseDown={() => {
-                                      setSelectedCustomer(c);
-                                      setCustomerSearch("");
-                                      setCustomerSearchOpen(false);
-                                    }}
-                                    type="button"
-                                  >
-                                    {c.name}
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <button
-                      className="flex w-full items-center gap-1.5 text-xs text-slate-400 hover:text-violet-600 transition-colors"
-                      onClick={() => setOptionalCustomerOpen(true)}
-                      type="button"
-                    >
-                      <UserPlus size={12} />
-                      Agregar cliente (opcional)
-                    </button>
-                  )}
                 </div>
               )}
 
