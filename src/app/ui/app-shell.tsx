@@ -424,4 +424,3 @@ export function AppShell({ activeSection, eyebrow, title, children }: AppShellPr
     </div>
   );
 }
-                                                                                                                              

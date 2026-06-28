@@ -2995,4 +2995,23 @@ function InvoiceModal({
             Cancelar
           </button>
           <button
-            className="flex-1 rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover
+            className="flex-1 rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+            onClick={() => { void handleEmit(); }}
+            type="button"
+            disabled={loading}
+          >
+            {loading ? "Emitiendo..." : "Emitir"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatMoney(value: string) {
+  return formatARS(Number(value));
+}
+
+function formatMoneyNum(value: number) {
+  return formatARS(value);
+}
