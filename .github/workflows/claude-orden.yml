@@ -1,0 +1,75 @@
+name: 🤖 Claude Code — Ejecutar ORDEN
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ORDEN.md'
+
+jobs:
+  ejecutar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Leer ORDEN.md
+        id: orden
+        run: |
+          echo "prompt<<EOF" >> $GITHUB_OUTPUT
+          cat ORDEN.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Ejecutar Claude Code
+        uses: anthropic/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: ${{ steps.orden.outputs.prompt }}
+          allowed_tools: "Bash,Read,Write,Edit,Glob,Grep"
+          timeout_minutes: "30"
+
+      - name: Escribir REPORTE y commitear
+        run: |
+          git config user.name "Claude Code [SOLVEN]"
+          git config user.email "noreply@solven.app"
+
+          # Generar REPORTE.md
+          cat > REPORTE.md << 'REPORTE'
+          # REPORTE — Ejecución completada
+          Fecha: $(date '+%Y-%m-%d %H:%M UTC')
+
+          ## Orden ejecutada
+          REPORTE
+
+          date '+%Y-%m-%d %H:%M UTC' > /tmp/fecha.txt
+          {
+            echo "# REPORTE — Ejecución completada"
+            echo ""
+            echo "**Fecha:** $(cat /tmp/fecha.txt)"
+            echo ""
+            echo "## Orden ejecutada"
+            echo ""
+            cat ORDEN.md
+            echo ""
+            echo "## Estado"
+            echo "✅ Ejecutada por Claude Code — revisá los cambios en el commit anterior"
+          } > REPORTE.md
+
+          git add -A
+          if git diff --staged --quiet; then
+            echo "Sin cambios en el código — solo se actualiza REPORTE.md"
+            git add REPORTE.md
+            git diff --staged --quiet || git commit -m "chore: reporte sin cambios de código"
+          else
+            git commit -m "feat(claude): $(head -1 ORDEN.md | cut -c1-72)"
+          fi
+
+          git push
