@@ -7,6 +7,30 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 003 — Widget de cotizaciones pendientes de confirmar — 2026-06-28
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/dashboard-summary.tsx`
+
+**Archivos nuevos:**
+- `src/app/api/dashboard/pending-quotes/route.ts`
+
+**Cambios realizados:**
+El tipo `ExpiringQuote` ya existía pero solo se usaba dentro de `AlertsPanel` como un conteo agregado ("X cotizaciones vencen en las próximas 24 hs"), sin mostrar cotizaciones individuales — no cumplía lo pedido por la tarea, así que se creó el widget dedicado desde cero, sin tocar `AlertsPanel`.
+
+Se agregó el componente `PendingQuotesWidget`, ubicado debajo de la grilla de KPIs principales (antes de la fila de gráfico + productos top). Hace fetch a un nuevo endpoint `/api/dashboard/pending-quotes` y muestra hasta 5 cotizaciones con: número (`quoteNumber`), nombre del cliente, monto formateado con `formatARS()`, y un badge de días restantes con color semáforo (verde >7 días, amarillo 3-7, rojo <3 o vencida). Estado vacío con ícono `FileText` y texto "Sin cotizaciones pendientes".
+
+El nuevo endpoint reutiliza `getExpiringQuotes` (ya existente en `modules/quotes`, sin modificarlo) con una ventana de 30 días en vez de 24 horas, y devuelve las primeras 5 ordenadas por `validUntil` ascendente (la función ya ordena así). No se creó lógica nueva de acceso a datos ni se tocó `quote-data-access.ts`.
+
+**Notas:**
+- No se modificó el schema de Prisma ni el flujo de creación/edición/confirmación de cotizaciones en `/quotes`.
+- Las cotizaciones se consideran "pendientes" si su estado es `DRAFT` o `SENT` (mismo filtro que ya usaba `getExpiringQuotes`).
+- `npm run build`, `npm run lint` y `npm test` (suite unitaria) ejecutados sin errores. Mismas 32 fallas preexistentes de integración por falta de `DATABASE_URL`, sin relación con este cambio.
+
+---
+
 ## Tarea 002 — KPIs clickeables que navegan a su sección — 2026-06-28
 
 **Estado:** ✅ Completada

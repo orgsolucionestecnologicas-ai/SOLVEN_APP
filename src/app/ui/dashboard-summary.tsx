@@ -8,6 +8,7 @@ import {
   Calendar,
   CreditCard,
   DollarSign,
+  FileText,
   Package,
   RefreshCw,
   ShoppingBag,
@@ -288,6 +289,9 @@ export function DashboardSummary() {
             </span>
           </Link>
         </div>
+
+        {/* ── Pending quotes widget ── */}
+        <PendingQuotesWidget />
 
         {/* ── Chart + Top products ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
@@ -633,6 +637,70 @@ function TopProductsPanel() {
   );
 }
 
+// ── PendingQuotesWidget ────────────────────────────────────────────────────────
+
+function PendingQuotesWidget() {
+  const [quotes, setQuotes] = useState<ExpiringQuote[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/dashboard/pending-quotes", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: ExpiringQuote[] }) => {
+        if (body.data) setQuotes(body.data);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm font-semibold text-slate-900">Cotizaciones pendientes</p>
+        <Link href="/quotes" className="text-xs font-medium text-violet-600 hover:text-violet-700">
+          Ver todas
+        </Link>
+      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-6">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+        </div>
+      ) : quotes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+          <FileText size={28} className="text-slate-300" />
+          <p className="text-sm text-slate-400">Sin cotizaciones pendientes</p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {quotes.map((q) => {
+            const days = daysUntil(q.validUntil);
+            const semaphoreClass =
+              days > 7
+                ? "bg-green-50 text-green-700"
+                : days >= 3
+                  ? "bg-yellow-50 text-yellow-700"
+                  : "bg-red-50 text-red-600";
+            return (
+              <li key={q.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-slate-800">{q.quoteNumber}</p>
+                  <p className="truncate text-[11px] text-slate-400">{q.customerName || "Sin cliente"}</p>
+                </div>
+                <span className="flex-shrink-0 text-xs font-semibold text-slate-700">
+                  {formatARS(Number(q.totalAmount))}
+                </span>
+                <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${semaphoreClass}`}>
+                  {days >= 0 ? `${days}d` : "Vencida"}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // ── CashMovementsPanel ─────────────────────────────────────────────────────────
 
 function CashMovementsPanel({ cashMovements }: { cashMovements: CashMovement[] | null }) {
@@ -855,6 +923,11 @@ function DashboardSkeleton() {
 
 function sumSales(sales: Sale[]): number {
   return sales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
+}
+
+function daysUntil(dateStr: string): number {
+  const ms = new Date(dateStr).getTime() - Date.now();
+  return Math.ceil(ms / 86_400_000);
 }
 
 function getDateRange(
