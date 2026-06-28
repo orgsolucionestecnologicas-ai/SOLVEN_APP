@@ -84,6 +84,8 @@ type Debt = {
 
 type DayTotal = { date: string; total: number };
 
+type DateFilterOption = "today" | "week" | "month" | "custom";
+
 type DashboardState = {
   summary: Summary | null;
   sales: Sale[] | null;
@@ -106,16 +108,27 @@ export function DashboardSummary() {
     debts: null,
     loading: true,
   });
+  const [dateFilter, setDateFilter] = useState<DateFilterOption>("month");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   useEffect(() => {
+    const range = getDateRange(dateFilter, customFrom, customTo);
+    if (!range) return;
+    const { from, to } = range;
+
     let active = true;
+    setState((prev) => ({ ...prev, loading: true }));
 
     async function load() {
+      const salesUrl = `/api/sales?from=${from}&to=${to}`;
+      const cashUrl   = `/api/cash-movements?from=${from}&to=${to}`;
+
       const [summaryRes, salesRes, cashRes, productsRes, customersRes, debtsRes] =
         await Promise.allSettled([
           fetch("/api/dashboard/summary", { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/sales",             { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/cash-movements",    { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch(salesUrl,                 { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch(cashUrl,                  { headers: { Accept: "application/json" } }).then((r) => r.json()),
           fetch("/api/products",          { headers: { Accept: "application/json" } }).then((r) => r.json()),
           fetch("/api/customers",         { headers: { Accept: "application/json" } }).then((r) => r.json()),
           fetch("/api/debts",             { headers: { Accept: "application/json" } }).then((r) => r.json()),
@@ -136,7 +149,7 @@ export function DashboardSummary() {
 
     void load();
     return () => { active = false; };
-  }, []);
+  }, [dateFilter, customFrom, customTo]);
 
   if (state.loading) {
     return <DashboardSkeleton />;
@@ -206,6 +219,16 @@ export function DashboardSummary() {
       </div>
 
       <div className="space-y-6 px-6 py-6">
+        {/* ── Period selector ── */}
+        <PeriodSelector
+          value={dateFilter}
+          onChange={setDateFilter}
+          customFrom={customFrom}
+          customTo={customTo}
+          onCustomFromChange={setCustomFrom}
+          onCustomToChange={setCustomTo}
+        />
+
         {/* ── Metric cards ── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
@@ -330,6 +353,62 @@ function MetricCard({
       {sparkData.length > 1 ? (
         <div className="mt-3">
           <SparkLine data={sparkData} color={sparkColor} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ── PeriodSelector ─────────────────────────────────────────────────────────────
+
+const PERIOD_OPTIONS: { id: DateFilterOption; label: string }[] = [
+  { id: "today", label: "Hoy" },
+  { id: "week", label: "Esta semana" },
+  { id: "month", label: "Este mes" },
+  { id: "custom", label: "Personalizado" },
+];
+
+function PeriodSelector({
+  value, onChange, customFrom, customTo, onCustomFromChange, onCustomToChange,
+}: {
+  value: DateFilterOption;
+  onChange: (v: DateFilterOption) => void;
+  customFrom: string;
+  customTo: string;
+  onCustomFromChange: (v: string) => void;
+  onCustomToChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {PERIOD_OPTIONS.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => onChange(opt.id)}
+          className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+            value === opt.id
+              ? "bg-violet-600 text-white"
+              : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+      {value === "custom" ? (
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => onCustomFromChange(e.target.value)}
+            className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
+          />
+          <span className="text-sm text-slate-400">a</span>
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => onCustomToChange(e.target.value)}
+            className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
+          />
         </div>
       ) : null}
     </div>
@@ -758,6 +837,30 @@ function DashboardSkeleton() {
 
 function sumSales(sales: Sale[]): number {
   return sales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
+}
+
+function getDateRange(
+  filter: DateFilterOption,
+  customFrom: string,
+  customTo: string
+): { from: string; to: string } | null {
+  const today = new Date();
+  const toStr = today.toISOString().slice(0, 10);
+
+  if (filter === "today") {
+    return { from: toStr, to: toStr };
+  }
+  if (filter === "week") {
+    const day = today.getDay();
+    const diffToMonday = day === 0 ? 6 : day - 1;
+    const monday = new Date(today.getTime() - diffToMonday * 86_400_000);
+    return { from: monday.toISOString().slice(0, 10), to: toStr };
+  }
+  if (filter === "month") {
+    const first = new Date(today.getFullYear(), today.getMonth(), 1);
+    return { from: first.toISOString().slice(0, 10), to: toStr };
+  }
+  return customFrom && customTo ? { from: customFrom, to: customTo } : null;
 }
 
 function niceMax(value: number): number {
