@@ -27,7 +27,8 @@
       "PowerShell(npm run lint 2>&1)",
       "PowerShell(npm test 2>&1)",
       "PowerShell(npx vitest run src/modules/noa-internal/noa-tools.test.ts 2>&1)",
-      "PowerShell(npx vitest run src/app/api/dashboard/summary/route.integration.test.ts 2>&1)"
+      "PowerShell(npx vitest run src/app/api/dashboard/summary/route.integration.test.ts 2>&1)",
+      "Bash(node -e ' *)"
     ],
     "additionalDirectories": [
       "/home/diegogama/Escritorio/SOLVEN_APP/src/app/customers/[id]"

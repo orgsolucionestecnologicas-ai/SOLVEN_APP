@@ -19,7 +19,6 @@ import {
   ShoppingCart,
   Tag,
   Users,
-  Wrench,
 } from "lucide-react";
 import { LogoutButton } from "./logout-button";
 
@@ -68,7 +67,6 @@ const navItems: NavItem[] = [
   { type: "link",     href: "/pos",             label: "Ventas",        section: "pos",           Icon: ShoppingCart },
   { type: "link",     href: "/returns",         label: "Devoluciones",  section: "returns",       Icon: RotateCcw },
   { type: "link",     href: "/products",        label: "Productos",     section: "products",      Icon: Package },
-  { type: "link",     href: "/services",        label: "Servicios",     section: "services",      Icon: Wrench },
   { type: "link",     href: "/customers",       label: "Clientes",      section: "customers",     Icon: Users },
   { type: "link",     href: "/cash-movements",  label: "Caja",          section: "cashMovements", Icon: CreditCard },
   { type: "link",     href: "/quotes",          label: "Cotizaciones",  section: "quotes",        Icon: FileText },
@@ -280,7 +278,7 @@ function GlobalSearch() {
                 <SearchResultSection title="Servicios">
                   {results.servicios.map((s) => (
                     <SearchResultItem
-                      href="/services"
+                      href="/products"
                       key={s.id}
                       name={s.name}
                       onNavigate={close}
@@ -426,3 +424,4 @@ export function AppShell({ activeSection, eyebrow, title, children }: AppShellPr
     </div>
   );
 }
+                                                                                                                              

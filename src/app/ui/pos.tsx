@@ -2345,11 +2345,16 @@ export function Pos() {
                               )
                             }
                           >
-                            {PAYMENT_METHOD_CONFIG.map(cfg => (
-                              <option key={cfg.method} value={cfg.method}>
-                                {cfg.label}
-                              </option>
-                            ))}
+                            {PAYMENT_METHOD_CONFIG
+                              .filter(cfg =>
+                                cfg.method !== "Efectivo" ||
+                                !paymentSplits.some(p => p.id !== split.id && p.method === "Efectivo")
+                              )
+                              .map(cfg => (
+                                <option key={cfg.method} value={cfg.method}>
+                                  {cfg.label}
+                                </option>
+                              ))}
                           </select>
                           <ChevronDown
                             className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
@@ -2449,7 +2454,11 @@ export function Pos() {
                 onClick={() =>
                   setPaymentSplits(prev => [
                     ...prev,
-                    { id: localId(), method: "Efectivo", amount: remaining > 0.005 ? remaining.toFixed(2) : "" },
+                    {
+                      id: localId(),
+                      method: paymentSplits.some(p => p.method === "Efectivo") ? "Tarjeta" : "Efectivo",
+                      amount: remaining > 0.005 ? remaining.toFixed(2) : "",
+                    },
                   ])
                 }
               >
@@ -2986,23 +2995,4 @@ function InvoiceModal({
             Cancelar
           </button>
           <button
-            className="flex-1 rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
-            onClick={() => { void handleEmit(); }}
-            type="button"
-            disabled={loading}
-          >
-            {loading ? "Emitiendo..." : "Emitir"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function formatMoney(value: string) {
-  return formatARS(Number(value));
-}
-
-function formatMoneyNum(value: number) {
-  return formatARS(value);
-}
+            className="flex-1 rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover

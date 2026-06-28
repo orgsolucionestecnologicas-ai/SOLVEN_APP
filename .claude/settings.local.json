@@ -35,7 +35,20 @@
       "Bash(git push *)",
       "Bash(node -e ' *)",
       "Bash(npx prisma *)",
-      "Bash(npm test *)"
+      "Bash(npm test *)",
+      "Bash(timeout 60 bash -c 'until grep -q \"Ready in\\\\|started server\" \"C:/Users/SOLVEN/AppData/Local/Temp/claude/C--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP/74067658-d126-4378-a90a-42f3679a40af/tasks/bd5qz1ptq.output\" 2>/dev/null; do sleep 1; done')",
+      "Bash(curl -s -c /tmp/solven_cookies.txt -X POST http://localhost:3000/api/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"username\\\\\":\\\\\"admin\\\\\",\\\\\"password\\\\\":\\\\\"solven2024\\\\\"}\" -o /tmp/login_resp.json -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -c /tmp/solven_cookies.txt -X POST http://localhost:3000/api/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"demo@solven.app\\\\\",\\\\\"password\\\\\":\\\\\"demo1234\\\\\"}\" -o /tmp/login_resp.json -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -b /tmp/solven_cookies.txt -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/settings)",
+      "Bash(curl -s -b /tmp/solven_cookies.txt -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"http://localhost:3000/settings?s=usuarios\")",
+      "Bash(curl -s -b /tmp/solven_cookies.txt -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"http://localhost:3000/settings?s=suscripcion\")",
+      "Bash(curl -s -b /tmp/solven_cookies.txt -o /dev/null -w \"HTTP %{http_code} redirect-to:%{redirect_url}\\\\n\" \"http://localhost:3000/usuarios\")",
+      "Bash(curl -s -b /tmp/solven_cookies.txt -o /dev/null -w \"HTTP %{http_code} redirect-to:%{redirect_url}\\\\n\" \"http://localhost:3000/cuenta\")",
+      "Bash(curl -s -b /tmp/solven_cookies.txt \"http://localhost:3000/settings\" -o /tmp/settings.html)",
+      "Bash(curl -s -b /tmp/solven_cookies.txt \"http://localhost:3000/settings?s=usuarios\")",
+      "Bash(curl -s -b /tmp/solven_cookies.txt \"http://localhost:3000/settings?s=suscripcion\")",
+      "Bash(curl -s -b /tmp/solven_cookies.txt \"http://localhost:3000/settings?s=usuarios\" -o /tmp/usuarios.html -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -b /tmp/solven_cookies.txt \"http://localhost:3000/settings?s=suscripcion\" -o /tmp/susc.html -w \"HTTP %{http_code}\\\\n\")"
     ]
   }
 }
