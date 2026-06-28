@@ -697,7 +697,7 @@ function SalesTable({
                         : "bg-emerald-100 text-emerald-700"
                     }`}
                   >
-                    {sale.paymentType === "CREDIT" ? "Fiado" : "Efectivo"}
+                    {sale.paymentType === "CREDIT" ? "Crédito" : "Efectivo"}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right text-sm font-semibold text-slate-950">
@@ -1155,4 +1155,5 @@ function EditCustomerModal({
       </div>
     </div>
   );
+
 }

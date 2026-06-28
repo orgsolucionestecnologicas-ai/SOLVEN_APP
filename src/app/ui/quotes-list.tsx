@@ -440,7 +440,7 @@ function QuoteDetailModal({
 }) {
   const [sending, setSending] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT">("CASH");
+  const [paymentType] = useState<"CASH">("CASH");
   const [cancelling, setCancelling] = useState(false);
   const [actionError, setActionError] = useState("");
 
@@ -629,21 +629,6 @@ function QuoteDetailModal({
 
             <div className="rounded-lg border border-slate-200 p-3">
               <p className="mb-2 text-sm font-medium text-slate-700">Confirmar cotización</p>
-              <div className="mb-2 flex gap-2">
-                <button
-                  className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${paymentType === "CASH" ? "border-violet-500 bg-violet-50 text-violet-700" : "border-slate-300 text-slate-600 hover:bg-slate-50"}`}
-                  onClick={() => setPaymentType("CASH")}
-                >
-                  Efectivo
-                </button>
-                <button
-                  className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${paymentType === "CREDIT" ? "border-violet-500 bg-violet-50 text-violet-700" : "border-slate-300 text-slate-600 hover:bg-slate-50"} ${!quote.customerId ? "cursor-not-allowed opacity-40" : ""}`}
-                  disabled={!quote.customerId}
-                  onClick={() => quote.customerId && setPaymentType("CREDIT")}
-                >
-                  Fiado
-                </button>
-              </div>
               <button
                 className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
                 disabled={confirming}

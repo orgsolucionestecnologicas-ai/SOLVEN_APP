@@ -227,8 +227,7 @@ export async function getQuoteById(quoteId: string, tenantId: string): Promise<Q
 
 export async function confirmQuote(
   quoteId: string,
-  tenantId: string,
-  paymentType: "CASH" | "CREDIT" = "CASH"
+  tenantId: string
 ): Promise<SaleWithItems> {
   const quote = await getQuoteById(quoteId, tenantId);
 
@@ -239,10 +238,6 @@ export async function confirmQuote(
 
   const now = new Date();
   if (quote.validUntil < now) throw new QuoteExpiredError();
-
-  if (paymentType === "CREDIT" && !quote.customerId) {
-    throw new Error("Se requiere un cliente para ventas fiadas.");
-  }
 
   return prisma.$transaction(
     async (tx) => {
@@ -274,8 +269,8 @@ export async function confirmQuote(
         data: {
           tenantId,
           folio: nextFolio,
-          paymentType,
-          customerId: paymentType === "CREDIT" ? quote.customerId : null,
+          paymentType: "CASH",
+          customerId: null,
           totalAmount,
           discountAmount,
         },
@@ -313,30 +308,15 @@ export async function confirmQuote(
         });
       }
 
-      if (paymentType === "CREDIT") {
-        const debt = await tx.debt.create({
-          data: {
-            tenantId,
-            customerId: quote.customerId!,
-            totalAmount,
-            remainingAmount: totalAmount,
-          },
-        });
-        await tx.sale.update({
-          where: { id: sale.id },
-          data: { debt: { connect: { id: debt.id } } },
-        });
-      } else {
-        await tx.cashMovement.create({
-          data: {
-            tenantId,
-            type: "IN",
-            amount: totalAmount,
-            source: "SALE",
-            referenceId: sale.id,
-          },
-        });
-      }
+      await tx.cashMovement.create({
+        data: {
+          tenantId,
+          type: "IN",
+          amount: totalAmount,
+          source: "SALE",
+          referenceId: sale.id,
+        },
+      });
 
       await tx.quote.update({
         where: { id: quoteId },

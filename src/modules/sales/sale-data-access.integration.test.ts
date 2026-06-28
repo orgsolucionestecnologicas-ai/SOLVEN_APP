@@ -69,32 +69,15 @@ describe("sale data access", () => {
     expect(cashMovement).toMatchObject({ type: "IN", source: "SALE", referenceId: sale.id });
   });
 
-  it("creates a credit sale with debt and without cash movement", async () => {
-    const product = await createTestProduct("CREDIT", 11, 7);
-    const customer = await createTestCustomer();
-
-    const sale = await createSale({
-      paymentType: "CREDIT",
-      customerId: customer.id,
-      items: [{ productId: product.id, quantity: 3 }]
-    }, testTenantId);
-
-    const updatedProduct = await prisma.product.findUniqueOrThrow({ where: { id: product.id } });
-    const inventoryMovement = await prisma.inventoryMovement.findFirstOrThrow({
-      where: { reason: `SALE:${sale.id}`, productId: product.id }
-    });
-    const debt = await prisma.debt.findUniqueOrThrow({ where: { id: sale.debtId ?? "" } });
-    const cashMovement = await prisma.cashMovement.findFirst({
-      where: { source: "SALE", referenceId: sale.id }
-    });
-
-    expect(sale.totalAmount.toString()).toBe("33");
-    expect(sale).toMatchObject({ paymentType: "CREDIT", customerId: customer.id, debtId: debt.id });
-    expect(updatedProduct.stock).toBe(4);
-    expect(inventoryMovement).toMatchObject({ productId: product.id, previousStock: 7, newStock: 4, quantityChange: -3 });
-    expect(debt.totalAmount.toString()).toBe("33");
-    expect(debt.remainingAmount.toString()).toBe("33");
-    expect(cashMovement).toBeNull();
+  it("rejects CREDIT paymentType (only CASH accepted)", async () => {
+    const product = await createTestProduct("CREDIT_REJECT", 11, 7);
+    await expect(
+      createSale({
+        // @ts-expect-error testing runtime rejection of non-CASH
+        paymentType: "CREDIT",
+        items: [{ productId: product.id, quantity: 3 }]
+      }, testTenantId)
+    ).rejects.toThrow();
   });
 
   it("rejects a sale when a product does not exist", async () => {

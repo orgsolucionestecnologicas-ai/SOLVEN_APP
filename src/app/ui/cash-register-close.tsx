@@ -412,7 +412,7 @@ export function CashRegisterClose({
                     amount={totalCreditSales}
                     bgClass="bg-rose-50"
                     count={creditSales.length}
-                    label="Crédito / Fiado"
+                    label="Crédito"
                     pct={creditPct}
                     textClass="text-rose-900"
                   />
@@ -458,7 +458,7 @@ export function CashRegisterClose({
                       { label: "Tarjeta", count: 0, amount: 0, pct: 0 },
                       { label: "Transferencia", count: 0, amount: 0, pct: 0 },
                       {
-                        label: "Crédito (Fiado)",
+                        label: "Crédito",
                         count: creditSales.length,
                         amount: totalCreditSales,
                         pct: totalSales > 0 ? (totalCreditSales / totalSales) * 100 : 0,

@@ -73,7 +73,7 @@ function getDescription(m: CashMovementRecord): string {
     case "EXPENSE":
       return m.referenceId ?? "Gasto registrado";
     case "DEBT_PAYMENT":
-      return "Pago de cliente (fiado)";
+      return "Pago de deuda cliente";
     case "MANUAL":
       return m.referenceId ?? "Movimiento manual";
     default:

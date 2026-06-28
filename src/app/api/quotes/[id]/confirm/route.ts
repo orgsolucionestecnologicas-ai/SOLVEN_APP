@@ -35,14 +35,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!isRequestObject(body)) return errorResponse("El cuerpo debe ser un objeto.", 400);
 
   const { id } = await params;
-  const paymentType = (body as Record<string, unknown>).paymentType as string | undefined;
-
-  if (paymentType && paymentType !== "CASH" && paymentType !== "CREDIT") {
-    return errorResponse("El tipo de pago debe ser CASH o CREDIT.", 400);
-  }
 
   try {
-    const sale = await confirmQuote(id, tenantId, (paymentType as "CASH" | "CREDIT") ?? "CASH");
+    const sale = await confirmQuote(id, tenantId);
     return successResponse(sale);
   } catch (error) {
     if (error instanceof QuoteNotFoundError) return errorResponse(error.message, 404);

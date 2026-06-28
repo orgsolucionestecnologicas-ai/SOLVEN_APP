@@ -698,7 +698,7 @@ type CreateSaleModalProps = {
 };
 
 function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
-  const [paymentType, setPaymentType] = useState<"CASH" | "CREDIT">("CASH");
+  const paymentType = "CASH";
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [productsLoadError, setProductsLoadError] = useState<string | null>(
@@ -824,11 +824,6 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
       return;
     }
 
-    if (paymentType === "CREDIT" && !selectedCustomerId) {
-      setSubmitError("Debés seleccionar un cliente para la venta a crédito.");
-      return;
-    }
-
     setIsSubmitting(true);
     setSubmitError(null);
 
@@ -837,8 +832,7 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paymentType,
-          ...(paymentType === "CREDIT" ? { customerId: selectedCustomerId } : {}),
+          paymentType: "CASH",
           items: lineItems.map((item) => ({
             productId: item.productId,
             quantity: item.quantity
@@ -875,7 +869,7 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h2 className="text-sm font-semibold text-slate-950">
-            Nueva venta — {paymentType === "CASH" ? "Contado" : "Fiado"}
+            Nueva venta
           </h2>
           <button
             className="text-slate-400 hover:text-slate-700"
@@ -888,78 +882,6 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-5 px-6 py-5">
-            <div>
-              <p className="mb-2 text-sm font-medium text-slate-700">
-                Tipo de pago
-              </p>
-              <div className="flex rounded-lg border border-slate-200 p-0.5">
-                <button
-                  className={
-                    paymentType === "CASH"
-                      ? "flex-1 rounded-md px-4 py-1.5 text-sm font-medium bg-slate-950 text-white"
-                      : "flex-1 rounded-md px-4 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-950"
-                  }
-                  disabled={isSubmitting}
-                  onClick={() => {
-                    setPaymentType("CASH");
-                    setSelectedCustomerId("");
-                  }}
-                  type="button"
-                >
-                  Contado
-                </button>
-                <button
-                  className={
-                    paymentType === "CREDIT"
-                      ? "flex-1 rounded-md px-4 py-1.5 text-sm font-medium bg-slate-950 text-white"
-                      : "flex-1 rounded-md px-4 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-950"
-                  }
-                  disabled={isSubmitting}
-                  onClick={() => {
-                    setPaymentType("CREDIT");
-                    if (!selectedCustomerId && customers.length > 0) {
-                      setSelectedCustomerId(customers[0].id);
-                    }
-                  }}
-                  type="button"
-                >
-                  Fiado
-                </button>
-              </div>
-            </div>
-
-            {paymentType === "CREDIT" ? (
-              <div>
-                <p className="mb-2 text-sm font-medium text-slate-700">
-                  Cliente
-                </p>
-                {isLoadingCustomers ? (
-                  <p className="text-sm text-slate-500">
-                    Cargando clientes...
-                  </p>
-                ) : customersLoadError ? (
-                  <p className="text-sm text-rose-700">{customersLoadError}</p>
-                ) : customers.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    No hay clientes registrados. Crea un cliente primero.
-                  </p>
-                ) : (
-                  <select
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
-                    disabled={isSubmitting}
-                    onChange={(e) => setSelectedCustomerId(e.target.value)}
-                    value={selectedCustomerId}
-                  >
-                    {customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            ) : null}
-
             <div>
               <p className="mb-3 text-sm font-medium text-slate-700">
                 Agregar producto
@@ -1136,7 +1058,7 @@ function PaymentTypeBadge({
           : "inline-flex rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800"
       }
     >
-      {isCredit ? "Fiado" : "Contado"}
+      {isCredit ? "Crédito" : "Contado"}
     </span>
   );
 }

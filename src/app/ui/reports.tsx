@@ -944,7 +944,7 @@ function PaymentMethodPanel({ sales }: { sales: SaleRecord[] }) {
 
   const segmentData = [
     { label: "Efectivo", value: cashTotal, color: "#7c3aed" },
-    { label: "Fiado", value: creditTotal, color: "#3b82f6" },
+    { label: "Crédito", value: creditTotal, color: "#3b82f6" },
     { label: "Tarjeta", value: 0, color: "#10b981" },
     { label: "Otros", value: 0, color: "#f97316" },
   ];
@@ -1545,7 +1545,7 @@ function VentasTab({ sales }: { sales: SaleRecord[] }) {
                       {sale.items.length} ítem{sale.items.length !== 1 ? "s" : ""}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-slate-600">
-                      {sale.paymentType === "CASH" ? "Efectivo" : "Fiado"}
+                      {sale.paymentType === "CASH" ? "Efectivo" : "Crédito"}
                     </td>
                     <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-900">
                       {formatMoney(sale.totalAmount)}
@@ -2301,7 +2301,7 @@ function RentabilidadTab({
             </div>
             <div>
               <div className="flex justify-between text-xs mb-0.5">
-                <span className="text-slate-600">Fiado</span>
+                <span className="text-slate-600">Crédito</span>
                 <span className="font-semibold text-slate-800">{formatMoney(paymentBreakdown.credit)}</span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-slate-100">
@@ -2501,7 +2501,7 @@ function ReporteMensualTab({
 
   const paymentDonutData = useMemo(() => [
     { label: "Efectivo", value: cashAmount, color: "#7c3aed" },
-    { label: "Crédito (fiado)", value: creditAmount, color: "#3b82f6" },
+    { label: "Crédito", value: creditAmount, color: "#3b82f6" },
     { label: "Tarjeta", value: 0, color: "#10b981" },
     { label: "Transferencia", value: 0, color: "#f97316" },
   ], [cashAmount, creditAmount]);
@@ -2538,7 +2538,7 @@ function ReporteMensualTab({
   const cards: MonthCard[] = [
     { Icon: ShoppingBag, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", label: "Ventas totales", value: formatMoney(totalAmount), pct: pctChange(totalAmount, prevTotal), sub: `${currentSales.length} ventas` },
     { Icon: CreditCardIcon, iconColor: "text-blue-600", iconBg: "bg-blue-50", label: "Ventas al contado", value: formatMoney(cashAmount), pct: pctChange(cashAmount, prevCash), sub: `${currentSales.filter((s) => s.paymentType === "CASH").length} ventas (${totalAmount > 0 ? ((cashAmount / totalAmount) * 100).toFixed(0) : "0"}%)` },
-    { Icon: FileText, iconColor: "text-orange-600", iconBg: "bg-orange-50", label: "Ventas a crédito (fiado)", value: formatMoney(creditAmount), pct: pctChange(creditAmount, prevCredit), sub: `${currentSales.filter((s) => s.paymentType === "CREDIT").length} ventas (${totalAmount > 0 ? ((creditAmount / totalAmount) * 100).toFixed(0) : "0"}%)` },
+    { Icon: FileText, iconColor: "text-orange-600", iconBg: "bg-orange-50", label: "Ventas a crédito", value: formatMoney(creditAmount), pct: pctChange(creditAmount, prevCredit), sub: `${currentSales.filter((s) => s.paymentType === "CREDIT").length} ventas (${totalAmount > 0 ? ((creditAmount / totalAmount) * 100).toFixed(0) : "0"}%)` },
     { Icon: TrendingUp, iconColor: "text-violet-600", iconBg: "bg-violet-50", label: "Ganancia bruta", value: formatMoney(grossProfit), pct: pctChange(grossProfit, prevGrossProfit), sub: `Margen: ${grossMargin.toFixed(1)}%` },
     { Icon: AlertCircle, iconColor: "text-rose-600", iconBg: "bg-rose-50", label: "Gastos y retiros", value: formatMoney(expensesTotal), pct: pctChange(expensesTotal, prevExpensesTotal), sub: `${currentExpenses.length} registros` },
     { Icon: DollarSign, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", label: "Ganancia neta", value: formatMoney(grossProfit), pct: pctChange(grossProfit, prevGrossProfit), sub: `Margen: ${grossMargin.toFixed(1)}%` },

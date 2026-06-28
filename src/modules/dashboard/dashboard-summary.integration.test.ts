@@ -64,8 +64,6 @@ describe("dashboard summary", () => {
     });
 
     await createSale({
-      paymentType: "CREDIT",
-      customerId: customer.id,
       items: [{ productId: creditSaleProduct.id, quantity: 1 }]
     }, testTenantId);
     await createDebt({ customerId: customer.id, totalAmount: 40 }, testTenantId);
@@ -85,10 +83,10 @@ describe("dashboard summary", () => {
 
     expect(summary.totalSalesAmount.minus(baseline.totalSalesAmount).toString()).toBe("70");
     expect(summary.totalExpensesAmount.minus(baseline.totalExpensesAmount).toString()).toBe("12");
-    expect(summary.totalCashIn.minus(baseline.totalCashIn).toString()).toBe("40");
+    expect(summary.totalCashIn.minus(baseline.totalCashIn).toString()).toBe("70");
     expect(summary.totalCashOut.minus(baseline.totalCashOut).toString()).toBe("15");
-    expect(summary.currentCashBalance.minus(baseline.currentCashBalance).toString()).toBe("25");
-    expect(summary.totalDebtRemaining.minus(baseline.totalDebtRemaining).toString()).toBe("70");
+    expect(summary.currentCashBalance.minus(baseline.currentCashBalance).toString()).toBe("55");
+    expect(summary.totalDebtRemaining.minus(baseline.totalDebtRemaining).toString()).toBe("40");
     expect(summary.totalProducts - baseline.totalProducts).toBe(4);
     expect(summary.lowStockProductsCount - baseline.lowStockProductsCount).toBe(2);
   });

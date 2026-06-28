@@ -36,8 +36,7 @@ type PaymentMethodKey =
   | "Tarjeta"
   | "Transferencia"
   | "VentaWeb"
-  | "Otro"
-  | "Fiado";
+  | "Otro";
 
 type PaymentSplit = {
   id: string;            // cuid local para key de React
@@ -56,7 +55,6 @@ const PAYMENT_METHOD_CONFIG: { method: PaymentMethodKey; label: string }[] = [
   { method: "Transferencia", label: "Transferencia"  },
   { method: "VentaWeb",      label: "Venta web"      },
   { method: "Otro",          label: "Otro"           },
-  { method: "Fiado",         label: "Fiado (crédito)" },
 ];
 
 type ProductRecord = {
@@ -342,7 +340,7 @@ export function Pos() {
     const preselectedCustomerId = params.get("customerId");
     if (preselectedCustomerId) {
       urlCustomerIdRef.current = preselectedCustomerId;
-      setPaymentSplits([{ id: localId(), method: "Fiado", amount: "" }]);
+      setPaymentSplits([{ id: localId(), method: "Efectivo", amount: "" }]);
     }
   }, []);
 
@@ -605,13 +603,8 @@ export function Pos() {
   );
   const remaining = cartNet - totalAssigned;
 
-  const hasFiado  = paymentSplits.some(s => s.method === "Fiado");
-  const onlyFiado = paymentSplits.length === 1 && paymentSplits[0].method === "Fiado";
-  const hasCash   = paymentSplits.some(s => s.method !== "Fiado");
-  const isMixto   = hasFiado && hasCash; // paymentType MIXED — cliente obligatorio
-
   useEffect(() => {
-    if ((!hasFiado && !optionalCustomerOpen) || customersLoaded) return;
+    if (!optionalCustomerOpen || customersLoaded) return;
 
     let isActive = true;
     setCustomersLoading(true);
@@ -640,7 +633,7 @@ export function Pos() {
     return () => {
       isActive = false;
     };
-  }, [hasFiado, optionalCustomerOpen, customersLoaded]);
+  }, [optionalCustomerOpen, customersLoaded]);
 
   useEffect(() => {
     if (!showPaymentModal) return;
@@ -877,11 +870,7 @@ export function Pos() {
       return;
     }
 
-    if (hasFiado && !selectedCustomerId) {
-      setSubmitError("Seleccioná un cliente para la venta con crédito (Fiado).");
-      return;
-    }
-    if (!onlyFiado && Math.abs(remaining) > 0.01) {
+    if (Math.abs(remaining) > 0.01) {
       setSubmitError(
         `El monto asignado (${formatMoneyNum(totalAssigned)}) no coincide con el total (${formatMoneyNum(cartNet)}). Diferencia: ${formatMoneyNum(Math.abs(remaining))}`
       );
@@ -891,17 +880,9 @@ export function Pos() {
     setIsSubmitting(true);
     setSubmitError(null);
 
-    const apiPaymentType = onlyFiado ? "CREDIT" : isMixto ? "MIXED" : "CASH";
-
-    const fiadoSplit    = paymentSplits.find(s => s.method === "Fiado");
-    const fiadoAmount   = fiadoSplit ? (parseFloat(fiadoSplit.amount) || 0) : 0;
-    const cashPartForApi = isMixto
-      ? Math.max(cartNet - fiadoAmount, 0)
-      : undefined;
-
     const paymentDetailsPayload = paymentSplits.map(s => ({
       method:  s.method,
-      amount:  parseFloat(s.amount) || (onlyFiado ? cartNet : 0),
+      amount:  parseFloat(s.amount) || 0,
       ...(s.reference?.trim() ? { reference: s.reference.trim() } : {}),
     }));
 
@@ -910,12 +891,10 @@ export function Pos() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paymentType: apiPaymentType,
+          paymentType: "CASH",
           sellerCode: saleGateResult?.sellerCode ?? "",
           sellerId: saleGateResult?.sellerId ?? "",
           receiptType: saleGateResult?.receiptType ?? "TICKET",
-          ...(hasFiado ? { customerId: selectedCustomerId } : {}),
-          ...(isMixto && cashPartForApi !== undefined ? { cashAmount: cashPartForApi } : {}),
           paymentDetails: paymentDetailsPayload,
           items: cartItems.map((item) =>
             item.serviceId
@@ -946,9 +925,7 @@ export function Pos() {
       const successFolio = body.data.folio;
       const successTotal = cartTotal - totalDiscount;
       const successCartItems = [...cartItems];
-      const successPaymentMethod = onlyFiado
-        ? "Fiado"
-        : paymentSplits.map(s => s.method).join(" + ");
+      const successPaymentMethod = paymentSplits.map(s => s.method).join(" + ");
 
       try { localStorage.removeItem(CART_KEY); } catch { /* ignore */ }
 
@@ -1712,70 +1689,8 @@ export function Pos() {
                 </div>
               </div>
 
-              {/* Cliente — obligatorio con Fiado, opcional en el resto */}
-              {hasFiado ? (
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Cliente <span className="text-rose-400 font-bold">*</span>
-                  </label>
-                  {selectedCustomer ? (
-                    <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                      <span className="text-sm font-medium text-amber-800">
-                        {selectedCustomer.name}
-                      </span>
-                      <button
-                        type="button"
-                        className="text-amber-400 hover:text-amber-600 transition-colors"
-                        onClick={() => { setSelectedCustomer(null); setCustomerSearch(""); }}
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      {customersLoading ? (
-                        <p className="text-xs text-slate-400">Cargando clientes...</p>
-                      ) : (
-                        <>
-                          <input
-                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-9 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
-                            onBlur={() => setTimeout(() => setCustomerSearchOpen(false), 150)}
-                            onChange={(e) => { setCustomerSearch(e.target.value); setCustomerSearchOpen(true); }}
-                            onFocus={() => setCustomerSearchOpen(true)}
-                            placeholder="Buscar cliente..."
-                            type="text"
-                            value={customerSearch}
-                          />
-                          <Search
-                            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                            size={14}
-                          />
-                          {customerSearchOpen && filteredCustomers.length > 0 && (
-                            <ul className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-                              {filteredCustomers.map((c) => (
-                                <li key={c.id}>
-                                  <button
-                                    type="button"
-                                    className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50"
-                                    onMouseDown={() => {
-                                      setSelectedCustomer(c);
-                                      setCustomerSearch("");
-                                      setCustomerSearchOpen(false);
-                                    }}
-                                  >
-                                    {c.name}
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div>
+              {/* Cliente — opcional */}
+              <div>
                   {selectedCustomer ? (
                     <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
                       <span className="text-xs text-slate-600">{selectedCustomer.name}</span>
@@ -1847,7 +1762,6 @@ export function Pos() {
                     </button>
                   )}
                 </div>
-              )}
 
               {/* Cobrar button row */}
               <div className="flex gap-2">
@@ -2514,14 +2428,12 @@ export function Pos() {
                 disabled={
                   isSubmitting ||
                   paymentSplits.length === 0 ||
-                  (!onlyFiado && Math.abs(remaining) > 0.01) ||
-                  (hasFiado && !selectedCustomerId)
+                  Math.abs(remaining) > 0.01
                 }
                 className={
                   isSubmitting ||
                   paymentSplits.length === 0 ||
-                  (!onlyFiado && Math.abs(remaining) > 0.01) ||
-                  (hasFiado && !selectedCustomerId)
+                  Math.abs(remaining) > 0.01
                     ? "flex flex-[2] cursor-not-allowed items-center justify-center rounded-xl bg-slate-200 py-3 text-sm font-bold text-slate-400"
                     : "flex flex-[2] items-center justify-center rounded-xl bg-violet-600 py-3 text-sm font-bold text-white transition-all hover:bg-violet-700 active:scale-[0.99]"
                 }

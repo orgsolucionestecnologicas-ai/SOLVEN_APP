@@ -71,49 +71,14 @@ describe("SOLVEN core business flow", () => {
     expect(expenseCashMovement).toMatchObject({ type: "OUT", source: "EXPENSE", referenceId: expense.id });
     expect(expenseCashMovement.amount.toString()).toBe("12.5");
 
-    const customer = await createCustomer({
-      name: `${testCustomerNamePrefix}${Date.now()}`
-    }, testTenantId);
-    const creditProduct = await createProduct({
-      name: `${testProductNamePrefix}CREDIT_${Date.now()}`,
-      costPrice: 10,
-      salePrice: 25,
-      stock: 6
-    }, testTenantId);
-
-    const creditSale = await createSale({
-      paymentType: "CREDIT",
-      customerId: customer.id,
-      items: [{ productId: creditProduct.id, quantity: 2 }]
-    }, testTenantId);
-
-    const updatedCreditProduct = await prisma.product.findUniqueOrThrow({ where: { id: creditProduct.id } });
-    const creditSaleInventoryMovement = await prisma.inventoryMovement.findFirstOrThrow({
-      where: { productId: creditProduct.id, reason: `SALE:${creditSale.id}` }
-    });
-    const creditSaleDebt = await prisma.debt.findFirstOrThrow({
-      where: { customerId: customer.id, totalAmount: creditSale.totalAmount }
-    });
-    const creditSaleCashMovement = await prisma.cashMovement.findFirst({
-      where: { source: "SALE", referenceId: creditSale.id }
-    });
-
-    expect(updatedCreditProduct.stock).toBe(4);
-    expect(creditSale).toMatchObject({ paymentType: "CREDIT", customerId: customer.id, debtId: creditSaleDebt.id });
-    expect(creditSaleInventoryMovement).toMatchObject({ previousStock: 6, newStock: 4, quantityChange: -2 });
-    expect(creditSaleDebt.totalAmount.toString()).toBe("50");
-    expect(creditSaleDebt.remainingAmount.toString()).toBe("50");
-    expect(creditSaleCashMovement).toBeNull();
-
-    const debtPayment = await registerDebtPayment({ debtId: creditSaleDebt.id, amount: 20 }, testTenantId);
-    const updatedDebt = await prisma.debt.findUniqueOrThrow({ where: { id: creditSaleDebt.id } });
-    const debtPaymentCashMovement = await prisma.cashMovement.findFirstOrThrow({
-      where: { source: "DEBT_PAYMENT", referenceId: debtPayment.id }
-    });
-
-    expect(updatedDebt.remainingAmount.toString()).toBe("30");
-    expect(debtPaymentCashMovement).toMatchObject({ type: "IN", source: "DEBT_PAYMENT", referenceId: debtPayment.id });
-    expect(debtPaymentCashMovement.amount.toString()).toBe("20");
+    // CREDIT sales are no longer allowed (Fiado removed). Only CASH is accepted.
+    await expect(
+      createSale({
+        // @ts-expect-error testing runtime rejection of non-CASH
+        paymentType: "CREDIT",
+        items: [{ productId: cashProduct.id, quantity: 1 }]
+      }, testTenantId)
+    ).rejects.toThrow();
   });
 });
 

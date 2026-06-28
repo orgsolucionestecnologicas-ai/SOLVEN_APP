@@ -39,31 +39,14 @@ describe("validateCreateSaleInput", () => {
     });
   });
 
-  it("accepts valid credit sale input", () => {
-    expect(
+  it("rejects non-CASH payment types", () => {
+    expect(() =>
       validateCreateSaleInput({
+        // @ts-expect-error testing runtime rejection of non-CASH
         paymentType: "CREDIT",
-        customerId: " customer-1 ",
-        items: [
-          {
-            productId: "product-1",
-            quantity: 2
-          }
-        ]
+        items: [{ productId: "product-1", quantity: 2 }]
       })
-    ).toEqual({
-      paymentType: "CREDIT",
-      customerId: "customer-1",
-      items: [
-        {
-          productId: "product-1",
-          quantity: 2
-        }
-      ],
-      sellerCode: "",
-      sellerId: "",
-      receiptType: "TICKET"
-    });
+    ).toThrow(SaleValidationError);
   });
 
   it("accepts sale input with sellerCode, sellerId and receiptType", () => {
@@ -167,16 +150,12 @@ describe("validateCreateSaleInput", () => {
     ).toThrow(SaleValidationError);
   });
 
-  it("requires customer id for credit sales", () => {
+  it("rejects CREDIT paymentType at runtime", () => {
     expect(() =>
       validateCreateSaleInput({
+        // @ts-expect-error testing runtime rejection
         paymentType: "CREDIT",
-        items: [
-          {
-            productId: "product-1",
-            quantity: 1
-          }
-        ]
+        items: [{ productId: "product-1", quantity: 1 }]
       })
     ).toThrow(SaleValidationError);
   });

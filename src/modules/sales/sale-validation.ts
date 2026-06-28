@@ -4,13 +4,12 @@ export type CreateSaleItemInput = {
   quantity: number;
 };
 
-export type SalePaymentType = "CASH" | "CREDIT" | "MIXED";
+export type SalePaymentType = "CASH" | "CREDIT" | "MIXED"; // CREDIT/MIXED solo para registros históricos en BD
 
 export type CreateSaleInput = {
   items: CreateSaleItemInput[];
-  paymentType?: SalePaymentType;
+  paymentType?: "CASH";
   customerId?: string;
-  cashAmount?: number;
   sellerCode?: string;
   sellerId?: string;
   receiptType?: "TICKET" | "INVOICE";
@@ -40,31 +39,7 @@ export type ValidatedCashSaleInput = {
   paymentDetails?: { method: string; amount: number; reference?: string }[];
 };
 
-export type ValidatedCreditSaleInput = {
-  items: ValidatedSaleItemInput[];
-  paymentType: "CREDIT";
-  customerId: string;
-  sellerCode: string;
-  sellerId: string;
-  receiptType: "TICKET" | "INVOICE";
-  paymentDetails?: { method: string; amount: number; reference?: string }[];
-};
-
-export type ValidatedMixedSaleInput = {
-  items: ValidatedSaleItemInput[];
-  paymentType: "MIXED";
-  customerId: string;
-  cashAmount: number;
-  sellerCode: string;
-  sellerId: string;
-  receiptType: "TICKET" | "INVOICE";
-  paymentDetails?: { method: string; amount: number; reference?: string }[];
-};
-
-export type ValidatedSaleInput =
-  | ValidatedCashSaleInput
-  | ValidatedCreditSaleInput
-  | ValidatedMixedSaleInput;
+export type ValidatedSaleInput = ValidatedCashSaleInput;
 
 export class SaleNoCashRegisterOpenError extends Error {
   constructor() {
@@ -85,30 +60,13 @@ export function validateCreateSaleInput(
 ): ValidatedSaleInput {
   const validationErrors: string[] = [];
   const paymentType = saleInput.paymentType ?? "CASH";
-  const customerId =
-    typeof saleInput.customerId === "string" ? saleInput.customerId.trim() : "";
 
   if (!Array.isArray(saleInput.items) || saleInput.items.length === 0) {
     validationErrors.push("A sale must include at least one item.");
   }
 
-  if (paymentType !== "CASH" && paymentType !== "CREDIT" && paymentType !== "MIXED") {
-    validationErrors.push("Sale payment type must be CASH, CREDIT or MIXED.");
-  }
-
-  if ((paymentType === "CREDIT" || paymentType === "MIXED") && customerId.length === 0) {
-    validationErrors.push("Customer id is required for credit and mixed sales.");
-  }
-
-  const cashAmount =
-    paymentType === "MIXED"
-      ? typeof saleInput.cashAmount === "number" && saleInput.cashAmount >= 0
-        ? saleInput.cashAmount
-        : -1
-      : 0;
-
-  if (paymentType === "MIXED" && cashAmount < 0) {
-    validationErrors.push("cashAmount must be a non-negative number for mixed sales.");
+  if (paymentType !== "CASH") {
+    validationErrors.push("Sale payment type must be CASH.");
   }
 
   const items = Array.isArray(saleInput.items) ? saleInput.items : [];
@@ -147,31 +105,6 @@ export function validateCreateSaleInput(
   const sellerCode = typeof saleInput.sellerCode === "string" ? saleInput.sellerCode.trim() : "";
   const sellerId = typeof saleInput.sellerId === "string" ? saleInput.sellerId.trim() : "";
   const receiptType = saleInput.receiptType === "INVOICE" ? "INVOICE" as const : "TICKET" as const;
-
-  if (paymentType === "CREDIT") {
-    return {
-      items: validatedItems,
-      paymentType,
-      customerId,
-      sellerCode,
-      sellerId,
-      receiptType,
-      paymentDetails: saleInput.paymentDetails
-    };
-  }
-
-  if (paymentType === "MIXED") {
-    return {
-      items: validatedItems,
-      paymentType: "MIXED",
-      customerId,
-      cashAmount,
-      sellerCode,
-      sellerId,
-      receiptType,
-      paymentDetails: saleInput.paymentDetails
-    };
-  }
 
   return {
     items: validatedItems,
