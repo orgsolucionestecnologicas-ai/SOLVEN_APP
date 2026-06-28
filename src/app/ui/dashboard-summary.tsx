@@ -241,6 +241,7 @@ export function DashboardSummary() {
             trendPositive={todayVsPositive}
             sparkData={salesByDay.map((d) => d.total)}
             sparkColor="#7c3aed"
+            href="/sales"
           />
           <MetricCard
             title="Ventas del mes"
@@ -252,6 +253,7 @@ export function DashboardSummary() {
             trendPositive={true}
             sparkData={monthSparkData}
             sparkColor="#16a34a"
+            href="/sales"
           />
           <MetricCard
             title="Ganancia del día"
@@ -263,9 +265,13 @@ export function DashboardSummary() {
             trendPositive={true}
             sparkData={profitByDay}
             sparkColor="#2563eb"
+            href="/reports"
           />
           {/* Low stock card */}
-          <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+          <Link
+            href="/inventory"
+            className="block cursor-pointer rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition hover:ring-2 hover:ring-violet-500/30"
+          >
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Productos bajos</p>
@@ -277,13 +283,10 @@ export function DashboardSummary() {
                 <Package size={18} className="text-orange-600" />
               </div>
             </div>
-            <Link
-              href="/products"
-              className="mt-3 inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700"
-            >
+            <span className="mt-3 inline-flex items-center text-xs font-medium text-orange-600">
               Ver inventario →
-            </Link>
-          </div>
+            </span>
+          </Link>
         </div>
 
         {/* ── Chart + Top products ── */}
@@ -322,7 +325,7 @@ export function DashboardSummary() {
 // ── MetricCard ─────────────────────────────────────────────────────────────────
 
 function MetricCard({
-  title, value, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor,
+  title, value, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor, href,
 }: {
   title: string;
   value: string;
@@ -333,9 +336,14 @@ function MetricCard({
   trendPositive: boolean;
   sparkData: number[];
   sparkColor: string;
+  href?: string;
 }) {
-  return (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+  const cardClassName = `rounded-xl border border-slate-100 bg-white p-5 shadow-sm${
+    href ? " cursor-pointer transition hover:ring-2 hover:ring-violet-500/30" : ""
+  }`;
+
+  const content = (
+    <>
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-slate-500">{title}</p>
@@ -355,8 +363,18 @@ function MetricCard({
           <SparkLine data={sparkData} color={sparkColor} />
         </div>
       ) : null}
-    </div>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className={`block ${cardClassName}`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={cardClassName}>{content}</div>;
 }
 
 // ── PeriodSelector ─────────────────────────────────────────────────────────────

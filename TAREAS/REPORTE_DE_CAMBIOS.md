@@ -7,6 +7,30 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 002 — KPIs clickeables que navegan a su sección — 2026-06-28
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/dashboard-summary.tsx`
+
+**Cambios realizados:**
+Se agregó un prop opcional `href` a `MetricCard`: cuando está presente, la tarjeta se envuelve en un `<Link>` de Next.js (en lugar de un `<div>`) y se le agregan las clases `cursor-pointer transition hover:ring-2 hover:ring-violet-500/30`. Se aplicó a las 3 tarjetas de la grilla principal que usan `MetricCard`:
+- "Ventas del día" → `/sales`
+- "Ventas del mes" → `/sales`
+- "Ganancia del día" → `/reports` (no hay una sección dedicada a "ganancia"; se eligió Reportes como destino más afín dado que es donde se analiza el desempeño financiero)
+
+La tarjeta "Productos bajos" (stock crítico, que no usa `MetricCard` sino un `div` propio) se envolvió completa en un `<Link href="/inventory">` con el mismo estilo hover. El link interno "Ver inventario →" que apuntaba a `/products` se convirtió en un `<span>` (ya no es un link separado, para evitar anidar `<a>` dentro de `<a>`), y el destino de toda la tarjeta pasó a ser `/inventory` según el mapeo indicado en la tarea.
+
+No se modificaron tamaño, color ni contenido de las tarjetas — solo se agregó el wrapping con Link y el estilo hover.
+
+**Notas:**
+- El mapeo de la tarea menciona 5 categorías (Ventas, Caja, Gastos, Deudas, Inventario), pero el dashboard actual solo tiene 4 tarjetas KPI en la grilla principal (no hay tarjetas de "Balance de caja", "Gastos del mes" ni "Deudas pendientes" en esa grilla); por eso solo se linkearon las 4 tarjetas existentes, sin agregar tarjetas nuevas (fuera de alcance de esta tarea).
+- No se tocaron APIs, lógica de datos ni otros componentes — cambio acotado a `dashboard-summary.tsx`.
+- `npm run build`, `npm run lint` y `npm test` (suite unitaria) ejecutados sin errores. Las mismas 32 fallas preexistentes de tests de integración por falta de `DATABASE_URL` en el sandbox persisten, sin relación con este cambio.
+
+---
+
 ## Tarea 001 — Filtro de fecha global en el Dashboard — 2026-06-28
 
 **Estado:** ✅ Completada
