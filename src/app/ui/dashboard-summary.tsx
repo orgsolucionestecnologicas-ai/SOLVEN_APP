@@ -8,6 +8,7 @@ import {
   Calendar,
   CreditCard,
   DollarSign,
+  FileText,
   Package,
   RefreshCw,
   ShoppingBag,
@@ -74,6 +75,13 @@ type ExpiringQuote = {
   validUntil: string;
 };
 
+type CashRegisterSession = {
+  id: string;
+  status: "OPEN" | "CLOSED";
+  openedAt: string;
+  closedAt: string | null;
+};
+
 type Debt = {
   id: string;
   customerId: string;
@@ -83,6 +91,8 @@ type Debt = {
 };
 
 type DayTotal = { date: string; total: number };
+
+type DateFilterOption = "today" | "week" | "month" | "custom";
 
 type DashboardState = {
   summary: Summary | null;
@@ -106,16 +116,27 @@ export function DashboardSummary() {
     debts: null,
     loading: true,
   });
+  const [dateFilter, setDateFilter] = useState<DateFilterOption>("month");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   useEffect(() => {
+    const range = getDateRange(dateFilter, customFrom, customTo);
+    if (!range) return;
+    const { from, to } = range;
+
     let active = true;
+    setState((prev) => ({ ...prev, loading: true }));
 
     async function load() {
+      const salesUrl = `/api/sales?from=${from}&to=${to}`;
+      const cashUrl   = `/api/cash-movements?from=${from}&to=${to}`;
+
       const [summaryRes, salesRes, cashRes, productsRes, customersRes, debtsRes] =
         await Promise.allSettled([
           fetch("/api/dashboard/summary", { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/sales",             { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/cash-movements",    { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch(salesUrl,                 { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch(cashUrl,                  { headers: { Accept: "application/json" } }).then((r) => r.json()),
           fetch("/api/products",          { headers: { Accept: "application/json" } }).then((r) => r.json()),
           fetch("/api/customers",         { headers: { Accept: "application/json" } }).then((r) => r.json()),
           fetch("/api/debts",             { headers: { Accept: "application/json" } }).then((r) => r.json()),
@@ -136,7 +157,7 @@ export function DashboardSummary() {
 
     void load();
     return () => { active = false; };
-  }, []);
+  }, [dateFilter, customFrom, customTo]);
 
   if (state.loading) {
     return <DashboardSkeleton />;
@@ -191,6 +212,7 @@ export function DashboardSummary() {
 
   return (
     <div className="min-h-full bg-slate-50">
+      <OpenCashRegisterAlert />
       {/* ── Header ── */}
       <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -206,6 +228,16 @@ export function DashboardSummary() {
       </div>
 
       <div className="space-y-6 px-6 py-6">
+        {/* ── Period selector ── */}
+        <PeriodSelector
+          value={dateFilter}
+          onChange={setDateFilter}
+          customFrom={customFrom}
+          customTo={customTo}
+          onCustomFromChange={setCustomFrom}
+          onCustomToChange={setCustomTo}
+        />
+
         {/* ── Metric cards ── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
@@ -218,6 +250,7 @@ export function DashboardSummary() {
             trendPositive={todayVsPositive}
             sparkData={salesByDay.map((d) => d.total)}
             sparkColor="#7c3aed"
+            href="/sales"
           />
           <MetricCard
             title="Ventas del mes"
@@ -229,6 +262,7 @@ export function DashboardSummary() {
             trendPositive={true}
             sparkData={monthSparkData}
             sparkColor="#16a34a"
+            href="/sales"
           />
           <MetricCard
             title="Ganancia del día"
@@ -240,9 +274,13 @@ export function DashboardSummary() {
             trendPositive={true}
             sparkData={profitByDay}
             sparkColor="#2563eb"
+            href="/reports"
           />
           {/* Low stock card */}
-          <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+          <Link
+            href="/inventory"
+            className="block cursor-pointer rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition hover:ring-2 hover:ring-violet-500/30"
+          >
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Productos bajos</p>
@@ -254,14 +292,14 @@ export function DashboardSummary() {
                 <Package size={18} className="text-orange-600" />
               </div>
             </div>
-            <Link
-              href="/products"
-              className="mt-3 inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700"
-            >
+            <span className="mt-3 inline-flex items-center text-xs font-medium text-orange-600">
               Ver inventario →
-            </Link>
-          </div>
+            </span>
+          </Link>
         </div>
+
+        {/* ── Pending quotes widget ── */}
+        <PendingQuotesWidget />
 
         {/* ── Chart + Top products ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
@@ -299,7 +337,7 @@ export function DashboardSummary() {
 // ── MetricCard ─────────────────────────────────────────────────────────────────
 
 function MetricCard({
-  title, value, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor,
+  title, value, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor, href,
 }: {
   title: string;
   value: string;
@@ -310,9 +348,14 @@ function MetricCard({
   trendPositive: boolean;
   sparkData: number[];
   sparkColor: string;
+  href?: string;
 }) {
-  return (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+  const cardClassName = `rounded-xl border border-slate-100 bg-white p-5 shadow-sm${
+    href ? " cursor-pointer transition hover:ring-2 hover:ring-violet-500/30" : ""
+  }`;
+
+  const content = (
+    <>
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-slate-500">{title}</p>
@@ -330,6 +373,72 @@ function MetricCard({
       {sparkData.length > 1 ? (
         <div className="mt-3">
           <SparkLine data={sparkData} color={sparkColor} />
+        </div>
+      ) : null}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={`block ${cardClassName}`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={cardClassName}>{content}</div>;
+}
+
+// ── PeriodSelector ─────────────────────────────────────────────────────────────
+
+const PERIOD_OPTIONS: { id: DateFilterOption; label: string }[] = [
+  { id: "today", label: "Hoy" },
+  { id: "week", label: "Esta semana" },
+  { id: "month", label: "Este mes" },
+  { id: "custom", label: "Personalizado" },
+];
+
+function PeriodSelector({
+  value, onChange, customFrom, customTo, onCustomFromChange, onCustomToChange,
+}: {
+  value: DateFilterOption;
+  onChange: (v: DateFilterOption) => void;
+  customFrom: string;
+  customTo: string;
+  onCustomFromChange: (v: string) => void;
+  onCustomToChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {PERIOD_OPTIONS.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => onChange(opt.id)}
+          className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+            value === opt.id
+              ? "bg-violet-600 text-white"
+              : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+      {value === "custom" ? (
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => onCustomFromChange(e.target.value)}
+            className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
+          />
+          <span className="text-sm text-slate-400">a</span>
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => onCustomToChange(e.target.value)}
+            className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
+          />
         </div>
       ) : null}
     </div>
@@ -532,6 +641,111 @@ function TopProductsPanel() {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+// ── PendingQuotesWidget ────────────────────────────────────────────────────────
+
+function PendingQuotesWidget() {
+  const [quotes, setQuotes] = useState<ExpiringQuote[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/dashboard/pending-quotes", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: ExpiringQuote[] }) => {
+        if (body.data) setQuotes(body.data);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm font-semibold text-slate-900">Cotizaciones pendientes</p>
+        <Link href="/quotes" className="text-xs font-medium text-violet-600 hover:text-violet-700">
+          Ver todas
+        </Link>
+      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-6">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+        </div>
+      ) : quotes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+          <FileText size={28} className="text-slate-300" />
+          <p className="text-sm text-slate-400">Sin cotizaciones pendientes</p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {quotes.map((q) => {
+            const days = daysUntil(q.validUntil);
+            const semaphoreClass =
+              days > 7
+                ? "bg-green-50 text-green-700"
+                : days >= 3
+                  ? "bg-yellow-50 text-yellow-700"
+                  : "bg-red-50 text-red-600";
+            return (
+              <li key={q.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-slate-800">{q.quoteNumber}</p>
+                  <p className="truncate text-[11px] text-slate-400">{q.customerName || "Sin cliente"}</p>
+                </div>
+                <span className="flex-shrink-0 text-xs font-semibold text-slate-700">
+                  {formatARS(Number(q.totalAmount))}
+                </span>
+                <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${semaphoreClass}`}>
+                  {days >= 0 ? `${days}d` : "Vencida"}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── OpenCashRegisterAlert ──────────────────────────────────────────────────────
+
+function OpenCashRegisterAlert() {
+  const [session, setSession] = useState<CashRegisterSession | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/cash-register", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: CashRegisterSession | null }) => {
+        setSession(body.data ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  if (isLoading || !session || session.status !== "OPEN") return null;
+
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const openedDateStr = new Date(session.openedAt).toISOString().slice(0, 10);
+  const isLateHour = now.getHours() >= 20;
+  const openedOnPreviousDay = openedDateStr < todayStr;
+
+  if (!isLateHour && !openedOnPreviousDay) return null;
+
+  return (
+    <div className="flex flex-col gap-2 border-b border-amber-200 bg-amber-50 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm font-medium text-amber-800">
+        ⚠️ La caja sigue abierta. Recordá cerrarla antes de terminar el día.
+      </p>
+      <Link
+        href="/cash-movements"
+        className="inline-flex w-fit flex-shrink-0 items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700"
+      >
+        Ir a Caja
+      </Link>
     </div>
   );
 }
@@ -758,6 +972,35 @@ function DashboardSkeleton() {
 
 function sumSales(sales: Sale[]): number {
   return sales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
+}
+
+function daysUntil(dateStr: string): number {
+  const ms = new Date(dateStr).getTime() - Date.now();
+  return Math.ceil(ms / 86_400_000);
+}
+
+function getDateRange(
+  filter: DateFilterOption,
+  customFrom: string,
+  customTo: string
+): { from: string; to: string } | null {
+  const today = new Date();
+  const toStr = today.toISOString().slice(0, 10);
+
+  if (filter === "today") {
+    return { from: toStr, to: toStr };
+  }
+  if (filter === "week") {
+    const day = today.getDay();
+    const diffToMonday = day === 0 ? 6 : day - 1;
+    const monday = new Date(today.getTime() - diffToMonday * 86_400_000);
+    return { from: monday.toISOString().slice(0, 10), to: toStr };
+  }
+  if (filter === "month") {
+    const first = new Date(today.getFullYear(), today.getMonth(), 1);
+    return { from: first.toISOString().slice(0, 10), to: toStr };
+  }
+  return customFrom && customTo ? { from: customFrom, to: customTo } : null;
 }
 
 function niceMax(value: number): number {
