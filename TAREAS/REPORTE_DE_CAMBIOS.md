@@ -7,6 +7,26 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 004 — Alerta si la caja no fue cerrada al final del día — 2026-06-28
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/dashboard-summary.tsx`
+
+**Cambios realizados:**
+No existía ninguna lógica relacionada con caja (apertura/cierre) en `dashboard-summary.tsx`. Se agregó un nuevo tipo `CashRegisterSession` (`id`, `status`, `openedAt`, `closedAt`) y un componente `OpenCashRegisterAlert`, montado como primer elemento dentro del contenedor raíz del Dashboard (antes del header), para que el banner quede en la parte superior de la página.
+
+El componente hace fetch a `GET /api/cash-register` (endpoint ya existente, sin modificarlo) y obtiene la sesión de caja actual (`null` si no hay ninguna abierta). Si la sesión tiene `status === "OPEN"` y se cumple `hora local >= 20:00 OR fecha de apertura (openedAt) anterior a la fecha de hoy`, se muestra un banner amarillo (`bg-amber-50`/`border-amber-200`/`text-amber-800`) con el texto exacto pedido por la tarea ("⚠️ La caja sigue abierta. Recordá cerrarla antes de terminar el día.") y un botón "Ir a Caja" (`bg-amber-600`) que navega a `/cash-movements`. Si la caja está cerrada, no hay sesión, o ninguna condición se cumple, el componente no renderiza nada.
+
+Para la condición "el último cierre fue en un día anterior al día de hoy": como una sesión abierta nunca tiene `closedAt` (es `null` mientras está `OPEN`), se interpretó como "la sesión sigue abierta desde un día anterior al actual" usando `openedAt` en vez de `closedAt` — comparando la fecha (`YYYY-MM-DD`, mismo criterio `toISOString().slice(0,10)` ya usado en el resto del archivo para `todayStr`/`yesterdayStr`) de apertura contra la de hoy.
+
+**Notas:**
+- No se tocó el flujo de apertura/cierre de caja: no se modificaron `src/app/api/cash-register/*`, `src/modules/cash-register/*` ni `src/app/ui/cash-register-close.tsx`. Solo se consumió el endpoint `GET /api/cash-register` ya existente (lectura).
+- `npm run build`, `npm run lint` y `npm test` ejecutados sin errores. Mismas 166 pasadas / 32 fallas preexistentes de integración por falta de `DATABASE_URL` / 2 omitidas — sin relación con este cambio.
+
+---
+
 ## Tarea 003 — Widget de cotizaciones pendientes de confirmar — 2026-06-28
 
 **Estado:** ✅ Completada

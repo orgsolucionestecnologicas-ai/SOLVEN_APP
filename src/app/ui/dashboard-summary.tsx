@@ -75,6 +75,13 @@ type ExpiringQuote = {
   validUntil: string;
 };
 
+type CashRegisterSession = {
+  id: string;
+  status: "OPEN" | "CLOSED";
+  openedAt: string;
+  closedAt: string | null;
+};
+
 type Debt = {
   id: string;
   customerId: string;
@@ -205,6 +212,7 @@ export function DashboardSummary() {
 
   return (
     <div className="min-h-full bg-slate-50">
+      <OpenCashRegisterAlert />
       {/* ── Header ── */}
       <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -697,6 +705,47 @@ function PendingQuotesWidget() {
           })}
         </ul>
       )}
+    </div>
+  );
+}
+
+// ── OpenCashRegisterAlert ──────────────────────────────────────────────────────
+
+function OpenCashRegisterAlert() {
+  const [session, setSession] = useState<CashRegisterSession | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/cash-register", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: CashRegisterSession | null }) => {
+        setSession(body.data ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  if (isLoading || !session || session.status !== "OPEN") return null;
+
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const openedDateStr = new Date(session.openedAt).toISOString().slice(0, 10);
+  const isLateHour = now.getHours() >= 20;
+  const openedOnPreviousDay = openedDateStr < todayStr;
+
+  if (!isLateHour && !openedOnPreviousDay) return null;
+
+  return (
+    <div className="flex flex-col gap-2 border-b border-amber-200 bg-amber-50 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm font-medium text-amber-800">
+        ⚠️ La caja sigue abierta. Recordá cerrarla antes de terminar el día.
+      </p>
+      <Link
+        href="/cash-movements"
+        className="inline-flex w-fit flex-shrink-0 items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700"
+      >
+        Ir a Caja
+      </Link>
     </div>
   );
 }
