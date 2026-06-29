@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   TrendingUp,
+  Trophy,
   UserPlus,
 } from "lucide-react";
 
@@ -80,6 +81,13 @@ type CashRegisterSession = {
   status: "OPEN" | "CLOSED";
   openedAt: string;
   closedAt: string | null;
+};
+
+type TopSeller = {
+  id: string;
+  name: string;
+  totalAmount: number;
+  salesCount: number;
 };
 
 type Debt = {
@@ -298,8 +306,11 @@ export function DashboardSummary() {
           </Link>
         </div>
 
-        {/* ── Pending quotes widget ── */}
-        <PendingQuotesWidget />
+        {/* ── Pending quotes + Top sellers ── */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <PendingQuotesWidget />
+          <TopSellersWidget />
+        </div>
 
         {/* ── Chart + Top products ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
@@ -703,6 +714,58 @@ function PendingQuotesWidget() {
               </li>
             );
           })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── TopSellersWidget ───────────────────────────────────────────────────────────
+
+const SELLER_MEDALS = ["🥇", "🥈", "🥉"];
+
+function TopSellersWidget() {
+  const [sellers, setSellers] = useState<TopSeller[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/dashboard/top-sellers", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: TopSeller[] }) => {
+        if (body.data) setSellers(body.data);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      <p className="mb-4 text-sm font-semibold text-slate-900">Top vendedores hoy</p>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-6">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+        </div>
+      ) : sellers.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+          <Trophy size={28} className="text-slate-300" />
+          <p className="text-sm text-slate-400">Sin ventas registradas hoy</p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {sellers.map((seller, i) => (
+            <li key={seller.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <span className="flex-shrink-0 text-lg">{SELLER_MEDALS[i] ?? "🎗️"}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-slate-800">{seller.name}</p>
+                <p className="text-[11px] text-slate-400">
+                  {seller.salesCount} {seller.salesCount === 1 ? "venta" : "ventas"}
+                </p>
+              </div>
+              <span className="flex-shrink-0 text-xs font-semibold text-slate-700">
+                {formatARS(seller.totalAmount)}
+              </span>
+            </li>
+          ))}
         </ul>
       )}
     </div>

@@ -7,6 +7,28 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 005 — Ranking de vendedores del día (top 3 por monto) — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/dashboard-summary.tsx`
+
+**Archivos nuevos:**
+- `src/app/api/dashboard/top-sellers/route.ts`
+
+**Cambios realizados:**
+Se creó el endpoint `GET /api/dashboard/top-sellers`, que consulta las ventas del día actual (medianoche a medianoche, hora del servidor) del tenant, excluyendo las que tengan al menos una devolución asociada (`returns: { none: {} }`, ya que `Sale` no tiene un campo `status` propio — "no devueltas" se interpretó vía la relación existente con `Return`). Las ventas se agrupan por `sellerId` (con fallback a `sellerCode` si no hay `sellerId`); para resolver el nombre se busca el `User.name` correspondiente al `sellerId` dentro del mismo tenant, y si no hay usuario asociado se usa el `sellerCode` como nombre visible. Las ventas sin `sellerId` ni `sellerCode` (ventas sin vendedor asignado) se excluyen del ranking. Devuelve los 3 vendedores con mayor `totalAmount`, cada uno con `name`, `totalAmount` y `salesCount`.
+
+En `dashboard-summary.tsx` se agregó el tipo `TopSeller` y el componente `TopSellersWidget`, que hace fetch al nuevo endpoint y muestra hasta 3 vendedores con medalla (🥇🥈🥉), nombre, cantidad de ventas y monto en ARS (`formatARS()`). Estado vacío con ícono `Trophy` y texto "Sin ventas registradas hoy" si no hay datos. El widget se ubicó junto al de "Cotizaciones pendientes" (Tarea 003), en una grilla de 2 columnas, sin afectar la fila del gráfico + productos top ni la fila inferior de 3 columnas.
+
+**Notas:**
+- No se modificó el schema de Prisma ni la lógica de ventas en `/sales` o el POS — solo lectura vía `prisma.sale.findMany` y `prisma.user.findMany`, ambos con scope de `tenantId`.
+- El "día actual" se calcula con la fecha/hora del servidor (no hay manejo de timezone explícito en el resto del proyecto para este tipo de cálculo; se mantuvo consistente con ese patrón existente).
+- `npm run build`, `npm run lint` y `npm test` ejecutados sin errores. Mismas 166 pasadas / 32 fallas preexistentes de integración por falta de `DATABASE_URL` / 2 omitidas — sin relación con este cambio.
+
+---
+
 ## Tarea 004 — Alerta si la caja no fue cerrada al final del día — 2026-06-28
 
 **Estado:** ✅ Completada
