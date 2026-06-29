@@ -7,6 +7,25 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 012 — Días abreviados en español en el gráfico de 7 días — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/dashboard-summary.tsx`
+
+**Cambios realizados:**
+- Se agregó la constante `DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]` (exactamente como la pidió el prompt).
+- Se reescribió el helper `formatXAxisLabel(dateStr)` usado en el gráfico de 7 días ("Ingresos vs. gastos — últimos 7 días", `MainSalesChart`/`SalesAreaChart`): ahora devuelve `DIAS[date.getDay()]` para cada fecha, y devuelve `"Hoy"` en lugar del nombre del día cuando `dateStr` coincide con la fecha actual.
+- Se quitó el número de día del mes que se mostraba antes (ej. "Lun 23"), ya que el prompt pide reemplazar las fechas numéricas por el nombre abreviado del día.
+- No se tocaron colores, tamaños ni la lógica de los datos del gráfico (`salesByDay`, `expensesByDay`, ejes, líneas) — solo el texto de las etiquetas del eje X.
+
+**Notas:**
+- El único gráfico de "últimos 7 días" en el Dashboard es el chart de área/línea "Ingresos vs. gastos — últimos 7 días" (no es technicamente un "gráfico de barras" como dice el título de la tarea, pero es el único componente con etiquetas de eje X basadas en fecha). Se aplicó el cambio ahí, siguiendo el mismo criterio de adaptación a la UI real documentado en tareas anteriores (002, 009, 010).
+- `npm run build`, `npm run lint` y `npm test` ejecutados sin errores nuevos: build OK, lint sin warnings, tests 166 passed / 32 failed (preexistentes, `DATABASE_URL` no disponible en sandbox, no relacionados a este cambio) / 2 skipped — igual al baseline de la sesión.
+
+---
+
 ## Tarea 011 — Estado vacío amigable en el Dashboard — 2026-06-29
 
 **Estado:** ✅ Completada

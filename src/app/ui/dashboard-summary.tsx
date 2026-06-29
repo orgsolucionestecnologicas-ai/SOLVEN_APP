@@ -1282,12 +1282,14 @@ function formatFullDate(date: Date): string {
   return `${capitalized}, ${day} ${month} ${year}`;
 }
 
+const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
 function formatXAxisLabel(dateStr: string): string {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if (dateStr === todayStr) return "Hoy";
   const [y, m, d] = dateStr.split("-").map(Number);
-  const date      = new Date(y, m - 1, d);
-  const abbr      = new Intl.DateTimeFormat("es-419", { weekday: "short" }).format(date);
-  const clean     = abbr.replace(".", "").slice(0, 3);
-  return `${clean.charAt(0).toUpperCase()}${clean.slice(1)} ${d}`;
+  const date = new Date(y, m - 1, d);
+  return DIAS[date.getDay()];
 }
 
 function formatYLabel(value: number): string {
