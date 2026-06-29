@@ -7,6 +7,28 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 009 — Animación de conteo (rollup) en los números grandes del Dashboard — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/dashboard-summary.tsx`
+
+**Cambios realizados:**
+- Se agregó un custom hook `useCountUp(target: number, duration: number = 800)` dentro de `dashboard-summary.tsx`, que anima un número desde 0 hasta `target` usando `requestAnimationFrame`/`cancelAnimationFrame` (sin librerías externas).
+- El hook usa un `useRef` (`hasAnimatedRef`) para asegurar que la animación corra una sola vez por montaje del componente: en el primer efecto anima 0→target; si `target` cambia después de esa primera animación (dentro del mismo ciclo de vida del componente), el valor salta directo al nuevo target sin re-animar.
+- Se aplicó `useCountUp` en `MetricCard` (recibe ahora `value: number` + `format: (n: number) => string` en lugar de un string ya formateado) y en un nuevo componente `LowStockCard`.
+- Los 3 KPIs monetarios ("Ventas del día", "Ventas del mes", "Ganancia del día") ahora pasan el número crudo a `MetricCard` junto con `format={formatARS}`; el valor se anima como entero y se formatea con `formatARS()` solo al renderizar (`format(animatedValue)`), cumpliendo el punto 4 del prompt.
+- Se creó `LowStockCard({ count })`, que reemplaza el bloque inline anterior de "Productos bajos" y anima el conteo con `useCountUp(count ?? 0)`, preservando el fallback "—" cuando `count` es `null` (datos aún no cargados).
+- No se modificó la lógica de fetch ni los datos: los valores numéricos siguen viniendo de los mismos states (`todaySalesTotal`, `monthSalesTotal`, `todayProfit`, `state.summary?.lowStockProductsCount`).
+
+**Notas:**
+- El prompt de la tarea nombraba como KPIs a animar "ventas del día, balance de caja, total gastos, total deudas". Se verificó que `currentCashBalance`, `totalExpensesAmount` y `totalDebtRemaining` se obtienen en el fetch pero **no se renderizan como números grandes** en ningún lugar del Dashboard actual (solo existen en el tipo `Summary`, sin uso en JSX). Por lo tanto, siguiendo el mismo criterio aplicado en la Tarea 002 ante un desajuste similar, se animaron los 4 "números grandes" que realmente se muestran hoy en el Dashboard: Ventas del día, Ventas del mes, Ganancia del día y Productos bajos (stock bajo). No se agregaron tarjetas nuevas ni se expandió el alcance de la UI.
+- La animación corre solo una vez por montaje (gracias a `hasAnimatedRef`); si el usuario cambia filtros y el Dashboard vuelve a mostrar el skeleton de carga (`state.loading`), `MetricCard`/`LowStockCard` se desmontan y remontan, por lo que la animación se reproduce de nuevo de forma natural — esto es el comportamiento esperado, no un re-render comprado on every data change.
+- `npm run build`, `npm run lint` y `npm test` ejecutados sin errores nuevos: build OK, lint sin warnings, tests 166 passed / 32 failed (preexistentes, `DATABASE_URL` no disponible en sandbox, no relacionados a este cambio) / 2 skipped — igual al baseline de la sesión.
+
+---
+
 ## Tarea 008 — Saludo personalizado con nombre del usuario — 2026-06-29
 
 **Estado:** ✅ Completada

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatARS } from "@/lib/format-currency";
 import Link from "next/link";
 import {
@@ -263,7 +263,8 @@ export function DashboardSummary() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             title="Ventas del día"
-            value={formatARS(todaySalesTotal)}
+            value={todaySalesTotal}
+            format={formatARS}
             IconEl={<DollarSign size={18} />}
             iconBg="bg-violet-100"
             iconColor="text-violet-600"
@@ -275,7 +276,8 @@ export function DashboardSummary() {
           />
           <MetricCard
             title="Ventas del mes"
-            value={formatARS(monthSalesTotal)}
+            value={monthSalesTotal}
+            format={formatARS}
             IconEl={<ShoppingBag size={18} />}
             iconBg="bg-green-100"
             iconColor="text-green-600"
@@ -287,7 +289,8 @@ export function DashboardSummary() {
           />
           <MetricCard
             title="Ganancia del día"
-            value={formatARS(todayProfit)}
+            value={todayProfit}
+            format={formatARS}
             IconEl={<TrendingUp size={18} />}
             iconBg="bg-blue-100"
             iconColor="text-blue-600"
@@ -297,26 +300,7 @@ export function DashboardSummary() {
             sparkColor="#2563eb"
             href="/reports"
           />
-          {/* Low stock card */}
-          <Link
-            href="/inventory"
-            className="block cursor-pointer rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition hover:ring-2 hover:ring-violet-500/30"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Productos bajos</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {state.summary?.lowStockProductsCount ?? "—"}
-                </p>
-              </div>
-              <div className="rounded-lg bg-orange-100 p-2">
-                <Package size={18} className="text-orange-600" />
-              </div>
-            </div>
-            <span className="mt-3 inline-flex items-center text-xs font-medium text-orange-600">
-              Ver inventario →
-            </span>
-          </Link>
+          <LowStockCard count={state.summary?.lowStockProductsCount ?? null} />
         </div>
 
         {/* ── Pending quotes + Top sellers ── */}
@@ -358,13 +342,45 @@ export function DashboardSummary() {
   );
 }
 
+// ── useCountUp ─────────────────────────────────────────────────────────────────
+
+function useCountUp(target: number, duration: number = 800): number {
+  const [value, setValue] = useState(0);
+  const hasAnimatedRef = useRef(false);
+
+  useEffect(() => {
+    if (hasAnimatedRef.current) {
+      setValue(target);
+      return;
+    }
+    hasAnimatedRef.current = true;
+
+    const start = performance.now();
+    let frameId: number;
+
+    function tick(now: number) {
+      const progress = Math.min((now - start) / duration, 1);
+      setValue(Math.round(target * progress));
+      if (progress < 1) {
+        frameId = requestAnimationFrame(tick);
+      }
+    }
+    frameId = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(frameId);
+  }, [target, duration]);
+
+  return value;
+}
+
 // ── MetricCard ─────────────────────────────────────────────────────────────────
 
 function MetricCard({
-  title, value, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor, href,
+  title, value, format, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor, href,
 }: {
   title: string;
-  value: string;
+  value: number;
+  format: (n: number) => string;
   IconEl: React.ReactNode;
   iconBg: string;
   iconColor: string;
@@ -374,6 +390,7 @@ function MetricCard({
   sparkColor: string;
   href?: string;
 }) {
+  const animatedValue = useCountUp(value);
   const cardClassName = `rounded-xl border border-slate-100 bg-white p-5 shadow-sm${
     href ? " cursor-pointer transition hover:ring-2 hover:ring-violet-500/30" : ""
   }`;
@@ -383,7 +400,7 @@ function MetricCard({
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">{format(animatedValue)}</p>
           {trendLabel ? (
             <p className={`mt-1 text-xs font-medium ${trendPositive ? "text-green-600" : "text-red-500"}`}>
               {trendLabel}
@@ -411,6 +428,34 @@ function MetricCard({
   }
 
   return <div className={cardClassName}>{content}</div>;
+}
+
+// ── LowStockCard ───────────────────────────────────────────────────────────────
+
+function LowStockCard({ count }: { count: number | null }) {
+  const animatedCount = useCountUp(count ?? 0);
+
+  return (
+    <Link
+      href="/inventory"
+      className="block cursor-pointer rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition hover:ring-2 hover:ring-violet-500/30"
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-500">Productos bajos</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {count === null ? "—" : animatedCount}
+          </p>
+        </div>
+        <div className="rounded-lg bg-orange-100 p-2">
+          <Package size={18} className="text-orange-600" />
+        </div>
+      </div>
+      <span className="mt-3 inline-flex items-center text-xs font-medium text-orange-600">
+        Ver inventario →
+      </span>
+    </Link>
+  );
 }
 
 // ── TopQuickActions ────────────────────────────────────────────────────────────
