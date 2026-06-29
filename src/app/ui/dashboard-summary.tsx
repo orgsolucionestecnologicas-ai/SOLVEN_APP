@@ -246,6 +246,9 @@ export function DashboardSummary() {
           onCustomToChange={setCustomTo}
         />
 
+        {/* ── Top quick actions ── */}
+        <TopQuickActions />
+
         {/* ── Metric cards ── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
@@ -398,6 +401,27 @@ function MetricCard({
   }
 
   return <div className={cardClassName}>{content}</div>;
+}
+
+// ── TopQuickActions ────────────────────────────────────────────────────────────
+
+function TopQuickActions() {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row">
+      <Link
+        href="/pos"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 sm:w-auto sm:flex-1"
+      >
+        🛒 Ir al POS
+      </Link>
+      <Link
+        href="/expenses"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900 sm:w-auto sm:flex-1"
+      >
+        ➕ Nuevo gasto
+      </Link>
+    </div>
+  );
 }
 
 // ── PeriodSelector ─────────────────────────────────────────────────────────────

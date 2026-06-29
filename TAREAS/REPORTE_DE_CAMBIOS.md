@@ -7,6 +7,25 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 006 — Accesos rápidos al POS y Nuevo Gasto desde el Dashboard — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/dashboard-summary.tsx`
+
+**Cambios realizados:**
+El dashboard ya tenía una sección "Acciones rápidas" (`QuickActions`), pero está ubicada al final de la página (requiere scroll) y usa botones chicos tipo ícono+texto sobre fondo blanco — no cumple lo pedido por la tarea (botones grandes y prominentes, visibles sin scroll, con los colores específicos violeta/gris oscuro). Se decidió no modificar `QuickActions` (sigue cumpliendo su propósito general de accesos a 6 secciones) y en su lugar agregar un nuevo componente `TopQuickActions`, ubicado debajo del selector de período y antes de las tarjetas de KPIs — visible sin scroll, como exige la tarea.
+
+`TopQuickActions` renderiza dos botones grandes en una fila (columna en mobile, full width cada uno): "🛒 Ir al POS" con fondo violeta (`bg-violet-600`, hover `bg-violet-700`) que enlaza a `/pos`, y "➕ Nuevo gasto" con fondo gris oscuro (`bg-slate-800`, hover `bg-slate-900`) que enlaza a `/expenses` (no existe una ruta `/expenses/new` dedicada en el proyecto, por lo que se usó la página de gastos según lo indicado en el prompt: "o al formulario de nuevo gasto si existe").
+
+**Notas:**
+- No se tocó la lógica de gastos ni del POS — solo se agregaron dos `<Link>` en `dashboard-summary.tsx`.
+- No se modificó ni se eliminó el `QuickActions` existente al final de la página.
+- `npm run build`, `npm run lint` y `npm test` ejecutados sin errores. Mismas 166 pasadas / 32 fallas preexistentes de integración por falta de `DATABASE_URL` / 2 omitidas — sin relación con este cambio.
+
+---
+
 ## Tarea 005 — Ranking de vendedores del día (top 3 por monto) — 2026-06-29
 
 **Estado:** ✅ Completada
