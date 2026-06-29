@@ -7,6 +7,25 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 011 — Estado vacío amigable en el Dashboard — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/dashboard-summary.tsx`
+
+**Cambios realizados:**
+- Se agregó `const hasActivity = allSales.length > 0 || allCash.length > 0;`, calculado sobre las ventas y movimientos de caja ya obtenidos para el período seleccionado (sin tocar la lógica de fetch ni los endpoints).
+- Cuando `hasActivity` es `false`, el bloque de tarjetas KPI, gráfico, paneles y acciones rápidas se reemplaza por el nuevo componente `DashboardEmptyState`, que muestra: ícono grande `ShoppingBag` (ya importado), título "Sin actividad en este período", subtítulo "Registrá tu primera venta del día desde el POS." y un botón "Ir al POS" (violeta `#7c3aed`) que enlaza a `/pos`.
+- Cuando hay al menos una venta o movimiento de caja en el período, se muestra el Dashboard normal sin cambios (tarjetas, gráfico, paneles, acciones rápidas).
+- El encabezado (saludo), el selector de período y los accesos rápidos superiores (`TopQuickActions`) se mantienen visibles siempre, incluso en el estado vacío, para que el usuario pueda cambiar de período o actuar sin perder contexto.
+
+**Notas:**
+- No se modificó la lógica de fetch, los endpoints, ni el cálculo de los valores derivados (`todaySalesTotal`, `salesByDay`, etc.) — solo se condicionó qué bloque de JSX se renderiza.
+- `npm run build`, `npm run lint` y `npm test` ejecutados sin errores nuevos: build OK, lint sin warnings, tests 166 passed / 32 failed (preexistentes, `DATABASE_URL` no disponible en sandbox, no relacionados a este cambio) / 2 skipped — igual al baseline de la sesión.
+
+---
+
 ## Tarea 010 — Tooltip explicativo en cada KPI del Dashboard — 2026-06-29
 
 **Estado:** ✅ Completada

@@ -237,6 +237,8 @@ export function DashboardSummary() {
   const todayVsLabel   = yesterdaySalesTotal > 0 ? `${todayVsDiff >= 0 ? "▲" : "▼"} ${formatCompact(Math.abs(todayVsDiff))} vs ayer` : null;
   const todayVsPositive = todayVsDiff >= 0;
 
+  const hasActivity = allSales.length > 0 || allCash.length > 0;
+
   return (
     <div className="min-h-full bg-slate-50">
       <OpenCashRegisterAlert />
@@ -259,85 +261,91 @@ export function DashboardSummary() {
         {/* ── Top quick actions ── */}
         <TopQuickActions />
 
-        {/* ── Metric cards ── */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            title="Ventas del día"
-            value={todaySalesTotal}
-            format={formatARS}
-            IconEl={<DollarSign size={18} />}
-            iconBg="bg-violet-100"
-            iconColor="text-violet-600"
-            trendLabel={todayVsLabel}
-            trendPositive={todayVsPositive}
-            sparkData={salesByDay.map((d) => d.total)}
-            sparkColor="#7c3aed"
-            href="/sales"
-            tooltipText="Total de ventas completadas en el período seleccionado."
-          />
-          <MetricCard
-            title="Ventas del mes"
-            value={monthSalesTotal}
-            format={formatARS}
-            IconEl={<ShoppingBag size={18} />}
-            iconBg="bg-green-100"
-            iconColor="text-green-600"
-            trendLabel={null}
-            trendPositive={true}
-            sparkData={monthSparkData}
-            sparkColor="#16a34a"
-            href="/sales"
-          />
-          <MetricCard
-            title="Ganancia del día"
-            value={todayProfit}
-            format={formatARS}
-            IconEl={<TrendingUp size={18} />}
-            iconBg="bg-blue-100"
-            iconColor="text-blue-600"
-            trendLabel={null}
-            trendPositive={true}
-            sparkData={profitByDay}
-            sparkColor="#2563eb"
-            href="/reports"
-          />
-          <LowStockCard count={state.summary?.lowStockProductsCount ?? null} />
-        </div>
+        {!hasActivity ? (
+          <DashboardEmptyState />
+        ) : (
+          <>
+            {/* ── Metric cards ── */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
+                title="Ventas del día"
+                value={todaySalesTotal}
+                format={formatARS}
+                IconEl={<DollarSign size={18} />}
+                iconBg="bg-violet-100"
+                iconColor="text-violet-600"
+                trendLabel={todayVsLabel}
+                trendPositive={todayVsPositive}
+                sparkData={salesByDay.map((d) => d.total)}
+                sparkColor="#7c3aed"
+                href="/sales"
+                tooltipText="Total de ventas completadas en el período seleccionado."
+              />
+              <MetricCard
+                title="Ventas del mes"
+                value={monthSalesTotal}
+                format={formatARS}
+                IconEl={<ShoppingBag size={18} />}
+                iconBg="bg-green-100"
+                iconColor="text-green-600"
+                trendLabel={null}
+                trendPositive={true}
+                sparkData={monthSparkData}
+                sparkColor="#16a34a"
+                href="/sales"
+              />
+              <MetricCard
+                title="Ganancia del día"
+                value={todayProfit}
+                format={formatARS}
+                IconEl={<TrendingUp size={18} />}
+                iconBg="bg-blue-100"
+                iconColor="text-blue-600"
+                trendLabel={null}
+                trendPositive={true}
+                sparkData={profitByDay}
+                sparkColor="#2563eb"
+                href="/reports"
+              />
+              <LowStockCard count={state.summary?.lowStockProductsCount ?? null} />
+            </div>
 
-        {/* ── Pending quotes + Top sellers ── */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <PendingQuotesWidget />
-          <TopSellersWidget />
-        </div>
+            {/* ── Pending quotes + Top sellers ── */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <PendingQuotesWidget />
+              <TopSellersWidget />
+            </div>
 
-        {/* ── Chart + Top products ── */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-          <div className="lg:col-span-3">
-            <MainSalesChart salesByDay={salesByDay} expensesByDay={expensesByDay} />
-          </div>
-          <div className="lg:col-span-2">
-            <TopProductsPanel />
-          </div>
-        </div>
+            {/* ── Chart + Top products ── */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+              <div className="lg:col-span-3">
+                <MainSalesChart salesByDay={salesByDay} expensesByDay={expensesByDay} />
+              </div>
+              <div className="lg:col-span-2">
+                <TopProductsPanel />
+              </div>
+            </div>
 
-        {/* ── Bottom row ── */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <CashMovementsPanel cashMovements={state.cashMovements} />
-          <AlertsPanel
-            lowStockCount={state.summary?.lowStockProductsCount ?? 0}
-            pendingDebtsCount={pendingDebtsCount}
-          />
-          <QuickSummaryPanel
-            todaySalesTotal={todaySalesTotal}
-            todayProfit={todayProfit}
-            totalProducts={state.summary?.totalProducts ?? (state.products?.length ?? 0)}
-            totalCustomers={(state.customers ?? []).length}
-            pendingDebtsCount={pendingDebtsCount}
-          />
-        </div>
+            {/* ── Bottom row ── */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <CashMovementsPanel cashMovements={state.cashMovements} />
+              <AlertsPanel
+                lowStockCount={state.summary?.lowStockProductsCount ?? 0}
+                pendingDebtsCount={pendingDebtsCount}
+              />
+              <QuickSummaryPanel
+                todaySalesTotal={todaySalesTotal}
+                todayProfit={todayProfit}
+                totalProducts={state.summary?.totalProducts ?? (state.products?.length ?? 0)}
+                totalCustomers={(state.customers ?? []).length}
+                pendingDebtsCount={pendingDebtsCount}
+              />
+            </div>
 
-        {/* ── Quick actions ── */}
-        <QuickActions />
+            {/* ── Quick actions ── */}
+            <QuickActions />
+          </>
+        )}
       </div>
     </div>
   );
@@ -1168,6 +1176,24 @@ function QuickActions() {
           </Link>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ── DashboardEmptyState ────────────────────────────────────────────────────────
+
+function DashboardEmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
+      <ShoppingBag size={48} className="text-slate-300" />
+      <h2 className="text-lg font-semibold text-slate-900">Sin actividad en este período</h2>
+      <p className="text-sm text-slate-500">Registrá tu primera venta del día desde el POS.</p>
+      <Link
+        href="/pos"
+        className="mt-2 inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700"
+      >
+        Ir al POS
+      </Link>
     </div>
   );
 }
