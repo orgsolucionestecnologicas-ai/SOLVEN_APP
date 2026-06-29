@@ -104,6 +104,8 @@ type CartItem = {
   unitPrice: number;
   maxStock: number;
   ivaRate: number;
+  discount: number;
+  discountType: "percent" | "fixed";
 };
 
 function cartItemKey(item: CartItem): string {
@@ -224,12 +226,20 @@ function formatPromoApplication(promo: ActivePromotion): string {
   }
 }
 
+function normalizeCartItems(items: CartItem[]): CartItem[] {
+  return items.map((item) => ({
+    ...item,
+    discount: item.discount ?? 0,
+    discountType: item.discountType ?? "percent",
+  }));
+}
+
 function readDraft(): CartItem[] | null {
   try {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CartItem[];
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+    return Array.isArray(parsed) && parsed.length > 0 ? normalizeCartItems(parsed) : null;
   } catch {
     return null;
   }
@@ -240,7 +250,7 @@ function readSavedCart(): CartItem[] | null {
     const raw = localStorage.getItem(CART_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CartItem[];
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+    return Array.isArray(parsed) && parsed.length > 0 ? normalizeCartItems(parsed) : null;
   } catch {
     return null;
   }
@@ -302,6 +312,10 @@ export function Pos() {
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [promoCodeOpen, setPromoCodeOpen] = useState(false);
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+
+  const [discountEditingId, setDiscountEditingId] = useState<string | null>(null);
+  const [discountDraftType, setDiscountDraftType] = useState<"percent" | "fixed">("percent");
+  const [discountDraftValue, setDiscountDraftValue] = useState("");
 
   const [promosPanelOpen, setPromosPanelOpen] = useState(false);
   const [activePromos, setActivePromos] = useState<ActivePromotion[]>([]);
@@ -596,7 +610,18 @@ export function Pos() {
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const selectedCustomerId = selectedCustomer?.id ?? "";
 
-  const cartNet = cartTotal - totalDiscount;
+  const manualDiscountTotal = cartItems.reduce((sum, item) => {
+    const discountedItem = item.productId ? discountedItemsMap.get(item.productId) : undefined;
+    const isItemPromoDiscounted =
+      discountedItem !== undefined &&
+      parseFloat(discountedItem.discountAmount) > 0 &&
+      !excludedPromotionIds.has(discountedItem.promotionId ?? "");
+    const displayPrice = isItemPromoDiscounted ? parseFloat(discountedItem.finalPrice) : item.unitPrice;
+    const lineBaseTotal = displayPrice * item.quantity;
+    return sum + (lineBaseTotal - getLineFinalTotal(item, displayPrice));
+  }, 0);
+
+  const cartNet = cartTotal - totalDiscount - manualDiscountTotal;
   const totalAssigned = paymentSplits.reduce(
     (sum, s) => sum + (parseFloat(s.amount) || 0),
     0
@@ -804,6 +829,8 @@ export function Pos() {
           unitPrice: Number(product.salePrice),
           maxStock: product.stock,
           ivaRate: product.ivaRate != null ? Number(product.ivaRate) : 0.21,
+          discount: 0,
+          discountType: "percent",
         },
       ];
     });
@@ -830,6 +857,8 @@ export function Pos() {
           unitPrice: Number(service.price),
           maxStock: 9999,
           ivaRate: 0.21,
+          discount: 0,
+          discountType: "percent",
         },
       ];
     });
@@ -852,6 +881,50 @@ export function Pos() {
 
   function removeFromCart(itemId: string) {
     setCartItems((prev) => prev.filter((item) => cartItemKey(item) !== itemId));
+  }
+
+  function openDiscountEditor(item: CartItem) {
+    setDiscountEditingId(cartItemKey(item));
+    setDiscountDraftType(item.discountType ?? "percent");
+    setDiscountDraftValue(item.discount ? String(item.discount) : "");
+  }
+
+  function applyItemDiscount() {
+    const itemId = discountEditingId;
+    if (!itemId) return;
+    const parsed = parseFloat(discountDraftValue);
+    const value = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    const clampedValue = discountDraftType === "percent" ? Math.min(100, value) : value;
+
+    setCartItems((prev) =>
+      prev.map((item) =>
+        cartItemKey(item) === itemId
+          ? { ...item, discount: clampedValue, discountType: discountDraftType }
+          : item
+      )
+    );
+    setDiscountEditingId(null);
+    setDiscountDraftValue("");
+  }
+
+  function clearItemDiscount(itemId: string) {
+    setCartItems((prev) =>
+      prev.map((item) =>
+        cartItemKey(item) === itemId
+          ? { ...item, discount: 0, discountType: "percent" }
+          : item
+      )
+    );
+  }
+
+  function getLineFinalTotal(item: CartItem, displayPrice: number): number {
+    const lineBaseTotal = displayPrice * item.quantity;
+    const discount = item.discount ?? 0;
+    if (discount <= 0) return lineBaseTotal;
+    if (item.discountType === "fixed") {
+      return Math.max(0, lineBaseTotal - discount);
+    }
+    return Math.max(0, lineBaseTotal * (1 - discount / 100));
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -898,8 +971,18 @@ export function Pos() {
           paymentDetails: paymentDetailsPayload,
           items: cartItems.map((item) =>
             item.serviceId
-              ? { serviceId: item.serviceId, quantity: item.quantity }
-              : { productId: item.productId, quantity: item.quantity }
+              ? {
+                  serviceId: item.serviceId,
+                  quantity: item.quantity,
+                  discount: item.discount ?? 0,
+                  discountType: item.discountType ?? "percent",
+                }
+              : {
+                  productId: item.productId,
+                  quantity: item.quantity,
+                  discount: item.discount ?? 0,
+                  discountType: item.discountType ?? "percent",
+                }
           ),
           ...(displayedAppliedPromotions.length > 0
             ? {
@@ -923,7 +1006,7 @@ export function Pos() {
 
       const successSaleId = body.data.id;
       const successFolio = body.data.folio;
-      const successTotal = cartTotal - totalDiscount;
+      const successTotal = cartNet;
       const successCartItems = [...cartItems];
       const successPaymentMethod = paymentSplits.map(s => s.method).join(" + ");
 
@@ -1483,12 +1566,14 @@ export function Pos() {
                           (p) => p.promotionId === discountedItem?.promotionId
                         )?.name ?? displayedAppliedPromotions[0]?.name)
                       : undefined;
+                    const itemId = cartItemKey(item);
+                    const lineBaseTotal = displayPrice * item.quantity;
+                    const lineFinalTotal = getLineFinalTotal(item, displayPrice);
+                    const hasManualDiscount = (item.discount ?? 0) > 0;
 
                     return (
-                    <div
-                      className="flex items-center gap-2 px-4 py-2.5"
-                      key={cartItemKey(item)}
-                    >
+                    <div key={itemId}>
+                      <div className="flex items-center gap-2 px-4 py-2.5">
                       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100">
                         <Package size={13} className="text-slate-400" />
                       </div>
@@ -1547,7 +1632,18 @@ export function Pos() {
                         </button>
                       </div>
                       <div className="w-14 text-right text-xs font-semibold tabular-nums text-slate-950">
-                        {formatMoneyNum(displayPrice * item.quantity)}
+                        {hasManualDiscount ? (
+                          <>
+                            <span className="block text-[10px] text-slate-400 line-through">
+                              {formatMoneyNum(lineBaseTotal)}
+                            </span>
+                            <span className="block text-violet-600">
+                              {formatMoneyNum(lineFinalTotal)}
+                            </span>
+                          </>
+                        ) : (
+                          formatMoneyNum(lineFinalTotal)
+                        )}
                       </div>
                       <button
                         className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-slate-300 hover:text-rose-500"
@@ -1556,6 +1652,87 @@ export function Pos() {
                       >
                         <X size={11} />
                       </button>
+                      </div>
+                      <div className="flex items-center gap-2 pb-2 pl-14 pr-4">
+                        {discountEditingId === itemId ? (
+                          <>
+                            <div className="flex overflow-hidden rounded-md border border-slate-200">
+                              <button
+                                className={
+                                  discountDraftType === "percent"
+                                    ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                                    : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                                }
+                                onClick={() => setDiscountDraftType("percent")}
+                                type="button"
+                              >
+                                %
+                              </button>
+                              <button
+                                className={
+                                  discountDraftType === "fixed"
+                                    ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                                    : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                                }
+                                onClick={() => setDiscountDraftType("fixed")}
+                                type="button"
+                              >
+                                $
+                              </button>
+                            </div>
+                            <input
+                              autoFocus
+                              className="w-16 rounded-md border border-slate-200 px-1.5 py-0.5 text-[11px] text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                              min="0"
+                              onChange={(e) => setDiscountDraftValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") applyItemDiscount();
+                              }}
+                              placeholder="0"
+                              step="0.01"
+                              type="number"
+                              value={discountDraftValue}
+                            />
+                            <button
+                              className="rounded-md bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-violet-700"
+                              onClick={() => applyItemDiscount()}
+                              type="button"
+                            >
+                              Aplicar
+                            </button>
+                            <button
+                              className="flex-shrink-0 text-slate-400 hover:text-slate-600"
+                              onClick={() => setDiscountEditingId(null)}
+                              type="button"
+                            >
+                              <X size={11} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              className={
+                                hasManualDiscount
+                                  ? "rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 hover:bg-violet-200"
+                                  : "rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50"
+                              }
+                              onClick={() => openDiscountEditor(item)}
+                              type="button"
+                            >
+                              % desc
+                            </button>
+                            {hasManualDiscount ? (
+                              <button
+                                className="text-[10px] text-slate-400 hover:text-rose-500"
+                                onClick={() => clearItemDiscount(itemId)}
+                                type="button"
+                              >
+                                Quitar
+                              </button>
+                            ) : null}
+                          </>
+                        )}
+                      </div>
                     </div>
                     );
                   })}
@@ -1668,7 +1845,7 @@ export function Pos() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-500">Descuento</span>
                   <span className="tabular-nums text-xs font-medium text-emerald-600">
-                    -{formatMoneyNum(totalDiscount)}
+                    -{formatMoneyNum(totalDiscount + manualDiscountTotal)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -1683,7 +1860,7 @@ export function Pos() {
                       Total a pagar
                     </span>
                     <span className="tabular-nums text-lg font-bold text-slate-950">
-                      {formatMoneyNum(cartTotal - totalDiscount)}
+                      {formatMoneyNum(cartNet)}
                     </span>
                   </div>
                 </div>

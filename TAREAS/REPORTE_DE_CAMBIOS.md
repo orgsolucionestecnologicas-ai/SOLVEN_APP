@@ -7,6 +7,29 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 013 — Descuento manual por ítem en el POS — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/pos.tsx`
+
+**Cambios realizados:**
+- Se agregaron los campos `discount: number` y `discountType: "percent" | "fixed"` al tipo `CartItem`, con valores por defecto `0` y `"percent"` en los dos puntos donde se construye un ítem de carrito (`addToCart` para productos y `addServiceToCart` para servicios).
+- En cada fila del carrito se agregó una segunda línea con un botón "% desc": al hacer clic abre un editor inline con toggle `%`/`$`, un input numérico y un botón "Aplicar" (siguiendo el mismo patrón visual que el input de código de promoción ya existente). Cuando el ítem tiene un descuento activo, aparece un botón "Quitar" para resetearlo a 0.
+- Se agregó `getLineFinalTotal(item, displayPrice)`: calcula el total de la línea como `precio × cantidad × (1 - descuento/100)` para tipo `"percent"`, o `precio × cantidad - descuento` para tipo `"fixed"` (con `Math.max(0, …)` para evitar totales negativos). El "precio" usado es el `displayPrice` ya existente (precio con descuento de promoción aplicado si corresponde), por lo que el descuento manual se aplica sobre el precio que el cajero ve en esa fila, de forma acumulativa con las promociones automáticas.
+- Se agregó la constante `manualDiscountTotal` (suma de los descuentos manuales de todos los ítems) y se sumó de forma aditiva al descuento existente de promociones (`totalDiscount`), sin modificar su cálculo. La fila "Descuento" del panel de totales ahora muestra `totalDiscount + manualDiscountTotal`, y `cartNet` (antes `cartTotal - totalDiscount`) ahora es `cartTotal - totalDiscount - manualDiscountTotal`. Esto era necesario para que el monto a pagar mostrado y el que se exige cubrir en el split de pagos (`remaining`) coincidan con el descuento aplicado — de lo contrario la venta no podría cerrarse con el monto correcto.
+- En `submitSale()`, cada ítem enviado a `POST /api/sales` ahora incluye `discount` y `discountType` (campos adicionales que el validador del backend ignora sin rechazarlos — no requirió tocar la API ni el schema). `successTotal` (monto mostrado en el modal de impresión/confirmación tras la venta) ahora usa `cartNet` en lugar de `cartTotal - totalDiscount`, para reflejar el descuento manual también ahí.
+- Se agregó `normalizeCartItems()` y se usa en `readDraft()` y `readSavedCart()` para que los carritos guardados en `localStorage` antes de este cambio (sin `discount`/`discountType`) se completen con los valores por defecto al recuperarse, evitando `undefined` en los cálculos.
+
+**Notas:**
+- No se modificó `/api/sales/route.ts`, `src/modules/sales/sale-validation.ts` ni el schema de Prisma, conforme a la restricción de la tarea — se verificó que el validador del backend solo toma `productId`/`serviceId`/`quantity` de cada ítem e ignora campos desconocidos.
+- No se tocó el flujo de pago (`paymentSplits`, métodos de pago, validación de montos) ni la estructura del modal de confirmación/impresión de venta — el único ajuste fue que los montos derivados (`cartNet`, `successTotal`) ahora restan también el descuento manual, igual que ya restaban el descuento de promociones.
+- El botón se rotuló literalmente "% desc" como pide el prompt, aunque también permite elegir `$` dentro del editor.
+- `npm run build`, `npm run lint`, `npx tsc --noEmit` y `npm test` ejecutados sin errores nuevos: build OK, lint sin warnings, typecheck sin errores, tests 166 passed / 32 failed (preexistentes, `DATABASE_URL` no disponible en sandbox, no relacionados a este cambio) / 2 skipped — igual al baseline de la sesión.
+
+---
+
 ## Tarea 012 — Días abreviados en español en el gráfico de 7 días — 2026-06-29
 
 **Estado:** ✅ Completada
