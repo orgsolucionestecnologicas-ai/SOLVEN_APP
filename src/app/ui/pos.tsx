@@ -682,6 +682,95 @@ export function Pos() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showPaymentModal]);
 
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const isTextInput =
+        target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
+      if (isTextInput) return;
+
+      if (e.key === "Escape") {
+        if (promoCodeOpen) {
+          setPromoCodeOpen(false);
+          setPromoCodeInput("");
+          setPromoCodeError(null);
+          return;
+        }
+        if (discountEditingId) {
+          setDiscountEditingId(null);
+          return;
+        }
+        if (noteModalOpen) {
+          setNoteModalOpen(false);
+          return;
+        }
+        if (cotizacionOpen) {
+          setCotizacionOpen(false);
+          return;
+        }
+        if (moreDropdownOpen) {
+          setMoreDropdownOpen(false);
+          return;
+        }
+        if (promosPanelOpen) {
+          setPromosPanelOpen(false);
+          return;
+        }
+        if (customerSearchOpen) {
+          setCustomerSearchOpen(false);
+          return;
+        }
+        if (optionalCustomerOpen) {
+          setOptionalCustomerOpen(false);
+          return;
+        }
+        if (saleGateOpen) {
+          setSaleGateOpen(false);
+          return;
+        }
+        if (showInvoiceModal) {
+          setShowInvoiceModal(false);
+          return;
+        }
+        if (showPrintModal) {
+          setShowPrintModal(null);
+          return;
+        }
+        return;
+      }
+
+      if (e.key === "F2") {
+        e.preventDefault();
+        handleNewSale();
+        return;
+      }
+
+      if (e.key === "Enter") {
+        if (filteredProducts.length === 1 && cashRegisterStatus === "open") {
+          addToCart(filteredProducts[0]);
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    promoCodeOpen,
+    discountEditingId,
+    noteModalOpen,
+    cotizacionOpen,
+    moreDropdownOpen,
+    promosPanelOpen,
+    customerSearchOpen,
+    optionalCustomerOpen,
+    saleGateOpen,
+    showInvoiceModal,
+    showPrintModal,
+    filteredProducts,
+    cashRegisterStatus,
+  ]);
+
   function clearSale() {
     setCartItems([]);
     setPaymentSplits([]);

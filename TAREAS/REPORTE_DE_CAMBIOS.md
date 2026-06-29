@@ -7,6 +7,29 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 015 — Atajos de teclado en el POS — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/pos.tsx`
+
+**Cambios realizados:**
+- Se agregó un nuevo `useEffect` con un listener global `keydown` (`window.addEventListener`/`removeEventListener` en el cleanup), ubicado junto al efecto existente de cierre por Escape del modal de pago, para mantener agrupados los listeners de teclado.
+- Los tres atajos quedan deshabilitados de forma uniforme si `e.target` es un `<input>` o `<textarea>` (chequeo por `tagName`), tal como exige la restricción #3 del prompt.
+- **Escape:** cierra, en orden de prioridad, el primer popover/modal abierto entre: `promoCodeOpen` (+ reset de `promoCodeInput`/`promoCodeError`), `discountEditingId` (editor de descuento por ítem de la Tarea 013), `noteModalOpen`, `cotizacionOpen`, `moreDropdownOpen`, `promosPanelOpen`, `customerSearchOpen`, `optionalCustomerOpen`, `saleGateOpen`, `showInvoiceModal`, `showPrintModal` (seteado a `null`). **No se incluyó `showPaymentModal`** porque ya tiene su propio efecto de Escape dedicado (líneas previas, sin tocar) y porque modificarlo cae dentro de "el flujo de pago", restringido explícitamente. Tampoco se incluyeron `barcodeNotFound` (flash transitorio que se autodescarta) ni `showDraftBanner` (decisión de negocio sobre recuperar/descartar una venta suspendida — sin acción segura por defecto para Escape).
+- **F2:** llama a `handleNewSale()` (la función ya usada por el botón "Nueva venta" existente), con `e.preventDefault()` para evitar el comportamiento nativo del navegador en esa tecla.
+- **Enter:** si hay exactamente un producto filtrado (`filteredProducts.length === 1`) y la caja está abierta (`cashRegisterStatus === "open"`), se agrega ese producto al carrito vía `addToCart(...)`. **Nota de adaptación:** el buscador/escáner ya implementaba este mismo comportamiento localmente en su propio `onKeyDown` (sin cambios), por lo que esta rama del listener global resulta mayormente inerte en el caso de uso típico (foco en el input de búsqueda), ya que ese input queda excluido por el chequeo de input/textarea. Se implementó igual para cumplir literalmente con la instrucción en el caso de que el foco esté en otro elemento.
+- **Adaptación — "input de cantidad":** la UI del carrito no tiene un input de texto para cantidad; usa un stepper con botones `−`/`+` y un `<span>` no editable. No existe ningún elemento al cual aplicar "si ya hay focus en el input de cantidad, confirmar". Se documenta como no aplicable a la UI actual, sin crear un input nuevo no solicitado por esta tarea.
+- El array de dependencias del nuevo `useEffect` lista todos los estados de apertura/cierre referenciados más `filteredProducts` y `cashRegisterStatus`; se agregó `// eslint-disable-next-line react-hooks/exhaustive-deps` (mismo patrón ya usado en otra parte del archivo) porque `handleNewSale`/`addToCart` no están memoizados y se redefinen en cada render — incluirlos forzaría reinscribir el listener constantemente sin beneficio real.
+
+**Notas:**
+- Restricciones respetadas: no se modificó el flujo de pago (`showPaymentModal` y su efecto de Escape quedaron intactos), no se tocó la lógica de ventas/cálculos, y no se modificó ningún archivo fuera de `src/app/ui/pos.tsx`.
+- Tradeoff aceptado conscientemente: como los tres atajos se desactivan uniformemente cuando el foco está en un input/textarea (interpretación literal de la restricción #3, que no distingue entre atajos), Escape no cierra un modal mientras el foco esté en un campo de texto propio de ese modal (ej. el textarea de notas). Se prefirió esta lectura conservadora a inventar una excepción no pedida.
+- `npm run build`, `npx tsc --noEmit -p .` y `npm run lint` ejecutados sin errores ni warnings nuevos. `npm test`: 166 passed / 32 failed (preexistentes, `DATABASE_URL` no disponible en sandbox, no relacionados a este cambio) / 2 skipped — igual al baseline de la sesión.
+
+---
+
 ## Tarea 014 — Descuento global sobre el total del carrito — 2026-06-29
 
 **Estado:** ✅ Completada
