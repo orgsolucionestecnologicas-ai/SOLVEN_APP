@@ -7,6 +7,25 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 008 — Saludo personalizado con nombre del usuario — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/dashboard-summary.tsx`
+
+**Cambios realizados:**
+El componente (Client Component, `"use client"`) no tenía acceso al usuario autenticado — `verifySession()` (`src/lib/auth.ts`) devuelve solo IDs y metadata de sesión, sin `name`. Se encontró que ya existe `GET /api/me` (`src/app/api/me/route.ts`, sin modificar), que devuelve `{ data: { name, businessName, role } }`, y que ya se consume client-side con el mismo patrón (`fetch` + `useEffect` + `useState`) en `SidebarUser` dentro de `src/app/ui/app-shell.tsx` — se replicó ese patrón existente, sin tocar el sistema de autenticación ni ningún Server Component.
+
+Se agregó el componente `GreetingHeader` y el helper `getGreeting(date, name)`, que devuelve el saludo según franja horaria: "Buenos días, {nombre} ☀️" (6-12hs), "Buenas tardes, {nombre} 🌤️" (12-20hs), "Buenas noches, {nombre} 🌙" (20-6hs). El bloque de header se reemplazó: el título estático "Hola, Propietario 👋" pasó a ser el saludo dinámico (`text-xl font-bold`, igual que antes), y debajo se muestra la fecha actual formateada en español (`text-sm text-slate-500`, reutilizando `formatFullDate()` ya existente, que ya producía el formato pedido, ej. "Domingo 28 de junio de 2026") junto al ícono `Calendar` que antes estaba a la derecha del header — se reubicó debajo del saludo en vez de duplicar la fecha en dos lugares del mismo header.
+
+**Notas:**
+- No se modificó `src/lib/auth.ts`, `src/app/api/me/route.ts`, ni ningún Server Component (`dashboard/page.tsx`, `app-shell.tsx`) — todo el cambio quedó contenido en `dashboard-summary.tsx`, según lo pedido.
+- Fallback: mientras el nombre no cargó (o si `/api/me` no devuelve `name`, ej. error de red o sesión inválida), se muestra "Hola 👋" en lugar del saludo por franja horaria, cumpliendo la restricción de no bloquear el render ni asumir un nombre inexistente.
+- `npm run build`, `npm run lint` y `npm test` ejecutados sin errores. Mismas 166 pasadas / 32 fallas preexistentes de integración por falta de `DATABASE_URL` / 2 omitidas — sin relación con este cambio.
+
+---
+
 ## Tarea 007 — Gráfico combinado: ingresos vs. gastos en el mismo chart — 2026-06-29
 
 **Estado:** ✅ Completada

@@ -241,17 +241,8 @@ export function DashboardSummary() {
     <div className="min-h-full bg-slate-50">
       <OpenCashRegisterAlert />
       {/* ── Header ── */}
-      <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Hola, Propietario 👋</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Aquí tienes el resumen de tu negocio</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-sm text-slate-500">
-            <Calendar size={15} className="text-slate-400" />
-            <span>{formatFullDate(now)}</span>
-          </div>
-        </div>
+      <div className="border-b border-slate-200 bg-white px-6 py-5">
+        <GreetingHeader />
       </div>
 
       <div className="space-y-6 px-6 py-6">
@@ -841,6 +832,41 @@ function TopSellersWidget() {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+// ── GreetingHeader ─────────────────────────────────────────────────────────────
+
+function getGreeting(date: Date, name: string | null): string {
+  if (!name) return "Hola 👋";
+  const hour = date.getHours();
+  if (hour >= 6 && hour < 12) return `Buenos días, ${name} ☀️`;
+  if (hour >= 12 && hour < 20) return `Buenas tardes, ${name} 🌤️`;
+  return `Buenas noches, ${name} 🌙`;
+}
+
+function GreetingHeader() {
+  const [name, setName] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/me", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: { name?: string } }) => {
+        if (body.data?.name) setName(body.data.name);
+      })
+      .catch(() => {});
+  }, []);
+
+  const now = new Date();
+
+  return (
+    <div>
+      <h1 className="text-xl font-bold text-slate-900">{getGreeting(now, name)}</h1>
+      <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slate-500">
+        <Calendar size={15} className="text-slate-400" />
+        {formatFullDate(now)}
+      </p>
     </div>
   );
 }
