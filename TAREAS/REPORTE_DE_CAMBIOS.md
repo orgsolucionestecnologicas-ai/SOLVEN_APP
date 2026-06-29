@@ -7,6 +7,32 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 016 — Grid de los 12 productos más vendidos en el POS — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/api/pos/top-products/route.ts` (nuevo)
+- `src/app/ui/pos.tsx`
+
+**Cambios realizados:**
+- Nuevo endpoint `GET /api/pos/top-products`: requiere tenant autenticado (`requireTenantId`, mismo patrón que `/api/search` y `/api/products`). Usa `prisma.saleItem.groupBy` agrupando por `productId`, filtrando por `sale.tenantId` y `product.stock > 0`, ordenando por `_sum.quantity` descendente y tomando los primeros 12 (todos los tiempos, sin recorte por fecha — ver Notas). Luego resuelve los productos completos (`id, name, productCode, categoryName, salePrice, stock, ivaRate`) con un segundo query scoped por `tenantId`, preservando el orden de ventas.
+- En `pos.tsx`: se agregó un bloque colapsable "Más vendidos" entre la barra de búsqueda/categorías y el listado de productos existente. Tiene un botón de título con ícono `ChevronUp`/`ChevronDown` (nuevo import de `lucide-react`) que alterna `topProductsOpen` (estado nuevo, default abierto).
+- El grid es `grid-cols-3 sm:grid-cols-4` (3×4 = 12 tarjetas), cada una con ícono `Package` como placeholder (no hay campo `imageUrl` en el modelo `Product` — ver Notas), nombre truncado a 2 líneas (`line-clamp-2`, ya usado en otro componente del proyecto) y precio con `formatMoney()` (helper ya existente en el archivo).
+- Al hacer clic en una tarjeta se llama a la función `addToCart()` ya existente (sin modificarla), reutilizando exactamente la misma lógica de agregado al carrito que usa la lista de productos actual — la tarjeta queda deshabilitada si no hay stock, la caja está cerrada o no se confirmó el gate de venta, igual que en la lista existente.
+- Se agregó un `useEffect` propio (fetch en el montaje del componente, sin afectar `productsRefreshKey` ni el efecto de carga de `products`) que llama a `/api/pos/top-products` y guarda el resultado en el nuevo estado `topProducts`; si falla, se ignora silenciosamente (el grid es un atajo opcional, no debe bloquear el POS).
+
+**Notas:**
+- Adaptación — `imageUrl`: el prompt pedía retornar "imageUrl (si existe)". El modelo `Product` en `schema.prisma` no tiene ningún campo de imagen, por lo que la condición "si existe" se resuelve en que nunca existe: el endpoint no lo incluye y el grid siempre muestra el ícono `Package` como placeholder, tal como contempla el propio prompt para ese caso.
+- Adaptación — "inactivos": el modelo `Product` no tiene campo `isActive`/`active` (sí lo tienen `Tenant`, `Promotion` y `Service`, pero no `Product`). Se documentó con un comentario en el código y se excluyeron únicamente los productos con `stock = 0`, que es el único filtro de exclusión aplicable al schema actual. No se modificó el schema de Prisma (restricción explícita).
+- Se eligió "todos los tiempos" (sin filtro de fecha) en vez de "último mes", ya que el propio prompt ofrecía ambas opciones como válidas ("del último mes o todos los tiempos") — todos los tiempos evita un grid vacío en negocios nuevos con poco historial de ventas.
+- Se descubrió que ya existe un endpoint distinto `/api/dashboard/top-products` (no listado en "Archivos afectados" de esta tarea, no se tocó) usado para estadísticas del dashboard — agrupa en JS, filtra por últimos 30 días y no incluye stock/precio/ivaRate. Es un consumidor distinto con una necesidad distinta (no sirve para "agregar al carrito"), por lo que se creó el endpoint nuevo en `/api/pos/` en vez de reutilizar o modificar el existente.
+- Si alguno de los 12 productos más vendidos históricamente queda sin stock, el grid mostrará menos de 12 tarjetas (no se reemplaza por el siguiente producto en el ranking) — comportamiento simple y predecible, no se consideró un bug sino una consecuencia directa de "excluí productos con stock 0".
+- Restricciones respetadas: no se modificó el schema de Prisma, no se tocó el flujo de pago, ni la lógica de búsqueda/filtrado existente (`filteredProducts`, `addToCart`, etc. quedaron intactos) — solo se agregó código nuevo y aditivo.
+- `npm run build`, `npx tsc --noEmit -p .` y `npm run lint` ejecutados sin errores ni warnings nuevos (el nuevo endpoint `/api/pos/top-products` aparece correctamente en la salida del build). `npm test`: 166 passed / 32 failed (preexistentes, `DATABASE_URL` no disponible en sandbox, no relacionados a este cambio) / 2 skipped — igual al baseline de la sesión.
+
+---
+
 ## Tarea 015 — Atajos de teclado en el POS — 2026-06-29
 
 **Estado:** ✅ Completada
