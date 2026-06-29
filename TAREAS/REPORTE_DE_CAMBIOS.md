@@ -7,6 +7,32 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 019 — Historial de la última venta visible en el POS — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/pos.tsx`
+
+**Cambios realizados:**
+- Se agregó el tipo `LastSale` (folio, ítems con nombre/cantidad/precio unitario, total, método de pago) y los estados `lastSale: LastSale | null`, `lastSaleCollapsed` (boolean) y `copiedFolio` (boolean, para el feedback visual de "¡Copiado!").
+- En `submitSale()`, justo después de confirmar la venta exitosa (mismo punto donde ya se armaba `showPrintModal` con los datos de la venta recién creada), se agregó `setLastSale(...)` con el resumen de la venta y `setLastSaleCollapsed(false)` para que el panel aparezca expandido automáticamente.
+- En `handleNewSale()` se agregó `setLastSaleCollapsed(true)` luego de `clearSale()`, para que el panel se colapse (no desaparezca) al iniciar una venta nueva.
+- Se agregó el panel colapsable "Última venta" al final del panel derecho (debajo del formulario de cobro/Cobrar), visible solo si `lastSale !== null`:
+  - Encabezado clickeable con el folio y un ícono de chevron (mismo patrón visual que otros paneles colapsables del archivo) que alterna `lastSaleCollapsed`.
+  - Botón "Copiar folio #N" que copia el folio al portapapeles con `navigator.clipboard.writeText` (mismo patrón ya usado para copiar códigos de promoción) y muestra "¡Copiado!" por 2 segundos.
+  - Lista de ítems "cantidad × nombre" con su subtotal (`quantity * unitPrice`).
+  - Total en ARS grande (`formatMoneyNum`).
+  - Método(s) de pago de la venta.
+  - Botón "Ver detalle" con `Link` a `/sales/{saleId}`.
+
+**Notas:**
+- El proyecto ya tenía un modal de impresión (`PrintModal`, vía `showPrintModal`) que se abre automáticamente tras cada venta con datos muy similares (folio, ítems, total, método de pago); ese modal es transitorio y pensado para imprimir/emitir factura, y el usuario lo cierra manualmente. El nuevo panel "Última venta" es un elemento aditivo y permanente (mientras dure la sesión) en el panel derecho del POS, sin tocar ni reemplazar el `PrintModal` ni su lógica existente.
+- Hoy no existe una página `/sales/[id]` (ruta dinámica de detalle) en el proyecto — solo `/sales/page.tsx` con el listado general (`SalesList`). El botón "Ver detalle" enlaza a `/sales/{saleId}` tal como lo pide el prompt de la tarea, pero esa ruta devolverá 404 hasta que se implemente la página de detalle (fuera del alcance de esta tarea, que solo permite tocar `pos.tsx`).
+- El colapso automático se ató a `handleNewSale()` (botón "Nueva venta" / tecla F2), que es la única acción del archivo nombrada explícitamente "nueva venta". No se colapsa el panel por otras acciones (suspender carrito, limpiar venta, etc.) para no salirse de lo pedido literalmente por el prompt.
+- No se modificó el API de ventas (`/api/sales`) ni ningún otro archivo — solo estado local y JSX en `pos.tsx`.
+- `npm run build`, `npm run lint`, `npx tsc --noEmit -p .` y `npm test` corrieron limpios, sin regresiones (166 passed / 32 failed preexistentes por `DATABASE_URL` ausente en test / 2 skipped, igual que la línea base ya conocida).
+
 ## Tarea 018 — Carrito suspendido: pausar una venta y abrir otra en paralelo — 2026-06-29
 
 **Estado:** ✅ Completada

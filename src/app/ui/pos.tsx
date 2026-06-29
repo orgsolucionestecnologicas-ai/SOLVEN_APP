@@ -113,6 +113,14 @@ function cartItemKey(item: CartItem): string {
   return item.productId ?? item.serviceId ?? "";
 }
 
+type LastSale = {
+  saleId: string;
+  folio: number;
+  items: { productName: string; quantity: number; unitPrice: number }[];
+  total: number;
+  paymentMethod: string;
+};
+
 type CreateSaleResponse = {
   data?: {
     id: string;
@@ -337,6 +345,10 @@ export function Pos() {
   const [activePromosLoading, setActivePromosLoading] = useState(false);
   const [promoPanelSearch, setPromoPanelSearch] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const [lastSale, setLastSale] = useState<LastSale | null>(null);
+  const [lastSaleCollapsed, setLastSaleCollapsed] = useState(false);
+  const [copiedFolio, setCopiedFolio] = useState(false);
 
   const [cashRegisterStatus, setCashRegisterStatus] = useState<"loading" | "open" | "closed">("loading");
   const [showPrintModal, setShowPrintModal] = useState<{
@@ -862,6 +874,7 @@ export function Pos() {
     clearSale();
     setSaleGateResult(null);
     setSaleGateOpen(true);
+    setLastSaleCollapsed(true);
   }
 
   function handleSaleGateConfirm(result: SaleGateResult) {
@@ -1260,6 +1273,18 @@ export function Pos() {
       setGlobalDiscountType("percent");
       setGlobalDiscountValue("");
       setProductsRefreshKey((k) => k + 1);
+      setLastSale({
+        saleId: successSaleId,
+        folio: successFolio,
+        items: successCartItems.map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+        total: successTotal,
+        paymentMethod: successPaymentMethod,
+      });
+      setLastSaleCollapsed(false);
       setShowPrintModal({
         saleId: successSaleId,
         folio: successFolio,
@@ -2404,6 +2429,72 @@ export function Pos() {
                 </div>
               </div>
             </form>
+
+            {/* Última venta */}
+            {lastSale ? (
+              <div className="flex-shrink-0 border-t border-slate-200 bg-slate-50">
+                <button
+                  className="flex w-full items-center justify-between px-5 py-2.5"
+                  onClick={() => setLastSaleCollapsed((v) => !v)}
+                  type="button"
+                >
+                  <span className="text-xs font-semibold text-slate-700">
+                    Última venta · Folio #{lastSale.folio}
+                  </span>
+                  {lastSaleCollapsed ? (
+                    <ChevronUp size={14} className="text-slate-400" />
+                  ) : (
+                    <ChevronDown size={14} className="text-slate-400" />
+                  )}
+                </button>
+                {!lastSaleCollapsed ? (
+                  <div className="space-y-2.5 border-t border-slate-200 px-5 py-3">
+                    <div className="flex items-center justify-between">
+                      <button
+                        className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(String(lastSale.folio));
+                          setCopiedFolio(true);
+                          setTimeout(() => setCopiedFolio(false), 2000);
+                        }}
+                        type="button"
+                      >
+                        <Copy size={11} />
+                        {copiedFolio ? "¡Copiado!" : `Copiar folio #${lastSale.folio}`}
+                      </button>
+                    </div>
+                    <ul className="space-y-1">
+                      {lastSale.items.map((item, index) => (
+                        <li
+                          className="flex items-center justify-between gap-2 text-xs text-slate-600"
+                          key={index}
+                        >
+                          <span className="min-w-0 flex-1 truncate">
+                            {item.quantity} × {item.productName}
+                          </span>
+                          <span className="flex-shrink-0 tabular-nums font-medium text-slate-800">
+                            {formatMoneyNum(item.quantity * item.unitPrice)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex items-center justify-between border-t border-slate-200 pt-2">
+                      <span className="text-xs font-semibold text-slate-700">Total</span>
+                      <span className="text-lg font-bold text-slate-950">
+                        {formatMoneyNum(lastSale.total)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">Pago: {lastSale.paymentMethod}</p>
+                    <Link
+                      className="flex items-center justify-center gap-1 rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                      href={`/sales/${lastSale.saleId}`}
+                    >
+                      Ver detalle
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       )}
