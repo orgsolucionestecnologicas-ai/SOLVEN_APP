@@ -317,6 +317,9 @@ export function Pos() {
   const [discountDraftType, setDiscountDraftType] = useState<"percent" | "fixed">("percent");
   const [discountDraftValue, setDiscountDraftValue] = useState("");
 
+  const [globalDiscountType, setGlobalDiscountType] = useState<"percent" | "fixed">("percent");
+  const [globalDiscountValue, setGlobalDiscountValue] = useState("");
+
   const [promosPanelOpen, setPromosPanelOpen] = useState(false);
   const [activePromos, setActivePromos] = useState<ActivePromotion[]>([]);
   const [activePromosLoading, setActivePromosLoading] = useState(false);
@@ -622,6 +625,16 @@ export function Pos() {
   }, 0);
 
   const cartNet = cartTotal - totalDiscount - manualDiscountTotal;
+
+  const parsedGlobalDiscount = parseFloat(globalDiscountValue) || 0;
+  const globalDiscountAmount =
+    parsedGlobalDiscount > 0
+      ? globalDiscountType === "percent"
+        ? cartNet * (Math.min(parsedGlobalDiscount, 100) / 100)
+        : Math.min(parsedGlobalDiscount, cartNet)
+      : 0;
+  const cartGrandTotal = cartNet - globalDiscountAmount;
+
   const totalAssigned = paymentSplits.reduce(
     (sum, s) => sum + (parseFloat(s.amount) || 0),
     0
@@ -686,6 +699,8 @@ export function Pos() {
     setPromoCodeError(null);
     setOptionalCustomerOpen(false);
     setSaleGateResult(null);
+    setGlobalDiscountType("percent");
+    setGlobalDiscountValue("");
     try { localStorage.removeItem(CART_KEY); } catch { /* ignore */ }
   }
 
@@ -990,6 +1005,13 @@ export function Pos() {
                 discountAmount: totalDiscount,
               }
             : {}),
+          ...(globalDiscountAmount > 0
+            ? {
+                globalDiscountType,
+                globalDiscountValue: parsedGlobalDiscount,
+                globalDiscountAmount,
+              }
+            : {}),
           ...(noteText.trim() ? { note: noteText.trim() } : {}),
         }),
       });
@@ -1025,6 +1047,8 @@ export function Pos() {
       setPromoCodeOpen(false);
       setPromoCodeError(null);
       setOptionalCustomerOpen(false);
+      setGlobalDiscountType("percent");
+      setGlobalDiscountValue("");
       setProductsRefreshKey((k) => k + 1);
       setShowPrintModal({
         saleId: successSaleId,
@@ -1842,10 +1866,51 @@ export function Pos() {
                     {formatMoneyNum(cartTotal)}
                   </span>
                 </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-slate-500">Descuento global</span>
+                  <div className="flex items-center gap-1">
+                    <div className="flex overflow-hidden rounded-md border border-slate-200">
+                      <button
+                        className={
+                          globalDiscountType === "percent"
+                            ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                            : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                        }
+                        onClick={() => setGlobalDiscountType("percent")}
+                        type="button"
+                      >
+                        %
+                      </button>
+                      <button
+                        className={
+                          globalDiscountType === "fixed"
+                            ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                            : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                        }
+                        onClick={() => setGlobalDiscountType("fixed")}
+                        type="button"
+                      >
+                        $
+                      </button>
+                    </div>
+                    <input
+                      className="w-16 rounded-md border border-slate-200 px-1.5 py-0.5 text-right text-xs text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                      min="0"
+                      onChange={(e) => setGlobalDiscountValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
+                      placeholder="0"
+                      step="0.01"
+                      type="number"
+                      value={globalDiscountValue}
+                    />
+                  </div>
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-500">Descuento</span>
                   <span className="tabular-nums text-xs font-medium text-emerald-600">
-                    -{formatMoneyNum(totalDiscount + manualDiscountTotal)}
+                    -{formatMoneyNum(totalDiscount + manualDiscountTotal + globalDiscountAmount)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -1860,7 +1925,7 @@ export function Pos() {
                       Total a pagar
                     </span>
                     <span className="tabular-nums text-lg font-bold text-slate-950">
-                      {formatMoneyNum(cartNet)}
+                      {formatMoneyNum(cartGrandTotal)}
                     </span>
                   </div>
                 </div>

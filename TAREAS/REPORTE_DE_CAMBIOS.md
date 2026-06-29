@@ -7,6 +7,29 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 014 — Descuento global sobre el total del carrito — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/pos.tsx`
+
+**Cambios realizados:**
+- Se agregaron los estados `globalDiscountType` (`"percent" | "fixed"`, default `"percent"`) y `globalDiscountValue` (string, default `""`).
+- En el panel de resumen del carrito, justo debajo de "Subtotal", se agregó la fila "Descuento global" con un toggle `%`/`$` y un input numérico. El total se recalcula en tiempo real en cada `onChange` (sin botón "Aplicar").
+- Se agregaron las constantes derivadas `globalDiscountAmount` (calculada como `cartNet × (valor/100)` para `"percent"` o `Math.min(valor, cartNet)` para `"fixed"`, siempre acotada a `[0, cartNet]`) y `cartGrandTotal = cartNet - globalDiscountAmount`, donde `cartNet` es el subtotal ya neto de los descuentos por ítem y promociones (de la Tarea 013) — esto garantiza que el descuento global se aplique DESPUÉS de los descuentos por ítem, sobre el subtotal ya descontado, como pide el prompt.
+- La fila "Descuento" del panel ahora muestra `totalDiscount + manualDiscountTotal + globalDiscountAmount`, y "Total a pagar" muestra `cartGrandTotal`.
+- En `submitSale()`, cuando `globalDiscountAmount > 0`, se agregan al payload de `POST /api/sales` los campos `globalDiscountType`, `globalDiscountValue` (valor crudo ingresado) y `globalDiscountAmount` (monto calculado) — campos adicionales que el validador del backend ignora sin rechazarlos, sin requerir tocar la API ni el schema.
+- El estado del descuento global se resetea a sus valores por defecto en `clearSale()` y en la limpieza posterior a una venta exitosa, para que no quede aplicado por error a la siguiente venta.
+- Los botones del toggle `%`/`$` llevan `type="button"` explícito y el input tiene `onKeyDown` que hace `preventDefault()` en Enter, porque este campo vive dentro del `<form onSubmit={handleSubmit}>` del panel de pago — sin esto, Enter o un clic en el toggle dispararían el submit de la venta.
+
+**Notas:**
+- Restricción respetada: no se tocó `remaining`, `totalAssigned` ni la definición de `cartNet` (lógica del split de pagos), ni el modal de pago — el descuento global se calculó como una capa adicional (`cartGrandTotal`) sin alterar esas variables. Esto significa que, en el estado actual, el monto que el sistema exige cubrir en el split de pagos (`remaining`) sigue basado en `cartNet` (sin el descuento global), mientras que "Total a pagar" en el panel de resumen y el payload enviado al backend sí reflejan el descuento global. Es una limitación conocida de esta tarea puntual (restringida explícitamente a "solo el panel de resumen"), no un bug introducido — quedaría pendiente para una tarea futura que conecte el descuento global con la validación de pagos si se requiere que el monto cobrado real coincida con el total mostrado.
+- No se modificó `/api/sales/route.ts` ni el schema de Prisma.
+- `npm run build`, `npx tsc --noEmit`, `npm run lint` y `npm test` ejecutados sin errores nuevos: build OK, typecheck OK, lint sin warnings, tests 166 passed / 32 failed (preexistentes, `DATABASE_URL` no disponible en sandbox, no relacionados a este cambio) / 2 skipped — igual al baseline de la sesión.
+
+---
+
 ## Tarea 013 — Descuento manual por ítem en el POS — 2026-06-29
 
 **Estado:** ✅ Completada
