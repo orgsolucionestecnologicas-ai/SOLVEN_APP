@@ -322,6 +322,9 @@ export function Pos() {
   const [discountDraftType, setDiscountDraftType] = useState<"percent" | "fixed">("percent");
   const [discountDraftValue, setDiscountDraftValue] = useState("");
 
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
+  const [invalidQuantityIds, setInvalidQuantityIds] = useState<Set<string>>(new Set());
+
   const [globalDiscountType, setGlobalDiscountType] = useState<"percent" | "fixed">("percent");
   const [globalDiscountValue, setGlobalDiscountValue] = useState("");
 
@@ -824,6 +827,8 @@ export function Pos() {
     setSaleGateResult(null);
     setGlobalDiscountType("percent");
     setGlobalDiscountValue("");
+    setQuantityDrafts({});
+    setInvalidQuantityIds(new Set());
     try { localStorage.removeItem(CART_KEY); } catch { /* ignore */ }
   }
 
@@ -1005,6 +1010,7 @@ export function Pos() {
   function updateQuantity(itemId: string, quantity: number) {
     if (quantity < 1) {
       setCartItems((prev) => prev.filter((item) => cartItemKey(item) !== itemId));
+      clearQuantityDraft(itemId);
       return;
     }
 
@@ -1019,6 +1025,48 @@ export function Pos() {
 
   function removeFromCart(itemId: string) {
     setCartItems((prev) => prev.filter((item) => cartItemKey(item) !== itemId));
+    clearQuantityDraft(itemId);
+  }
+
+  function clearQuantityDraft(itemId: string) {
+    setQuantityDrafts((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+    setInvalidQuantityIds((prev) => {
+      if (!prev.has(itemId)) return prev;
+      const next = new Set(prev);
+      next.delete(itemId);
+      return next;
+    });
+  }
+
+  function commitQuantityInput(itemId: string, maxStock: number) {
+    const draft = quantityDrafts[itemId];
+    if (draft === undefined) return;
+
+    const trimmed = draft.trim();
+    const parsed = Number(trimmed);
+
+    if (trimmed === "" || parsed === 0) {
+      updateQuantity(itemId, 0);
+      clearQuantityDraft(itemId);
+      return;
+    }
+
+    if (Number.isNaN(parsed) || parsed < 0) {
+      clearQuantityDraft(itemId);
+      return;
+    }
+
+    if (parsed > maxStock) {
+      setInvalidQuantityIds((prev) => new Set(prev).add(itemId));
+      return;
+    }
+
+    updateQuantity(itemId, Math.floor(parsed));
+    clearQuantityDraft(itemId);
   }
 
   function openDiscountEditor(item: CartItem) {
@@ -1803,9 +1851,9 @@ export function Pos() {
                           </span>
                         )}
                       </div>
-                      <div className="flex w-[68px] items-center justify-center gap-0.5">
+                      <div className="flex w-28 items-center justify-center gap-0.5">
                         <button
-                          className="flex h-5 w-5 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] text-slate-600 hover:bg-slate-50"
+                          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] text-slate-600 hover:bg-slate-50"
                           onClick={() =>
                             updateQuantity(cartItemKey(item), item.quantity - 1)
                           }
@@ -1813,14 +1861,31 @@ export function Pos() {
                         >
                           −
                         </button>
-                        <span className="w-6 text-center text-xs font-semibold tabular-nums text-slate-950">
-                          {item.quantity}
-                        </span>
+                        <input
+                          className={
+                            invalidQuantityIds.has(itemId)
+                              ? "w-16 rounded-md border border-rose-400 bg-rose-50 py-0.5 text-center text-xs font-semibold tabular-nums text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                              : "w-16 rounded-md border border-transparent bg-transparent py-0.5 text-center text-xs font-semibold tabular-nums text-slate-950 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                          }
+                          min="0"
+                          onBlur={() => commitQuantityInput(itemId, item.maxStock)}
+                          onChange={(e) =>
+                            setQuantityDrafts((prev) => ({ ...prev, [itemId]: e.target.value }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              commitQuantityInput(itemId, item.maxStock);
+                            }
+                          }}
+                          type="number"
+                          value={quantityDrafts[itemId] ?? String(item.quantity)}
+                        />
                         <button
                           className={
                             item.quantity >= item.maxStock
-                              ? "flex h-5 w-5 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-[11px] text-slate-300"
-                              : "flex h-5 w-5 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] text-slate-600 hover:bg-slate-50"
+                              ? "flex h-5 w-5 flex-shrink-0 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-[11px] text-slate-300"
+                              : "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] text-slate-600 hover:bg-slate-50"
                           }
                           disabled={item.quantity >= item.maxStock}
                           onClick={() =>

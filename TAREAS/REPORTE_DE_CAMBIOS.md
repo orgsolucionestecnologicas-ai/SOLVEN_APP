@@ -7,6 +7,31 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 017 — Edición directa de cantidad en el carrito sin abrir modal — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/pos.tsx`
+
+**Cambios realizados:**
+- Se reemplazó el `<span>` estático que mostraba `item.quantity` en cada fila del carrito por un `<input type="number">` inline (`w-16`, centrado, sin borde visible en estado normal, `focus:border-violet-500`/`focus:ring-violet-500` al enfocar), manteniendo intactos los botones `−`/`+` existentes (siguen funcionando igual, vía la misma `updateQuantity()`).
+- Se agregaron dos estados nuevos: `quantityDrafts` (texto en edición por ítem, mientras el usuario escribe) e `invalidQuantityIds` (ids que están mostrando el error visual de stock superado).
+- Se agregó `commitQuantityInput(itemId, maxStock)`, llamado en `onBlur` y en `onKeyDown` con `Enter`:
+  - Valor vacío o `0` → elimina el ítem del carrito (reutiliza `updateQuantity(itemId, 0)`, que ya filtraba el ítem).
+  - Valor no numérico o negativo → se descarta el draft y el input vuelve a mostrar la cantidad actual (sin error visual, ya que no es el caso "supera stock" que pide el prompt).
+  - Valor mayor al stock disponible (`maxStock`) → el input queda con borde y texto rojo (`border-rose-400`/`text-rose-600`) y **no se actualiza** la cantidad en el carrito; el valor inválido permanece visible hasta que el usuario lo corrija.
+  - Valor válido (entero entre 1 y el stock) → confirma con `updateQuantity(itemId, Math.floor(parsed))`.
+- Se agregó `clearQuantityDraft(itemId)` para limpiar el draft/error de un ítem cuando se elimina del carrito (botón "X", botón "−" al llegar a 0, o `clearSale()` al iniciar una venta nueva) — evita que un id de producto reutilizado (sacado y vuelto a agregar al carrito) herede por error un estado "inválido" de una edición anterior ya descartada.
+- Se ensanchó el contenedor de la columna de cantidad de `w-[68px]` a `w-28` para que el input (`w-16`) entre junto a los dos botones sin recortarse, y se agregó `flex-shrink-0` a ambos botones para que no se compriman.
+
+**Notas:**
+- Restricciones respetadas: no se tocó el API de ventas (`/api/sales`) ni ningún otro archivo — solo el renderizado del carrito en `pos.tsx`. La lógica de cálculo de totales (`cartNet`, `remaining`, `totalAssigned`, etc.) no se modificó; `updateQuantity()` se reutilizó sin cambiar su comportamiento existente (sigue siendo llamado igual por los botones +/-).
+- La fila de ítems en el recibo/ticket imprimible (HTML generado para impresión, más abajo en el archivo) no se tocó — es una vista de solo lectura distinta del carrito editable y no estaba dentro del alcance de esta tarea.
+- `npm run build`, `npx tsc --noEmit -p .` y `npm run lint` ejecutados sin errores ni warnings nuevos. `npm test`: 166 passed / 32 failed (preexistentes, `DATABASE_URL` no disponible en sandbox, no relacionados a este cambio) / 2 skipped — igual al baseline de la sesión.
+
+---
+
 ## Tarea 016 — Grid de los 12 productos más vendidos en el POS — 2026-06-29
 
 **Estado:** ✅ Completada
