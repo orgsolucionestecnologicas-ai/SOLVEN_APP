@@ -273,6 +273,7 @@ export function DashboardSummary() {
             sparkData={salesByDay.map((d) => d.total)}
             sparkColor="#7c3aed"
             href="/sales"
+            tooltipText="Total de ventas completadas en el período seleccionado."
           />
           <MetricCard
             title="Ventas del mes"
@@ -373,10 +374,23 @@ function useCountUp(target: number, duration: number = 800): number {
   return value;
 }
 
+// ── KpiTooltip ─────────────────────────────────────────────────────────────────
+
+function KpiTooltip({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex flex-shrink-0">
+      <span className="cursor-default text-sm leading-none text-gray-400">ⓘ</span>
+      <span className="pointer-events-none absolute right-0 top-full z-10 mt-1.5 w-56 rounded-md bg-slate-900 px-2.5 py-1.5 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+        {text}
+      </span>
+    </span>
+  );
+}
+
 // ── MetricCard ─────────────────────────────────────────────────────────────────
 
 function MetricCard({
-  title, value, format, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor, href,
+  title, value, format, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor, href, tooltipText,
 }: {
   title: string;
   value: number;
@@ -389,6 +403,7 @@ function MetricCard({
   sparkData: number[];
   sparkColor: string;
   href?: string;
+  tooltipText?: string;
 }) {
   const animatedValue = useCountUp(value);
   const cardClassName = `rounded-xl border border-slate-100 bg-white p-5 shadow-sm${
@@ -407,8 +422,11 @@ function MetricCard({
             </p>
           ) : null}
         </div>
-        <div className={`rounded-lg p-2 ${iconBg}`}>
-          <span className={iconColor}>{IconEl}</span>
+        <div className="flex items-center gap-1.5">
+          {tooltipText ? <KpiTooltip text={tooltipText} /> : null}
+          <div className={`rounded-lg p-2 ${iconBg}`}>
+            <span className={iconColor}>{IconEl}</span>
+          </div>
         </div>
       </div>
       {sparkData.length > 1 ? (
@@ -447,8 +465,11 @@ function LowStockCard({ count }: { count: number | null }) {
             {count === null ? "—" : animatedCount}
           </p>
         </div>
-        <div className="rounded-lg bg-orange-100 p-2">
-          <Package size={18} className="text-orange-600" />
+        <div className="flex items-center gap-1.5">
+          <KpiTooltip text="Productos con stock igual o por debajo del mínimo configurado." />
+          <div className="rounded-lg bg-orange-100 p-2">
+            <Package size={18} className="text-orange-600" />
+          </div>
         </div>
       </div>
       <span className="mt-3 inline-flex items-center text-xs font-medium text-orange-600">

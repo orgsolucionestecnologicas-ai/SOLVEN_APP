@@ -7,6 +7,28 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 010 — Tooltip explicativo en cada KPI del Dashboard — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/dashboard-summary.tsx`
+
+**Cambios realizados:**
+- Se agregó el componente `KpiTooltip({ text })`: un ícono ⓘ pequeño (`text-gray-400`) que al hacer hover (`group`/`group-hover` de Tailwind, sin librerías externas) muestra un tooltip con fondo oscuro (`bg-slate-900`) y el texto explicativo, posicionado debajo del ícono con `absolute`/`pointer-events-none`.
+- Se agregó un prop opcional `tooltipText?: string` a `MetricCard`, renderizado junto al ícono de la tarjeta (esquina superior derecha) cuando se provee.
+- Se aplicó el tooltip a las tarjetas KPI cuyo texto del prompt corresponde de forma inequívoca a una tarjeta real del Dashboard:
+  - "Ventas del día" → "Total de ventas completadas en el período seleccionado."
+  - "Productos bajos" (tarjeta `LowStockCard`, equivalente a "Stock crítico") → "Productos con stock igual o por debajo del mínimo configurado."
+
+**Notas:**
+- El prompt nombraba 5 KPIs con su texto: Ventas del día, Balance de caja, Gastos del mes, Deudas pendientes y Stock crítico. El Dashboard actual no tiene tarjetas KPI para "Balance de caja", "Gastos del mes" ni "Deudas pendientes" (esos datos se obtienen en el fetch pero no se muestran como tarjeta numérica grande — mismo hallazgo documentado en Tareas 002 y 009). Las 4 tarjetas reales son: Ventas del día, Ventas del mes, Ganancia del día y Productos bajos.
+- De esas 4 tarjetas, solo "Ventas del día" y "Productos bajos" tienen una correspondencia textual exacta y precisa con los textos del prompt ("Stock crítico" describe exactamente lo que muestra "Productos bajos"). "Ventas del mes" y "Ganancia del día" no tienen un texto equivalente en el prompt — "Ganancia del día" no es lo mismo que "Balance de caja" (una es ventas menos egresos de caja del día, la otra sería el saldo acumulado de caja), por lo que asignarle ese texto sería inexacto. Siguiendo "ante la duda, hacé menos — no más", se dejaron esas dos tarjetas sin tooltip en lugar de inventar un texto explicativo no solicitado.
+- No se usaron librerías de tooltip externas — solo CSS de Tailwind con `group`/`group-hover`.
+- `npm run build`, `npm run lint` y `npm test` ejecutados sin errores nuevos: build OK, lint sin warnings, tests 166 passed / 32 failed (preexistentes, `DATABASE_URL` no disponible en sandbox, no relacionados a este cambio) / 2 skipped — igual al baseline de la sesión.
+
+---
+
 ## Tarea 009 — Animación de conteo (rollup) en los números grandes del Dashboard — 2026-06-29
 
 **Estado:** ✅ Completada
