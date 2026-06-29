@@ -7,6 +7,29 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 018 — Carrito suspendido: pausar una venta y abrir otra en paralelo — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/pos.tsx`
+
+**Cambios realizados:**
+- Se agregó el estado `suspendedCarts: CartItem[][]` (máximo 3, controlado con la nueva constante `MAX_SUSPENDED_CARTS`) y `suspendedCartsOpen` (boolean) para el popover de la lista.
+- Se agregó `handleSuspendCart()`: si el carrito activo tiene ítems y no se alcanzó el máximo de 3 carritos suspendidos, guarda el carrito actual (snapshot) en `suspendedCarts` y limpia la venta activa con `clearSale()` (la misma función que ya usa el resto del flujo para iniciar una venta nueva).
+- Se agregó `handleRestoreSuspendedCart(index)`: reemplaza el carrito activo con el carrito suspendido seleccionado y lo quita del array `suspendedCarts`.
+- Se agregó `getSuspendedCartTotal(cart)`: suma `getLineFinalTotal(item, item.unitPrice)` de cada ítem para mostrar el total aproximado de cada carrito guardado en la lista (no recalcula promociones, ya que esas dependen de estado de la venta activa que no se persiste por carrito suspendido).
+- En la barra de acciones del carrito (encabezado "Venta actual", junto al botón "Promociones"), se agregó:
+  - Un botón "⏸ Suspender" que llama a `handleSuspendCart()`. Se deshabilita visualmente (gris, `cursor-not-allowed`) cuando el carrito está vacío o ya hay 3 carritos suspendidos (con `title` explicativo en ese segundo caso).
+  - Un badge/botón ámbar con el ícono de pausa y el número de carritos suspendidos, visible solo si `suspendedCarts.length > 0`. Al hacer clic abre un popover simple con la lista "N ítems · $TOTAL" por carrito; seleccionar uno lo restaura como carrito activo y lo elimina de la lista. El popover se cierra con click afuera (mismo patrón que el dropdown "Más opciones" ya existente) y con tecla Escape (se sumó `suspendedCartsOpen` a la cadena de Escape y a las dependencias del listener global de teclado).
+- Los carritos suspendidos viven solo en memoria (`useState`), no se persisten en localStorage ni en DB.
+
+**Notas:**
+- El archivo ya tenía un mecanismo de "venta suspendida" preexistente y totalmente distinto: un único borrador en `localStorage` (`DRAFT_KEY`), con su propio botón "Suspender venta" en el header superior, otro botón "Suspender" en la barra de acciones rápidas del panel izquierdo, y la opción "Guardar como borrador" dentro del dropdown "Más opciones" del panel de pago — todos disparando la función existente `handleSuspend()`, y el banner amarillo "Tienes una venta suspendida" (`showDraftBanner`) que ya existía para recuperarlo.
+- Siguiendo la consigna de la tarea (que pide explícitamente un estado nuevo `suspendedCarts: CartItem[][]`, distinto del mecanismo de un solo borrador) y el principio de "ante la duda, hacé menos", no se tocó, fusionó ni eliminó nada del sistema preexistente (`DRAFT_KEY`, `handleSuspend`, `handleRecoverDraft`, `handleDiscardDraft`, `showDraftBanner`, los tres botones/entradas que ya usaban ese flujo). La nueva función de carritos suspendidos múltiples se implementó como una capa 100% aditiva y en paralelo, en la barra de acciones del propio carrito (panel derecho), distinta de los botones "Suspender venta" del panel izquierdo.
+- No se modificaron APIs ni el schema de Prisma — solo estado de React y JSX en `pos.tsx`.
+- `npm run build`, `npm run lint`, `npx tsc --noEmit -p .` y `npm test` corrieron limpios: build y lint sin errores, typecheck sin errores, y tests en la misma línea base ya conocida del proyecto (166 passed / 32 failed por `DATABASE_URL` ausente en el entorno de test, preexistente / 2 skipped) — sin regresiones.
+
 ## Tarea 017 — Edición directa de cantidad en el carrito sin abrir modal — 2026-06-29
 
 **Estado:** ✅ Completada

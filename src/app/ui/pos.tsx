@@ -175,6 +175,7 @@ type ActiveTab = "Venta actual" | "Historial";
 
 const DRAFT_KEY = "solven_draft";
 const CART_KEY = "solven_pos_cart";
+const MAX_SUSPENDED_CARTS = 3;
 
 const PRODUCTS_PER_PAGE = 10;
 
@@ -311,6 +312,9 @@ export function Pos() {
   const [cotizacionOpen, setCotizacionOpen] = useState(false);
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
 
+  const [suspendedCarts, setSuspendedCarts] = useState<CartItem[][]>([]);
+  const [suspendedCartsOpen, setSuspendedCartsOpen] = useState(false);
+
   const [applyResult, setApplyResult] = useState<ApplyResultData | null>(null);
   const [manualCodes, setManualCodes] = useState<string[]>([]);
   const [excludedPromotionIds, setExcludedPromotionIds] = useState<Set<string>>(new Set());
@@ -354,6 +358,7 @@ export function Pos() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   const moreDropdownRef = useRef<HTMLDivElement>(null);
+  const suspendedCartsRef = useRef<HTMLDivElement>(null);
   const applyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const urlCustomerIdRef = useRef<string | null>(null);
 
@@ -417,6 +422,17 @@ export function Pos() {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [moreDropdownOpen]);
+
+  useEffect(() => {
+    if (!suspendedCartsOpen) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (suspendedCartsRef.current && !suspendedCartsRef.current.contains(e.target as Node)) {
+        setSuspendedCartsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [suspendedCartsOpen]);
 
   useEffect(() => {
     let isActive = true;
@@ -749,6 +765,10 @@ export function Pos() {
           setMoreDropdownOpen(false);
           return;
         }
+        if (suspendedCartsOpen) {
+          setSuspendedCartsOpen(false);
+          return;
+        }
         if (promosPanelOpen) {
           setPromosPanelOpen(false);
           return;
@@ -798,6 +818,7 @@ export function Pos() {
     noteModalOpen,
     cotizacionOpen,
     moreDropdownOpen,
+    suspendedCartsOpen,
     promosPanelOpen,
     customerSearchOpen,
     optionalCustomerOpen,
@@ -858,6 +879,24 @@ export function Pos() {
     clearSale();
     setSuccessMessage("Venta suspendida — puedes recuperarla con Nueva venta");
     setTimeout(() => setSuccessMessage(null), 4000);
+  }
+
+  function handleSuspendCart() {
+    if (cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS) return;
+    setSuspendedCarts((prev) => [...prev, cartItems]);
+    clearSale();
+  }
+
+  function handleRestoreSuspendedCart(index: number) {
+    const cart = suspendedCarts[index];
+    if (!cart) return;
+    setCartItems(cart);
+    setSuspendedCarts((prev) => prev.filter((_, i) => i !== index));
+    setSuspendedCartsOpen(false);
+  }
+
+  function getSuspendedCartTotal(cart: CartItem[]): number {
+    return cart.reduce((sum, item) => sum + getLineFinalTotal(item, item.unitPrice), 0);
   }
 
   function handleRecoverDraft() {
@@ -1733,6 +1772,58 @@ export function Pos() {
                 ) : null}
               </h2>
               <div className="flex items-center gap-1.5">
+                {suspendedCarts.length > 0 ? (
+                  <div className="relative" ref={suspendedCartsRef}>
+                    <button
+                      className="flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                      onClick={() => setSuspendedCartsOpen((v) => !v)}
+                      type="button"
+                    >
+                      <PauseCircle size={12} />
+                      {suspendedCarts.length}
+                    </button>
+                    {suspendedCartsOpen ? (
+                      <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                        <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Carritos suspendidos
+                        </p>
+                        {suspendedCarts.map((cart, index) => (
+                          <button
+                            className="flex w-full items-center justify-between px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                            key={index}
+                            onClick={() => handleRestoreSuspendedCart(index)}
+                            type="button"
+                          >
+                            <span>
+                              {cart.length} {cart.length === 1 ? "ítem" : "ítems"}
+                            </span>
+                            <span className="font-semibold text-slate-950">
+                              {formatMoneyNum(getSuspendedCartTotal(cart))}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                <button
+                  className={
+                    cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS
+                      ? "flex cursor-not-allowed items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-300"
+                      : "flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50"
+                  }
+                  disabled={cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS}
+                  onClick={handleSuspendCart}
+                  title={
+                    suspendedCarts.length >= MAX_SUSPENDED_CARTS
+                      ? "Máximo 3 carritos suspendidos"
+                      : undefined
+                  }
+                  type="button"
+                >
+                  <PauseCircle size={12} />
+                  Suspender
+                </button>
                 <button
                   className="flex items-center gap-1 rounded-lg border border-violet-300 px-2 py-1.5 text-xs font-medium text-violet-600 hover:bg-violet-50"
                   onClick={() => {
