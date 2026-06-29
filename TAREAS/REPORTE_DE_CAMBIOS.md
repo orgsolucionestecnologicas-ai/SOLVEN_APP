@@ -7,6 +7,25 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 020 — Campo de cantidad fraccionada por ítem en el POS — 2026-06-29
+
+**Estado:** ⚠️ Parcial
+
+**Archivos modificados:**
+- `src/app/ui/pos.tsx`
+
+**Cambios realizados:**
+- Se agregó `step="0.001"` al `<input type="number">` de cantidad en cada fila del carrito (el mismo input inline agregado en la Tarea 017), permitiendo ingresar decimales como 1.5 o 0.75.
+- En `commitQuantityInput()` se reemplazó `Math.floor(parsed)` por un redondeo a 3 decimales (`Math.round(parsed * 1000) / 1000`), eliminando el truncado a entero que forzaba la cantidad confirmada a un número entero. No hay ningún `parseInt()` aplicado a `quantity` en el archivo (se verificó con búsqueda completa).
+- Se agregó el helper `formatQuantity(value)`: devuelve el número tal cual (sin decimales) si es entero, o con 3 decimales fijos si tiene parte fraccionaria (ej: `1.5` → `"1.500"`, `2` → `"2"`). Se usa como valor mostrado en el input de cantidad cuando no hay un draft en edición.
+- El tipo `CartItem.quantity` ya era `number` (sin cambios) y los cálculos de subtotal (`getLineFinalTotal`, `cartTotal`, `cartNet`, `cartGrandTotal`, etc.) ya operaban con floats sin redondeo intermedio — mantienen los decimales hasta el total final, que se muestra redondeado a 2 decimales vía `formatARS` (`Intl.NumberFormat` con moneda ARS), sin necesidad de cambios adicionales.
+
+**Notas:**
+- ⚠️ **Limitación de backend descubierta, fuera del alcance permitido de esta tarea:** `SaleItem.quantity` en `prisma/schema.prisma` es de tipo `Int`, y `src/modules/sales/sale-validation.ts:91` valida explícitamente `Number.isInteger(item.quantity)` y rechaza la venta con el error "Sale item quantity must be a positive integer." si la cantidad no es entera. Esto significa que, con el cambio actual, el carrito del POS permite ingresar y previsualizar cantidades decimales (ej. "1.500"), pero al intentar **cobrar** una venta que incluya un ítem con cantidad fraccionada, la petición a `/api/sales` será rechazada por esa validación existente y se mostrará el error al cajero — la venta no se registrará. `Product.stock` también es `Int`, mismo límite del lado de inventario.
+- Las restricciones explícitas del prompt ("No modifiques el schema de Prisma ni los API routes", "No toques el flujo de pago") impiden corregir esto en esta tarea — requeriría una migración (`SaleItem.quantity` y posiblemente `Product.stock` a `Float`/`Decimal`) y actualizar `sale-validation.ts`, ambos fuera de alcance. Se marca la tarea como **Parcial**: lo pedido literalmente en el prompt (input decimal, sin floor/parseInt, cálculo de subtotal sin truncar, display con hasta 3 decimales) está implementado y funcionando en el carrito, pero el flujo termina bloqueado en el paso de cobro por una validación de backend preexistente que no se podía tocar. Se recomienda una tarea de seguimiento para habilitar cantidades decimales también en `SaleItem`/`Product.stock`.
+- No se tocaron las pantallas de solo lectura que también muestran `item.quantity` como texto plano (modal de Cotización, ticket/recibo imprimible, panel "Última venta" de la Tarea 019, badge de cantidad de ítems en el header del carrito) — el prompt acota el cambio de formato de display a "el carrito", interpretado como el campo de cantidad editable de la fila del carrito; ampliar el formato a esas otras vistas no estaba pedido explícitamente.
+- `npm run build`, `npm run lint`, `npx tsc --noEmit -p .` y `npm test` corrieron limpios, sin regresiones (166 passed / 32 failed preexistentes por `DATABASE_URL` ausente en test / 2 skipped, misma línea base).
+
 ## Tarea 019 — Historial de la última venta visible en el POS — 2026-06-29
 
 **Estado:** ✅ Completada

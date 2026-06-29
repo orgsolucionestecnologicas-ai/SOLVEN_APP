@@ -113,6 +113,10 @@ function cartItemKey(item: CartItem): string {
   return item.productId ?? item.serviceId ?? "";
 }
 
+function formatQuantity(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(3);
+}
+
 type LastSale = {
   saleId: string;
   folio: number;
@@ -1117,7 +1121,8 @@ export function Pos() {
       return;
     }
 
-    updateQuantity(itemId, Math.floor(parsed));
+    const rounded = Math.round(parsed * 1000) / 1000;
+    updateQuantity(itemId, rounded);
     clearQuantityDraft(itemId);
   }
 
@@ -1994,8 +1999,9 @@ export function Pos() {
                               commitQuantityInput(itemId, item.maxStock);
                             }
                           }}
+                          step="0.001"
                           type="number"
-                          value={quantityDrafts[itemId] ?? String(item.quantity)}
+                          value={quantityDrafts[itemId] ?? formatQuantity(item.quantity)}
                         />
                         <button
                           className={
