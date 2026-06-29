@@ -7,6 +7,28 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 007 — Gráfico combinado: ingresos vs. gastos en el mismo chart — 2026-06-29
+
+**Estado:** ✅ Completada
+
+**Archivos modificados:**
+- `src/app/ui/dashboard-summary.tsx`
+
+**Cambios realizados:**
+El gráfico de 7 días (`MainSalesChart` / `SalesAreaChart`, SVG hecho a mano, sin librería de gráficos) solo mostraba ventas. Se agregó un segundo dataset de gastos del mismo período sin tocar el tamaño, posición ni la librería del widget (sigue siendo SVG plano, mismas constantes `CW_MAIN`/`CH_MAIN`/márgenes).
+
+Se agregó el tipo `Expense` (`id`, `expenseDate`, `amount`) y el campo `expenses` a `DashboardState`. El fetch de datos del dashboard ahora incluye `GET /api/expenses?from=...&to=...` (endpoint ya existente, ya soportaba `from`/`to` igual que `/api/sales` y `/api/cash-movements` — no se modificó), agregado al mismo `Promise.allSettled` y siguiendo el mismo patrón de mapeo de las demás fuentes.
+
+Se calculó `expensesByDay` (gastos agrupados por día sobre `last7Dates`) con la misma lógica ya usada para `salesByDay`. `MainSalesChart` ahora recibe `salesByDay` y `expensesByDay`, y `SalesAreaChart` renderiza ambos datasets sobre el mismo SVG: la línea de ventas (violeta `#7c3aed`, con el área de relleno que ya existía) y una nueva línea de gastos (naranja `#f97316`, sin relleno, para no saturar visualmente el gráfico al superponerse). El eje Y (`yMax`/`niceMax`) ahora se calcula sobre el máximo de ambos datasets combinados. Se agregó una leyenda simple ("● Ventas ● Gastos") arriba del gráfico, debajo del título, que se actualizó a "Ingresos vs. gastos — últimos 7 días" para reflejar que ya no es solo de ventas. El estado vacío (`hasData`) ahora considera ambos datasets.
+
+**Notas:**
+- No se modificó la librería de gráficos (sigue siendo SVG plano hecho a mano) ni su configuración global, ni el tamaño/posición del widget — solo su contenido interno.
+- No se tocaron APIs fuera de las del dashboard: `/api/expenses` ya soportaba `from`/`to`, se usó tal cual sin modificarlo.
+- Igual que con `/api/sales` y `/api/cash-movements` en este mismo componente, el fetch de gastos no especifica `limit`, por lo que usa el default de paginación del endpoint (`20`) — comportamiento preexistente del archivo, no introducido por esta tarea.
+- `npm run build`, `npm run lint` y `npm test` ejecutados sin errores. Mismas 166 pasadas / 32 fallas preexistentes de integración por falta de `DATABASE_URL` / 2 omitidas — sin relación con este cambio.
+
+---
+
 ## Tarea 006 — Accesos rápidos al POS y Nuevo Gasto desde el Dashboard — 2026-06-29
 
 **Estado:** ✅ Completada

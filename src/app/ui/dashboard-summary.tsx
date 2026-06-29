@@ -49,6 +49,12 @@ type CashMovement = {
   referenceId: string;
 };
 
+type Expense = {
+  id: string;
+  expenseDate: string;
+  amount: string;
+};
+
 type Product = {
   id: string;
   name: string;
@@ -106,6 +112,7 @@ type DashboardState = {
   summary: Summary | null;
   sales: Sale[] | null;
   cashMovements: CashMovement[] | null;
+  expenses: Expense[] | null;
   products: Product[] | null;
   customers: Customer[] | null;
   debts: Debt[] | null;
@@ -119,6 +126,7 @@ export function DashboardSummary() {
     summary: null,
     sales: null,
     cashMovements: null,
+    expenses: null,
     products: null,
     customers: null,
     debts: null,
@@ -137,14 +145,16 @@ export function DashboardSummary() {
     setState((prev) => ({ ...prev, loading: true }));
 
     async function load() {
-      const salesUrl = `/api/sales?from=${from}&to=${to}`;
-      const cashUrl   = `/api/cash-movements?from=${from}&to=${to}`;
+      const salesUrl    = `/api/sales?from=${from}&to=${to}`;
+      const cashUrl      = `/api/cash-movements?from=${from}&to=${to}`;
+      const expensesUrl  = `/api/expenses?from=${from}&to=${to}`;
 
-      const [summaryRes, salesRes, cashRes, productsRes, customersRes, debtsRes] =
+      const [summaryRes, salesRes, cashRes, expensesRes, productsRes, customersRes, debtsRes] =
         await Promise.allSettled([
           fetch("/api/dashboard/summary", { headers: { Accept: "application/json" } }).then((r) => r.json()),
           fetch(salesUrl,                 { headers: { Accept: "application/json" } }).then((r) => r.json()),
           fetch(cashUrl,                  { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch(expensesUrl,              { headers: { Accept: "application/json" } }).then((r) => r.json()),
           fetch("/api/products",          { headers: { Accept: "application/json" } }).then((r) => r.json()),
           fetch("/api/customers",         { headers: { Accept: "application/json" } }).then((r) => r.json()),
           fetch("/api/debts",             { headers: { Accept: "application/json" } }).then((r) => r.json()),
@@ -156,6 +166,7 @@ export function DashboardSummary() {
         summary:       summaryRes.status   === "fulfilled" ? (summaryRes.value.data   as Summary        ?? null) : null,
         sales:         salesRes.status     === "fulfilled" ? (salesRes.value.data     as Sale[]         ?? null) : null,
         cashMovements: cashRes.status      === "fulfilled" ? (cashRes.value.data      as CashMovement[] ?? null) : null,
+        expenses:      expensesRes.status  === "fulfilled" ? (expensesRes.value.data  as Expense[]      ?? null) : null,
         products:      productsRes.status  === "fulfilled" ? (productsRes.value.data  as Product[]      ?? null) : null,
         customers:     customersRes.status === "fulfilled" ? (customersRes.value.data as Customer[]     ?? null) : null,
         debts:         debtsRes.status     === "fulfilled" ? (debtsRes.value.data     as Debt[]         ?? null) : null,
@@ -181,8 +192,9 @@ export function DashboardSummary() {
     new Date(now.getTime() - (6 - i) * 86_400_000).toISOString().slice(0, 10)
   );
 
-  const allSales = state.sales ?? [];
-  const allCash  = state.cashMovements ?? [];
+  const allSales    = state.sales ?? [];
+  const allCash     = state.cashMovements ?? [];
+  const allExpenses = state.expenses ?? [];
 
   const todaySalesTotal     = sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === todayStr));
   const yesterdaySalesTotal = sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === yesterdayStr));
@@ -198,6 +210,13 @@ export function DashboardSummary() {
   const salesByDay: DayTotal[] = last7Dates.map((date) => ({
     date,
     total: sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === date)),
+  }));
+
+  const expensesByDay: DayTotal[] = last7Dates.map((date) => ({
+    date,
+    total: allExpenses
+      .filter((e) => e.expenseDate.slice(0, 10) === date)
+      .reduce((s, e) => s + Number(e.amount), 0),
   }));
 
   const profitByDay = last7Dates.map((date, i) => {
@@ -318,7 +337,7 @@ export function DashboardSummary() {
         {/* ── Chart + Top products ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
           <div className="lg:col-span-3">
-            <MainSalesChart salesByDay={salesByDay} />
+            <MainSalesChart salesByDay={salesByDay} expensesByDay={expensesByDay} />
           </div>
           <div className="lg:col-span-2">
             <TopProductsPanel />
@@ -522,27 +541,41 @@ const MB_MAIN = 38;
 const PW = CW_MAIN - ML_MAIN - MR_MAIN;
 const PH = CH_MAIN - MT_MAIN - MB_MAIN;
 
-function MainSalesChart({ salesByDay }: { salesByDay: DayTotal[] }) {
-  const hasData = salesByDay.some((d) => d.total > 0);
+function MainSalesChart({
+  salesByDay,
+  expensesByDay,
+}: {
+  salesByDay: DayTotal[];
+  expensesByDay: DayTotal[];
+}) {
+  const hasData = salesByDay.some((d) => d.total > 0) || expensesByDay.some((d) => d.total > 0);
 
   return (
     <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
-      <div className="mb-4">
-        <p className="text-sm font-semibold text-slate-900">Ventas de los últimos 7 días</p>
+      <div className="mb-2">
+        <p className="text-sm font-semibold text-slate-900">Ingresos vs. gastos — últimos 7 días</p>
+      </div>
+      <div className="mb-4 flex items-center gap-4 text-xs text-slate-500">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full bg-violet-600" /> Ventas
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full bg-orange-500" /> Gastos
+        </span>
       </div>
       {!hasData ? (
         <div className="flex h-[180px] items-center justify-center rounded-lg border border-dashed border-slate-200">
-          <p className="text-sm text-slate-400">Sin ventas registradas</p>
+          <p className="text-sm text-slate-400">Sin ventas ni gastos registrados</p>
         </div>
       ) : (
-        <SalesAreaChart data={salesByDay} />
+        <SalesAreaChart data={salesByDay} expensesData={expensesByDay} />
       )}
     </div>
   );
 }
 
-function SalesAreaChart({ data }: { data: DayTotal[] }) {
-  const maxVal = Math.max(...data.map((d) => d.total));
+function SalesAreaChart({ data, expensesData }: { data: DayTotal[]; expensesData: DayTotal[] }) {
+  const maxVal = Math.max(...data.map((d) => d.total), ...expensesData.map((d) => d.total));
   const yMax   = niceMax(maxVal);
   const n      = data.length;
 
@@ -559,9 +592,10 @@ function SalesAreaChart({ data }: { data: DayTotal[] }) {
     y: MT_MAIN + PH - f * PH,
   }));
 
-  const bottomY    = MT_MAIN + PH;
-  const polyPts    = data.map((d, i) => `${xOf(i)},${yOf(d.total)}`).join(" ");
-  const areaPath   = [
+  const bottomY        = MT_MAIN + PH;
+  const polyPts        = data.map((d, i) => `${xOf(i)},${yOf(d.total)}`).join(" ");
+  const expensesPolyPts = expensesData.map((d, i) => `${xOf(i)},${yOf(d.total)}`).join(" ");
+  const areaPath       = [
     `M ${xOf(0)},${bottomY}`,
     ...data.map((d, i) => `L ${xOf(i)},${yOf(d.total)}`),
     `L ${xOf(n - 1)},${bottomY}`,
@@ -609,6 +643,21 @@ function SalesAreaChart({ data }: { data: DayTotal[] }) {
           key={d.date}
           cx={xOf(i)} cy={yOf(d.total)}
           r="3" fill="#7c3aed"
+        />
+      ))}
+
+      <polyline
+        points={expensesPolyPts}
+        fill="none"
+        stroke="#f97316"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      {expensesData.map((d, i) => (
+        <circle
+          key={d.date}
+          cx={xOf(i)} cy={yOf(d.total)}
+          r="3" fill="#f97316"
         />
       ))}
 
