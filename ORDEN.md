@@ -1,26 +1,24 @@
-# ORDEN — [título breve de la tarea]
+# ORDEN — Referencia de trabajo SOLVEN
 
-<!-- 
-  INSTRUCCIONES DE USO DESDE IPHONE:
-  1. Editá este archivo en la app GitHub
-  2. Escribí tu orden abajo, borrando este comentario
-  3. Commitear directamente a main
-  4. GitHub Actions ejecuta Claude Code automáticamente
-  5. Revisá REPORTE.md para confirmar que se completó
--->
+## Cómo trabajamos
 
-## Contexto
-Estás trabajando en SOLVEN — SaaS de control de negocio para comercios en Argentina.
-Stack: Next.js 15.5, TypeScript strict, Prisma 5.22, PostgreSQL/Neon, Tailwind CSS 3.4, Vercel.
-Color sagrado: #7c3aed (violeta) — nunca cambiar.
-Moneda: ARS exclusivamente.
-Ver CLAUDE.md para contexto completo del proyecto.
+Diego da órdenes desde su iPhone a través de **Claude (sección Código / Code)**.
+Claude ejecuta los cambios directamente en los archivos del proyecto,
+commitea, y Diego hace `git push` cuando vuelve a la PC.
 
-## Tarea
-[Escribí aquí tu orden en lenguaje natural]
+## Para ejecutar una tarea
+Solo decile a Claude:
+> "ejecuta la tarea 7"
 
-## Archivos probablemente afectados
-[Opcional — podés dejarlo en blanco y Claude los detecta solo]
+Claude lee `TAREAS/TAREAS_001_020.md`, ejecuta el prompt de esa tarea,
+hace los cambios en el código, y actualiza `TAREAS/REPORTE_DE_CAMBIOS.md`.
 
-## Notas adicionales
-[Opcional]
+## Para revisar al final del día
+Solo decile a Claude:
+> "revisá el reporte"
+
+Claude lee REPORTE_DE_CAMBIOS.md, marca las tareas en Notion,
+borra el reporte y pregunta si cargamos el siguiente lote.
+
+## Tareas disponibles
+- Lote 1 (001–020): `TAREAS/TAREAS_001_020.md` ← activo ahora

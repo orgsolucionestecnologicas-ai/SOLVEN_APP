@@ -94,6 +94,7 @@ prisma/
 ```
 ✅ Color primario: #7c3aed (violet-600) — SAGRADO, jamás cambiarlo
 ✅ Naranja (#E85D04 / orange-*): SOLO para status PAST_DUE de suscripción
+✅ Excepción: naranja (#f97316) también permitido para la serie de "gastos" en gráficos combinados (ej. dashboard) — uso puramente de visualización de datos, no de estado de suscripción
 ✅ IVA siempre como fracción: 0 | 0.105 | 0.21 | 0.27 — NUNCA como entero
 ✅ ARCA es opt-in por tenant Y por venta — Sale.cae es nullable, NUNCA obligatorio
 ✅ Moneda: ARS exclusivamente — NUNCA RD$, USD, ITBIS, ni otra

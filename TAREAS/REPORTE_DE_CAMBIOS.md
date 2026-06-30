@@ -1,7 +1,7 @@
 # REPORTE DE CAMBIOS — SOLVEN
 
-> Este archivo es actualizado automáticamente por el agente después de cada tarea ejecutada.
-> Al finalizar la sesión de trabajo, Diego lo revisa aquí en Cowork y marca las tareas en Notion.
+> Actualizado automáticamente por Claude (Código) después de cada tarea.
+> Al final del día Diego dice "revisá el reporte" → Claude marca en Notion + borra este archivo.
 
 ---
 
@@ -446,3 +446,45 @@ El filtro seleccionado se traduce a un rango `from`/`to` (helper `getDateRange`)
 - `npm run build`, `npm run lint` y `npm test` (suite unitaria) ejecutados sin errores. Los tests de integración fallan en este entorno por falta de `DATABASE_URL` (no hay base de datos disponible en el sandbox) — falla preexistente, no relacionada con este cambio.
 
 ---
+> ⚠️ Las dos entradas siguientes (Tarea 002 y Tarea 001 "intento local") documentan una
+> implementación distinta de las mismas tareas, hecha en paralelo por Diego en el commit
+> local `37218f4` mientras el agente remoto trabajaba el lote 001-020 en PR #2. Al resolver
+> el conflicto de merge en `dashboard-summary.tsx` se optó por la versión remota completa
+> (arriba), así que el código de `37218f4` NO quedó en el archivo final — se conserva acá
+> solo como registro histórico.
+
+## ✅ TAREA 002 (intento local, descartado) — KPIs clickeables · 2026-06-28
+
+**Estado:** ✅ Completada  
+**Archivos modificados:** `src/app/ui/dashboard-summary.tsx`
+
+**Cambios:**
+- `MetricCard` acepta nueva prop opcional `href?: string`
+- Cuando se provee `href`, la tarjeta se envuelve en `<Link>` de Next.js
+- Estilos agregados: `cursor-pointer hover:ring-2 hover:ring-violet-500/30 transition-shadow`
+- Ventas → `/sales` · Gastos → `/expenses` · Ganancia → `/sales`
+- La tarjeta "Productos bajos" ya tenía su propio link, no se modificó
+
+**TypeScript:** ✅ Sin errores  
+**Commit:** `37218f4`
+
+---
+
+## ✅ TAREA 001 (intento local, descartado) — Filtro de fecha global en Dashboard · 2026-06-28
+
+**Estado:** ✅ Completada  
+**Archivos modificados:** `src/app/ui/dashboard-summary.tsx`
+
+**Cambios:**
+- Nuevo tipo `DateFilter = "today" | "week" | "month" | "custom"`
+- Estados agregados: `dateFilter`, `customFrom`, `customTo`
+- `useEffect` ahora reactivo a `[dateFilter, customFrom, customTo]`
+- Fetch de ventas y caja incluye `?from=YYYY-MM-DD&to=YYYY-MM-DD&limit=500`
+- **APIs sin cambios** — `/api/sales` y `/api/cash-movements` ya soportaban estos params
+- Nuevo componente `DateFilterPicker` (pills + inputs de fecha para modo personalizado)
+- KPIs actualizados: `periodSalesTotal`, `periodCashOut`, `periodProfit`
+- Tarjeta "Ventas del mes" reemplazada por "Gastos del período" (más útil con filtro activo)
+- Gráfico de 7 días permanece fijo como vista histórica (independiente del filtro)
+
+**TypeScript:** ✅ Sin errores  
+**Commit:** `37218f4`
