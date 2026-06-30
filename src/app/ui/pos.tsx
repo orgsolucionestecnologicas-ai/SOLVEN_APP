@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Copy,
   FileText,
   MoreHorizontal,
@@ -104,11 +105,25 @@ type CartItem = {
   unitPrice: number;
   maxStock: number;
   ivaRate: number;
+  discount: number;
+  discountType: "percent" | "fixed";
 };
 
 function cartItemKey(item: CartItem): string {
   return item.productId ?? item.serviceId ?? "";
 }
+
+function formatQuantity(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(3);
+}
+
+type LastSale = {
+  saleId: string;
+  folio: number;
+  items: { productName: string; quantity: number; unitPrice: number }[];
+  total: number;
+  paymentMethod: string;
+};
 
 type CreateSaleResponse = {
   data?: {
@@ -172,6 +187,7 @@ type ActiveTab = "Venta actual" | "Historial";
 
 const DRAFT_KEY = "solven_draft";
 const CART_KEY = "solven_pos_cart";
+const MAX_SUSPENDED_CARTS = 3;
 
 const PRODUCTS_PER_PAGE = 10;
 
@@ -224,12 +240,20 @@ function formatPromoApplication(promo: ActivePromotion): string {
   }
 }
 
+function normalizeCartItems(items: CartItem[]): CartItem[] {
+  return items.map((item) => ({
+    ...item,
+    discount: item.discount ?? 0,
+    discountType: item.discountType ?? "percent",
+  }));
+}
+
 function readDraft(): CartItem[] | null {
   try {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CartItem[];
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+    return Array.isArray(parsed) && parsed.length > 0 ? normalizeCartItems(parsed) : null;
   } catch {
     return null;
   }
@@ -240,7 +264,7 @@ function readSavedCart(): CartItem[] | null {
     const raw = localStorage.getItem(CART_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CartItem[];
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+    return Array.isArray(parsed) && parsed.length > 0 ? normalizeCartItems(parsed) : null;
   } catch {
     return null;
   }
@@ -265,6 +289,10 @@ export function Pos() {
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState<string | null>(null);
   const [productsRefreshKey, setProductsRefreshKey] = useState(0);
+
+  const [topProducts, setTopProducts] = useState<ProductRecord[]>([]);
+  const [topProductsLoading, setTopProductsLoading] = useState(true);
+  const [topProductsOpen, setTopProductsOpen] = useState(true);
 
   const [services, setServices] = useState<ServiceRecord[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
@@ -296,6 +324,9 @@ export function Pos() {
   const [cotizacionOpen, setCotizacionOpen] = useState(false);
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
 
+  const [suspendedCarts, setSuspendedCarts] = useState<CartItem[][]>([]);
+  const [suspendedCartsOpen, setSuspendedCartsOpen] = useState(false);
+
   const [applyResult, setApplyResult] = useState<ApplyResultData | null>(null);
   const [manualCodes, setManualCodes] = useState<string[]>([]);
   const [excludedPromotionIds, setExcludedPromotionIds] = useState<Set<string>>(new Set());
@@ -303,11 +334,25 @@ export function Pos() {
   const [promoCodeOpen, setPromoCodeOpen] = useState(false);
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
 
+  const [discountEditingId, setDiscountEditingId] = useState<string | null>(null);
+  const [discountDraftType, setDiscountDraftType] = useState<"percent" | "fixed">("percent");
+  const [discountDraftValue, setDiscountDraftValue] = useState("");
+
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
+  const [invalidQuantityIds, setInvalidQuantityIds] = useState<Set<string>>(new Set());
+
+  const [globalDiscountType, setGlobalDiscountType] = useState<"percent" | "fixed">("percent");
+  const [globalDiscountValue, setGlobalDiscountValue] = useState("");
+
   const [promosPanelOpen, setPromosPanelOpen] = useState(false);
   const [activePromos, setActivePromos] = useState<ActivePromotion[]>([]);
   const [activePromosLoading, setActivePromosLoading] = useState(false);
   const [promoPanelSearch, setPromoPanelSearch] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const [lastSale, setLastSale] = useState<LastSale | null>(null);
+  const [lastSaleCollapsed, setLastSaleCollapsed] = useState(false);
+  const [copiedFolio, setCopiedFolio] = useState(false);
 
   const [cashRegisterStatus, setCashRegisterStatus] = useState<"loading" | "open" | "closed">("loading");
   const [showPrintModal, setShowPrintModal] = useState<{
@@ -329,6 +374,7 @@ export function Pos() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   const moreDropdownRef = useRef<HTMLDivElement>(null);
+  const suspendedCartsRef = useRef<HTMLDivElement>(null);
   const applyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const urlCustomerIdRef = useRef<string | null>(null);
 
@@ -394,6 +440,17 @@ export function Pos() {
   }, [moreDropdownOpen]);
 
   useEffect(() => {
+    if (!suspendedCartsOpen) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (suspendedCartsRef.current && !suspendedCartsRef.current.contains(e.target as Node)) {
+        setSuspendedCartsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [suspendedCartsOpen]);
+
+  useEffect(() => {
     let isActive = true;
     setProductsLoading(true);
     setProductsError(null);
@@ -425,6 +482,35 @@ export function Pos() {
       isActive = false;
     };
   }, [productsRefreshKey]);
+
+  useEffect(() => {
+    let isActive = true;
+    setTopProductsLoading(true);
+
+    async function loadTopProducts() {
+      try {
+        const response = await fetch("/api/pos/top-products", {
+          headers: { Accept: "application/json" },
+        });
+        const body = (await response.json()) as ProductsResponse;
+
+        if (!isActive) return;
+
+        if (response.ok && body.data) {
+          setTopProducts(body.data);
+        }
+      } catch {
+        // el grid de más vendidos es un atajo opcional; si falla, no bloquea el POS
+      } finally {
+        if (isActive) setTopProductsLoading(false);
+      }
+    }
+
+    void loadTopProducts();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -596,7 +682,28 @@ export function Pos() {
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const selectedCustomerId = selectedCustomer?.id ?? "";
 
-  const cartNet = cartTotal - totalDiscount;
+  const manualDiscountTotal = cartItems.reduce((sum, item) => {
+    const discountedItem = item.productId ? discountedItemsMap.get(item.productId) : undefined;
+    const isItemPromoDiscounted =
+      discountedItem !== undefined &&
+      parseFloat(discountedItem.discountAmount) > 0 &&
+      !excludedPromotionIds.has(discountedItem.promotionId ?? "");
+    const displayPrice = isItemPromoDiscounted ? parseFloat(discountedItem.finalPrice) : item.unitPrice;
+    const lineBaseTotal = displayPrice * item.quantity;
+    return sum + (lineBaseTotal - getLineFinalTotal(item, displayPrice));
+  }, 0);
+
+  const cartNet = cartTotal - totalDiscount - manualDiscountTotal;
+
+  const parsedGlobalDiscount = parseFloat(globalDiscountValue) || 0;
+  const globalDiscountAmount =
+    parsedGlobalDiscount > 0
+      ? globalDiscountType === "percent"
+        ? cartNet * (Math.min(parsedGlobalDiscount, 100) / 100)
+        : Math.min(parsedGlobalDiscount, cartNet)
+      : 0;
+  const cartGrandTotal = cartNet - globalDiscountAmount;
+
   const totalAssigned = paymentSplits.reduce(
     (sum, s) => sum + (parseFloat(s.amount) || 0),
     0
@@ -644,6 +751,100 @@ export function Pos() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showPaymentModal]);
 
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const isTextInput =
+        target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
+      if (isTextInput) return;
+
+      if (e.key === "Escape") {
+        if (promoCodeOpen) {
+          setPromoCodeOpen(false);
+          setPromoCodeInput("");
+          setPromoCodeError(null);
+          return;
+        }
+        if (discountEditingId) {
+          setDiscountEditingId(null);
+          return;
+        }
+        if (noteModalOpen) {
+          setNoteModalOpen(false);
+          return;
+        }
+        if (cotizacionOpen) {
+          setCotizacionOpen(false);
+          return;
+        }
+        if (moreDropdownOpen) {
+          setMoreDropdownOpen(false);
+          return;
+        }
+        if (suspendedCartsOpen) {
+          setSuspendedCartsOpen(false);
+          return;
+        }
+        if (promosPanelOpen) {
+          setPromosPanelOpen(false);
+          return;
+        }
+        if (customerSearchOpen) {
+          setCustomerSearchOpen(false);
+          return;
+        }
+        if (optionalCustomerOpen) {
+          setOptionalCustomerOpen(false);
+          return;
+        }
+        if (saleGateOpen) {
+          setSaleGateOpen(false);
+          return;
+        }
+        if (showInvoiceModal) {
+          setShowInvoiceModal(false);
+          return;
+        }
+        if (showPrintModal) {
+          setShowPrintModal(null);
+          return;
+        }
+        return;
+      }
+
+      if (e.key === "F2") {
+        e.preventDefault();
+        handleNewSale();
+        return;
+      }
+
+      if (e.key === "Enter") {
+        if (filteredProducts.length === 1 && cashRegisterStatus === "open") {
+          addToCart(filteredProducts[0]);
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    promoCodeOpen,
+    discountEditingId,
+    noteModalOpen,
+    cotizacionOpen,
+    moreDropdownOpen,
+    suspendedCartsOpen,
+    promosPanelOpen,
+    customerSearchOpen,
+    optionalCustomerOpen,
+    saleGateOpen,
+    showInvoiceModal,
+    showPrintModal,
+    filteredProducts,
+    cashRegisterStatus,
+  ]);
+
   function clearSale() {
     setCartItems([]);
     setPaymentSplits([]);
@@ -661,6 +862,10 @@ export function Pos() {
     setPromoCodeError(null);
     setOptionalCustomerOpen(false);
     setSaleGateResult(null);
+    setGlobalDiscountType("percent");
+    setGlobalDiscountValue("");
+    setQuantityDrafts({});
+    setInvalidQuantityIds(new Set());
     try { localStorage.removeItem(CART_KEY); } catch { /* ignore */ }
   }
 
@@ -673,6 +878,7 @@ export function Pos() {
     clearSale();
     setSaleGateResult(null);
     setSaleGateOpen(true);
+    setLastSaleCollapsed(true);
   }
 
   function handleSaleGateConfirm(result: SaleGateResult) {
@@ -690,6 +896,24 @@ export function Pos() {
     clearSale();
     setSuccessMessage("Venta suspendida — puedes recuperarla con Nueva venta");
     setTimeout(() => setSuccessMessage(null), 4000);
+  }
+
+  function handleSuspendCart() {
+    if (cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS) return;
+    setSuspendedCarts((prev) => [...prev, cartItems]);
+    clearSale();
+  }
+
+  function handleRestoreSuspendedCart(index: number) {
+    const cart = suspendedCarts[index];
+    if (!cart) return;
+    setCartItems(cart);
+    setSuspendedCarts((prev) => prev.filter((_, i) => i !== index));
+    setSuspendedCartsOpen(false);
+  }
+
+  function getSuspendedCartTotal(cart: CartItem[]): number {
+    return cart.reduce((sum, item) => sum + getLineFinalTotal(item, item.unitPrice), 0);
   }
 
   function handleRecoverDraft() {
@@ -804,6 +1028,8 @@ export function Pos() {
           unitPrice: Number(product.salePrice),
           maxStock: product.stock,
           ivaRate: product.ivaRate != null ? Number(product.ivaRate) : 0.21,
+          discount: 0,
+          discountType: "percent",
         },
       ];
     });
@@ -830,6 +1056,8 @@ export function Pos() {
           unitPrice: Number(service.price),
           maxStock: 9999,
           ivaRate: 0.21,
+          discount: 0,
+          discountType: "percent",
         },
       ];
     });
@@ -838,6 +1066,7 @@ export function Pos() {
   function updateQuantity(itemId: string, quantity: number) {
     if (quantity < 1) {
       setCartItems((prev) => prev.filter((item) => cartItemKey(item) !== itemId));
+      clearQuantityDraft(itemId);
       return;
     }
 
@@ -852,6 +1081,93 @@ export function Pos() {
 
   function removeFromCart(itemId: string) {
     setCartItems((prev) => prev.filter((item) => cartItemKey(item) !== itemId));
+    clearQuantityDraft(itemId);
+  }
+
+  function clearQuantityDraft(itemId: string) {
+    setQuantityDrafts((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+    setInvalidQuantityIds((prev) => {
+      if (!prev.has(itemId)) return prev;
+      const next = new Set(prev);
+      next.delete(itemId);
+      return next;
+    });
+  }
+
+  function commitQuantityInput(itemId: string, maxStock: number) {
+    const draft = quantityDrafts[itemId];
+    if (draft === undefined) return;
+
+    const trimmed = draft.trim();
+    const parsed = Number(trimmed);
+
+    if (trimmed === "" || parsed === 0) {
+      updateQuantity(itemId, 0);
+      clearQuantityDraft(itemId);
+      return;
+    }
+
+    if (Number.isNaN(parsed) || parsed < 0) {
+      clearQuantityDraft(itemId);
+      return;
+    }
+
+    if (parsed > maxStock) {
+      setInvalidQuantityIds((prev) => new Set(prev).add(itemId));
+      return;
+    }
+
+    const rounded = Math.round(parsed * 1000) / 1000;
+    updateQuantity(itemId, rounded);
+    clearQuantityDraft(itemId);
+  }
+
+  function openDiscountEditor(item: CartItem) {
+    setDiscountEditingId(cartItemKey(item));
+    setDiscountDraftType(item.discountType ?? "percent");
+    setDiscountDraftValue(item.discount ? String(item.discount) : "");
+  }
+
+  function applyItemDiscount() {
+    const itemId = discountEditingId;
+    if (!itemId) return;
+    const parsed = parseFloat(discountDraftValue);
+    const value = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    const clampedValue = discountDraftType === "percent" ? Math.min(100, value) : value;
+
+    setCartItems((prev) =>
+      prev.map((item) =>
+        cartItemKey(item) === itemId
+          ? { ...item, discount: clampedValue, discountType: discountDraftType }
+          : item
+      )
+    );
+    setDiscountEditingId(null);
+    setDiscountDraftValue("");
+  }
+
+  function clearItemDiscount(itemId: string) {
+    setCartItems((prev) =>
+      prev.map((item) =>
+        cartItemKey(item) === itemId
+          ? { ...item, discount: 0, discountType: "percent" }
+          : item
+      )
+    );
+  }
+
+  function getLineFinalTotal(item: CartItem, displayPrice: number): number {
+    const lineBaseTotal = displayPrice * item.quantity;
+    const discount = item.discount ?? 0;
+    if (discount <= 0) return lineBaseTotal;
+    if (item.discountType === "fixed") {
+      return Math.max(0, lineBaseTotal - discount);
+    }
+    return Math.max(0, lineBaseTotal * (1 - discount / 100));
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -898,13 +1214,30 @@ export function Pos() {
           paymentDetails: paymentDetailsPayload,
           items: cartItems.map((item) =>
             item.serviceId
-              ? { serviceId: item.serviceId, quantity: item.quantity }
-              : { productId: item.productId, quantity: item.quantity }
+              ? {
+                  serviceId: item.serviceId,
+                  quantity: item.quantity,
+                  discount: item.discount ?? 0,
+                  discountType: item.discountType ?? "percent",
+                }
+              : {
+                  productId: item.productId,
+                  quantity: item.quantity,
+                  discount: item.discount ?? 0,
+                  discountType: item.discountType ?? "percent",
+                }
           ),
           ...(displayedAppliedPromotions.length > 0
             ? {
                 promotionIds: displayedAppliedPromotions.map((p) => p.promotionId),
                 discountAmount: totalDiscount,
+              }
+            : {}),
+          ...(globalDiscountAmount > 0
+            ? {
+                globalDiscountType,
+                globalDiscountValue: parsedGlobalDiscount,
+                globalDiscountAmount,
               }
             : {}),
           ...(noteText.trim() ? { note: noteText.trim() } : {}),
@@ -923,7 +1256,7 @@ export function Pos() {
 
       const successSaleId = body.data.id;
       const successFolio = body.data.folio;
-      const successTotal = cartTotal - totalDiscount;
+      const successTotal = cartNet;
       const successCartItems = [...cartItems];
       const successPaymentMethod = paymentSplits.map(s => s.method).join(" + ");
 
@@ -942,7 +1275,21 @@ export function Pos() {
       setPromoCodeOpen(false);
       setPromoCodeError(null);
       setOptionalCustomerOpen(false);
+      setGlobalDiscountType("percent");
+      setGlobalDiscountValue("");
       setProductsRefreshKey((k) => k + 1);
+      setLastSale({
+        saleId: successSaleId,
+        folio: successFolio,
+        items: successCartItems.map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+        total: successTotal,
+        paymentMethod: successPaymentMethod,
+      });
+      setLastSaleCollapsed(false);
       setShowPrintModal({
         saleId: successSaleId,
         folio: successFolio,
@@ -1110,6 +1457,59 @@ export function Pos() {
                 ))}
               </div>
             </div>
+
+            {/* Más vendidos */}
+            {!topProductsLoading && topProducts.length > 0 ? (
+              <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
+                <button
+                  className="mb-2 flex w-full items-center justify-between"
+                  onClick={() => setTopProductsOpen((open) => !open)}
+                  type="button"
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Más vendidos
+                  </span>
+                  {topProductsOpen ? (
+                    <ChevronUp size={14} className="text-slate-400" />
+                  ) : (
+                    <ChevronDown size={14} className="text-slate-400" />
+                  )}
+                </button>
+                {topProductsOpen ? (
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {topProducts.map((product) => {
+                      const isOutOfStock = product.stock === 0;
+                      const canAdd =
+                        !isOutOfStock && cashRegisterStatus === "open" && saleGateResult !== null;
+
+                      return (
+                        <button
+                          key={product.id}
+                          className={
+                            isOutOfStock
+                              ? "flex flex-col items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 p-2 opacity-50"
+                              : "flex flex-col items-center gap-1 rounded-lg border border-slate-200 bg-white p-2 hover:border-violet-300 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          }
+                          disabled={!canAdd}
+                          onClick={() => addToCart(product)}
+                          type="button"
+                        >
+                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-slate-100">
+                            <Package size={15} className="text-slate-400" />
+                          </div>
+                          <p className="line-clamp-2 text-center text-[11px] font-medium leading-tight text-slate-950">
+                            {product.name}
+                          </p>
+                          <p className="text-[11px] font-bold text-emerald-700">
+                            {formatMoney(product.salePrice)}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             {/* 3. Products area */}
             <div className="px-4 py-3 sm:px-5">
@@ -1402,6 +1802,58 @@ export function Pos() {
                 ) : null}
               </h2>
               <div className="flex items-center gap-1.5">
+                {suspendedCarts.length > 0 ? (
+                  <div className="relative" ref={suspendedCartsRef}>
+                    <button
+                      className="flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                      onClick={() => setSuspendedCartsOpen((v) => !v)}
+                      type="button"
+                    >
+                      <PauseCircle size={12} />
+                      {suspendedCarts.length}
+                    </button>
+                    {suspendedCartsOpen ? (
+                      <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                        <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Carritos suspendidos
+                        </p>
+                        {suspendedCarts.map((cart, index) => (
+                          <button
+                            className="flex w-full items-center justify-between px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                            key={index}
+                            onClick={() => handleRestoreSuspendedCart(index)}
+                            type="button"
+                          >
+                            <span>
+                              {cart.length} {cart.length === 1 ? "ítem" : "ítems"}
+                            </span>
+                            <span className="font-semibold text-slate-950">
+                              {formatMoneyNum(getSuspendedCartTotal(cart))}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                <button
+                  className={
+                    cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS
+                      ? "flex cursor-not-allowed items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-300"
+                      : "flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50"
+                  }
+                  disabled={cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS}
+                  onClick={handleSuspendCart}
+                  title={
+                    suspendedCarts.length >= MAX_SUSPENDED_CARTS
+                      ? "Máximo 3 carritos suspendidos"
+                      : undefined
+                  }
+                  type="button"
+                >
+                  <PauseCircle size={12} />
+                  Suspender
+                </button>
                 <button
                   className="flex items-center gap-1 rounded-lg border border-violet-300 px-2 py-1.5 text-xs font-medium text-violet-600 hover:bg-violet-50"
                   onClick={() => {
@@ -1483,12 +1935,14 @@ export function Pos() {
                           (p) => p.promotionId === discountedItem?.promotionId
                         )?.name ?? displayedAppliedPromotions[0]?.name)
                       : undefined;
+                    const itemId = cartItemKey(item);
+                    const lineBaseTotal = displayPrice * item.quantity;
+                    const lineFinalTotal = getLineFinalTotal(item, displayPrice);
+                    const hasManualDiscount = (item.discount ?? 0) > 0;
 
                     return (
-                    <div
-                      className="flex items-center gap-2 px-4 py-2.5"
-                      key={cartItemKey(item)}
-                    >
+                    <div key={itemId}>
+                      <div className="flex items-center gap-2 px-4 py-2.5">
                       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100">
                         <Package size={13} className="text-slate-400" />
                       </div>
@@ -1518,9 +1972,9 @@ export function Pos() {
                           </span>
                         )}
                       </div>
-                      <div className="flex w-[68px] items-center justify-center gap-0.5">
+                      <div className="flex w-28 items-center justify-center gap-0.5">
                         <button
-                          className="flex h-5 w-5 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] text-slate-600 hover:bg-slate-50"
+                          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] text-slate-600 hover:bg-slate-50"
                           onClick={() =>
                             updateQuantity(cartItemKey(item), item.quantity - 1)
                           }
@@ -1528,14 +1982,32 @@ export function Pos() {
                         >
                           −
                         </button>
-                        <span className="w-6 text-center text-xs font-semibold tabular-nums text-slate-950">
-                          {item.quantity}
-                        </span>
+                        <input
+                          className={
+                            invalidQuantityIds.has(itemId)
+                              ? "w-16 rounded-md border border-rose-400 bg-rose-50 py-0.5 text-center text-xs font-semibold tabular-nums text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                              : "w-16 rounded-md border border-transparent bg-transparent py-0.5 text-center text-xs font-semibold tabular-nums text-slate-950 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                          }
+                          min="0"
+                          onBlur={() => commitQuantityInput(itemId, item.maxStock)}
+                          onChange={(e) =>
+                            setQuantityDrafts((prev) => ({ ...prev, [itemId]: e.target.value }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              commitQuantityInput(itemId, item.maxStock);
+                            }
+                          }}
+                          step="0.001"
+                          type="number"
+                          value={quantityDrafts[itemId] ?? formatQuantity(item.quantity)}
+                        />
                         <button
                           className={
                             item.quantity >= item.maxStock
-                              ? "flex h-5 w-5 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-[11px] text-slate-300"
-                              : "flex h-5 w-5 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] text-slate-600 hover:bg-slate-50"
+                              ? "flex h-5 w-5 flex-shrink-0 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-[11px] text-slate-300"
+                              : "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] text-slate-600 hover:bg-slate-50"
                           }
                           disabled={item.quantity >= item.maxStock}
                           onClick={() =>
@@ -1547,7 +2019,18 @@ export function Pos() {
                         </button>
                       </div>
                       <div className="w-14 text-right text-xs font-semibold tabular-nums text-slate-950">
-                        {formatMoneyNum(displayPrice * item.quantity)}
+                        {hasManualDiscount ? (
+                          <>
+                            <span className="block text-[10px] text-slate-400 line-through">
+                              {formatMoneyNum(lineBaseTotal)}
+                            </span>
+                            <span className="block text-violet-600">
+                              {formatMoneyNum(lineFinalTotal)}
+                            </span>
+                          </>
+                        ) : (
+                          formatMoneyNum(lineFinalTotal)
+                        )}
                       </div>
                       <button
                         className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-slate-300 hover:text-rose-500"
@@ -1556,6 +2039,87 @@ export function Pos() {
                       >
                         <X size={11} />
                       </button>
+                      </div>
+                      <div className="flex items-center gap-2 pb-2 pl-14 pr-4">
+                        {discountEditingId === itemId ? (
+                          <>
+                            <div className="flex overflow-hidden rounded-md border border-slate-200">
+                              <button
+                                className={
+                                  discountDraftType === "percent"
+                                    ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                                    : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                                }
+                                onClick={() => setDiscountDraftType("percent")}
+                                type="button"
+                              >
+                                %
+                              </button>
+                              <button
+                                className={
+                                  discountDraftType === "fixed"
+                                    ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                                    : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                                }
+                                onClick={() => setDiscountDraftType("fixed")}
+                                type="button"
+                              >
+                                $
+                              </button>
+                            </div>
+                            <input
+                              autoFocus
+                              className="w-16 rounded-md border border-slate-200 px-1.5 py-0.5 text-[11px] text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                              min="0"
+                              onChange={(e) => setDiscountDraftValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") applyItemDiscount();
+                              }}
+                              placeholder="0"
+                              step="0.01"
+                              type="number"
+                              value={discountDraftValue}
+                            />
+                            <button
+                              className="rounded-md bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-violet-700"
+                              onClick={() => applyItemDiscount()}
+                              type="button"
+                            >
+                              Aplicar
+                            </button>
+                            <button
+                              className="flex-shrink-0 text-slate-400 hover:text-slate-600"
+                              onClick={() => setDiscountEditingId(null)}
+                              type="button"
+                            >
+                              <X size={11} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              className={
+                                hasManualDiscount
+                                  ? "rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 hover:bg-violet-200"
+                                  : "rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50"
+                              }
+                              onClick={() => openDiscountEditor(item)}
+                              type="button"
+                            >
+                              % desc
+                            </button>
+                            {hasManualDiscount ? (
+                              <button
+                                className="text-[10px] text-slate-400 hover:text-rose-500"
+                                onClick={() => clearItemDiscount(itemId)}
+                                type="button"
+                              >
+                                Quitar
+                              </button>
+                            ) : null}
+                          </>
+                        )}
+                      </div>
                     </div>
                     );
                   })}
@@ -1665,10 +2229,51 @@ export function Pos() {
                     {formatMoneyNum(cartTotal)}
                   </span>
                 </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-slate-500">Descuento global</span>
+                  <div className="flex items-center gap-1">
+                    <div className="flex overflow-hidden rounded-md border border-slate-200">
+                      <button
+                        className={
+                          globalDiscountType === "percent"
+                            ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                            : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                        }
+                        onClick={() => setGlobalDiscountType("percent")}
+                        type="button"
+                      >
+                        %
+                      </button>
+                      <button
+                        className={
+                          globalDiscountType === "fixed"
+                            ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                            : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                        }
+                        onClick={() => setGlobalDiscountType("fixed")}
+                        type="button"
+                      >
+                        $
+                      </button>
+                    </div>
+                    <input
+                      className="w-16 rounded-md border border-slate-200 px-1.5 py-0.5 text-right text-xs text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                      min="0"
+                      onChange={(e) => setGlobalDiscountValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
+                      placeholder="0"
+                      step="0.01"
+                      type="number"
+                      value={globalDiscountValue}
+                    />
+                  </div>
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-500">Descuento</span>
                   <span className="tabular-nums text-xs font-medium text-emerald-600">
-                    -{formatMoneyNum(totalDiscount)}
+                    -{formatMoneyNum(totalDiscount + manualDiscountTotal + globalDiscountAmount)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -1683,7 +2288,7 @@ export function Pos() {
                       Total a pagar
                     </span>
                     <span className="tabular-nums text-lg font-bold text-slate-950">
-                      {formatMoneyNum(cartTotal - totalDiscount)}
+                      {formatMoneyNum(cartGrandTotal)}
                     </span>
                   </div>
                 </div>
@@ -1830,6 +2435,72 @@ export function Pos() {
                 </div>
               </div>
             </form>
+
+            {/* Última venta */}
+            {lastSale ? (
+              <div className="flex-shrink-0 border-t border-slate-200 bg-slate-50">
+                <button
+                  className="flex w-full items-center justify-between px-5 py-2.5"
+                  onClick={() => setLastSaleCollapsed((v) => !v)}
+                  type="button"
+                >
+                  <span className="text-xs font-semibold text-slate-700">
+                    Última venta · Folio #{lastSale.folio}
+                  </span>
+                  {lastSaleCollapsed ? (
+                    <ChevronUp size={14} className="text-slate-400" />
+                  ) : (
+                    <ChevronDown size={14} className="text-slate-400" />
+                  )}
+                </button>
+                {!lastSaleCollapsed ? (
+                  <div className="space-y-2.5 border-t border-slate-200 px-5 py-3">
+                    <div className="flex items-center justify-between">
+                      <button
+                        className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(String(lastSale.folio));
+                          setCopiedFolio(true);
+                          setTimeout(() => setCopiedFolio(false), 2000);
+                        }}
+                        type="button"
+                      >
+                        <Copy size={11} />
+                        {copiedFolio ? "¡Copiado!" : `Copiar folio #${lastSale.folio}`}
+                      </button>
+                    </div>
+                    <ul className="space-y-1">
+                      {lastSale.items.map((item, index) => (
+                        <li
+                          className="flex items-center justify-between gap-2 text-xs text-slate-600"
+                          key={index}
+                        >
+                          <span className="min-w-0 flex-1 truncate">
+                            {item.quantity} × {item.productName}
+                          </span>
+                          <span className="flex-shrink-0 tabular-nums font-medium text-slate-800">
+                            {formatMoneyNum(item.quantity * item.unitPrice)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex items-center justify-between border-t border-slate-200 pt-2">
+                      <span className="text-xs font-semibold text-slate-700">Total</span>
+                      <span className="text-lg font-bold text-slate-950">
+                        {formatMoneyNum(lastSale.total)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">Pago: {lastSale.paymentMethod}</p>
+                    <Link
+                      className="flex items-center justify-center gap-1 rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                      href={`/sales/${lastSale.saleId}`}
+                    >
+                      Ver detalle
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       )}

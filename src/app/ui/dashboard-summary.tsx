@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatARS } from "@/lib/format-currency";
 import Link from "next/link";
 import {
@@ -8,11 +8,13 @@ import {
   Calendar,
   CreditCard,
   DollarSign,
+  FileText,
   Package,
   RefreshCw,
   ShoppingBag,
   ShoppingCart,
   TrendingUp,
+  Trophy,
   UserPlus,
 } from "lucide-react";
 
@@ -47,6 +49,12 @@ type CashMovement = {
   referenceId: string;
 };
 
+type Expense = {
+  id: string;
+  expenseDate: string;
+  amount: string;
+};
+
 type Product = {
   id: string;
   name: string;
@@ -74,6 +82,20 @@ type ExpiringQuote = {
   validUntil: string;
 };
 
+type CashRegisterSession = {
+  id: string;
+  status: "OPEN" | "CLOSED";
+  openedAt: string;
+  closedAt: string | null;
+};
+
+type TopSeller = {
+  id: string;
+  name: string;
+  totalAmount: number;
+  salesCount: number;
+};
+
 type Debt = {
   id: string;
   customerId: string;
@@ -84,12 +106,13 @@ type Debt = {
 
 type DayTotal = { date: string; total: number };
 
-type DateFilter = "today" | "week" | "month" | "custom";
+type DateFilterOption = "today" | "week" | "month" | "custom";
 
 type DashboardState = {
   summary: Summary | null;
   sales: Sale[] | null;
   cashMovements: CashMovement[] | null;
+  expenses: Expense[] | null;
   products: Product[] | null;
   customers: Customer[] | null;
   debts: Debt[] | null;
@@ -103,43 +126,38 @@ export function DashboardSummary() {
     summary: null,
     sales: null,
     cashMovements: null,
+    expenses: null,
     products: null,
     customers: null,
     debts: null,
     loading: true,
   });
-  const [dateFilter, setDateFilter] = useState<DateFilter>("today");
+  const [dateFilter, setDateFilter] = useState<DateFilterOption>("month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
 
   useEffect(() => {
+    const range = getDateRange(dateFilter, customFrom, customTo);
+    if (!range) return;
+    const { from, to } = range;
+
     let active = true;
-
-    // Calcular rango según filtro
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
-    let from = todayStr;
-    let to   = todayStr;
-
-    if (dateFilter === "week") {
-      from = new Date(today.getTime() - 6 * 86_400_000).toISOString().slice(0, 10);
-    } else if (dateFilter === "month") {
-      from = `${todayStr.slice(0, 7)}-01`;
-    } else if (dateFilter === "custom") {
-      if (!customFrom || !customTo) return; // esperar a que completen ambas fechas
-      from = customFrom;
-      to   = customTo;
-    }
+    setState((prev) => ({ ...prev, loading: true }));
 
     async function load() {
-      const [summaryRes, salesRes, cashRes, productsRes, customersRes, debtsRes] =
+      const salesUrl    = `/api/sales?from=${from}&to=${to}`;
+      const cashUrl      = `/api/cash-movements?from=${from}&to=${to}`;
+      const expensesUrl  = `/api/expenses?from=${from}&to=${to}`;
+
+      const [summaryRes, salesRes, cashRes, expensesRes, productsRes, customersRes, debtsRes] =
         await Promise.allSettled([
-          fetch("/api/dashboard/summary",                               { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch(`/api/sales?from=${from}&to=${to}&limit=500`,           { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch(`/api/cash-movements?from=${from}&to=${to}&limit=500`,  { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/products",                                        { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/customers",                                       { headers: { Accept: "application/json" } }).then((r) => r.json()),
-          fetch("/api/debts",                                           { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/dashboard/summary", { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch(salesUrl,                 { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch(cashUrl,                  { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch(expensesUrl,              { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/products",          { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/customers",         { headers: { Accept: "application/json" } }).then((r) => r.json()),
+          fetch("/api/debts",             { headers: { Accept: "application/json" } }).then((r) => r.json()),
         ]);
 
       if (!active) return;
@@ -148,6 +166,7 @@ export function DashboardSummary() {
         summary:       summaryRes.status   === "fulfilled" ? (summaryRes.value.data   as Summary        ?? null) : null,
         sales:         salesRes.status     === "fulfilled" ? (salesRes.value.data     as Sale[]         ?? null) : null,
         cashMovements: cashRes.status      === "fulfilled" ? (cashRes.value.data      as CashMovement[] ?? null) : null,
+        expenses:      expensesRes.status  === "fulfilled" ? (expensesRes.value.data  as Expense[]      ?? null) : null,
         products:      productsRes.status  === "fulfilled" ? (productsRes.value.data  as Product[]      ?? null) : null,
         customers:     customersRes.status === "fulfilled" ? (customersRes.value.data as Customer[]     ?? null) : null,
         debts:         debtsRes.status     === "fulfilled" ? (debtsRes.value.data     as Debt[]         ?? null) : null,
@@ -168,38 +187,36 @@ export function DashboardSummary() {
   const now = new Date();
   const todayStr     = now.toISOString().slice(0, 10);
   const yesterdayStr = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
+  const monthStr     = todayStr.slice(0, 7);
   const last7Dates   = Array.from({ length: 7 }, (_, i) =>
     new Date(now.getTime() - (6 - i) * 86_400_000).toISOString().slice(0, 10)
   );
 
-  // Label del período según filtro activo
-  const periodLabel = dateFilter === "today" ? "del día"
-    : dateFilter === "week" ? "de la semana"
-    : dateFilter === "month" ? "del mes"
-    : "del período";
+  const allSales    = state.sales ?? [];
+  const allCash     = state.cashMovements ?? [];
+  const allExpenses = state.expenses ?? [];
 
-  const allSales = state.sales ?? [];
-  const allCash  = state.cashMovements ?? [];
-
-  // El fetch ya filtra por rango → allSales es el universo del período
-  const periodSalesTotal = sumSales(allSales);
-  const periodCashOut    = allCash.filter((m) => m.type === "OUT").reduce((s, m) => s + Number(m.amount), 0);
-  const periodProfit     = periodSalesTotal - periodCashOut;
-
-  // Comparativa vs ayer (solo relevante en filtro "today")
+  const todaySalesTotal     = sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === todayStr));
   const yesterdaySalesTotal = sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === yesterdayStr));
-  const todayVsDiff    = dateFilter === "today" ? (periodSalesTotal - yesterdaySalesTotal) : 0;
-  const todayVsLabel   = dateFilter === "today" && yesterdaySalesTotal > 0
-    ? `${todayVsDiff >= 0 ? "▲" : "▼"} ${formatCompact(Math.abs(todayVsDiff))} vs ayer`
-    : null;
-  const todayVsPositive = todayVsDiff >= 0;
+  const monthSalesTotal     = sumSales(allSales.filter((s) => s.saleDate.slice(0, 7) === monthStr));
+
+  const todayCashOut = allCash
+    .filter((m) => m.movementDate.slice(0, 10) === todayStr && m.type === "OUT")
+    .reduce((s, m) => s + Number(m.amount), 0);
+  const todayProfit = todaySalesTotal - todayCashOut;
 
   const pendingDebtsCount = (state.debts ?? []).filter((d) => Number(d.remainingAmount) > 0).length;
 
-  // Gráfico de los últimos 7 días (independiente del filtro — vista histórica fija)
   const salesByDay: DayTotal[] = last7Dates.map((date) => ({
     date,
     total: sumSales(allSales.filter((s) => s.saleDate.slice(0, 10) === date)),
+  }));
+
+  const expensesByDay: DayTotal[] = last7Dates.map((date) => ({
+    date,
+    total: allExpenses
+      .filter((e) => e.expenseDate.slice(0, 10) === date)
+      .reduce((s, e) => s + Number(e.amount), 0),
   }));
 
   const profitByDay = last7Dates.map((date, i) => {
@@ -209,40 +226,30 @@ export function DashboardSummary() {
     return salesByDay[i].total - dayOut;
   });
 
-  // Sparkline del período para los KPIs
-  const periodDailyMap: Record<string, number> = {};
-  for (const s of allSales) {
+  const monthDailyMap: Record<string, number> = {};
+  for (const s of allSales.filter((s) => s.saleDate.slice(0, 7) === monthStr)) {
     const d = s.saleDate.slice(0, 10);
-    periodDailyMap[d] = (periodDailyMap[d] ?? 0) + Number(s.totalAmount);
+    monthDailyMap[d] = (monthDailyMap[d] ?? 0) + Number(s.totalAmount);
   }
-  const periodSparkData = Object.values(periodDailyMap);
+  const monthSparkData = Object.values(monthDailyMap);
 
-  // Gastos por día (últimos 7) para el sparkline de la tarjeta de gastos
-  const cashOutByDay = last7Dates.map((date) =>
-    allCash
-      .filter((m) => m.movementDate.slice(0, 10) === date && m.type === "OUT")
-      .reduce((s, m) => s + Number(m.amount), 0)
-  );
+  const todayVsDiff    = todaySalesTotal - yesterdaySalesTotal;
+  const todayVsLabel   = yesterdaySalesTotal > 0 ? `${todayVsDiff >= 0 ? "▲" : "▼"} ${formatCompact(Math.abs(todayVsDiff))} vs ayer` : null;
+  const todayVsPositive = todayVsDiff >= 0;
+
+  const hasActivity = allSales.length > 0 || allCash.length > 0;
 
   return (
     <div className="min-h-full bg-slate-50">
+      <OpenCashRegisterAlert />
       {/* ── Header ── */}
-      <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Hola, Propietario 👋</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Aquí tienes el resumen de tu negocio</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-sm text-slate-500">
-            <Calendar size={15} className="text-slate-400" />
-            <span>{formatFullDate(now)}</span>
-          </div>
-        </div>
+      <div className="border-b border-slate-200 bg-white px-6 py-5">
+        <GreetingHeader />
       </div>
 
       <div className="space-y-6 px-6 py-6">
-        {/* ── Filtro de fecha ── */}
-        <DateFilterPicker
+        {/* ── Period selector ── */}
+        <PeriodSelector
           value={dateFilter}
           onChange={setDateFilter}
           customFrom={customFrom}
@@ -251,106 +258,151 @@ export function DashboardSummary() {
           onCustomToChange={setCustomTo}
         />
 
-        {/* ── Metric cards ── */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            title={`Ventas ${periodLabel}`}
-            value={formatARS(periodSalesTotal)}
-            IconEl={<DollarSign size={18} />}
-            iconBg="bg-violet-100"
-            iconColor="text-violet-600"
-            trendLabel={todayVsLabel}
-            trendPositive={todayVsPositive}
-            sparkData={periodSparkData.length > 1 ? periodSparkData : salesByDay.map((d) => d.total)}
-            sparkColor="#7c3aed"
-            href="/sales"
-          />
-          <MetricCard
-            title={`Gastos ${periodLabel}`}
-            value={formatARS(periodCashOut)}
-            IconEl={<ShoppingBag size={18} />}
-            iconBg="bg-green-100"
-            iconColor="text-green-600"
-            trendLabel={null}
-            trendPositive={false}
-            sparkData={cashOutByDay}
-            sparkColor="#16a34a"
-            href="/expenses"
-          />
-          <MetricCard
-            title={`Ganancia ${periodLabel}`}
-            value={formatARS(periodProfit)}
-            IconEl={<TrendingUp size={18} />}
-            iconBg="bg-blue-100"
-            iconColor="text-blue-600"
-            trendLabel={null}
-            trendPositive={true}
-            sparkData={profitByDay}
-            sparkColor="#2563eb"
-            href="/sales"
-          />
-          {/* Low stock card */}
-          <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Productos bajos</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {state.summary?.lowStockProductsCount ?? "—"}
-                </p>
+        {/* ── Top quick actions ── */}
+        <TopQuickActions />
+
+        {!hasActivity ? (
+          <DashboardEmptyState />
+        ) : (
+          <>
+            {/* ── Metric cards ── */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
+                title="Ventas del día"
+                value={todaySalesTotal}
+                format={formatARS}
+                IconEl={<DollarSign size={18} />}
+                iconBg="bg-violet-100"
+                iconColor="text-violet-600"
+                trendLabel={todayVsLabel}
+                trendPositive={todayVsPositive}
+                sparkData={salesByDay.map((d) => d.total)}
+                sparkColor="#7c3aed"
+                href="/sales"
+                tooltipText="Total de ventas completadas en el período seleccionado."
+              />
+              <MetricCard
+                title="Ventas del mes"
+                value={monthSalesTotal}
+                format={formatARS}
+                IconEl={<ShoppingBag size={18} />}
+                iconBg="bg-green-100"
+                iconColor="text-green-600"
+                trendLabel={null}
+                trendPositive={true}
+                sparkData={monthSparkData}
+                sparkColor="#16a34a"
+                href="/sales"
+              />
+              <MetricCard
+                title="Ganancia del día"
+                value={todayProfit}
+                format={formatARS}
+                IconEl={<TrendingUp size={18} />}
+                iconBg="bg-blue-100"
+                iconColor="text-blue-600"
+                trendLabel={null}
+                trendPositive={true}
+                sparkData={profitByDay}
+                sparkColor="#2563eb"
+                href="/reports"
+              />
+              <LowStockCard count={state.summary?.lowStockProductsCount ?? null} />
+            </div>
+
+            {/* ── Pending quotes + Top sellers ── */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <PendingQuotesWidget />
+              <TopSellersWidget />
+            </div>
+
+            {/* ── Chart + Top products ── */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+              <div className="lg:col-span-3">
+                <MainSalesChart salesByDay={salesByDay} expensesByDay={expensesByDay} />
               </div>
-              <div className="rounded-lg bg-orange-100 p-2">
-                <Package size={18} className="text-orange-600" />
+              <div className="lg:col-span-2">
+                <TopProductsPanel />
               </div>
             </div>
-            <Link
-              href="/products"
-              className="mt-3 inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700"
-            >
-              Ver inventario →
-            </Link>
-          </div>
-        </div>
 
-        {/* ── Chart + Top products ── */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-          <div className="lg:col-span-3">
-            <MainSalesChart salesByDay={salesByDay} />
-          </div>
-          <div className="lg:col-span-2">
-            <TopProductsPanel />
-          </div>
-        </div>
+            {/* ── Bottom row ── */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <CashMovementsPanel cashMovements={state.cashMovements} />
+              <AlertsPanel
+                lowStockCount={state.summary?.lowStockProductsCount ?? 0}
+                pendingDebtsCount={pendingDebtsCount}
+              />
+              <QuickSummaryPanel
+                todaySalesTotal={todaySalesTotal}
+                todayProfit={todayProfit}
+                totalProducts={state.summary?.totalProducts ?? (state.products?.length ?? 0)}
+                totalCustomers={(state.customers ?? []).length}
+                pendingDebtsCount={pendingDebtsCount}
+              />
+            </div>
 
-        {/* ── Bottom row ── */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <CashMovementsPanel cashMovements={state.cashMovements} />
-          <AlertsPanel
-            lowStockCount={state.summary?.lowStockProductsCount ?? 0}
-            pendingDebtsCount={pendingDebtsCount}
-          />
-          <QuickSummaryPanel
-            todaySalesTotal={periodSalesTotal}
-            todayProfit={periodProfit}
-            totalProducts={state.summary?.totalProducts ?? (state.products?.length ?? 0)}
-            totalCustomers={(state.customers ?? []).length}
-            pendingDebtsCount={pendingDebtsCount}
-          />
-        </div>
-
-        {/* ── Quick actions ── */}
-        <QuickActions />
+            {/* ── Quick actions ── */}
+            <QuickActions />
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+// ── useCountUp ─────────────────────────────────────────────────────────────────
+
+function useCountUp(target: number, duration: number = 800): number {
+  const [value, setValue] = useState(0);
+  const hasAnimatedRef = useRef(false);
+
+  useEffect(() => {
+    if (hasAnimatedRef.current) {
+      setValue(target);
+      return;
+    }
+    hasAnimatedRef.current = true;
+
+    const start = performance.now();
+    let frameId: number;
+
+    function tick(now: number) {
+      const progress = Math.min((now - start) / duration, 1);
+      setValue(Math.round(target * progress));
+      if (progress < 1) {
+        frameId = requestAnimationFrame(tick);
+      }
+    }
+    frameId = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(frameId);
+  }, [target, duration]);
+
+  return value;
+}
+
+// ── KpiTooltip ─────────────────────────────────────────────────────────────────
+
+function KpiTooltip({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex flex-shrink-0">
+      <span className="cursor-default text-sm leading-none text-gray-400">ⓘ</span>
+      <span className="pointer-events-none absolute right-0 top-full z-10 mt-1.5 w-56 rounded-md bg-slate-900 px-2.5 py-1.5 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+        {text}
+      </span>
+    </span>
   );
 }
 
 // ── MetricCard ─────────────────────────────────────────────────────────────────
 
 function MetricCard({
-  title, value, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor, href,
+  title, value, format, IconEl, iconBg, iconColor, trendLabel, trendPositive, sparkData, sparkColor, href, tooltipText,
 }: {
   title: string;
-  value: string;
+  value: number;
+  format: (n: number) => string;
   IconEl: React.ReactNode;
   iconBg: string;
   iconColor: string;
@@ -359,21 +411,30 @@ function MetricCard({
   sparkData: number[];
   sparkColor: string;
   href?: string;
+  tooltipText?: string;
 }) {
-  const inner = (
+  const animatedValue = useCountUp(value);
+  const cardClassName = `rounded-xl border border-slate-100 bg-white p-5 shadow-sm${
+    href ? " cursor-pointer transition hover:ring-2 hover:ring-violet-500/30" : ""
+  }`;
+
+  const content = (
     <>
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">{format(animatedValue)}</p>
           {trendLabel ? (
             <p className={`mt-1 text-xs font-medium ${trendPositive ? "text-green-600" : "text-red-500"}`}>
               {trendLabel}
             </p>
           ) : null}
         </div>
-        <div className={`rounded-lg p-2 ${iconBg}`}>
-          <span className={iconColor}>{IconEl}</span>
+        <div className="flex items-center gap-1.5">
+          {tooltipText ? <KpiTooltip text={tooltipText} /> : null}
+          <div className={`rounded-lg p-2 ${iconBg}`}>
+            <span className={iconColor}>{IconEl}</span>
+          </div>
         </div>
       </div>
       {sparkData.length > 1 ? (
@@ -386,72 +447,119 @@ function MetricCard({
 
   if (href) {
     return (
-      <Link
-        href={href}
-        className="block cursor-pointer rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-shadow hover:ring-2 hover:ring-violet-500/30"
-      >
-        {inner}
+      <Link href={href} className={`block ${cardClassName}`}>
+        {content}
       </Link>
     );
   }
 
+  return <div className={cardClassName}>{content}</div>;
+}
+
+// ── LowStockCard ───────────────────────────────────────────────────────────────
+
+function LowStockCard({ count }: { count: number | null }) {
+  const animatedCount = useCountUp(count ?? 0);
+
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
-      {inner}
+    <Link
+      href="/inventory"
+      className="block cursor-pointer rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition hover:ring-2 hover:ring-violet-500/30"
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-500">Productos bajos</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {count === null ? "—" : animatedCount}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <KpiTooltip text="Productos con stock igual o por debajo del mínimo configurado." />
+          <div className="rounded-lg bg-orange-100 p-2">
+            <Package size={18} className="text-orange-600" />
+          </div>
+        </div>
+      </div>
+      <span className="mt-3 inline-flex items-center text-xs font-medium text-orange-600">
+        Ver inventario →
+      </span>
+    </Link>
+  );
+}
+
+// ── TopQuickActions ────────────────────────────────────────────────────────────
+
+function TopQuickActions() {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row">
+      <Link
+        href="/pos"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 sm:w-auto sm:flex-1"
+      >
+        🛒 Ir al POS
+      </Link>
+      <Link
+        href="/expenses"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900 sm:w-auto sm:flex-1"
+      >
+        ➕ Nuevo gasto
+      </Link>
     </div>
   );
 }
 
-// ── DateFilterPicker ───────────────────────────────────────────────────────────
+// ── PeriodSelector ─────────────────────────────────────────────────────────────
 
-function DateFilterPicker({
+const PERIOD_OPTIONS: { id: DateFilterOption; label: string }[] = [
+  { id: "today", label: "Hoy" },
+  { id: "week", label: "Esta semana" },
+  { id: "month", label: "Este mes" },
+  { id: "custom", label: "Personalizado" },
+];
+
+function PeriodSelector({
   value, onChange, customFrom, customTo, onCustomFromChange, onCustomToChange,
 }: {
-  value: DateFilter;
-  onChange: (v: DateFilter) => void;
+  value: DateFilterOption;
+  onChange: (v: DateFilterOption) => void;
   customFrom: string;
   customTo: string;
   onCustomFromChange: (v: string) => void;
   onCustomToChange: (v: string) => void;
 }) {
-  const options: { key: DateFilter; label: string }[] = [
-    { key: "today",  label: "Hoy" },
-    { key: "week",   label: "Esta semana" },
-    { key: "month",  label: "Este mes" },
-    { key: "custom", label: "Personalizado" },
-  ];
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {options.map((opt) => (
+      {PERIOD_OPTIONS.map((opt) => (
         <button
-          key={opt.key}
-          onClick={() => onChange(opt.key)}
-          className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-            value === opt.key
-              ? "bg-violet-600 text-white shadow-sm"
-              : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+          key={opt.id}
+          type="button"
+          onClick={() => onChange(opt.id)}
+          className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+            value === opt.id
+              ? "bg-violet-600 text-white"
+              : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
           }`}
         >
           {opt.label}
         </button>
       ))}
-      {value === "custom" && (
+      {value === "custom" ? (
         <div className="flex items-center gap-2">
           <input
             type="date"
             value={customFrom}
             onChange={(e) => onCustomFromChange(e.target.value)}
-            className="rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+            className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
           />
-          <span className="text-sm text-slate-400">→</span>
+          <span className="text-sm text-slate-400">a</span>
           <input
             type="date"
             value={customTo}
             onChange={(e) => onCustomToChange(e.target.value)}
-            className="rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+            className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
           />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -498,27 +606,41 @@ const MB_MAIN = 38;
 const PW = CW_MAIN - ML_MAIN - MR_MAIN;
 const PH = CH_MAIN - MT_MAIN - MB_MAIN;
 
-function MainSalesChart({ salesByDay }: { salesByDay: DayTotal[] }) {
-  const hasData = salesByDay.some((d) => d.total > 0);
+function MainSalesChart({
+  salesByDay,
+  expensesByDay,
+}: {
+  salesByDay: DayTotal[];
+  expensesByDay: DayTotal[];
+}) {
+  const hasData = salesByDay.some((d) => d.total > 0) || expensesByDay.some((d) => d.total > 0);
 
   return (
     <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
-      <div className="mb-4">
-        <p className="text-sm font-semibold text-slate-900">Ventas de los últimos 7 días</p>
+      <div className="mb-2">
+        <p className="text-sm font-semibold text-slate-900">Ingresos vs. gastos — últimos 7 días</p>
+      </div>
+      <div className="mb-4 flex items-center gap-4 text-xs text-slate-500">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full bg-violet-600" /> Ventas
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full bg-orange-500" /> Gastos
+        </span>
       </div>
       {!hasData ? (
         <div className="flex h-[180px] items-center justify-center rounded-lg border border-dashed border-slate-200">
-          <p className="text-sm text-slate-400">Sin ventas registradas</p>
+          <p className="text-sm text-slate-400">Sin ventas ni gastos registrados</p>
         </div>
       ) : (
-        <SalesAreaChart data={salesByDay} />
+        <SalesAreaChart data={salesByDay} expensesData={expensesByDay} />
       )}
     </div>
   );
 }
 
-function SalesAreaChart({ data }: { data: DayTotal[] }) {
-  const maxVal = Math.max(...data.map((d) => d.total));
+function SalesAreaChart({ data, expensesData }: { data: DayTotal[]; expensesData: DayTotal[] }) {
+  const maxVal = Math.max(...data.map((d) => d.total), ...expensesData.map((d) => d.total));
   const yMax   = niceMax(maxVal);
   const n      = data.length;
 
@@ -535,9 +657,10 @@ function SalesAreaChart({ data }: { data: DayTotal[] }) {
     y: MT_MAIN + PH - f * PH,
   }));
 
-  const bottomY    = MT_MAIN + PH;
-  const polyPts    = data.map((d, i) => `${xOf(i)},${yOf(d.total)}`).join(" ");
-  const areaPath   = [
+  const bottomY        = MT_MAIN + PH;
+  const polyPts        = data.map((d, i) => `${xOf(i)},${yOf(d.total)}`).join(" ");
+  const expensesPolyPts = expensesData.map((d, i) => `${xOf(i)},${yOf(d.total)}`).join(" ");
+  const areaPath       = [
     `M ${xOf(0)},${bottomY}`,
     ...data.map((d, i) => `L ${xOf(i)},${yOf(d.total)}`),
     `L ${xOf(n - 1)},${bottomY}`,
@@ -585,6 +708,21 @@ function SalesAreaChart({ data }: { data: DayTotal[] }) {
           key={d.date}
           cx={xOf(i)} cy={yOf(d.total)}
           r="3" fill="#7c3aed"
+        />
+      ))}
+
+      <polyline
+        points={expensesPolyPts}
+        fill="none"
+        stroke="#f97316"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      {expensesData.map((d, i) => (
+        <circle
+          key={d.date}
+          cx={xOf(i)} cy={yOf(d.total)}
+          r="3" fill="#f97316"
         />
       ))}
 
@@ -652,6 +790,198 @@ function TopProductsPanel() {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+// ── PendingQuotesWidget ────────────────────────────────────────────────────────
+
+function PendingQuotesWidget() {
+  const [quotes, setQuotes] = useState<ExpiringQuote[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/dashboard/pending-quotes", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: ExpiringQuote[] }) => {
+        if (body.data) setQuotes(body.data);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm font-semibold text-slate-900">Cotizaciones pendientes</p>
+        <Link href="/quotes" className="text-xs font-medium text-violet-600 hover:text-violet-700">
+          Ver todas
+        </Link>
+      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-6">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+        </div>
+      ) : quotes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+          <FileText size={28} className="text-slate-300" />
+          <p className="text-sm text-slate-400">Sin cotizaciones pendientes</p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {quotes.map((q) => {
+            const days = daysUntil(q.validUntil);
+            const semaphoreClass =
+              days > 7
+                ? "bg-green-50 text-green-700"
+                : days >= 3
+                  ? "bg-yellow-50 text-yellow-700"
+                  : "bg-red-50 text-red-600";
+            return (
+              <li key={q.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-slate-800">{q.quoteNumber}</p>
+                  <p className="truncate text-[11px] text-slate-400">{q.customerName || "Sin cliente"}</p>
+                </div>
+                <span className="flex-shrink-0 text-xs font-semibold text-slate-700">
+                  {formatARS(Number(q.totalAmount))}
+                </span>
+                <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${semaphoreClass}`}>
+                  {days >= 0 ? `${days}d` : "Vencida"}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── TopSellersWidget ───────────────────────────────────────────────────────────
+
+const SELLER_MEDALS = ["🥇", "🥈", "🥉"];
+
+function TopSellersWidget() {
+  const [sellers, setSellers] = useState<TopSeller[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/dashboard/top-sellers", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: TopSeller[] }) => {
+        if (body.data) setSellers(body.data);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+      <p className="mb-4 text-sm font-semibold text-slate-900">Top vendedores hoy</p>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-6">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+        </div>
+      ) : sellers.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+          <Trophy size={28} className="text-slate-300" />
+          <p className="text-sm text-slate-400">Sin ventas registradas hoy</p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {sellers.map((seller, i) => (
+            <li key={seller.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <span className="flex-shrink-0 text-lg">{SELLER_MEDALS[i] ?? "🎗️"}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-slate-800">{seller.name}</p>
+                <p className="text-[11px] text-slate-400">
+                  {seller.salesCount} {seller.salesCount === 1 ? "venta" : "ventas"}
+                </p>
+              </div>
+              <span className="flex-shrink-0 text-xs font-semibold text-slate-700">
+                {formatARS(seller.totalAmount)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── GreetingHeader ─────────────────────────────────────────────────────────────
+
+function getGreeting(date: Date, name: string | null): string {
+  if (!name) return "Hola 👋";
+  const hour = date.getHours();
+  if (hour >= 6 && hour < 12) return `Buenos días, ${name} ☀️`;
+  if (hour >= 12 && hour < 20) return `Buenas tardes, ${name} 🌤️`;
+  return `Buenas noches, ${name} 🌙`;
+}
+
+function GreetingHeader() {
+  const [name, setName] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/me", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: { name?: string } }) => {
+        if (body.data?.name) setName(body.data.name);
+      })
+      .catch(() => {});
+  }, []);
+
+  const now = new Date();
+
+  return (
+    <div>
+      <h1 className="text-xl font-bold text-slate-900">{getGreeting(now, name)}</h1>
+      <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slate-500">
+        <Calendar size={15} className="text-slate-400" />
+        {formatFullDate(now)}
+      </p>
+    </div>
+  );
+}
+
+// ── OpenCashRegisterAlert ──────────────────────────────────────────────────────
+
+function OpenCashRegisterAlert() {
+  const [session, setSession] = useState<CashRegisterSession | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/cash-register", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: CashRegisterSession | null }) => {
+        setSession(body.data ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  if (isLoading || !session || session.status !== "OPEN") return null;
+
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const openedDateStr = new Date(session.openedAt).toISOString().slice(0, 10);
+  const isLateHour = now.getHours() >= 20;
+  const openedOnPreviousDay = openedDateStr < todayStr;
+
+  if (!isLateHour && !openedOnPreviousDay) return null;
+
+  return (
+    <div className="flex flex-col gap-2 border-b border-amber-200 bg-amber-50 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm font-medium text-amber-800">
+        ⚠️ La caja sigue abierta. Recordá cerrarla antes de terminar el día.
+      </p>
+      <Link
+        href="/cash-movements"
+        className="inline-flex w-fit flex-shrink-0 items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700"
+      >
+        Ir a Caja
+      </Link>
     </div>
   );
 }
@@ -832,12 +1162,12 @@ const quickActions = [
 
 function QuickActions() {
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div>
       <p className="mb-3 text-sm font-semibold text-slate-900">Acciones rápidas</p>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {quickActions.map((action) => (
           <Link
-            key={action.href}
+            key={action.label}
             href={action.href}
             className="flex flex-col items-center gap-2 rounded-xl border border-slate-100 bg-white p-4 shadow-sm hover:border-violet-200 hover:bg-violet-50"
           >
@@ -850,7 +1180,25 @@ function QuickActions() {
   );
 }
 
-// ── DashboardSkeleton ──────────────────────────────────────────────────────────────────────────────
+// ── DashboardEmptyState ────────────────────────────────────────────────────────
+
+function DashboardEmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
+      <ShoppingBag size={48} className="text-slate-300" />
+      <h2 className="text-lg font-semibold text-slate-900">Sin actividad en este período</h2>
+      <p className="text-sm text-slate-500">Registrá tu primera venta del día desde el POS.</p>
+      <Link
+        href="/pos"
+        className="mt-2 inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700"
+      >
+        Ir al POS
+      </Link>
+    </div>
+  );
+}
+
+// ── DashboardSkeleton ──────────────────────────────────────────────────────────
 
 function DashboardSkeleton() {
   return (
@@ -874,10 +1222,39 @@ function DashboardSkeleton() {
   );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function sumSales(sales: Sale[]): number {
   return sales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
+}
+
+function daysUntil(dateStr: string): number {
+  const ms = new Date(dateStr).getTime() - Date.now();
+  return Math.ceil(ms / 86_400_000);
+}
+
+function getDateRange(
+  filter: DateFilterOption,
+  customFrom: string,
+  customTo: string
+): { from: string; to: string } | null {
+  const today = new Date();
+  const toStr = today.toISOString().slice(0, 10);
+
+  if (filter === "today") {
+    return { from: toStr, to: toStr };
+  }
+  if (filter === "week") {
+    const day = today.getDay();
+    const diffToMonday = day === 0 ? 6 : day - 1;
+    const monday = new Date(today.getTime() - diffToMonday * 86_400_000);
+    return { from: monday.toISOString().slice(0, 10), to: toStr };
+  }
+  if (filter === "month") {
+    const first = new Date(today.getFullYear(), today.getMonth(), 1);
+    return { from: first.toISOString().slice(0, 10), to: toStr };
+  }
+  return customFrom && customTo ? { from: customFrom, to: customTo } : null;
 }
 
 function niceMax(value: number): number {
@@ -905,12 +1282,14 @@ function formatFullDate(date: Date): string {
   return `${capitalized}, ${day} ${month} ${year}`;
 }
 
+const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
 function formatXAxisLabel(dateStr: string): string {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if (dateStr === todayStr) return "Hoy";
   const [y, m, d] = dateStr.split("-").map(Number);
-  const date      = new Date(y, m - 1, d);
-  const abbr      = new Intl.DateTimeFormat("es-419", { weekday: "short" }).format(date);
-  const clean     = abbr.replace(".", "").slice(0, 3);
-  return `${clean.charAt(0).toUpperCase()}${clean.slice(1)} ${d}`;
+  const date = new Date(y, m - 1, d);
+  return DIAS[date.getDay()];
 }
 
 function formatYLabel(value: number): string {
