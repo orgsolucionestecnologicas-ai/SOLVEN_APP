@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Printer, RotateCcw, Shuffle } from "lucide-react";
+import { Check, Copy, Eye, Printer, RotateCcw, Shuffle } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { formatARS } from "@/lib/format-currency";
 import { Pagination } from "./pagination";
@@ -420,6 +420,7 @@ function SaleCard({
           <span className="text-sm font-semibold text-slate-950">
             Venta {formatFolio(sale.folio)}
           </span>
+          <CopyFolioButton folio={sale.folio} />
           <ReturnStatusBadge returnStatus={sale.returnStatus} />
         </div>
         <div className="flex items-center gap-2">
@@ -512,9 +513,12 @@ function SaleDetailModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <h2 className="text-sm font-semibold text-slate-950">
-            Venta {formatFolio(sale.folio)}
-          </h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-sm font-semibold text-slate-950">
+              Venta {formatFolio(sale.folio)}
+            </h2>
+            <CopyFolioButton folio={sale.folio} />
+          </div>
           <button
             className="text-slate-400 hover:text-slate-700"
             onClick={onClose}
@@ -1224,6 +1228,31 @@ function PaymentTypeBadge({ sale }: { sale: SaleRecord }) {
       {showIcon ? <Shuffle size={12} /> : null}
       {label}
     </span>
+  );
+}
+
+function CopyFolioButton({ folio }: { folio: number }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(formatFolio(folio));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard unavailable — no-op
+    }
+  }
+
+  return (
+    <button
+      className="text-slate-400 hover:text-violet-600"
+      onClick={handleCopy}
+      title={copied ? "Copiado" : "Copiar folio"}
+      type="button"
+    >
+      {copied ? <Check size={13} /> : <Copy size={13} />}
+    </button>
   );
 }
 

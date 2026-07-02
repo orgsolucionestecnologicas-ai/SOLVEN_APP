@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 035 — Folio de venta copiable con un clic — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/sales-list.tsx
+**Cambios realizados:** Se agregó el componente `CopyFolioButton`, que copia el folio formateado (`formatFolio()`) al portapapeles con `navigator.clipboard.writeText()` y muestra una confirmación visual (ícono `Check` de lucide-react durante 1.5s, luego vuelve a `Copy`). Se colocó junto al folio en `SaleCard` (listado) y en el encabezado de `SaleDetailModal` (modal de detalle).
+**Notas:** No se modificó el API de ventas ni se usaron librerías externas de clipboard. Solo se tocó sales-list.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 196 pasaron, 2 fallas preexistentes y no relacionadas (`route.integration.test.ts` — "creates a credit sale with debt through the API flow" — y `debt-payment-data-access.integration.test.ts` — concurrencia, ya documentada como flaky por agotamiento del pool de conexiones de Neon bajo carga concurrente); sin nuevas fallas.
+---
+
 ## Tarea 034 — Badge de método de pago con color propio por tipo — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/sales-list.tsx
