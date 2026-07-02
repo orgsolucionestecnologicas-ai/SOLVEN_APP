@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 040 — Descarga del resumen de cierre en PDF para archivo o impresión — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/cash-movements-list.tsx
+**Cambios realizados:** Se agregó un botón "Descargar PDF" en el footer de `ClosedSessionDetailModal` (resumen de cierre, incluyendo el historial de la Tarea 039), que llama a `window.print()`. Se verificó `package.json` antes de empezar: el proyecto ya usa `@react-pdf/renderer` para PDFs de cotizaciones (`/api/quotes/[id]/pdf`), pero el prompt pedía explícitamente generar el PDF en cliente con `window.print()` + clases `print:` de Tailwind, así que no se agregó ninguna librería nueva ni se reusó `@react-pdf/renderer`. El modal ahora tiene una vista especial de impresión: el backdrop pasa a `print:static print:block print:bg-white print:p-0`, la tarjeta a `print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:shadow-none`, el header y footer on-screen llevan `print:hidden`, y se agregó un bloque de encabezado solo-impresión (`hidden print:block`) con el nombre del negocio (obtenido de `GET /api/settings`) y "Resumen de cierre de caja". El `<dl>` con cajero, sucursal, apertura, cierre, monto de apertura, monto esperado, monto contado, diferencia y desglose de denominaciones (Tarea 037) ya se mostraba en pantalla y ahora también se imprime tal cual. Como el modal es descendiente de `CashRegisterHistoryView`, cuyo contenido principal se marcó `print:hidden`, se restructuró el `return` de ese componente con un Fragment para que el modal sea hermano (no hijo) del contenido oculto — de lo contrario `display:none` en el ancestro habría ocultado también el modal al imprimir.
+**Notas:** No se modificó el schema de Prisma ni ninguna dependencia. Cambio acotado a `cash-movements-list.tsx`. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 197 pasaron, única falla preexistente y no relacionada (`route.integration.test.ts` — "creates a credit sale with debt through the API flow"); sin nuevas fallas.
+---
+
 ## Tarea 039 — Historial de cierres anteriores — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/api/cash-register/sessions/route.ts, src/modules/cash-register/cash-register-data-access.ts, src/modules/cash-register/index.ts, src/app/ui/cash-movements-list.tsx

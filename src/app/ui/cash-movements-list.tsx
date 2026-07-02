@@ -15,6 +15,7 @@ import {
   Info,
   MoreHorizontal,
   Plus,
+  Printer,
   Search,
   Truck,
   Wallet,
@@ -720,6 +721,22 @@ function CashRegisterHistoryView({ onBack }: { onBack: () => void }) {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [selectedSession, setSelectedSession] = useState<ClosedSessionRecord | null>(null);
+  const [businessName, setBusinessName] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSettings() {
+      try {
+        const res = await fetch("/api/settings", { headers: { Accept: "application/json" } });
+        const body = await res.json();
+        if (active && res.ok && body.data?.businessName) setBusinessName(body.data.businessName);
+      } catch { /* keep default */ }
+    }
+
+    void loadSettings();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -746,7 +763,8 @@ function CashRegisterHistoryView({ onBack }: { onBack: () => void }) {
   }, [page]);
 
   return (
-    <div className="flex min-h-full flex-col">
+    <>
+    <div className="flex min-h-full flex-col print:hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-4">
         <div className="flex items-center gap-4">
           <button className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800" onClick={onBack} type="button">
@@ -867,14 +885,25 @@ function CashRegisterHistoryView({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
-      {selectedSession ? (
-        <ClosedSessionDetailModal onClose={() => setSelectedSession(null)} session={selectedSession} />
-      ) : null}
     </div>
+    {selectedSession ? (
+      <ClosedSessionDetailModal
+        businessName={businessName}
+        onClose={() => setSelectedSession(null)}
+        session={selectedSession}
+      />
+    ) : null}
+    </>
   );
 }
 
-function ClosedSessionDetailModal({ session, onClose }: { session: ClosedSessionRecord; onClose: () => void }) {
+function ClosedSessionDetailModal({
+  businessName, session, onClose
+}: {
+  businessName: string;
+  session: ClosedSessionRecord;
+  onClose: () => void;
+}) {
   const diff = session.difference !== null ? Number(session.difference) : 0;
   const diffIsZero = Math.abs(diff) < 0.005;
   const breakdownEntries = session.closingBreakdown
@@ -882,13 +911,23 @@ function ClosedSessionDetailModal({ session, onClose }: { session: ClosedSession
     : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
-      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 print:static print:block print:bg-white print:p-0"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:shadow-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 print:hidden">
           <h2 className="text-sm font-semibold text-slate-950">Detalle del cierre</h2>
           <button className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" onClick={onClose} type="button">
             <X size={16} />
           </button>
+        </div>
+        <div className="hidden px-6 pt-6 text-center print:block">
+          <p className="text-lg font-bold text-slate-950">{businessName || "SOLVEN"}</p>
+          <p className="text-xs text-slate-500">Resumen de cierre de caja</p>
         </div>
         <div className="space-y-4 px-6 py-5">
           <dl className="space-y-2.5">
@@ -940,7 +979,15 @@ function ClosedSessionDetailModal({ session, onClose }: { session: ClosedSession
             </div>
           ) : null}
         </div>
-        <div className="flex justify-end border-t border-slate-200 px-6 py-4">
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4 print:hidden">
+          <button
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={() => window.print()}
+            type="button"
+          >
+            <Printer size={14} />
+            Descargar PDF
+          </button>
           <button className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200" onClick={onClose} type="button">
             Cerrar
           </button>
