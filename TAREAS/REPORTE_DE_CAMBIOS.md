@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 027 — Filtro por vendedor en el listado de ventas — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/modules/sales/sale-data-access.ts, src/app/api/sales/route.ts, src/app/ui/sales-list.tsx
+**Cambios realizados:** `PaginationParams` y `listSales` aceptan un `sellerCode` opcional que se agrega al `where` de Prisma. El endpoint `GET /api/sales` lee `sellerCode` de los query params. En el listado de ventas se agregó un `<select>` para filtrar por vendedor, cuyas opciones se acumulan en un estado separado a partir de los códigos de vendedor ya recibidos en cada respuesta (no desaparecen al aplicar el filtro).
+**Notas:** No se agregaron endpoints nuevos ni cambios de schema (`Sale.sellerCode` ya existía). Durante la validación se detectó una falla preexistente y no relacionada en `src/app/api/sales/route.integration.test.ts` ("creates a credit sale with debt through the API flow") — confirmada como preexistente comparando con el commit anterior vía `git stash` (falla igual sin estos cambios). Fuera de alcance de esta tarea, no corregida. `npm run build`, lint y typecheck ejecutados sin errores.
+---
+
 ## Tarea 026 — Feedback visual al agregar ítem al carrito — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/pos.tsx

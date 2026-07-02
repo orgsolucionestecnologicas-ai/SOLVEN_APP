@@ -36,8 +36,9 @@ export async function GET(request: Request) {
   const toParam = searchParams.get("to");
   const from = fromParam ? new Date(`${fromParam}T00:00:00`) : undefined;
   const to = toParam ? new Date(`${toParam}T23:59:59.999`) : undefined;
+  const sellerCode = searchParams.get("sellerCode") ?? undefined;
   try {
-    const result = await listSales(tenantId, { page, limit, from, to });
+    const result = await listSales(tenantId, { page, limit, from, to, sellerCode });
     return paginatedResponse(result.data, page, limit, result.total);
   } catch {
     return errorResponse("No se pudieron cargar las ventas.");

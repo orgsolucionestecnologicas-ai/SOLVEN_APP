@@ -110,6 +110,8 @@ export function SalesList() {
   const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().slice(0, 10));
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [sellerCodeFilter, setSellerCodeFilter] = useState<string>("");
+  const [sellerOptions, setSellerOptions] = useState<string[]>([]);
 
   useEffect(() => {
     let isActive = true;
@@ -118,7 +120,8 @@ export function SalesList() {
     async function loadSales() {
       try {
         const dateParams = showAllSales ? "" : `&from=${dateFilter}&to=${dateFilter}`;
-        const response = await fetch(`/api/sales?page=${page}&limit=20${dateParams}`, {
+        const sellerParams = sellerCodeFilter ? `&sellerCode=${encodeURIComponent(sellerCodeFilter)}` : "";
+        const response = await fetch(`/api/sales?page=${page}&limit=20${dateParams}${sellerParams}`, {
           headers: {
             Accept: "application/json"
           }
@@ -138,6 +141,13 @@ export function SalesList() {
         setSales(responseBody.data);
         setTotalPages(responseBody.pagination?.totalPages ?? 1);
         setLoadError(null);
+        setSellerOptions((prev) => {
+          const codes = new Set(prev);
+          for (const sale of responseBody.data ?? []) {
+            if (sale.sellerCode) codes.add(sale.sellerCode);
+          }
+          return Array.from(codes).sort();
+        });
       } catch {
         if (isActive) {
           setLoadError("No se pudieron cargar las ventas.");
@@ -155,7 +165,7 @@ export function SalesList() {
     return () => {
       isActive = false;
     };
-  }, [refreshKey, page, showAllSales, dateFilter]);
+  }, [refreshKey, page, showAllSales, dateFilter, sellerCodeFilter]);
 
   function handleSaleCreated() {
     setIsModalOpen(false);
@@ -201,6 +211,18 @@ export function SalesList() {
           >
             {showAllSales ? "← Filtrar por fecha" : "Ver historial completo →"}
           </button>
+          {sellerOptions.length > 0 ? (
+            <select
+              className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
+              onChange={(e) => { setSellerCodeFilter(e.target.value); setPage(1); }}
+              value={sellerCodeFilter}
+            >
+              <option value="">Todos los vendedores</option>
+              {sellerOptions.map((code) => (
+                <option key={code} value={code}>{code}</option>
+              ))}
+            </select>
+          ) : null}
         </div>
         <button
           className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"

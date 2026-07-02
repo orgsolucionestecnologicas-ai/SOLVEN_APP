@@ -219,15 +219,16 @@ export async function createSale(
   }, { timeout: 30000 });
 }
 
-export type PaginationParams = { page?: number; limit?: number; from?: Date; to?: Date };
+export type PaginationParams = { page?: number; limit?: number; from?: Date; to?: Date; sellerCode?: string };
 
 export async function listSales(
   tenantId: string,
-  { page = 1, limit = 20, from, to }: PaginationParams = {}
+  { page = 1, limit = 20, from, to, sellerCode }: PaginationParams = {}
 ): Promise<{ data: SaleListRecord[]; total: number }> {
   const where = {
     tenantId,
-    ...(from ? { saleDate: { gte: from, ...(to ? { lte: to } : {}) } } : {})
+    ...(from ? { saleDate: { gte: from, ...(to ? { lte: to } : {}) } } : {}),
+    ...(sellerCode ? { sellerCode } : {})
   };
   const [data, total] = await prisma.$transaction([
     prisma.sale.findMany({
