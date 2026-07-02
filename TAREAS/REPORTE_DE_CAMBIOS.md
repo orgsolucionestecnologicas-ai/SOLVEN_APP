@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 030 — Exportar ventas filtradas a CSV — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/sales-list.tsx
+**Cambios realizados:** Se agregó un botón "Exportar CSV" junto a los filtros existentes (deshabilitado si no hay ventas visibles). Genera en el cliente, sin librerías nuevas, un CSV con columnas Folio, Fecha, Vendedor, Cliente, Método de pago y Total a partir de `displayedSales` (las ventas actualmente filtradas/visibles). El método de pago se deriva de `paymentType`/`paymentDetails` ("Crédito", instrumentos combinados como "Efectivo + Tarjeta", o "Contado" como fallback). Valores con comas, comillas o saltos de línea se escapan entre comillas dobles duplicando comillas internas. Descarga con `Blob` + `URL.createObjectURL` + link temporal, nombre `ventas_YYYY-MM-DD.csv`.
+**Notas:** No se agregó ninguna librería de CSV ni se tocó el API de ventas. `npm run build`, lint y typecheck ejecutados sin errores. `npm test` repite las mismas 2 fallas preexistentes y no relacionadas ya reportadas en Tareas 027–029.
+---
+
 ## Tarea 029 — Vista agrupada por día con subtotal diario en el listado de ventas — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/sales-list.tsx

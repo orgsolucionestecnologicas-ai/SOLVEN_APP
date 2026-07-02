@@ -17,11 +17,18 @@ type SaleItemRecord = {
   updatedAt: string;
 };
 
+type PaymentDetailSplit = {
+  method: string;
+  amount: number;
+  reference?: string;
+};
+
 type SaleRecord = {
   id: string;
   folio: number;
   saleDate: string;
   paymentType: "CASH" | "CREDIT";
+  paymentDetails: PaymentDetailSplit[] | null;
   customerId: string | null;
   debtId: string | null;
   totalAmount: string;
@@ -253,6 +260,14 @@ export function SalesList() {
             />
             Agrupar por día
           </label>
+          <button
+            className="text-xs font-medium text-violet-600 hover:text-violet-700 disabled:cursor-not-allowed disabled:text-slate-300"
+            disabled={displayedSales.length === 0}
+            onClick={() => exportSalesToCsv(displayedSales)}
+            type="button"
+          >
+            Exportar CSV
+          </button>
         </div>
         <button
           className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
@@ -1250,6 +1265,46 @@ function groupSalesByDay(sales: SaleRecord[]): SalesDayGroup[] {
 function formatDayHeader(dateKey: string) {
   const label = dayHeaderFormatter.format(new Date(`${dateKey}T00:00:00`));
   return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function getPaymentMethodLabel(sale: SaleRecord): string {
+  if (sale.paymentType === "CREDIT") return "Crédito";
+  if (Array.isArray(sale.paymentDetails) && sale.paymentDetails.length > 0) {
+    return Array.from(new Set(sale.paymentDetails.map((split) => split.method))).join(" + ");
+  }
+  return "Contado";
+}
+
+function escapeCsvValue(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function exportSalesToCsv(sales: SaleRecord[]) {
+  const header = ["Folio", "Fecha", "Vendedor", "Cliente", "Método de pago", "Total"];
+  const rows = sales.map((sale) => [
+    formatFolio(sale.folio),
+    formatDateTime(sale.saleDate),
+    sale.sellerCode ?? "",
+    sale.customer?.name ?? "",
+    getPaymentMethodLabel(sale),
+    formatMoney(sale.totalAmount)
+  ]);
+  const csvContent = [header, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `ventas_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 const numberFormatter = new Intl.NumberFormat("es-419", {
