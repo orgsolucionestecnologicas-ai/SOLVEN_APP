@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 026 — Feedback visual al agregar ítem al carrito — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/pos.tsx
+**Cambios realizados:** `addToCart` y `addServiceToCart` (usados por el buscador, el atajo Enter, el grid de más vendidos y los servicios) ahora disparan `triggerAddFeedback`, que aplica `animate-pulse` (Tailwind nativo) durante 350ms sobre la fila del carrito recién agregada/incrementada y sobre el badge contador de unidades en el header del carrito.
+**Notas:** Sin librerías nuevas ni cambios a tailwind.config.ts. `npm run build`, lint y typecheck ejecutados sin errores.
+---
+
 ## Tarea 025 — Resaltar en rojo el ítem del carrito sin stock restante — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/pos.tsx

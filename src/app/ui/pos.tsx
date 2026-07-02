@@ -423,12 +423,25 @@ export function Pos() {
   const [saleGateResult, setSaleGateResult] = useState<SaleGateResult | null>(null);
   const [arcaEnabled, setArcaEnabled] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [flashItemId, setFlashItemId] = useState<string | null>(null);
+  const [badgeFlash, setBadgeFlash] = useState(false);
 
   const moreDropdownRef = useRef<HTMLDivElement>(null);
   const suspendedCartsRef = useRef<HTMLDivElement>(null);
   const applyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const urlCustomerIdRef = useRef<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function triggerAddFeedback(id: string) {
+    setFlashItemId(id);
+    setBadgeFlash(true);
+    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+    flashTimeoutRef.current = setTimeout(() => {
+      setFlashItemId(null);
+      setBadgeFlash(false);
+    }, 350);
+  }
 
   useEffect(() => {
     const savedCart = readSavedCart();
@@ -1111,6 +1124,7 @@ export function Pos() {
     if (product.stock === 0) return;
 
     setSubmitError(null);
+    triggerAddFeedback(product.id);
     setCartItems((prev) => {
       const existing = prev.find((item) => item.productId === product.id);
 
@@ -1142,6 +1156,7 @@ export function Pos() {
 
   function addServiceToCart(service: ServiceRecord) {
     setSubmitError(null);
+    triggerAddFeedback(service.id);
     setCartItems((prev) => {
       const existing = prev.find((item) => item.serviceId === service.id);
       if (existing) {
@@ -1919,7 +1934,13 @@ export function Pos() {
               <h2 className="flex items-center text-sm font-semibold text-slate-950 [.pos-dark_&]:text-slate-100">
                 Venta actual
                 {cartItemCount > 0 ? (
-                  <span className="ml-2 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                  <span
+                    className={
+                      badgeFlash
+                        ? "ml-2 animate-pulse rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white"
+                        : "ml-2 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white"
+                    }
+                  >
                     {cartItemCount}
                   </span>
                 ) : null}
@@ -2075,17 +2096,16 @@ export function Pos() {
                     const remainingStock = item.maxStock - item.quantity;
                     const isOverStock = remainingStock < 0;
                     const isOutOfRemainingStock = remainingStock === 0;
+                    const isFlashing = flashItemId === itemId;
 
                     return (
                     <div key={itemId}>
                       <div
-                        className={
-                          isOverStock
-                            ? "flex items-center gap-2 px-4 py-2.5 ring-1 ring-red-500"
-                            : isOutOfRemainingStock
-                            ? "flex items-center gap-2 px-4 py-2.5 ring-1 ring-red-400"
-                            : "flex items-center gap-2 px-4 py-2.5"
-                        }
+                        className={[
+                          "flex items-center gap-2 px-4 py-2.5",
+                          isOverStock ? "ring-1 ring-red-500" : isOutOfRemainingStock ? "ring-1 ring-red-400" : "",
+                          isFlashing ? "animate-pulse" : "",
+                        ].filter(Boolean).join(" ")}
                       >
                       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 [.pos-dark_&]:bg-gray-700">
                         <Package size={13} className="text-slate-400" />
