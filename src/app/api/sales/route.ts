@@ -43,8 +43,9 @@ export async function GET(request: Request) {
       ? paymentTypeParam
       : undefined;
   const paymentMethod = searchParams.get("paymentMethod") ?? undefined;
+  const q = searchParams.get("q") ?? undefined;
   try {
-    const result = await listSales(tenantId, { page, limit, from, to, sellerCode, paymentType, paymentMethod });
+    const result = await listSales(tenantId, { page, limit, from, to, sellerCode, paymentType, paymentMethod, q });
     return paginatedResponse(result.data, page, limit, result.total);
   } catch {
     return errorResponse("No se pudieron cargar las ventas.");

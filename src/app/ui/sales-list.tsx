@@ -124,6 +124,16 @@ export function SalesList() {
   const [sellerOptions, setSellerOptions] = useState<string[]>([]);
   const [paymentFilter, setPaymentFilter] = useState<string>("");
   const [groupByDay, setGroupByDay] = useState(false);
+  const [searchInput, setSearchInput] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
 
   useEffect(() => {
     let isActive = true;
@@ -139,7 +149,8 @@ export function SalesList() {
             : paymentFilter
               ? `&paymentMethod=${encodeURIComponent(paymentFilter)}`
               : "";
-        const response = await fetch(`/api/sales?page=${page}&limit=20${dateParams}${sellerParams}${paymentParams}`, {
+        const searchParams = searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : "";
+        const response = await fetch(`/api/sales?page=${page}&limit=20${dateParams}${sellerParams}${paymentParams}${searchParams}`, {
           headers: {
             Accept: "application/json"
           }
@@ -183,7 +194,7 @@ export function SalesList() {
     return () => {
       isActive = false;
     };
-  }, [refreshKey, page, showAllSales, dateFilter, sellerCodeFilter, paymentFilter]);
+  }, [refreshKey, page, showAllSales, dateFilter, sellerCodeFilter, paymentFilter, searchQuery]);
 
   function handleSaleCreated() {
     setIsModalOpen(false);
@@ -229,6 +240,13 @@ export function SalesList() {
           >
             {showAllSales ? "← Filtrar por fecha" : "Ver historial completo →"}
           </button>
+          <input
+            className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Buscar por folio o cliente..."
+            type="text"
+            value={searchInput}
+          />
           {sellerOptions.length > 0 ? (
             <select
               className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"

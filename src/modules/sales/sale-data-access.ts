@@ -228,18 +228,29 @@ export type PaginationParams = {
   sellerCode?: string;
   paymentType?: Sale["paymentType"];
   paymentMethod?: string;
+  q?: string;
 };
 
 export async function listSales(
   tenantId: string,
-  { page = 1, limit = 20, from, to, sellerCode, paymentType, paymentMethod }: PaginationParams = {}
+  { page = 1, limit = 20, from, to, sellerCode, paymentType, paymentMethod, q }: PaginationParams = {}
 ): Promise<{ data: SaleListRecord[]; total: number }> {
+  const trimmedQuery = q?.trim();
+  const queryAsFolio = trimmedQuery && /^\d+$/.test(trimmedQuery) ? Number(trimmedQuery) : undefined;
   const where = {
     tenantId,
     ...(from ? { saleDate: { gte: from, ...(to ? { lte: to } : {}) } } : {}),
     ...(sellerCode ? { sellerCode } : {}),
     ...(paymentType ? { paymentType } : {}),
-    ...(paymentMethod ? { paymentDetails: { array_contains: [{ method: paymentMethod }] } } : {})
+    ...(paymentMethod ? { paymentDetails: { array_contains: [{ method: paymentMethod }] } } : {}),
+    ...(trimmedQuery
+      ? {
+          OR: [
+            ...(queryAsFolio !== undefined ? [{ folio: queryAsFolio }] : []),
+            { customer: { name: { contains: trimmedQuery, mode: "insensitive" as const } } }
+          ]
+        }
+      : {})
   };
   const [data, total] = await prisma.$transaction([
     prisma.sale.findMany({

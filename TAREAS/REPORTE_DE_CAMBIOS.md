@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 033 — Buscador por número de folio o nombre de cliente — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/modules/sales/sale-data-access.ts, src/app/api/sales/route.ts, src/app/ui/sales-list.tsx
+**Cambios realizados:** `listSales` acepta un `q` opcional: si es numérico filtra por `folio` exacto, y siempre agrega `customer.name contains` (insensitive) como alternativa vía `OR`, manteniendo el scope de `tenantId`. `GET /api/sales` lee el query param `q`. En el listado de ventas se agregó un input de texto "Buscar por folio o cliente..." con debounce de 300ms que agrega `?q=...` al fetch y resetea a la página 1; si está vacío, quita el filtro.
+**Notas:** No se modificó el schema. `npm run build`, lint y typecheck ejecutados sin errores. `npm test` repite la falla preexistente y no relacionada de `route.integration.test.ts` ("creates a credit sale with debt through the API flow"); la falla de concurrencia en `debt-payment-data-access.integration.test.ts` reapareció por agotamiento del pool de conexiones de Neon bajo carga (ya documentado en tareas previas) y se confirmó como flaky corriendo ese archivo en aislamiento (4/4 tests pasan). Ninguna falla nueva relacionada con esta tarea.
+---
+
 ## Tarea 032 — Badge visual si la venta fue devuelta total o parcialmente — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/modules/sales/sale-data-access.ts, src/app/ui/sales-list.tsx
