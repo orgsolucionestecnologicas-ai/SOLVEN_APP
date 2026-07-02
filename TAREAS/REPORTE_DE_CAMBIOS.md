@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 032 — Badge visual si la venta fue devuelta total o parcialmente — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/modules/sales/sale-data-access.ts, src/app/ui/sales-list.tsx
+**Cambios realizados:** `listSales` calcula ahora `returnStatus` ("NONE"|"PARTIAL"|"FULL") por venta, consultando `ReturnItem` agrupado por `saleId` (sin traer el detalle completo de la devolución) y comparando la cantidad devuelta contra la cantidad total vendida (`SaleItem.quantity`). En el listado de ventas se agregó `ReturnStatusBadge`, mostrado junto al folio de cada venta: "Devuelta" (rojo) si la devolución fue total, "Devolución parcial" (ámbar) si fue parcial, nada si no tuvo devoluciones.
+**Notas:** No se modificó el schema ni el flujo de `/returns`. `GET /api/sales/route.ts` no requirió cambios: ya reenvía sin modificaciones el resultado de `listSales`. `npm run build`, lint y typecheck ejecutados sin errores. `npm test` repite la misma falla preexistente y no relacionada de `route.integration.test.ts` ("creates a credit sale with debt through the API flow") ya reportada desde la Tarea 027; sin nuevas fallas.
+---
+
 ## Tarea 031 — Columna de ganancia bruta en la lista — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/sales-list.tsx

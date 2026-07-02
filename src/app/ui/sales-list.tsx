@@ -39,6 +39,7 @@ type SaleRecord = {
   sellerCode: string | null;
   receiptType: "TICKET" | "INVOICE";
   receiptNumber: number;
+  returnStatus: "NONE" | "PARTIAL" | "FULL";
   createdAt: string;
   updatedAt: string;
 };
@@ -397,9 +398,12 @@ function SaleCard({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-slate-950">
-          Venta {formatFolio(sale.folio)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-slate-950">
+            Venta {formatFolio(sale.folio)}
+          </span>
+          <ReturnStatusBadge returnStatus={sale.returnStatus} />
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500">
             {formatDateTime(sale.saleDate)}
@@ -1172,6 +1176,22 @@ function PaymentTypeBadge({
       }
     >
       {isCredit ? "Crédito" : "Contado"}
+    </span>
+  );
+}
+
+function ReturnStatusBadge({ returnStatus }: { returnStatus: SaleRecord["returnStatus"] }) {
+  if (returnStatus === "NONE") return null;
+
+  return (
+    <span
+      className={
+        returnStatus === "FULL"
+          ? "inline-flex rounded-md bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700"
+          : "inline-flex rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700"
+      }
+    >
+      {returnStatus === "FULL" ? "Devuelta" : "Devolución parcial"}
     </span>
   );
 }

@@ -28,6 +28,7 @@ export type SaleListRecord = Sale & {
     product: { name: string; costPrice: Prisma.Decimal } | null;
     service: { name: string } | null;
   })[];
+  returnStatus: "NONE" | "PARTIAL" | "FULL";
 };
 
 export class SaleProductNotFoundError extends Error {
@@ -258,7 +259,31 @@ export async function listSales(
     }),
     prisma.sale.count({ where }),
   ]);
-  return { data, total };
+
+  const returnItems = data.length
+    ? await prisma.returnItem.findMany({
+        where: { return: { saleId: { in: data.map((sale) => sale.id) } } },
+        select: { quantity: true, return: { select: { saleId: true } } }
+      })
+    : [];
+  const returnedQuantityBySaleId = new Map<string, number>();
+  for (const returnItem of returnItems) {
+    const saleId = returnItem.return.saleId;
+    returnedQuantityBySaleId.set(
+      saleId,
+      (returnedQuantityBySaleId.get(saleId) ?? 0) + returnItem.quantity
+    );
+  }
+
+  const dataWithReturnStatus = data.map((sale) => {
+    const soldQuantity = sale.items.reduce((sum, item) => sum + item.quantity, 0);
+    const returnedQuantity = returnedQuantityBySaleId.get(sale.id) ?? 0;
+    const returnStatus: SaleListRecord["returnStatus"] =
+      returnedQuantity === 0 ? "NONE" : returnedQuantity >= soldQuantity ? "FULL" : "PARTIAL";
+    return { ...sale, returnStatus };
+  });
+
+  return { data: dataWithReturnStatus, total };
 }
 
 function buildProductSaleItem(
