@@ -22,6 +22,8 @@ import {
   Trash2,
   UserPlus,
   Users,
+  Volume2,
+  VolumeX,
   X,
   Receipt,
 } from "lucide-react";
@@ -187,7 +189,40 @@ type ActiveTab = "Venta actual" | "Historial";
 
 const DRAFT_KEY = "solven_draft";
 const CART_KEY = "solven_pos_cart";
+const SOUND_KEY = "solven_pos_sound_enabled";
 const MAX_SUSPENDED_CARTS = 3;
+
+function readSoundEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem(SOUND_KEY);
+    return raw === null ? true : raw === "true";
+  } catch {
+    return true;
+  }
+}
+
+function playConfirmSound() {
+  try {
+    const AudioContextClass =
+      window.AudioContext ??
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.2);
+    oscillator.onended = () => { void ctx.close(); };
+  } catch {
+    /* ignore */
+  }
+}
 
 const PRODUCTS_PER_PAGE = 10;
 
@@ -353,6 +388,7 @@ export function Pos() {
   const [lastSale, setLastSale] = useState<LastSale | null>(null);
   const [lastSaleCollapsed, setLastSaleCollapsed] = useState(false);
   const [copiedFolio, setCopiedFolio] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const [cashRegisterStatus, setCashRegisterStatus] = useState<"loading" | "open" | "closed">("loading");
   const [showPrintModal, setShowPrintModal] = useState<{
@@ -382,6 +418,7 @@ export function Pos() {
     const savedCart = readSavedCart();
     if (savedCart) setCartItems(savedCart);
     if (readDraft()) setShowDraftBanner(true);
+    setSoundEnabled(readSoundEnabled());
     const params = new URLSearchParams(window.location.search);
     const preselectedCustomerId = params.get("customerId");
     if (preselectedCustomerId) {
@@ -869,6 +906,14 @@ export function Pos() {
     try { localStorage.removeItem(CART_KEY); } catch { /* ignore */ }
   }
 
+  function toggleSound() {
+    setSoundEnabled((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(SOUND_KEY, String(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }
+
   function handleNewSale() {
     const draft = readDraft();
     if (draft) {
@@ -1290,6 +1335,7 @@ export function Pos() {
         paymentMethod: successPaymentMethod,
       });
       setLastSaleCollapsed(false);
+      if (soundEnabled) playConfirmSound();
       setShowPrintModal({
         saleId: successSaleId,
         folio: successFolio,
@@ -1375,6 +1421,14 @@ export function Pos() {
                 >
                   <PauseCircle size={13} />
                   Suspender venta
+                </button>
+                <button
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                  onClick={toggleSound}
+                  title={soundEnabled ? "Silenciar sonido de venta" : "Activar sonido de venta"}
+                  type="button"
+                >
+                  {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
                 </button>
                 <button
                   className="hidden h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
