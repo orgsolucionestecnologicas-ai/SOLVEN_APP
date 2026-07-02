@@ -11,6 +11,7 @@ import {
   Download,
   Eye,
   Filter,
+  History,
   Info,
   MoreHorizontal,
   Plus,
@@ -45,6 +46,37 @@ type SessionRecord = {
   openedAt: string;
   openingAmount: string;
   status: "OPEN" | "CLOSED";
+};
+
+type ClosedSessionRecord = {
+  id: string;
+  cashierName: string;
+  branchName: string;
+  shift: string | null;
+  openedAt: string;
+  closedAt: string | null;
+  openingAmount: string;
+  closingAmount: string | null;
+  expectedAmount: string | null;
+  difference: string | null;
+  closingNotes: string | null;
+  closingBreakdown: Record<string, number> | null;
+};
+
+const DENOMINATION_LABELS: Record<string, { label: string; value: number }> = {
+  "20000": { label: "$20.000", value: 20000 },
+  "10000": { label: "$10.000", value: 10000 },
+  "2000": { label: "$2.000", value: 2000 },
+  "1000": { label: "$1.000", value: 1000 },
+  "500": { label: "$500", value: 500 },
+  "200": { label: "$200", value: 200 },
+  "100": { label: "$100", value: 100 },
+  "50": { label: "$50", value: 50 },
+  "20": { label: "$20", value: 20 },
+  c10: { label: "Moneda $10", value: 10 },
+  c5: { label: "Moneda $5", value: 5 },
+  c2: { label: "Moneda $2", value: 2 },
+  c1: { label: "Moneda $1", value: 1 },
 };
 
 type PaginationMeta = { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
@@ -148,7 +180,7 @@ export function CashMovementsList() {
   const [sessionStatus, setSessionStatus] = useState<"loading" | "noSession" | "open">("loading");
   const [currentSession, setCurrentSession] = useState<SessionRecord | null>(null);
   const [sessionRefreshKey, setSessionRefreshKey] = useState(0);
-  const [view, setView] = useState<"movements" | "closing">("movements");
+  const [view, setView] = useState<"movements" | "closing" | "history">("movements");
 
   const [typeFilter, setTypeFilter] = useState<"all" | "IN" | "OUT">("all");
   const [dateFilterDate, setDateFilterDate] = useState(todayISO());
@@ -291,6 +323,10 @@ export function CashMovementsList() {
     );
   }
 
+  if (view === "history") {
+    return <CashRegisterHistoryView onBack={() => setView("movements")} />;
+  }
+
   const todayFull = `${fmtDate(now.toISOString())} · ${DAY_NAMES[now.getDay()]}`;
 
   return (
@@ -320,6 +356,14 @@ export function CashMovementsList() {
             type="button"
           >
             Cierre de caja
+          </button>
+          <button
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={() => setView("history")}
+            type="button"
+          >
+            <History size={13} />
+            Historial de cierres
           </button>
           <button
             className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -665,6 +709,243 @@ export function CashMovementsList() {
       {detailMovement ? (
         <MovementDetailModal movement={detailMovement} onClose={() => setDetailMovement(null)} />
       ) : null}
+    </div>
+  );
+}
+
+function CashRegisterHistoryView({ onBack }: { onBack: () => void }) {
+  const [sessions, setSessions] = useState<ClosedSessionRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+  const [selectedSession, setSelectedSession] = useState<ClosedSessionRecord | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+
+    async function load() {
+      try {
+        const res = await fetch(`/api/cash-register/sessions?page=${page}&limit=10`, { headers: { Accept: "application/json" } });
+        const body = (await res.json()) as ApiResponse<ClosedSessionRecord[]>;
+        if (!active) return;
+        if (!res.ok || !body.data) { setLoadError("No se pudo cargar el historial de cierres."); setSessions([]); return; }
+        setSessions(body.data);
+        setPagination(body.pagination ?? null);
+        setLoadError(null);
+      } catch {
+        if (active) { setLoadError("No se pudo cargar el historial de cierres."); setSessions([]); }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    }
+
+    void load();
+    return () => { active = false; };
+  }, [page]);
+
+  return (
+    <div className="flex min-h-full flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-4">
+        <div className="flex items-center gap-4">
+          <button className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800" onClick={onBack} type="button">
+            <ArrowLeft size={15} />
+            Volver a movimientos
+          </button>
+          <div className="h-4 w-px bg-slate-200" />
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100">
+              <History className="text-violet-600" size={16} />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-slate-950">Historial de cierres</h1>
+              <p className="text-xs text-slate-500">Consultá el resumen de cierre de cualquier sesión anterior.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 px-6 py-4">
+        <div className="rounded-xl border border-slate-200 bg-white">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+            <h3 className="text-sm font-semibold text-slate-950">Sesiones cerradas</h3>
+            <p className="text-xs text-slate-400">{pagination ? `${pagination.total} sesión${pagination.total !== 1 ? "es" : ""}` : ""}</p>
+          </div>
+
+          {isLoading ? (
+            <div className="divide-y divide-slate-100">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div className="h-14 animate-pulse bg-slate-50" key={i} />
+              ))}
+            </div>
+          ) : loadError ? (
+            <div className="p-6">
+              <p className="text-sm text-rose-700">{loadError}</p>
+            </div>
+          ) : sessions.length === 0 ? (
+            <div className="p-10 text-center">
+              <History className="mx-auto mb-3 text-slate-300" size={32} />
+              <p className="text-sm font-semibold text-slate-950">Sin cierres registrados</p>
+              <p className="mt-1 text-xs text-slate-400">Todavía no hay sesiones de caja cerradas.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    {["Apertura", "Cierre", "Cajero", "Monto apertura", "Monto cierre", "Diferencia", ""].map((h, i) => (
+                      <th
+                        className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 ${i >= 3 && i <= 5 ? "text-right" : "text-left"}`}
+                        key={h || i}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {sessions.map((s) => {
+                    const diff = s.difference !== null ? Number(s.difference) : 0;
+                    const diffIsZero = Math.abs(diff) < 0.005;
+                    return (
+                      <tr className="cursor-pointer hover:bg-slate-50/50" key={s.id} onClick={() => setSelectedSession(s)}>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-500">
+                          {fmtDate(s.openedAt)} · {fmtTime(s.openedAt)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-500">
+                          {s.closedAt ? `${fmtDate(s.closedAt)} · ${fmtTime(s.closedAt)}` : "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-slate-950">
+                          {s.cashierName}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-700">
+                          {fmtMoney(s.openingAmount)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-700">
+                          {s.closingAmount !== null ? fmtMoney(s.closingAmount) : "—"}
+                        </td>
+                        <td className={`whitespace-nowrap px-4 py-3 text-right text-sm font-semibold ${diffIsZero ? "text-emerald-600" : diff > 0 ? "text-blue-600" : "text-rose-600"}`}>
+                          {s.difference !== null ? `${diff > 0 ? "+" : ""}${fmtMoney(s.difference)}` : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Eye className="inline text-slate-400" size={13} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {pagination && pagination.totalPages > 1 ? (
+            <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
+              <p className="text-xs text-slate-500">
+                Página {pagination.page} de {pagination.totalPages}
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+                  disabled={!pagination.hasPrev}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  type="button"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <button
+                  className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+                  disabled={!pagination.hasNext}
+                  onClick={() => setPage((p) => p + 1)}
+                  type="button"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {selectedSession ? (
+        <ClosedSessionDetailModal onClose={() => setSelectedSession(null)} session={selectedSession} />
+      ) : null}
+    </div>
+  );
+}
+
+function ClosedSessionDetailModal({ session, onClose }: { session: ClosedSessionRecord; onClose: () => void }) {
+  const diff = session.difference !== null ? Number(session.difference) : 0;
+  const diffIsZero = Math.abs(diff) < 0.005;
+  const breakdownEntries = session.closingBreakdown
+    ? Object.entries(session.closingBreakdown).filter(([, count]) => count > 0)
+    : [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">Detalle del cierre</h2>
+          <button className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" onClick={onClose} type="button">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="space-y-4 px-6 py-5">
+          <dl className="space-y-2.5">
+            {[
+              { label: "Cajero", value: session.cashierName },
+              { label: "Sucursal", value: session.branchName },
+              { label: "Apertura", value: `${fmtDate(session.openedAt)} · ${fmtTime(session.openedAt)}` },
+              { label: "Cierre", value: session.closedAt ? `${fmtDate(session.closedAt)} · ${fmtTime(session.closedAt)}` : "—" },
+              { label: "Monto de apertura", value: fmtMoney(session.openingAmount) },
+              { label: "Monto esperado", value: session.expectedAmount !== null ? fmtMoney(session.expectedAmount) : "—" },
+              { label: "Monto contado", value: session.closingAmount !== null ? fmtMoney(session.closingAmount) : "—" },
+            ].map(({ label, value }) => (
+              <div className="flex justify-between text-sm" key={label}>
+                <dt className="text-slate-500">{label}</dt>
+                <dd className="max-w-[220px] text-right font-medium text-slate-900">{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className={`rounded-xl p-4 text-center ${diffIsZero ? "bg-emerald-50" : "bg-amber-50"}`}>
+            <p className="text-xs text-slate-500">Diferencia</p>
+            <p className={`text-xl font-bold ${diffIsZero ? "text-emerald-600" : diff > 0 ? "text-blue-600" : "text-rose-600"}`}>
+              {session.difference !== null ? `${diff > 0 ? "+" : ""}${fmtMoney(session.difference)}` : "—"}
+            </p>
+          </div>
+
+          {breakdownEntries.length > 0 ? (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Desglose de denominaciones</p>
+              <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                {breakdownEntries.map(([key, count]) => {
+                  const denom = DENOMINATION_LABELS[key];
+                  const subtotal = denom ? denom.value * count : 0;
+                  return (
+                    <div className="flex items-center justify-between px-3 py-2 text-sm" key={key}>
+                      <span className="text-slate-600">{denom?.label ?? key} × {count}</span>
+                      <span className="font-medium text-slate-950">{fmtMoney(subtotal)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {session.closingNotes ? (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Notas</p>
+              <p className="text-sm text-slate-700">{session.closingNotes}</p>
+            </div>
+          ) : null}
+        </div>
+        <div className="flex justify-end border-t border-slate-200 px-6 py-4">
+          <button className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200" onClick={onClose} type="button">
+            Cerrar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

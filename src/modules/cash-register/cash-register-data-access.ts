@@ -139,3 +139,24 @@ export async function listSessions(
     orderBy: { openedAt: "desc" }
   });
 }
+
+export async function listClosedSessions(
+  tenantId: string,
+  options: { page?: number; limit?: number } = {}
+): Promise<{ data: CashRegisterSession[]; total: number }> {
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 20;
+  const where = { tenantId, status: "CLOSED" as const };
+
+  const [data, total] = await prisma.$transaction([
+    prisma.cashRegisterSession.findMany({
+      where,
+      orderBy: { closedAt: "desc" },
+      take: limit,
+      skip: (page - 1) * limit
+    }),
+    prisma.cashRegisterSession.count({ where })
+  ]);
+
+  return { data, total };
+}

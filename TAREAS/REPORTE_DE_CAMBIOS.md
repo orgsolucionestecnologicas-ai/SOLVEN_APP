@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 039 — Historial de cierres anteriores — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/api/cash-register/sessions/route.ts, src/modules/cash-register/cash-register-data-access.ts, src/modules/cash-register/index.ts, src/app/ui/cash-movements-list.tsx
+**Cambios realizados:** Ya existía un endpoint `GET /api/cash-register/sessions` (no consumido por ninguna UI todavía), pero listaba todas las sesiones sin filtrar ni paginar. Se agregó `listClosedSessions(tenantId, { page, limit })` en el módulo cash-register (filtra `status: "CLOSED"`, ordena por `closedAt desc`, pagina con `prisma.$transaction([findMany, count])`, mismo patrón que `listAuditLogs`), y se actualizó el route handler para usarla junto con `paginatedResponse` y soporte de `?page=`/`?limit=`. En `cash-movements-list.tsx` se agregó el botón "Historial de cierres" en el header (junto a "Cierre de caja") que abre una nueva vista `CashRegisterHistoryView`: tabla de sesiones cerradas con fecha de apertura/cierre, cajero, monto de apertura, monto de cierre y diferencia, con paginación simple. Al hacer clic en una fila se abre `ClosedSessionDetailModal` con el detalle completo (cajero, sucursal, apertura, cierre, monto de apertura, monto esperado, monto contado, diferencia, notas y el desglose de denominaciones de `closingBreakdown` si existe, de la Tarea 037).
+**Notas:** Vista de solo lectura, no permite editar sesiones pasadas. No se modificó el schema de Prisma. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 196 pasaron, mismas 2 fallas preexistentes y no relacionadas (route.integration.test.ts y debt-payment-data-access.integration.test.ts, ya documentadas); sin nuevas fallas.
+---
+
 ## Tarea 038 — Exportar movimientos de caja a CSV por período seleccionado — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/cash-movements-list.tsx

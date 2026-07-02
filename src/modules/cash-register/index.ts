@@ -4,6 +4,7 @@ export {
   getCurrentSession,
   getSessionById,
   listSessions,
+  listClosedSessions,
   CashRegisterSessionNotFoundError,
   CashRegisterAlreadyOpenError,
   CashRegisterAlreadyClosedError
