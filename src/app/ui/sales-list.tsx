@@ -8,11 +8,13 @@ import { Pagination } from "./pagination";
 type SaleItemRecord = {
   id: string;
   saleId: string;
-  productId: string;
+  productId: string | null;
+  serviceId: string | null;
   quantity: number;
   unitPrice: string;
   total: string;
-  product: { name: string };
+  product: { name: string; costPrice: string } | null;
+  service: { name: string } | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -388,8 +390,9 @@ function SaleCard({
 }) {
   const productSummary =
     sale.items.length > 0
-      ? sale.items.map((i) => `${i.product.name} ×${i.quantity}`).join(" · ")
+      ? sale.items.map((i) => `${i.product?.name ?? i.service?.name ?? "Ítem"} ×${i.quantity}`).join(" · ")
       : "Sin ítems";
+  const grossProfit = getSaleGrossProfit(sale);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -419,9 +422,26 @@ function SaleCard({
       <p className="mt-2 truncate text-xs text-slate-600">{productSummary}</p>
 
       <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
-        <span className="text-sm font-bold text-slate-950">
-          {formatMoney(sale.totalAmount)}
-        </span>
+        <div className="flex flex-col">
+          <span className="text-sm font-bold text-slate-950">
+            {formatMoney(sale.totalAmount)}
+          </span>
+          <span
+            className={
+              grossProfit.profit >= 0
+                ? "text-xs font-medium text-emerald-600"
+                : "text-xs font-medium text-rose-600"
+            }
+            title={
+              grossProfit.hasNonProductItems
+                ? "No incluye ítems de servicio (sin costo definido)"
+                : undefined
+            }
+          >
+            Ganancia: {formatARS(grossProfit.profit)}
+            {grossProfit.hasNonProductItems ? "*" : ""}
+          </span>
+        </div>
         <div className="flex items-center gap-1">
           <button
             className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
@@ -533,7 +553,7 @@ function SaleDetailModal({
                   {sale.items.map((item) => (
                     <tr key={item.id}>
                       <td className="px-4 py-3 text-sm text-slate-950">
-                        {item.product.name}
+                        {item.product?.name ?? item.service?.name ?? "Ítem"}
                       </td>
                       <td className="px-4 py-3 text-right text-sm text-slate-700">
                         {numberFormatter.format(item.quantity)}
@@ -586,14 +606,18 @@ function ReturnModal({
   onSuccess: () => void;
 }) {
   const [returnItems, setReturnItems] = useState<ReturnItemState[]>(
-    sale.items.map((item) => ({
-      productId: item.productId,
-      productName: item.product.name,
-      maxQuantity: item.quantity,
-      unitPrice: item.unitPrice,
-      selected: false,
-      returnQuantity: item.quantity
-    }))
+    sale.items
+      .filter((item): item is typeof item & { productId: string; product: { name: string; costPrice: string } } =>
+        item.productId !== null && item.product !== null
+      )
+      .map((item) => ({
+        productId: item.productId,
+        productName: item.product.name,
+        maxQuantity: item.quantity,
+        unitPrice: item.unitPrice,
+        selected: false,
+        returnQuantity: item.quantity
+      }))
   );
   const [returnMethod, setReturnMethod] = useState<
     "Efectivo" | "Crédito a cuenta"
@@ -1273,6 +1297,19 @@ function getPaymentMethodLabel(sale: SaleRecord): string {
     return Array.from(new Set(sale.paymentDetails.map((split) => split.method))).join(" + ");
   }
   return "Contado";
+}
+
+function getSaleGrossProfit(sale: SaleRecord): { profit: number; hasNonProductItems: boolean } {
+  let profit = 0;
+  let hasNonProductItems = false;
+  for (const item of sale.items) {
+    if (item.product) {
+      profit += (Number(item.unitPrice) - Number(item.product.costPrice)) * item.quantity;
+    } else {
+      hasNonProductItems = true;
+    }
+  }
+  return { profit, hasNonProductItems };
 }
 
 function escapeCsvValue(value: string): string {

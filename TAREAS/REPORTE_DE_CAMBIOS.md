@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 031 — Columna de ganancia bruta en la lista — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/sales-list.tsx
+**Cambios realizados:** El `costPrice` del producto ya llegaba desde el backend (`sale-data-access.ts`/`GET /api/sales` sin cambios necesarios). Se agregó `getSaleGrossProfit(sale)`, que suma por ítem `(unitPrice - costPrice) * quantity` para ítems con producto asociado y marca `hasNonProductItems` cuando la venta incluye servicios (sin costo definido). Cada tarjeta de venta muestra ahora "Ganancia: {monto}" bajo el total, en verde si es positiva o rojo si es negativa, con un asterisco y tooltip cuando la venta tiene ítems de servicio no incluidos en el cálculo.
+**Notas:** Se corrigió además un tipado incorrecto preexistente: `SaleItemRecord.product`/`productId` se tipaban como siempre presentes, cuando el backend real permite `product: null` en ítems de servicio (con `service` poblado en su lugar). Esto exigió ajustar dos usos no seguros (`productSummary` y la tabla de detalle en `SaleDetailModal`) y filtrar `ReturnModal` para operar solo sobre ítems con producto asociado (las devoluciones nunca soportaron ítems de servicio). Se verificó que exponer `costPrice` no introduce escalamiento de privilegios: `GET /api/sales`, `GET /api/products` y `GET /api/reports/export` ya lo devuelven sin `requireRole`. No se modificó el schema. `npm run build`, lint y typecheck ejecutados sin errores. `npm test` repite la misma falla preexistente y no relacionada de `route.integration.test.ts` ("creates a credit sale with debt through the API flow") ya reportada desde la Tarea 027; sin nuevas fallas.
+---
+
 ## Tarea 030 — Exportar ventas filtradas a CSV — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/sales-list.tsx
