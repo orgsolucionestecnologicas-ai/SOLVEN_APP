@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Copy, Eye, Printer, RotateCcw, Shuffle } from "lucide-react";
+import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
 import { formatARS } from "@/lib/format-currency";
 import { Pagination } from "./pagination";
@@ -433,7 +434,18 @@ function SaleCard({
       </div>
 
       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-        {sale.customer ? <span>{sale.customer.name}</span> : null}
+        {sale.customer ? (
+          sale.customerId ? (
+            <Link
+              className="hover:text-violet-600 hover:underline"
+              href={`/customers/${sale.customerId}`}
+            >
+              {sale.customer.name}
+            </Link>
+          ) : (
+            <span>{sale.customer.name}</span>
+          )
+        ) : null}
         <span className="font-mono">{formatReceiptNumber(sale.receiptType, sale.receiptNumber)}</span>
         {sale.sellerCode ? (
           <span className="rounded-full bg-violet-100 px-2 py-0.5 font-mono font-semibold text-violet-700">
@@ -551,7 +563,16 @@ function SaleDetailModal({
                 Cliente
               </p>
               <p className="mt-0.5 text-sm text-slate-950">
-                {sale.customer.name}
+                {sale.customerId ? (
+                  <Link
+                    className="hover:text-violet-600 hover:underline"
+                    href={`/customers/${sale.customerId}`}
+                  >
+                    {sale.customer.name}
+                  </Link>
+                ) : (
+                  sale.customer.name
+                )}
               </p>
             </div>
           ) : null}

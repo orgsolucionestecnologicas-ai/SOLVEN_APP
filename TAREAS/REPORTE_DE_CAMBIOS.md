@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 036 — Clic en nombre del cliente navega directo al perfil — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/sales-list.tsx
+**Cambios realizados:** El nombre del cliente en `SaleCard` (listado) y en `SaleDetailModal` (detalle) ahora es un `<Link href={`/customers/${sale.customerId}`}>` de Next.js cuando `sale.customerId` no es null, con estilo `hover:text-violet-600 hover:underline`. Cuando `customerId` es null (venta sin cliente asociado) se sigue mostrando el nombre como texto plano, sin link.
+**Notas:** No se modificó la página /customers/[id] ni el API de ventas. Solo se tocó sales-list.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 196 pasaron, mismas 2 fallas preexistentes y no relacionadas (route.integration.test.ts y debt-payment-data-access.integration.test.ts, ya documentadas); sin nuevas fallas.
+---
+
 ## Tarea 035 — Folio de venta copiable con un clic — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/sales-list.tsx
