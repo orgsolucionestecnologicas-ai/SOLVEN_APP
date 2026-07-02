@@ -2072,10 +2072,21 @@ export function Pos() {
                     const lineBaseTotal = displayPrice * item.quantity;
                     const lineFinalTotal = getLineFinalTotal(item, displayPrice);
                     const hasManualDiscount = (item.discount ?? 0) > 0;
+                    const remainingStock = item.maxStock - item.quantity;
+                    const isOverStock = remainingStock < 0;
+                    const isOutOfRemainingStock = remainingStock === 0;
 
                     return (
                     <div key={itemId}>
-                      <div className="flex items-center gap-2 px-4 py-2.5">
+                      <div
+                        className={
+                          isOverStock
+                            ? "flex items-center gap-2 px-4 py-2.5 ring-1 ring-red-500"
+                            : isOutOfRemainingStock
+                            ? "flex items-center gap-2 px-4 py-2.5 ring-1 ring-red-400"
+                            : "flex items-center gap-2 px-4 py-2.5"
+                        }
+                      >
                       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 [.pos-dark_&]:bg-gray-700">
                         <Package size={13} className="text-slate-400" />
                       </div>
@@ -2087,6 +2098,11 @@ export function Pos() {
                           <p className="truncate text-[9px] font-medium text-violet-600">
                             {promoName}
                           </p>
+                        ) : null}
+                        {isOverStock ? (
+                          <p className="text-[9px] font-medium text-red-600">Cantidad supera el stock disponible</p>
+                        ) : isOutOfRemainingStock ? (
+                          <p className="text-[9px] font-medium text-red-500">Sin stock restante</p>
                         ) : null}
                       </div>
                       <div className="w-12 text-right text-xs tabular-nums">

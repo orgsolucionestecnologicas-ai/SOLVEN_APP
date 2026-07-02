@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 025 — Resaltar en rojo el ítem del carrito sin stock restante — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/pos.tsx
+**Cambios realizados:** Cada fila del carrito calcula `remainingStock = item.maxStock - item.quantity` (sin llamadas nuevas a la API). Si es 0, la fila muestra un borde rojo sutil (`ring-1 ring-red-400`) y el texto "Sin stock restante". Si es negativo, el borde es más fuerte (`ring-1 ring-red-500`) y el texto cambia a "Cantidad supera el stock disponible".
+**Notas:** No se duplicó lógica de bloqueo: la cantidad ya no puede superar `maxStock` por los guards existentes (`updateQuantity`, `commitQuantityInput`/`invalidQuantityIds`, botón `+` deshabilitado), por lo que el caso negativo es solo defensivo. `npm run build`, lint y typecheck ejecutados sin errores.
+---
+
 ## Tarea 024 — Foco automático en el buscador de productos del POS — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/pos.tsx
