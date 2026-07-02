@@ -113,6 +113,7 @@ export function SalesList() {
   const [sellerCodeFilter, setSellerCodeFilter] = useState<string>("");
   const [sellerOptions, setSellerOptions] = useState<string[]>([]);
   const [paymentFilter, setPaymentFilter] = useState<string>("");
+  const [groupByDay, setGroupByDay] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -243,6 +244,15 @@ export function SalesList() {
             <option value="Otro">Otro</option>
             <option value="CREDIT">Crédito</option>
           </select>
+          <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+            <input
+              checked={groupByDay}
+              className="h-3.5 w-3.5 rounded border-slate-300 text-violet-600 focus:ring-violet-400"
+              onChange={(e) => setGroupByDay(e.target.checked)}
+              type="checkbox"
+            />
+            Agrupar por día
+          </label>
         </div>
         <button
           className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
@@ -278,11 +288,33 @@ export function SalesList() {
       ) : null}
       {!isLoading && !loadError && displayedSales.length > 0 ? (
         <>
-          <SaleCards
-            onReturn={setReturningSale}
-            onView={setViewingSale}
-            sales={displayedSales}
-          />
+          {groupByDay ? (
+            <div className="space-y-6">
+              {groupSalesByDay(displayedSales).map((group) => (
+                <div key={group.dateKey}>
+                  <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {formatDayHeader(group.dateKey)}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {group.sales.length} {group.sales.length === 1 ? "venta" : "ventas"} · {formatARS(group.subtotal)}
+                    </p>
+                  </div>
+                  <SaleCards
+                    onReturn={setReturningSale}
+                    onView={setViewingSale}
+                    sales={group.sales}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <SaleCards
+              onReturn={setReturningSale}
+              onView={setViewingSale}
+              sales={displayedSales}
+            />
+          )}
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       ) : null}
@@ -1181,6 +1213,45 @@ function formatDateTime(value: string) {
   return dateTimeFormatter.format(new Date(value));
 }
 
+type SalesDayGroup = {
+  dateKey: string;
+  sales: SaleRecord[];
+  subtotal: number;
+};
+
+function localDayKey(value: string) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function groupSalesByDay(sales: SaleRecord[]): SalesDayGroup[] {
+  const groups = new Map<string, SaleRecord[]>();
+  for (const sale of sales) {
+    const key = localDayKey(sale.saleDate);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.push(sale);
+    } else {
+      groups.set(key, [sale]);
+    }
+  }
+  return Array.from(groups.entries())
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([dateKey, groupSales]) => ({
+      dateKey,
+      sales: groupSales,
+      subtotal: groupSales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0)
+    }));
+}
+
+function formatDayHeader(dateKey: string) {
+  const label = dayHeaderFormatter.format(new Date(`${dateKey}T00:00:00`));
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 const numberFormatter = new Intl.NumberFormat("es-419", {
   maximumFractionDigits: 0
 });
@@ -1192,4 +1263,10 @@ const dateTimeFormatter = new Intl.DateTimeFormat("es-419", {
   hour: "2-digit",
   minute: "2-digit",
   hour12: false
+});
+
+const dayHeaderFormatter = new Intl.DateTimeFormat("es-419", {
+  weekday: "long",
+  day: "numeric",
+  month: "long"
 });

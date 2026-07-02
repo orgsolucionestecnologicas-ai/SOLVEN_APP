@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 029 — Vista agrupada por día con subtotal diario en el listado de ventas — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/sales-list.tsx
+**Cambios realizados:** Se agregó un checkbox "Agrupar por día" (desactivado por defecto) junto a los filtros existentes. Al activarlo, las ventas ya cargadas (`displayedSales`) se agrupan en el cliente por fecha local (`localDayKey`, sin nuevas llamadas a la API) y se renderiza un encabezado por día ("Lunes 30 de junio", cantidad de ventas y subtotal en ARS con `formatARS`) seguido de las mismas tarjetas de venta (`SaleCards`) ya existentes.
+**Notas:** Agrupado puramente client-side sobre los datos ya paginados/filtrados; no se tocó el API de ventas ni el schema. `npm run build`, lint y typecheck ejecutados sin errores. `npm test` repite las mismas 2 fallas preexistentes y no relacionadas ya reportadas en Tareas 027/028.
+---
+
 ## Tarea 028 — Filtro por método de pago en el listado de ventas — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/modules/sales/sale-data-access.ts, src/app/api/sales/route.ts, src/app/ui/sales-list.tsx
