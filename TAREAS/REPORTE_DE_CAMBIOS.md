@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 023 — Pantalla post-venta con folio, monto y botón de compartir por WhatsApp — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/pos.tsx
+**Cambios realizados:** Se amplió el panel "Última venta" existente (Tarea 019): folio y total ahora se muestran en tipografía grande (text-2xl). Se agregó un botón "Compartir" que arma un mensaje de texto (nombre del negocio, folio, fecha, ítems y total en ARS) y lo envía a `https://wa.me/?text=...` en una pestaña nueva, sin número fijo.
+**Notas:** Se reutilizó el fetch existente a `/api/settings` para obtener `businessName` (sin llamada nueva). Sin pendientes. `npm run build`, lint y typecheck ejecutados sin errores.
+---
+
 ## Tarea 022 — Modo oscuro configurable para el POS — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/pos.tsx

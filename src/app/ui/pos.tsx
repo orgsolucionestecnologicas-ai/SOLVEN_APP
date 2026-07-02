@@ -10,6 +10,7 @@ import {
   ChevronUp,
   Copy,
   FileText,
+  MessageCircle,
   MoreHorizontal,
   Package,
   PauseCircle,
@@ -127,6 +128,7 @@ type LastSale = {
   items: { productName: string; quantity: number; unitPrice: number }[];
   total: number;
   paymentMethod: string;
+  date: Date;
 };
 
 type CreateSaleResponse = {
@@ -401,6 +403,7 @@ export function Pos() {
   const [copiedFolio, setCopiedFolio] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [businessName, setBusinessName] = useState("");
 
   const [cashRegisterStatus, setCashRegisterStatus] = useState<"loading" | "open" | "closed">("loading");
   const [showPrintModal, setShowPrintModal] = useState<{
@@ -446,6 +449,7 @@ export function Pos() {
         const res = await fetch("/api/settings", { headers: { Accept: "application/json" } });
         const body = await res.json();
         if (res.ok && body.data?.arcaEnabled) setArcaEnabled(true);
+        if (res.ok && body.data?.businessName) setBusinessName(body.data.businessName);
       } catch { /* default false */ }
     }
     void loadSettings();
@@ -935,6 +939,25 @@ export function Pos() {
     });
   }
 
+  function shareLastSaleWhatsApp() {
+    if (!lastSale) return;
+    const dateLabel = new Intl.DateTimeFormat("es-419", {
+      day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit", hour12: true,
+    }).format(lastSale.date);
+    const lines = [
+      businessName ? businessName : null,
+      `Folio #${lastSale.folio}`,
+      dateLabel,
+      "",
+      ...lastSale.items.map((item) => `${item.quantity} × ${item.productName}`),
+      "",
+      `Total: ${formatARS(lastSale.total)}`,
+    ].filter((line) => line !== null);
+    const text = lines.join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
+
   function handleNewSale() {
     const draft = readDraft();
     if (draft) {
@@ -1354,6 +1377,7 @@ export function Pos() {
         })),
         total: successTotal,
         paymentMethod: successPaymentMethod,
+        date: new Date(),
       });
       setLastSaleCollapsed(false);
       if (soundEnabled) playConfirmSound();
@@ -2549,6 +2573,9 @@ export function Pos() {
                 {!lastSaleCollapsed ? (
                   <div className="space-y-2.5 border-t border-slate-200 [.pos-dark_&]:border-gray-700 px-5 py-3">
                     <div className="flex items-center justify-between">
+                      <span className="text-2xl font-bold tabular-nums text-slate-950 [.pos-dark_&]:text-slate-100">
+                        #{lastSale.folio}
+                      </span>
                       <button
                         className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700"
                         onClick={() => {
@@ -2559,7 +2586,7 @@ export function Pos() {
                         type="button"
                       >
                         <Copy size={11} />
-                        {copiedFolio ? "¡Copiado!" : `Copiar folio #${lastSale.folio}`}
+                        {copiedFolio ? "¡Copiado!" : "Copiar folio"}
                       </button>
                     </div>
                     <ul className="space-y-1">
@@ -2579,17 +2606,27 @@ export function Pos() {
                     </ul>
                     <div className="flex items-center justify-between border-t border-slate-200 [.pos-dark_&]:border-gray-700 pt-2">
                       <span className="text-xs font-semibold text-slate-700 [.pos-dark_&]:text-slate-300">Total</span>
-                      <span className="text-lg font-bold text-slate-950 [.pos-dark_&]:text-slate-100">
+                      <span className="text-2xl font-bold tabular-nums text-slate-950 [.pos-dark_&]:text-slate-100">
                         {formatMoneyNum(lastSale.total)}
                       </span>
                     </div>
                     <p className="text-xs text-slate-500">Pago: {lastSale.paymentMethod}</p>
-                    <Link
-                      className="flex items-center justify-center gap-1 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 py-1.5 text-xs font-medium text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-100 [.pos-dark_&]:hover:bg-gray-700"
-                      href={`/sales/${lastSale.saleId}`}
-                    >
-                      Ver detalle
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 py-1.5 text-xs font-medium text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-100 [.pos-dark_&]:hover:bg-gray-700"
+                        href={`/sales/${lastSale.saleId}`}
+                      >
+                        Ver detalle
+                      </Link>
+                      <button
+                        className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-green-600 py-1.5 text-xs font-medium text-white hover:bg-green-700"
+                        onClick={shareLastSaleWhatsApp}
+                        type="button"
+                      >
+                        <MessageCircle size={13} />
+                        Compartir
+                      </button>
+                    </div>
                   </div>
                 ) : null}
               </div>
