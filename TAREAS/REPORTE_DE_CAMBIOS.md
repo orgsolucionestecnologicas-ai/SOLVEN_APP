@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 034 — Badge de método de pago con color propio por tipo — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/sales-list.tsx
+**Cambios realizados:** `PaymentTypeBadge` solo distinguía CASH ("Contado", verde)/CREDIT ("Crédito", azul) e ignoraba `MIXED` y el instrumento específico en `paymentDetails`. Se agregó `getPaymentBadgeInfo(sale)`, que ahora cubre: Crédito (azul), Mixto (gris + ícono `Shuffle` de lucide-react, cuando `paymentType === "MIXED"` o hay más de un instrumento en `paymentDetails`), Efectivo (verde), Tarjeta (azul), Transferencia (violeta `violet-100`/`violet-700`, consistente con el uso ya existente de violeta en el archivo), Venta web (celeste) y Otro (gris claro), con "Contado" como fallback si no hay `paymentDetails`. Se corrigió además el tipado de `SaleRecord.paymentType`, que excluía incorrectamente `"MIXED"` (el enum real `SalePaymentType` en el schema sí lo incluye).
+**Notas:** El componente sí requería cambios (no estaba "ya implementado"): carecía de paleta para MIXED y de granularidad por instrumento. Solo se tocó sales-list.tsx. No se modificó el schema ni el flujo de cobro. `npm run build`, lint y typecheck ejecutados sin errores. `npm test` repite la misma falla preexistente y no relacionada de `route.integration.test.ts` ("creates a credit sale with debt through the API flow"); sin nuevas fallas.
+---
+
 ## Tarea 033 — Buscador por número de folio o nombre de cliente — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/modules/sales/sale-data-access.ts, src/app/api/sales/route.ts, src/app/ui/sales-list.tsx

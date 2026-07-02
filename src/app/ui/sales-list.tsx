@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Printer, RotateCcw } from "lucide-react";
+import { Eye, Printer, RotateCcw, Shuffle } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { formatARS } from "@/lib/format-currency";
 import { Pagination } from "./pagination";
@@ -29,7 +29,7 @@ type SaleRecord = {
   id: string;
   folio: number;
   saleDate: string;
-  paymentType: "CASH" | "CREDIT";
+  paymentType: "CASH" | "CREDIT" | "MIXED";
   paymentDetails: PaymentDetailSplit[] | null;
   customerId: string | null;
   debtId: string | null;
@@ -426,7 +426,7 @@ function SaleCard({
           <span className="text-xs text-slate-500">
             {formatDateTime(sale.saleDate)}
           </span>
-          <PaymentTypeBadge paymentType={sale.paymentType} />
+          <PaymentTypeBadge sale={sale} />
           <ReceiptTypeBadge receiptType={sale.receiptType} />
         </div>
       </div>
@@ -529,7 +529,7 @@ function SaleDetailModal({
             <span className="text-sm text-slate-500">
               {formatDateTime(sale.saleDate)}
             </span>
-            <PaymentTypeBadge paymentType={sale.paymentType} />
+            <PaymentTypeBadge sale={sale} />
             <ReceiptTypeBadge receiptType={sale.receiptType} />
             <span className="font-mono text-xs text-slate-500">
               {formatReceiptNumber(sale.receiptType, sale.receiptNumber)}
@@ -1178,22 +1178,51 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
   );
 }
 
-function PaymentTypeBadge({
-  paymentType
-}: {
-  paymentType: SaleRecord["paymentType"];
-}) {
-  const isCredit = paymentType === "CREDIT";
+type PaymentBadgeInfo = {
+  label: string;
+  className: string;
+  showIcon?: boolean;
+};
+
+function getPaymentBadgeInfo(sale: SaleRecord): PaymentBadgeInfo {
+  if (sale.paymentType === "CREDIT") {
+    return { label: "Crédito", className: "bg-blue-50 text-blue-800" };
+  }
+
+  const methods =
+    Array.isArray(sale.paymentDetails) && sale.paymentDetails.length > 0
+      ? Array.from(new Set(sale.paymentDetails.map((split) => split.method)))
+      : [];
+
+  if (sale.paymentType === "MIXED" || methods.length > 1) {
+    return { label: "Mixto", className: "bg-slate-100 text-slate-700", showIcon: true };
+  }
+
+  switch (methods[0]) {
+    case "Efectivo":
+      return { label: "Efectivo", className: "bg-emerald-50 text-emerald-800" };
+    case "Tarjeta":
+      return { label: "Tarjeta", className: "bg-blue-50 text-blue-700" };
+    case "Transferencia":
+      return { label: "Transferencia", className: "bg-violet-100 text-violet-700" };
+    case "VentaWeb":
+      return { label: "Venta web", className: "bg-sky-50 text-sky-700" };
+    case "Otro":
+      return { label: "Otro", className: "bg-slate-100 text-slate-500" };
+    default:
+      return { label: "Contado", className: "bg-emerald-50 text-emerald-800" };
+  }
+}
+
+function PaymentTypeBadge({ sale }: { sale: SaleRecord }) {
+  const { label, className, showIcon } = getPaymentBadgeInfo(sale);
 
   return (
     <span
-      className={
-        isCredit
-          ? "inline-flex rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800"
-          : "inline-flex rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800"
-      }
+      className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${className}`}
     >
-      {isCredit ? "Crédito" : "Contado"}
+      {showIcon ? <Shuffle size={12} /> : null}
+      {label}
     </span>
   );
 }
