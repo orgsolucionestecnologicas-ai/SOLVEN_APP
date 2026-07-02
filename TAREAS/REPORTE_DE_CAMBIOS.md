@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 024 — Foco automático en el buscador de productos del POS — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/pos.tsx
+**Cambios realizados:** Se agregó `searchInputRef` al input de búsqueda de productos y un `useEffect` que le da foco al montar el componente, y cada vez que se cierra un modal/panel que lo tapaba (nota, cotización, promociones, cobro, impresión, factura ARCA, sale gate) — incluye el momento posterior a completar una venta, ya que el modal de impresión se abre y cierra en ese flujo. No roba el foco si el usuario ya está escribiendo en otro input o textarea.
+**Notas:** Se removió el atributo `autoFocus` nativo, reemplazado por el manejo explícito vía ref/effect. Sin pendientes. `npm run build`, lint y typecheck ejecutados sin errores.
+---
+
 ## Tarea 023 — Pantalla post-venta con folio, monto y botón de compartir por WhatsApp — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/pos.tsx

@@ -428,6 +428,7 @@ export function Pos() {
   const suspendedCartsRef = useRef<HTMLDivElement>(null);
   const applyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const urlCustomerIdRef = useRef<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const savedCart = readSavedCart();
@@ -442,6 +443,21 @@ export function Pos() {
       setPaymentSplits([{ id: localId(), method: "Efectivo", amount: "" }]);
     }
   }, []);
+
+  useEffect(() => {
+    if (
+      noteModalOpen || cotizacionOpen || promosPanelOpen ||
+      showPaymentModal || showPrintModal || showInvoiceModal || saleGateOpen
+    ) {
+      return;
+    }
+    const active = document.activeElement;
+    const isTypingElsewhere =
+      active instanceof HTMLElement &&
+      active !== searchInputRef.current &&
+      (active.tagName === "INPUT" || active.tagName === "TEXTAREA");
+    if (!isTypingElsewhere) searchInputRef.current?.focus();
+  }, [noteModalOpen, cotizacionOpen, promosPanelOpen, showPaymentModal, showPrintModal, showInvoiceModal, saleGateOpen]);
 
   useEffect(() => {
     async function loadSettings() {
@@ -1511,7 +1527,7 @@ export function Pos() {
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                   />
                   <input
-                    autoFocus
+                    ref={searchInputRef}
                     className="w-full rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 py-2 pl-9 pr-8 text-sm text-slate-950 [.pos-dark_&]:text-slate-100 placeholder:text-slate-400 focus:border-violet-400 focus:bg-white [.pos-dark_&]:focus:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-100"
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
