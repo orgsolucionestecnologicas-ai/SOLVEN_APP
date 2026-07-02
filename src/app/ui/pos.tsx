@@ -19,6 +19,8 @@ import {
   Search,
   ShoppingCart,
   Tag,
+  Moon,
+  Sun,
   Trash2,
   UserPlus,
   Users,
@@ -190,6 +192,7 @@ type ActiveTab = "Venta actual" | "Historial";
 const DRAFT_KEY = "solven_draft";
 const CART_KEY = "solven_pos_cart";
 const SOUND_KEY = "solven_pos_sound_enabled";
+const DARK_MODE_KEY = "solven_pos_dark_mode";
 const MAX_SUSPENDED_CARTS = 3;
 
 function readSoundEnabled(): boolean {
@@ -198,6 +201,14 @@ function readSoundEnabled(): boolean {
     return raw === null ? true : raw === "true";
   } catch {
     return true;
+  }
+}
+
+function readDarkModeEnabled(): boolean {
+  try {
+    return localStorage.getItem(DARK_MODE_KEY) === "true";
+  } catch {
+    return false;
   }
 }
 
@@ -389,6 +400,7 @@ export function Pos() {
   const [lastSaleCollapsed, setLastSaleCollapsed] = useState(false);
   const [copiedFolio, setCopiedFolio] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
 
   const [cashRegisterStatus, setCashRegisterStatus] = useState<"loading" | "open" | "closed">("loading");
   const [showPrintModal, setShowPrintModal] = useState<{
@@ -419,6 +431,7 @@ export function Pos() {
     if (savedCart) setCartItems(savedCart);
     if (readDraft()) setShowDraftBanner(true);
     setSoundEnabled(readSoundEnabled());
+    setDarkMode(readDarkModeEnabled());
     const params = new URLSearchParams(window.location.search);
     const preselectedCustomerId = params.get("customerId");
     if (preselectedCustomerId) {
@@ -914,6 +927,14 @@ export function Pos() {
     });
   }
 
+  function toggleDarkMode() {
+    setDarkMode((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(DARK_MODE_KEY, String(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }
+
   function handleNewSale() {
     const draft = readDraft();
     if (draft) {
@@ -1356,7 +1377,13 @@ export function Pos() {
   return (
     <>
       {/* Tab bar */}
-      <div className="border-b border-slate-200 px-5 sm:px-6">
+      <div
+        className={
+          darkMode
+            ? "border-b border-gray-700 bg-gray-900 px-5 sm:px-6"
+            : "border-b border-slate-200 px-5 sm:px-6"
+        }
+      >
         <div className="flex gap-6">
           {TABS.map((tab) => (
             <button
@@ -1364,7 +1391,9 @@ export function Pos() {
               className={
                 activeTab === tab
                   ? "border-b-2 border-violet-600 pb-3 pt-4 text-sm font-semibold text-violet-600"
-                  : "border-b-2 border-transparent pb-3 pt-4 text-sm font-medium text-slate-500 hover:text-slate-900"
+                  : darkMode
+                    ? "border-b-2 border-transparent pb-3 pt-4 text-sm font-medium text-slate-400 hover:text-slate-100"
+                    : "border-b-2 border-transparent pb-3 pt-4 text-sm font-medium text-slate-500 hover:text-slate-900"
               }
               onClick={() => setActiveTab(tab)}
               type="button"
@@ -1378,9 +1407,11 @@ export function Pos() {
       {activeTab === "Historial" ? (
         <SalesList />
       ) : (
-        <div className="flex h-[calc(100vh-49px)] divide-x divide-slate-200">
+        <div
+          className={`flex h-[calc(100vh-49px)] divide-x divide-slate-200 [.pos-dark_&]:divide-gray-700 bg-white [.pos-dark_&]:bg-gray-900 ${darkMode ? "pos-dark" : ""}`}
+        >
           {/* ── LEFT PANEL ── */}
-          <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+          <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-white [.pos-dark_&]:bg-gray-900">
 
             {/* Cash register closed banner */}
             {cashRegisterStatus === "closed" ? (
@@ -1398,9 +1429,9 @@ export function Pos() {
             ) : null}
 
             {/* 1. Page header */}
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5">
+            <div className="flex items-center justify-between border-b border-slate-100 [.pos-dark_&]:border-gray-700 px-4 py-3 sm:px-5">
               <div>
-                <h1 className="text-lg font-bold text-slate-950">Ventas</h1>
+                <h1 className="text-lg font-bold text-slate-950 [.pos-dark_&]:text-slate-100">Ventas</h1>
                 <p className="text-xs text-slate-500">
                   Realiza ventas rápidas y eficientes
                 </p>
@@ -1423,7 +1454,7 @@ export function Pos() {
                   Suspender venta
                 </button>
                 <button
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 text-slate-400 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
                   onClick={toggleSound}
                   title={soundEnabled ? "Silenciar sonido de venta" : "Activar sonido de venta"}
                   type="button"
@@ -1431,7 +1462,15 @@ export function Pos() {
                   {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
                 </button>
                 <button
-                  className="hidden h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 text-slate-400 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
+                  onClick={toggleDarkMode}
+                  title={darkMode ? "Desactivar modo oscuro" : "Activar modo oscuro"}
+                  type="button"
+                >
+                  {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+                </button>
+                <button
+                  className="hidden h-8 w-8 items-center justify-center rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 text-slate-400 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
                   type="button"
                 >
                   <MoreHorizontal size={15} />
@@ -1440,7 +1479,7 @@ export function Pos() {
             </div>
 
             {/* 2. Search + controls bar */}
-            <div className="border-b border-slate-100 px-5 pb-0 pt-4 sm:px-6">
+            <div className="border-b border-slate-100 [.pos-dark_&]:border-gray-700 px-5 pb-0 pt-4 sm:px-6">
               <div className="mb-3 flex items-center gap-2.5">
                 <div className="relative flex-1">
                   <Search
@@ -1449,7 +1488,7 @@ export function Pos() {
                   />
                   <input
                     autoFocus
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-100"
+                    className="w-full rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 py-2 pl-9 pr-8 text-sm text-slate-950 [.pos-dark_&]:text-slate-100 placeholder:text-slate-400 focus:border-violet-400 focus:bg-white [.pos-dark_&]:focus:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-100"
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
                       setBarcodeNotFound(false);
@@ -1472,7 +1511,7 @@ export function Pos() {
                   />
                   {searchQuery ? (
                     <button
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
                       onClick={() => { setSearchQuery(""); setBarcodeNotFound(false); }}
                       type="button"
                     >
@@ -1484,7 +1523,7 @@ export function Pos() {
                 </div>
 
                 <button
-                  className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-400 hover:bg-white hover:text-slate-700"
+                  className="rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 p-2 text-slate-400 hover:bg-white [.pos-dark_&]:hover:bg-gray-800 hover:text-slate-700 [.pos-dark_&]:hover:text-slate-200"
                   onClick={() => setProductsRefreshKey((k) => k + 1)}
                   title="Actualizar productos"
                   type="button"
@@ -1501,7 +1540,7 @@ export function Pos() {
                     className={
                       activeCategory === cat
                         ? "flex-shrink-0 rounded-full bg-violet-600 px-3 py-1 text-xs font-medium text-white"
-                        : "flex-shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                        : "flex-shrink-0 rounded-full border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 px-3 py-1 text-xs font-medium text-slate-600 [.pos-dark_&]:text-slate-300 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600 hover:text-slate-900 [.pos-dark_&]:hover:text-slate-100"
                     }
                     onClick={() => setActiveCategory(cat)}
                     type="button"
@@ -1514,7 +1553,7 @@ export function Pos() {
 
             {/* Más vendidos */}
             {!topProductsLoading && topProducts.length > 0 ? (
-              <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
+              <div className="border-b border-slate-100 [.pos-dark_&]:border-gray-700 px-4 py-3 sm:px-5">
                 <button
                   className="mb-2 flex w-full items-center justify-between"
                   onClick={() => setTopProductsOpen((open) => !open)}
@@ -1541,17 +1580,17 @@ export function Pos() {
                           key={product.id}
                           className={
                             isOutOfStock
-                              ? "flex flex-col items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 p-2 opacity-50"
-                              : "flex flex-col items-center gap-1 rounded-lg border border-slate-200 bg-white p-2 hover:border-violet-300 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+                              ? "flex flex-col items-center gap-1 rounded-lg border border-slate-100 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 p-2 opacity-50"
+                              : "flex flex-col items-center gap-1 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 p-2 hover:border-violet-300 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
                           }
                           disabled={!canAdd}
                           onClick={() => addToCart(product)}
                           type="button"
                         >
-                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-slate-100">
+                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-slate-100 [.pos-dark_&]:bg-gray-700">
                             <Package size={15} className="text-slate-400" />
                           </div>
-                          <p className="line-clamp-2 text-center text-[11px] font-medium leading-tight text-slate-950">
+                          <p className="line-clamp-2 text-center text-[11px] font-medium leading-tight text-slate-950 [.pos-dark_&]:text-slate-100">
                             {product.name}
                           </p>
                           <p className="text-[11px] font-bold text-emerald-700">
@@ -1601,10 +1640,10 @@ export function Pos() {
 
               {!productsLoading && !productsError && filteredProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 [.pos-dark_&]:bg-gray-700">
                     <Search size={20} className="text-slate-400" />
                   </div>
-                  <p className="text-sm font-semibold text-slate-950">
+                  <p className="text-sm font-semibold text-slate-950 [.pos-dark_&]:text-slate-100">
                     {searchQuery.trim() || activeCategory !== "Todos"
                       ? "Sin resultados para ese filtro."
                       : "No hay productos registrados."}
@@ -1642,17 +1681,17 @@ export function Pos() {
                           key={product.id}
                           className={
                             isOutOfStock
-                              ? "flex items-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50 px-3 py-1 opacity-50"
+                              ? "flex items-center gap-2.5 rounded-lg border border-slate-100 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 px-3 py-1 opacity-50"
                               : inCartQty > 0
                                 ? "flex items-center gap-2.5 rounded-lg border-2 border-violet-400 bg-violet-50 px-3 py-1"
-                                : "flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-1 hover:border-slate-300"
+                                : "flex items-center gap-2.5 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 px-3 py-1 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600"
                           }
                         >
-                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-slate-100">
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-slate-100 [.pos-dark_&]:bg-gray-700">
                             <Package size={13} className="text-slate-400" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-slate-950">{product.name}</p>
+                            <p className="truncate text-sm font-medium text-slate-950 [.pos-dark_&]:text-slate-100">{product.name}</p>
                             <p className="text-[10px] text-slate-400">{product.categoryName}</p>
                           </div>
                           <ProductStockBadge stock={product.stock} />
@@ -1686,7 +1725,7 @@ export function Pos() {
                       </p>
                       <div className="flex items-center gap-1">
                         <button
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800 disabled:opacity-40"
                           disabled={currentPage === 1}
                           onClick={() => setCurrentPage((p) => p - 1)}
                           type="button"
@@ -1700,7 +1739,7 @@ export function Pos() {
                               className={
                                 page === currentPage
                                   ? "flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-xs font-semibold text-white"
-                                  : "flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+                                  : "flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 text-xs text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                               }
                               onClick={() => setCurrentPage(page)}
                               type="button"
@@ -1710,7 +1749,7 @@ export function Pos() {
                           )
                         )}
                         <button
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800 disabled:opacity-40"
                           disabled={currentPage === totalPages}
                           onClick={() => setCurrentPage((p) => p + 1)}
                           type="button"
@@ -1728,7 +1767,7 @@ export function Pos() {
                 <p className="text-sm text-red-400 p-3">No se pudieron cargar los servicios.</p>
               ) : null}
               {!servicesLoading && !servicesError && services.length > 0 ? (
-                <div className="mt-5 border-t border-slate-100 pt-4">
+                <div className="mt-5 border-t border-slate-100 [.pos-dark_&]:border-gray-700 pt-4">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Servicios disponibles
                   </p>
@@ -1741,14 +1780,14 @@ export function Pos() {
                           className={
                             inCartQty > 0
                               ? "flex items-center gap-2.5 rounded-lg border-2 border-violet-400 bg-violet-50 px-3 py-1"
-                              : "flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-1 hover:border-slate-300"
+                              : "flex items-center gap-2.5 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 px-3 py-1 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600"
                           }
                         >
                           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-violet-50">
                             <Tag size={13} className="text-violet-400" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-slate-950">{service.name}</p>
+                            <p className="truncate text-sm font-medium text-slate-950 [.pos-dark_&]:text-slate-100">{service.name}</p>
                             <p className="text-[10px] text-slate-400">{service.code}</p>
                           </div>
                           <p className="flex-shrink-0 tabular-nums text-sm font-bold text-emerald-700">
@@ -1775,7 +1814,7 @@ export function Pos() {
               ) : null}
 
               {/* 4. Quick actions bar */}
-              <div className="mt-5 flex items-center gap-1 overflow-x-auto border-t border-slate-100 pt-4">
+              <div className="mt-5 flex items-center gap-1 overflow-x-auto border-t border-slate-100 [.pos-dark_&]:border-gray-700 pt-4">
                 <QuickActionButton
                   Icon={Users}
                   label="Buscar cliente"
@@ -1808,7 +1847,7 @@ export function Pos() {
           </div>
 
           {/* ── RIGHT PANEL ── */}
-          <div className="flex h-full w-96 flex-shrink-0 flex-col bg-white lg:w-[480px]">
+          <div className="flex h-full w-96 flex-shrink-0 flex-col bg-white [.pos-dark_&]:bg-gray-900 lg:w-[480px]">
 
             {/* Draft recovery banner */}
             {showDraftBanner ? (
@@ -1836,8 +1875,8 @@ export function Pos() {
             ) : null}
 
             {/* Cart header */}
-            <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-5 py-3">
-              <h2 className="flex items-center text-sm font-semibold text-slate-950">
+            <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 [.pos-dark_&]:border-gray-700 px-5 py-3">
+              <h2 className="flex items-center text-sm font-semibold text-slate-950 [.pos-dark_&]:text-slate-100">
                 Venta actual
                 {cartItemCount > 0 ? (
                   <span className="ml-2 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">
@@ -1849,7 +1888,7 @@ export function Pos() {
                     <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
                       {saleGateResult.sellerCode}
                     </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                    <span className="rounded-full bg-slate-100 [.pos-dark_&]:bg-gray-700 px-2 py-0.5 text-[10px] font-semibold text-slate-600 [.pos-dark_&]:text-slate-300">
                       {saleGateResult.receiptType === "INVOICE" ? "Factura" : "Ticket"}
                     </span>
                   </span>
@@ -1867,13 +1906,13 @@ export function Pos() {
                       {suspendedCarts.length}
                     </button>
                     {suspendedCartsOpen ? (
-                      <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                      <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-xl border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 py-1 shadow-lg">
                         <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                           Carritos suspendidos
                         </p>
                         {suspendedCarts.map((cart, index) => (
                           <button
-                            className="flex w-full items-center justify-between px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                            className="flex w-full items-center justify-between px-3 py-2 text-left text-xs text-slate-700 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                             key={index}
                             onClick={() => handleRestoreSuspendedCart(index)}
                             type="button"
@@ -1881,7 +1920,7 @@ export function Pos() {
                             <span>
                               {cart.length} {cart.length === 1 ? "ítem" : "ítems"}
                             </span>
-                            <span className="font-semibold text-slate-950">
+                            <span className="font-semibold text-slate-950 [.pos-dark_&]:text-slate-100">
                               {formatMoneyNum(getSuspendedCartTotal(cart))}
                             </span>
                           </button>
@@ -1893,8 +1932,8 @@ export function Pos() {
                 <button
                   className={
                     cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS
-                      ? "flex cursor-not-allowed items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-300"
-                      : "flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50"
+                      ? "flex cursor-not-allowed items-center gap-1 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 px-2 py-1.5 text-xs font-medium text-slate-300"
+                      : "flex items-center gap-1 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 px-2 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                   }
                   disabled={cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS}
                   onClick={handleSuspendCart}
@@ -1943,7 +1982,7 @@ export function Pos() {
               </div>
             ) : cartItems.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 [.pos-dark_&]:bg-gray-700">
                   <ShoppingCart size={18} className="text-slate-400" />
                 </div>
                 <p className="text-sm font-medium text-slate-500">
@@ -1956,7 +1995,7 @@ export function Pos() {
             ) : (
               <>
                 {/* Column headers */}
-                <div className="flex flex-shrink-0 items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-1.5">
+                <div className="flex flex-shrink-0 items-center gap-2 border-b border-slate-100 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 px-4 py-1.5">
                   <div className="w-8 flex-shrink-0" />
                   <div className="flex-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     Producto
@@ -1997,11 +2036,11 @@ export function Pos() {
                     return (
                     <div key={itemId}>
                       <div className="flex items-center gap-2 px-4 py-2.5">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 [.pos-dark_&]:bg-gray-700">
                         <Package size={13} className="text-slate-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium text-slate-950">
+                        <p className="truncate text-xs font-medium text-slate-950 [.pos-dark_&]:text-slate-100">
                           {item.productName}
                         </p>
                         {promoName ? (
@@ -2028,7 +2067,7 @@ export function Pos() {
                       </div>
                       <div className="flex w-28 items-center justify-center gap-0.5">
                         <button
-                          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] text-slate-600 hover:bg-slate-50"
+                          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-[11px] text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                           onClick={() =>
                             updateQuantity(cartItemKey(item), item.quantity - 1)
                           }
@@ -2040,7 +2079,7 @@ export function Pos() {
                           className={
                             invalidQuantityIds.has(itemId)
                               ? "w-16 rounded-md border border-rose-400 bg-rose-50 py-0.5 text-center text-xs font-semibold tabular-nums text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-200"
-                              : "w-16 rounded-md border border-transparent bg-transparent py-0.5 text-center text-xs font-semibold tabular-nums text-slate-950 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                              : "w-16 rounded-md border border-transparent bg-transparent py-0.5 text-center text-xs font-semibold tabular-nums text-slate-950 [.pos-dark_&]:text-slate-100 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
                           }
                           min="0"
                           onBlur={() => commitQuantityInput(itemId, item.maxStock)}
@@ -2060,8 +2099,8 @@ export function Pos() {
                         <button
                           className={
                             item.quantity >= item.maxStock
-                              ? "flex h-5 w-5 flex-shrink-0 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-[11px] text-slate-300"
-                              : "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] text-slate-600 hover:bg-slate-50"
+                              ? "flex h-5 w-5 flex-shrink-0 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 text-[11px] text-slate-300"
+                              : "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-[11px] text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                           }
                           disabled={item.quantity >= item.maxStock}
                           onClick={() =>
@@ -2072,7 +2111,7 @@ export function Pos() {
                           +
                         </button>
                       </div>
-                      <div className="w-14 text-right text-xs font-semibold tabular-nums text-slate-950">
+                      <div className="w-14 text-right text-xs font-semibold tabular-nums text-slate-950 [.pos-dark_&]:text-slate-100">
                         {hasManualDiscount ? (
                           <>
                             <span className="block text-[10px] text-slate-400 line-through">
@@ -2097,12 +2136,12 @@ export function Pos() {
                       <div className="flex items-center gap-2 pb-2 pl-14 pr-4">
                         {discountEditingId === itemId ? (
                           <>
-                            <div className="flex overflow-hidden rounded-md border border-slate-200">
+                            <div className="flex overflow-hidden rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700">
                               <button
                                 className={
                                   discountDraftType === "percent"
                                     ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                                    : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                                    : "bg-white [.pos-dark_&]:bg-gray-900 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
                                 }
                                 onClick={() => setDiscountDraftType("percent")}
                                 type="button"
@@ -2113,7 +2152,7 @@ export function Pos() {
                                 className={
                                   discountDraftType === "fixed"
                                     ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                                    : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                                    : "bg-white [.pos-dark_&]:bg-gray-900 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
                                 }
                                 onClick={() => setDiscountDraftType("fixed")}
                                 type="button"
@@ -2123,7 +2162,7 @@ export function Pos() {
                             </div>
                             <input
                               autoFocus
-                              className="w-16 rounded-md border border-slate-200 px-1.5 py-0.5 text-[11px] text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                              className="w-16 rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 px-1.5 py-0.5 text-[11px] text-slate-950 [.pos-dark_&]:text-slate-100 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                               min="0"
                               onChange={(e) => setDiscountDraftValue(e.target.value)}
                               onKeyDown={(e) => {
@@ -2142,7 +2181,7 @@ export function Pos() {
                               Aplicar
                             </button>
                             <button
-                              className="flex-shrink-0 text-slate-400 hover:text-slate-600"
+                              className="flex-shrink-0 text-slate-400 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
                               onClick={() => setDiscountEditingId(null)}
                               type="button"
                             >
@@ -2155,7 +2194,7 @@ export function Pos() {
                               className={
                                 hasManualDiscount
                                   ? "rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 hover:bg-violet-200"
-                                  : "rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50"
+                                  : "rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                               }
                               onClick={() => openDiscountEditor(item)}
                               type="button"
@@ -2188,7 +2227,7 @@ export function Pos() {
                         <>
                           <input
                             autoFocus
-                            className="flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                            className="flex-1 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 px-2 py-1 text-xs text-slate-950 [.pos-dark_&]:text-slate-100 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                             onChange={(e) => {
                               setPromoCodeInput(e.target.value);
                               setPromoCodeError(null);
@@ -2208,7 +2247,7 @@ export function Pos() {
                             Aplicar
                           </button>
                           <button
-                            className="flex-shrink-0 text-slate-400 hover:text-slate-600"
+                            className="flex-shrink-0 text-slate-400 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
                             onClick={() => {
                               setPromoCodeOpen(false);
                               setPromoCodeInput("");
@@ -2272,26 +2311,26 @@ export function Pos() {
 
             {/* Payment form */}
             <form
-              className="flex-shrink-0 space-y-3 border-t border-slate-200 px-5 py-4"
+              className="flex-shrink-0 space-y-3 border-t border-slate-200 [.pos-dark_&]:border-gray-700 px-5 py-4"
               onSubmit={handleSubmit}
             >
               {/* Totals */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-500">Subtotal</span>
-                  <span className="tabular-nums text-xs font-medium text-slate-700">
+                  <span className="tabular-nums text-xs font-medium text-slate-700 [.pos-dark_&]:text-slate-300">
                     {formatMoneyNum(cartTotal)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-slate-500">Descuento global</span>
                   <div className="flex items-center gap-1">
-                    <div className="flex overflow-hidden rounded-md border border-slate-200">
+                    <div className="flex overflow-hidden rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700">
                       <button
                         className={
                           globalDiscountType === "percent"
                             ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                            : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                            : "bg-white [.pos-dark_&]:bg-gray-900 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
                         }
                         onClick={() => setGlobalDiscountType("percent")}
                         type="button"
@@ -2302,7 +2341,7 @@ export function Pos() {
                         className={
                           globalDiscountType === "fixed"
                             ? "bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                            : "bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
+                            : "bg-white [.pos-dark_&]:bg-gray-900 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
                         }
                         onClick={() => setGlobalDiscountType("fixed")}
                         type="button"
@@ -2311,7 +2350,7 @@ export function Pos() {
                       </button>
                     </div>
                     <input
-                      className="w-16 rounded-md border border-slate-200 px-1.5 py-0.5 text-right text-xs text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                      className="w-16 rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 px-1.5 py-0.5 text-right text-xs text-slate-950 [.pos-dark_&]:text-slate-100 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                       min="0"
                       onChange={(e) => setGlobalDiscountValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -2332,16 +2371,16 @@ export function Pos() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-500">Impuestos (0%)</span>
-                  <span className="tabular-nums text-xs font-medium text-slate-700">
+                  <span className="tabular-nums text-xs font-medium text-slate-700 [.pos-dark_&]:text-slate-300">
                     {formatMoneyNum(0)}
                   </span>
                 </div>
-                <div className="border-t border-slate-200 pt-1.5">
+                <div className="border-t border-slate-200 [.pos-dark_&]:border-gray-700 pt-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-slate-950">
+                    <span className="text-sm font-bold text-slate-950 [.pos-dark_&]:text-slate-100">
                       Total a pagar
                     </span>
-                    <span className="tabular-nums text-lg font-bold text-slate-950">
+                    <span className="tabular-nums text-lg font-bold text-slate-950 [.pos-dark_&]:text-slate-100">
                       {formatMoneyNum(cartGrandTotal)}
                     </span>
                   </div>
@@ -2351,10 +2390,10 @@ export function Pos() {
               {/* Cliente — opcional */}
               <div>
                   {selectedCustomer ? (
-                    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
-                      <span className="text-xs text-slate-600">{selectedCustomer.name}</span>
+                    <div className="flex items-center justify-between rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 px-3 py-1.5">
+                      <span className="text-xs text-slate-600 [.pos-dark_&]:text-slate-300">{selectedCustomer.name}</span>
                       <button
-                        className="text-slate-400 hover:text-slate-600"
+                        className="text-slate-400 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
                         onClick={() => {
                           setSelectedCustomer(null);
                           setCustomerSearch("");
@@ -2373,7 +2412,7 @@ export function Pos() {
                         <>
                           <input
                             autoFocus
-                            className="w-full rounded-lg border border-slate-200 px-3 py-1.5 pr-8 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                            className="w-full rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 px-3 py-1.5 pr-8 text-sm text-slate-950 [.pos-dark_&]:text-slate-100 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                             onBlur={() => setTimeout(() => setCustomerSearchOpen(false), 150)}
                             onChange={(e) => {
                               setCustomerSearch(e.target.value);
@@ -2389,7 +2428,7 @@ export function Pos() {
                             size={14}
                           />
                           {customerSearchOpen && filteredCustomers.length > 0 ? (
-                            <ul className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                            <ul className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-xl border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 shadow-lg">
                               {filteredCustomers.map((c) => (
                                 <li key={c.id}>
                                   <button
@@ -2444,7 +2483,7 @@ export function Pos() {
                     : "Cobrar"}
                 </button>
                 <button
-                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-slate-400 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
                   onClick={() => setCotizacionOpen(true)}
                   title="Imprimir"
                   type="button"
@@ -2453,7 +2492,7 @@ export function Pos() {
                 </button>
                 <div className="relative" ref={moreDropdownRef}>
                   <button
-                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-slate-400 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
                     onClick={() => setMoreDropdownOpen((v) => !v)}
                     title="Más opciones"
                     type="button"
@@ -2461,9 +2500,9 @@ export function Pos() {
                     <MoreHorizontal size={15} />
                   </button>
                   {moreDropdownOpen ? (
-                    <div className="absolute bottom-full right-0 mb-1 w-52 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                    <div className="absolute bottom-full right-0 mb-1 w-52 rounded-xl border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 py-1 shadow-lg">
                       <button
-                        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                         onClick={() => {
                           handleSuspend();
                           setMoreDropdownOpen(false);
@@ -2474,7 +2513,7 @@ export function Pos() {
                         Guardar como borrador
                       </button>
                       <button
-                        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                         onClick={() => {
                           setCotizacionOpen(true);
                           setMoreDropdownOpen(false);
@@ -2492,13 +2531,13 @@ export function Pos() {
 
             {/* Última venta */}
             {lastSale ? (
-              <div className="flex-shrink-0 border-t border-slate-200 bg-slate-50">
+              <div className="flex-shrink-0 border-t border-slate-200 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800">
                 <button
                   className="flex w-full items-center justify-between px-5 py-2.5"
                   onClick={() => setLastSaleCollapsed((v) => !v)}
                   type="button"
                 >
-                  <span className="text-xs font-semibold text-slate-700">
+                  <span className="text-xs font-semibold text-slate-700 [.pos-dark_&]:text-slate-300">
                     Última venta · Folio #{lastSale.folio}
                   </span>
                   {lastSaleCollapsed ? (
@@ -2508,7 +2547,7 @@ export function Pos() {
                   )}
                 </button>
                 {!lastSaleCollapsed ? (
-                  <div className="space-y-2.5 border-t border-slate-200 px-5 py-3">
+                  <div className="space-y-2.5 border-t border-slate-200 [.pos-dark_&]:border-gray-700 px-5 py-3">
                     <div className="flex items-center justify-between">
                       <button
                         className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700"
@@ -2526,27 +2565,27 @@ export function Pos() {
                     <ul className="space-y-1">
                       {lastSale.items.map((item, index) => (
                         <li
-                          className="flex items-center justify-between gap-2 text-xs text-slate-600"
+                          className="flex items-center justify-between gap-2 text-xs text-slate-600 [.pos-dark_&]:text-slate-300"
                           key={index}
                         >
                           <span className="min-w-0 flex-1 truncate">
                             {item.quantity} × {item.productName}
                           </span>
-                          <span className="flex-shrink-0 tabular-nums font-medium text-slate-800">
+                          <span className="flex-shrink-0 tabular-nums font-medium text-slate-800 [.pos-dark_&]:text-slate-200">
                             {formatMoneyNum(item.quantity * item.unitPrice)}
                           </span>
                         </li>
                       ))}
                     </ul>
-                    <div className="flex items-center justify-between border-t border-slate-200 pt-2">
-                      <span className="text-xs font-semibold text-slate-700">Total</span>
-                      <span className="text-lg font-bold text-slate-950">
+                    <div className="flex items-center justify-between border-t border-slate-200 [.pos-dark_&]:border-gray-700 pt-2">
+                      <span className="text-xs font-semibold text-slate-700 [.pos-dark_&]:text-slate-300">Total</span>
+                      <span className="text-lg font-bold text-slate-950 [.pos-dark_&]:text-slate-100">
                         {formatMoneyNum(lastSale.total)}
                       </span>
                     </div>
                     <p className="text-xs text-slate-500">Pago: {lastSale.paymentMethod}</p>
                     <Link
-                      className="flex items-center justify-center gap-1 rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                      className="flex items-center justify-center gap-1 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 py-1.5 text-xs font-medium text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-100 [.pos-dark_&]:hover:bg-gray-700"
                       href={`/sales/${lastSale.saleId}`}
                     >
                       Ver detalle
