@@ -91,6 +91,47 @@ function getCategory(m: CashMovementRecord): string {
   }
 }
 
+function getSourceLabel(source: string): string {
+  switch (source) {
+    case "SALE": return "Venta";
+    case "EXPENSE": return "Gasto";
+    case "DEBT_PAYMENT": return "Pago de deuda";
+    case "MANUAL": return "Manual";
+    default: return source;
+  }
+}
+
+function escapeCsvValue(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function exportCashMovementsToCsv(movements: CashMovementRecord[]) {
+  const header = ["Fecha", "Tipo", "Monto", "Origen", "Referencia"];
+  const rows = movements.map((m) => [
+    `${fmtDate(m.movementDate)} ${fmtTime(m.movementDate)}`,
+    m.type === "IN" ? "Ingreso" : "Salida",
+    fmtMoney(m.amount),
+    getSourceLabel(m.source),
+    m.referenceId ?? "",
+  ]);
+  const csvContent = [header, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `caja_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 function getPageNumbers(current: number, total: number): (number | "...")[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   if (current <= 4) return [1, 2, 3, 4, 5, "...", total];
@@ -384,6 +425,14 @@ export function CashMovementsList() {
               type="button"
             >
               {showAllMovements ? "← Filtrar por fecha" : "Ver todo"}
+            </button>
+            <button
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              onClick={() => exportCashMovementsToCsv(filteredMovements)}
+              type="button"
+            >
+              <Download size={13} />
+              Exportar CSV
             </button>
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />

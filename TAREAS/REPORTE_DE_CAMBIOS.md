@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 038 — Exportar movimientos de caja a CSV por período seleccionado — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/cash-movements-list.tsx
+**Cambios realizados:** Se agregó un botón "Exportar CSV" junto a los filtros de período existentes (tipo, fecha, "Ver todo"). Genera el CSV en el cliente a partir de `filteredMovements` (los movimientos actualmente visibles/filtrados por tipo, fecha y búsqueda), con columnas Fecha, Tipo, Monto, Origen, Referencia — mismo patrón ya usado en `exportSalesToCsv` de sales-list.tsx (`escapeCsvValue` con regex `/[",\n]/`, filas unidas con `\r\n`, `Blob` + `URL.createObjectURL` + click programático en `<a>` + `URL.revokeObjectURL`). El archivo se descarga como `caja_YYYY-MM-DD.csv` con la fecha actual.
+**Notas:** No se agregaron librerías externas ni se modificó el API de movimientos de caja. El botón "Exportar" preexistente en el header (placeholder con alert) no fue tocado — el prompt pedía específicamente un botón junto a los filtros de período, no reemplazar ese placeholder. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 196 pasaron, mismas 2 fallas preexistentes y no relacionadas (route.integration.test.ts y debt-payment-data-access.integration.test.ts, ya documentadas); sin nuevas fallas.
+---
+
 ## Tarea 037 — Conteo de denominaciones al cierre — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/cash-register-close.tsx
