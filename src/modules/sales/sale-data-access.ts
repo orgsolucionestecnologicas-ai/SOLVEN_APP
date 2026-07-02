@@ -219,16 +219,26 @@ export async function createSale(
   }, { timeout: 30000 });
 }
 
-export type PaginationParams = { page?: number; limit?: number; from?: Date; to?: Date; sellerCode?: string };
+export type PaginationParams = {
+  page?: number;
+  limit?: number;
+  from?: Date;
+  to?: Date;
+  sellerCode?: string;
+  paymentType?: Sale["paymentType"];
+  paymentMethod?: string;
+};
 
 export async function listSales(
   tenantId: string,
-  { page = 1, limit = 20, from, to, sellerCode }: PaginationParams = {}
+  { page = 1, limit = 20, from, to, sellerCode, paymentType, paymentMethod }: PaginationParams = {}
 ): Promise<{ data: SaleListRecord[]; total: number }> {
   const where = {
     tenantId,
     ...(from ? { saleDate: { gte: from, ...(to ? { lte: to } : {}) } } : {}),
-    ...(sellerCode ? { sellerCode } : {})
+    ...(sellerCode ? { sellerCode } : {}),
+    ...(paymentType ? { paymentType } : {}),
+    ...(paymentMethod ? { paymentDetails: { array_contains: [{ method: paymentMethod }] } } : {})
   };
   const [data, total] = await prisma.$transaction([
     prisma.sale.findMany({

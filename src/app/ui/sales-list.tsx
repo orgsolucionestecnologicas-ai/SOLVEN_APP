@@ -112,6 +112,7 @@ export function SalesList() {
   const [totalPages, setTotalPages] = useState(1);
   const [sellerCodeFilter, setSellerCodeFilter] = useState<string>("");
   const [sellerOptions, setSellerOptions] = useState<string[]>([]);
+  const [paymentFilter, setPaymentFilter] = useState<string>("");
 
   useEffect(() => {
     let isActive = true;
@@ -121,7 +122,13 @@ export function SalesList() {
       try {
         const dateParams = showAllSales ? "" : `&from=${dateFilter}&to=${dateFilter}`;
         const sellerParams = sellerCodeFilter ? `&sellerCode=${encodeURIComponent(sellerCodeFilter)}` : "";
-        const response = await fetch(`/api/sales?page=${page}&limit=20${dateParams}${sellerParams}`, {
+        const paymentParams =
+          paymentFilter === "CREDIT"
+            ? "&paymentType=CREDIT"
+            : paymentFilter
+              ? `&paymentMethod=${encodeURIComponent(paymentFilter)}`
+              : "";
+        const response = await fetch(`/api/sales?page=${page}&limit=20${dateParams}${sellerParams}${paymentParams}`, {
           headers: {
             Accept: "application/json"
           }
@@ -165,7 +172,7 @@ export function SalesList() {
     return () => {
       isActive = false;
     };
-  }, [refreshKey, page, showAllSales, dateFilter, sellerCodeFilter]);
+  }, [refreshKey, page, showAllSales, dateFilter, sellerCodeFilter, paymentFilter]);
 
   function handleSaleCreated() {
     setIsModalOpen(false);
@@ -223,6 +230,19 @@ export function SalesList() {
               ))}
             </select>
           ) : null}
+          <select
+            className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
+            onChange={(e) => { setPaymentFilter(e.target.value); setPage(1); }}
+            value={paymentFilter}
+          >
+            <option value="">Todos los métodos de pago</option>
+            <option value="Efectivo">Efectivo</option>
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="VentaWeb">Venta web</option>
+            <option value="Otro">Otro</option>
+            <option value="CREDIT">Crédito</option>
+          </select>
         </div>
         <button
           className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"

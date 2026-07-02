@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 028 — Filtro por método de pago en el listado de ventas — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/modules/sales/sale-data-access.ts, src/app/api/sales/route.ts, src/app/ui/sales-list.tsx
+**Cambios realizados:** `PaginationParams`/`listSales` aceptan `paymentType` (enum existente `CASH|CREDIT|MIXED`) y `paymentMethod` (instrumento dentro de `paymentDetails`, el JSON de splits ya usado por el POS: Efectivo/Tarjeta/Transferencia/VentaWeb/Otro), filtrando este último con `array_contains` sobre el arreglo de splits. El endpoint `GET /api/sales` lee ambos query params. En el listado de ventas se agregó un `<select>` "Todos los métodos de pago" con las opciones Efectivo, Tarjeta, Transferencia, Venta web, Otro y Crédito (esta última mapea a `paymentType=CREDIT`).
+**Notas:** No se modificó el schema ni se inventó un enum nuevo; se reutilizó la estructura de `paymentDetails` ya poblada por el checkout del POS. Al validar con la suite completa se repitieron las mismas 2 fallas ya conocidas y no relacionadas (conexión Neon agotada bajo carga en `debt-payment-data-access.integration.test.ts` — pasa en aislamiento; y la falla preexistente de `route.integration.test.ts` reportada en la Tarea 027). Ninguna corregida por estar fuera de alcance. `npm run build`, lint y typecheck ejecutados sin errores.
+---
+
 ## Tarea 027 — Filtro por vendedor en el listado de ventas — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/modules/sales/sale-data-access.ts, src/app/api/sales/route.ts, src/app/ui/sales-list.tsx

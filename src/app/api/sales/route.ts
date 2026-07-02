@@ -37,8 +37,14 @@ export async function GET(request: Request) {
   const from = fromParam ? new Date(`${fromParam}T00:00:00`) : undefined;
   const to = toParam ? new Date(`${toParam}T23:59:59.999`) : undefined;
   const sellerCode = searchParams.get("sellerCode") ?? undefined;
+  const paymentTypeParam = searchParams.get("paymentType");
+  const paymentType =
+    paymentTypeParam === "CASH" || paymentTypeParam === "CREDIT" || paymentTypeParam === "MIXED"
+      ? paymentTypeParam
+      : undefined;
+  const paymentMethod = searchParams.get("paymentMethod") ?? undefined;
   try {
-    const result = await listSales(tenantId, { page, limit, from, to, sellerCode });
+    const result = await listSales(tenantId, { page, limit, from, to, sellerCode, paymentType, paymentMethod });
     return paginatedResponse(result.data, page, limit, result.total);
   } catch {
     return errorResponse("No se pudieron cargar las ventas.");
