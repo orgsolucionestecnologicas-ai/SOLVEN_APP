@@ -118,6 +118,7 @@ export function CashRegisterClose({
   const [isDataLoading, setIsDataLoading] = useState(true);
 
   const [breakdown, setBreakdown] = useState<BreakdownCounts>(emptyBreakdown);
+  const [manualTotal, setManualTotal] = useState<string | null>(null);
   const [closingNotes, setClosingNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -228,7 +229,10 @@ export function CashRegisterClose({
     [breakdown]
   );
 
-  const difference = breakdownTotal - expectedAmount;
+  const closingAmount =
+    manualTotal !== null ? Math.max(0, parseFloat(manualTotal) || 0) : breakdownTotal;
+
+  const difference = closingAmount - expectedAmount;
   const differenceIsZero = Math.abs(difference) < 0.005;
   const differenceIsPositive = difference > 0.005;
 
@@ -243,10 +247,12 @@ export function CashRegisterClose({
 
   function setDenomCount(key: CloseKey, count: number) {
     setBreakdown((prev) => ({ ...prev, [key]: Math.max(0, count) }));
+    setManualTotal(null);
   }
 
   function clearDenom(key: CloseKey) {
     setBreakdown((prev) => ({ ...prev, [key]: 0 }));
+    setManualTotal(null);
   }
 
   async function handleSubmit(e?: FormEvent) {
@@ -264,7 +270,7 @@ export function CashRegisterClose({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          closingAmount: breakdownTotal,
+          closingAmount,
           ...(closingNotes.trim() ? { closingNotes: closingNotes.trim() } : {}),
           ...(Object.keys(breakdownPayload).length > 0
             ? { closingBreakdown: breakdownPayload }
@@ -552,10 +558,20 @@ export function CashRegisterClose({
                     <tr className="border-t-2 border-slate-200 bg-emerald-50 font-semibold">
                       <td className="px-4 py-3 text-sm text-slate-950" colSpan={2}>
                         Total efectivo contado
+                        <p className="mt-0.5 text-xs font-normal text-slate-500">
+                          Suma del desglose: {fmt(breakdownTotal)}
+                        </p>
                       </td>
                       <td />
-                      <td className="px-4 py-3 text-base font-bold text-emerald-700">
-                        {fmt(breakdownTotal)}
+                      <td className="px-4 py-3">
+                        <input
+                          className="w-32 rounded-md border border-emerald-300 bg-white px-2 py-1.5 text-right text-base font-bold text-emerald-700 focus:border-violet-500 focus:outline-none"
+                          min="0"
+                          onChange={(e) => setManualTotal(e.target.value)}
+                          step="0.01"
+                          type="number"
+                          value={manualTotal ?? String(breakdownTotal)}
+                        />
                       </td>
                       <td />
                     </tr>
@@ -685,7 +701,7 @@ export function CashRegisterClose({
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Efectivo contado</span>
-                  <span className="font-semibold text-slate-900">{fmt(breakdownTotal)}</span>
+                  <span className="font-semibold text-slate-900">{fmt(closingAmount)}</span>
                 </div>
               </div>
               <div className="my-3 border-t border-slate-200" />

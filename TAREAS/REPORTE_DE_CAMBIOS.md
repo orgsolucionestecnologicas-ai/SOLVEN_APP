@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 037 — Conteo de denominaciones al cierre — 2026-07-02
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/cash-register-close.tsx
+**Cambios realizados:** El desglose de denominaciones (billetes y monedas), el cálculo automático del total contado y el guardado en `closingBreakdown` ya estaban implementados (pasos 1, 2, 4 y 5 del prompt). Faltaba el punto 3: permitir editar manualmente el total en lugar de depender exclusivamente de la suma del desglose. Se agregó el estado `manualTotal` y la constante derivada `closingAmount` (= override manual si existe, si no la suma del desglose `breakdownTotal`). La celda de "Total efectivo contado" en la tabla de denominaciones ahora es un input editable (prefilled con la suma del desglose, mostrada como referencia debajo del label); editar cualquier denominación limpia el override y vuelve al cálculo automático. `closingAmount` reemplaza a `breakdownTotal` en el payload enviado a `PUT /api/cash-register/[id]`, en el cálculo de `difference` y en el resumen del sidebar ("Efectivo contado").
+**Notas:** No se modificó el schema de Prisma ni la lógica de cálculo de `expectedAmount`. Solo se tocó cash-register-close.tsx (cash-movement-form.tsx y cash-movements-list.tsx mencionados en "Archivos afectados" no corresponden a este flujo — el cierre de caja vive en cash-register-close.tsx). `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 197 pasaron, única falla preexistente y no relacionada (route.integration.test.ts — "creates a credit sale with debt through the API flow"); sin nuevas fallas.
+---
+
 ## Tarea 036 — Clic en nombre del cliente navega directo al perfil — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/sales-list.tsx
