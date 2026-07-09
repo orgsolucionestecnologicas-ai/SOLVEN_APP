@@ -219,6 +219,10 @@ const dateFormatter = new Intl.DateTimeFormat("es-419", {
 
 const numberFormatter = new Intl.NumberFormat("es-419", { maximumFractionDigits: 0 });
 
+function calculateInventoryValue(products: ProductRecord[]): number {
+  return products.reduce((sum, p) => sum + p.stock * Number(p.costPrice), 0);
+}
+
 export function InventoryTab() {
   const router = useRouter();
   const [products, setProducts] = useState<ProductRecord[]>([]);
@@ -295,10 +299,7 @@ export function InventoryTab() {
   const outOfStockCount = useMemo(() => products.filter((p) => p.stock === 0).length, [products]);
   const alertProducts = useMemo(() => products.filter((p) => p.stock <= 5), [products]);
 
-  const totalInventoryValue = useMemo(
-    () => products.reduce((sum, p) => sum + p.stock * Number(p.costPrice), 0),
-    [products]
-  );
+  const totalInventoryValue = useMemo(() => calculateInventoryValue(products), [products]);
 
   const lastMovementDateByProduct = useMemo(() => {
     const map = new Map<string, number>();
@@ -342,6 +343,11 @@ export function InventoryTab() {
       (p) => p.name.toLowerCase().includes(q) || p.id.slice(-6).toLowerCase().includes(q)
     );
   }, [products, searchQuery]);
+
+  const filteredInventoryValue = useMemo(
+    () => calculateInventoryValue(filteredProducts),
+    [filteredProducts]
+  );
 
   const filteredMovements = useMemo(() => {
     let result =
@@ -640,17 +646,27 @@ export function InventoryTab() {
             {!isLoading && !loadError ? (
               <>
                 {activeTab === "Stock actual" ? (
-                  paginatedProducts.length === 0 ? (
-                    <EmptyState label="No hay productos que coincidan" />
-                  ) : (
-                    <StockTable
-                      onAdjustStock={(p) => { setAdjustingProduct(p); setOpenMenuId(null); }}
-                      onMenuToggle={(id) => setOpenMenuId(openMenuId === id ? null : id)}
-                      openMenuId={openMenuId}
-                      products={paginatedProducts}
-                      staleProductIds={staleProductIds}
-                    />
-                  )
+                  <>
+                    <div className="mb-3 flex items-center justify-between text-sm">
+                      <span className="text-slate-500">
+                        {filteredProducts.length} producto{filteredProducts.length === 1 ? "" : "s"}
+                      </span>
+                      <span className="font-semibold text-slate-950">
+                        Valor total en stock: {formatARS(filteredInventoryValue)}
+                      </span>
+                    </div>
+                    {paginatedProducts.length === 0 ? (
+                      <EmptyState label="No hay productos que coincidan" />
+                    ) : (
+                      <StockTable
+                        onAdjustStock={(p) => { setAdjustingProduct(p); setOpenMenuId(null); }}
+                        onMenuToggle={(id) => setOpenMenuId(openMenuId === id ? null : id)}
+                        openMenuId={openMenuId}
+                        products={paginatedProducts}
+                        staleProductIds={staleProductIds}
+                      />
+                    )}
+                  </>
                 ) : null}
 
                 {["Movimientos", "Entradas", "Salidas", "Ajustes"].includes(activeTab) ? (
@@ -904,6 +920,9 @@ function StockTable({
               <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Stock
               </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Valor en stock
+              </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Estado
               </th>
@@ -977,6 +996,11 @@ function StockRow({
           }
         >
           {numberFormatter.format(product.stock)}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-right">
+        <span className="text-sm text-slate-700">
+          {formatARS(calculateInventoryValue([product]))}
         </span>
       </td>
       <td className="px-4 py-3">

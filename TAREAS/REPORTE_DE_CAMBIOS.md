@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 049 — Valorización del inventario: stock actual × precio costo en la tabla — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/products/components/InventoryTab.tsx
+**Cambios realizados:** En la pestaña "Stock actual" (`StockTable`) se agregó la columna "Valor en stock", calculada por fila como `product.stock × parseFloat(product.costPrice)` y formateada en ARS. Se agregó un resumen arriba de la tabla con la cantidad de productos visibles y el "Valor total en stock" — sumado sobre `filteredProducts` (todos los productos que coinciden con la búsqueda, no solo `paginatedProducts` de la página actual). Se extrajo la función pura `calculateInventoryValue(products)` (antes lógica inline de la Tarea 048) y se reutiliza en tres lugares: la tarjeta "Valor total de inventario" del dashboard (Tarea 048, sobre `products`), el nuevo resumen sobre `filteredProducts`, y el valor por fila (`calculateInventoryValue([product])`) — sin duplicar la multiplicación stock × costPrice.
+**Notas:** No se modificó `/api/products` ni el schema de Prisma — `costPrice` ya venía en la respuesta. Cálculo puramente client-side. Solo se tocó InventoryTab.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 197 pasaron, única falla preexistente y ya documentada (`route.integration.test.ts` — "creates a credit sale with debt through the API flow"). Apareció 1 falla adicional en `debt-payment-data-access.integration.test.ts` (pago concurrente), sin relación con este cambio; se confirmó como transitoria reejecutando el archivo de forma aislada (pasó limpio).
+---
+
 ## Tarea 048 — Dashboard de inventario: valor total · productos críticos · sin movimiento — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/products/components/InventoryTab.tsx
