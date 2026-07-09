@@ -123,6 +123,7 @@ export function CashRegisterClose({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showConfirmClose, setShowConfirmClose] = useState(false);
   const [hiddenExpenseIds, setHiddenExpenseIds] = useState<Set<string>>(new Set());
   const [showAddExpense, setShowAddExpense] = useState(false);
 
@@ -255,8 +256,12 @@ export function CashRegisterClose({
     setManualTotal(null);
   }
 
-  async function handleSubmit(e?: FormEvent) {
+  function requestClose(e?: FormEvent) {
     if (e) e.preventDefault();
+    setShowConfirmClose(true);
+  }
+
+  async function performClose() {
     setIsSaving(true);
     setError(null);
 
@@ -280,13 +285,16 @@ export function CashRegisterClose({
       const body = (await res.json()) as ApiResponse<unknown>;
       if (!res.ok) {
         setError(body.error?.message ?? "No se pudo cerrar la caja.");
+        setShowConfirmClose(false);
         return;
       }
+      setShowConfirmClose(false);
       setIsSuccess(true);
       window.dispatchEvent(new Event("cash-register-closed"));
       setTimeout(() => onClosed(), 2000);
     } catch {
       setError("No se pudo conectar con el servidor.");
+      setShowConfirmClose(false);
     } finally {
       setIsSaving(false);
     }
@@ -342,7 +350,7 @@ export function CashRegisterClose({
             <button
               className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
               disabled={isSaving}
-              onClick={() => void handleSubmit()}
+              onClick={() => requestClose()}
               type="button"
             >
               <Lock size={15} />
@@ -374,7 +382,7 @@ export function CashRegisterClose({
         </div>
       </div>
 
-      <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+      <form className="flex min-h-0 flex-1 flex-col" onSubmit={requestClose}>
         {error ? (
           <div className="mx-5 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 sm:mx-8">
             <p className="text-sm text-rose-800">{error}</p>
@@ -864,6 +872,19 @@ export function CashRegisterClose({
           }}
         />
       ) : null}
+
+      {showConfirmClose ? (
+        <ConfirmCloseModal
+          cashierName={session.cashierName}
+          closingAmount={closingAmount}
+          difference={difference}
+          expectedAmount={expectedAmount}
+          isSaving={isSaving}
+          onCancel={() => setShowConfirmClose(false)}
+          onConfirm={() => void performClose()}
+          openingAmount={openingAmount}
+        />
+      ) : null}
     </div>
   );
 }
@@ -891,6 +912,105 @@ function SalesSummaryCard({
         <span>{count} ventas</span>
         <span>·</span>
         <span>{pct}%</span>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmCloseModal({
+  cashierName,
+  openingAmount,
+  expectedAmount,
+  closingAmount,
+  difference,
+  isSaving,
+  onCancel,
+  onConfirm,
+}: {
+  cashierName: string;
+  openingAmount: number;
+  expectedAmount: number;
+  closingAmount: number;
+  difference: number;
+  isSaving: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const differenceIsZero = Math.abs(difference) < 0.005;
+  const differenceIsPositive = difference > 0.005;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-base font-semibold text-slate-950">Confirmar cierre de caja</h2>
+          <button
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+            disabled={isSaving}
+            onClick={onCancel}
+            type="button"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="space-y-4 px-6 py-5">
+          <p className="text-sm text-slate-500">
+            Revisá el resumen antes de confirmar. Esta acción cerrará la sesión de caja y no se
+            puede deshacer.
+          </p>
+          <dl className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-slate-500">Cajero</dt>
+              <dd className="font-medium text-slate-900">{cashierName}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-slate-500">Monto de apertura</dt>
+              <dd className="font-medium text-slate-900">{fmt(openingAmount)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-slate-500">Monto esperado</dt>
+              <dd className="font-medium text-slate-900">{fmt(expectedAmount)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-slate-500">Monto contado</dt>
+              <dd className="font-medium text-slate-900">{fmt(closingAmount)}</dd>
+            </div>
+            <div className="flex justify-between border-t border-slate-100 pt-2">
+              <dt className="text-slate-700">Diferencia</dt>
+              <dd
+                className={`font-bold ${
+                  differenceIsZero
+                    ? "text-emerald-700"
+                    : differenceIsPositive
+                      ? "text-amber-600"
+                      : "text-rose-700"
+                }`}
+              >
+                {difference >= 0 ? "+" : ""}
+                {fmt(difference)}
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4">
+          <button
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            disabled={isSaving}
+            onClick={onCancel}
+            type="button"
+          >
+            Cancelar
+          </button>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+            disabled={isSaving}
+            onClick={onConfirm}
+            type="button"
+          >
+            <Lock size={14} />
+            {isSaving ? "Cerrando caja..." : "Confirmar cierre"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 042 — Botón 'Cerrar Caja' con confirmación de dos pasos y resumen final — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/cash-register-close.tsx
+**Cambios realizados:** El envío del cierre (tanto el botón "Cerrar caja" del header como el botón "Cerrar caja y finalizar" del formulario, ambos disparaban directamente el `PUT` real) ahora pasan por un paso de confirmación intermedio. Se agregó el estado `showConfirmClose` y se separó la función original `handleSubmit` en `requestClose` (previene el submit del form y abre el modal de confirmación) y `performClose` (ejecuta el `PUT` real a `/api/cash-register/[id]`, antes disparado directamente). Se agregó el componente `ConfirmCloseModal` con un resumen final (cajero, monto de apertura, monto esperado, monto contado/`closingAmount`, diferencia con el mismo color condicional que el sidebar) y dos botones: "Cancelar" (cierra el modal sin enviar nada al backend) y "Confirmar cierre" (llama a `performClose`).
+**Notas:** No se modificó el cálculo de `expectedAmount`, `closingAmount` ni `difference`, ni el endpoint de cierre de caja — solo el flujo de confirmación en cliente. Solo se tocó cash-register-close.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 196 pasaron, mismas 2 fallas preexistentes y no relacionadas (route.integration.test.ts y debt-payment-data-access.integration.test.ts, ya documentadas como flaky); sin nuevas fallas.
+---
+
 ## Tarea 041 — Movimientos por tipo con color: VENTA=verde · GASTO=naranja · RETIRO=rojo · AJUSTE=gris — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/cash-movements-list.tsx
