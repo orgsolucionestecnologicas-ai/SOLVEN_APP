@@ -59,6 +59,7 @@ type InitialProductData = {
   salePrice: string;
   stock: number;
   minStock?: number;
+  maxStock?: number | null;
   productCode?: string | null;
 };
 
@@ -114,6 +115,9 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
   const [salePrice, setSalePrice] = useState(initialData?.salePrice ?? "");
   const [stock, setStock] = useState(initialData?.stock !== undefined ? String(initialData.stock) : "0");
   const [minStock, setMinStock] = useState(initialData?.minStock !== undefined ? String(initialData.minStock) : "0");
+  const [maxStock, setMaxStock] = useState(
+    initialData?.maxStock !== undefined && initialData?.maxStock !== null ? String(initialData.maxStock) : ""
+  );
   const [stockAlert, setStockAlert] = useState("0");
   const [location, setLocation] = useState("");
   const [supplier, setSupplier] = useState("");
@@ -205,9 +209,10 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
     try {
       const url = isEditMode ? `/api/products/${productId}` : "/api/products";
       const method = isEditMode ? "PUT" : "POST";
+      const maxStockValue = maxStock.trim() === "" ? undefined : parseInt(maxStock, 10);
       const payload = isEditMode
-        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), minStock: parseInt(minStock, 10) || 0 }
-        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10), minStock: parseInt(minStock, 10) || 0 };
+        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue }
+        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue };
 
       const response = await fetch(url, {
         method,
@@ -543,7 +548,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     <FormField htmlFor="pf-stock" label="Stock actual" required={!isEditMode}>
                       {isEditMode ? (
                         <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
@@ -599,6 +604,24 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                         step="1"
                         type="number"
                         value={stockAlert}
+                      />
+                    </FormField>
+
+                    <FormField
+                      htmlFor="pf-max-stock"
+                      label="Stock máximo"
+                      tooltip="Nivel máximo recomendado (opcional)"
+                    >
+                      <input
+                        className={inputClass}
+                        disabled={isSubmitting}
+                        id="pf-max-stock"
+                        min="0"
+                        onChange={(e) => setMaxStock(e.target.value)}
+                        placeholder="Opcional"
+                        step="1"
+                        type="number"
+                        value={maxStock}
                       />
                     </FormField>
                   </div>

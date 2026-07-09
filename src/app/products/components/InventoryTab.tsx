@@ -26,6 +26,7 @@ type ProductRecord = {
   costPrice: string;
   salePrice: string;
   stock: number;
+  minStock: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -223,6 +224,10 @@ function calculateInventoryValue(products: ProductRecord[]): number {
   return products.reduce((sum, p) => sum + p.stock * Number(p.costPrice), 0);
 }
 
+function getLowStockThreshold(minStock: number): number {
+  return minStock > 0 ? minStock : 5;
+}
+
 export function InventoryTab() {
   const router = useRouter();
   const [products, setProducts] = useState<ProductRecord[]>([]);
@@ -296,9 +301,15 @@ export function InventoryTab() {
   }, [refreshKey]);
 
   const inStockCount = useMemo(() => products.filter((p) => p.stock > 0).length, [products]);
-  const lowStockCount = useMemo(() => products.filter((p) => p.stock > 0 && p.stock <= 5).length, [products]);
+  const lowStockCount = useMemo(
+    () => products.filter((p) => p.stock > 0 && p.stock <= getLowStockThreshold(p.minStock)).length,
+    [products]
+  );
   const outOfStockCount = useMemo(() => products.filter((p) => p.stock === 0).length, [products]);
-  const alertProducts = useMemo(() => products.filter((p) => p.stock <= 5), [products]);
+  const alertProducts = useMemo(
+    () => products.filter((p) => p.stock <= getLowStockThreshold(p.minStock)),
+    [products]
+  );
 
   const totalInventoryValue = useMemo(() => calculateInventoryValue(products), [products]);
 
@@ -1007,7 +1018,7 @@ function StockRow({
           className={
             product.stock === 0
               ? "text-sm font-semibold text-rose-600"
-              : product.stock <= 5
+              : product.stock <= getLowStockThreshold(product.minStock)
                 ? "text-sm font-semibold text-orange-600"
                 : "text-sm font-semibold text-emerald-600"
           }
@@ -1021,7 +1032,7 @@ function StockRow({
         </span>
       </td>
       <td className="px-4 py-3">
-        <StockStatusBadge stock={product.stock} />
+        <StockStatusBadge minStock={product.minStock} stock={product.stock} />
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end">
@@ -1058,7 +1069,7 @@ function StockRow({
   );
 }
 
-function StockStatusBadge({ stock }: { stock: number }) {
+function StockStatusBadge({ stock, minStock }: { stock: number; minStock: number }) {
   if (stock === 0) {
     return (
       <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700">
@@ -1066,7 +1077,7 @@ function StockStatusBadge({ stock }: { stock: number }) {
       </span>
     );
   }
-  if (stock <= 5) {
+  if (stock <= getLowStockThreshold(minStock)) {
     return (
       <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
         Stock bajo
@@ -1177,7 +1188,7 @@ function AlertsTab({
   onRestock: (p: ProductRecord) => void;
 }) {
   const outOfStock = products.filter((p) => p.stock === 0);
-  const lowStock = products.filter((p) => p.stock > 0 && p.stock <= 5);
+  const lowStock = products.filter((p) => p.stock > 0 && p.stock <= getLowStockThreshold(p.minStock));
 
   return (
     <div className="space-y-4">

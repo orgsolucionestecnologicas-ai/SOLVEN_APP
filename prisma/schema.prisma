@@ -130,6 +130,7 @@ model Product {
   ivaRate            Float               @default(0.21)
   stock              Int                 @default(0)
   minStock           Int                 @default(0)
+  maxStock           Int?
   categoryId         String?
   subcategoryId      String?
   category           Category?           @relation(fields: [categoryId], references: [id])

@@ -13,6 +13,7 @@ type ProductData = {
   salePrice: string;
   stock: number;
   minStock: number;
+  maxStock: number | null;
   productCode: string | null;
 };
 
@@ -63,6 +64,7 @@ export function ProductEditView({ productId }: { productId: string }) {
           salePrice: product.salePrice,
           stock: product.stock,
           minStock: product.minStock,
+          maxStock: product.maxStock,
           productCode: product.productCode
         }}
         productId={productId}

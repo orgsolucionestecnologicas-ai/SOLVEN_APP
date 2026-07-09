@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 051 — Stock mínimo y máximo configurable por producto con alertas automáticas — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** prisma/schema.prisma, prisma/migrations/20260709145524_add_product_max_stock/migration.sql, src/modules/products/product-validation.ts, src/app/ui/product-form.tsx, src/app/products/[id]/product-edit-view.tsx, src/app/products/components/InventoryTab.tsx
+**Cambios realizados:** Se agregó el campo `maxStock Int?` (opcional, sin valor por defecto) al modelo `Product` en el schema y se corrió `npx prisma migrate dev --name add-product-max-stock`, generando la migración correspondiente. En `product-validation.ts` se agregó `maxStock` opcional a `CreateProductInput`/`UpdateProductInput`/`ValidatedProductInput`, validado igual que `minStock` (entero no negativo si está presente, se omite si no). En `product-form.tsx` se agregó el campo "Stock máximo" (opcional) junto a "Stock mínimo" y "Alerta de stock bajo" en la sección Inventario (grid ampliado de 3 a 4 columnas) y se agregó al payload de creación/edición. Se actualizó `product-edit-view.tsx` para pasar el `maxStock` existente del producto como `initialData` al formulario en modo edición. En `InventoryTab.tsx` se agregó `minStock` a `ProductRecord` (el API ya lo devolvía pero el tipo no lo declaraba) y la función `getLowStockThreshold(minStock)` (`minStock` propio del producto si es mayor a 0, si no fallback a 5 para no romper productos sin configurar), reemplazando el umbral fijo `stock <= 5` en `lowStockCount`, `alertProducts`, el color/badge de stock por fila (`StockRow`, `StockStatusBadge`) y el filtro de `lowStock` en `AlertsTab`.
+**Notas:** No se modificó ningún otro campo del modelo `Product` ni el comportamiento de ventas u otros módulos que ya usan `stock`/`minStock`. No se agregó "Stock máximo" al `maxStock` como umbral de alerta (la tarea solo pedía agregar el campo configurable y usar `minStock` para las alertas de stock bajo, no un uso de `maxStock` en alertas). `npm run build`, lint, typecheck y la migración ejecutados sin errores. `npm test`: 197 pasaron, única falla preexistente y ya documentada (`route.integration.test.ts` — "creates a credit sale with debt through the API flow"); sin fallas nuevas.
+---
+
 ## Tarea 050 — Conteo físico: ingresar stock real y que SOLVEN calcule la diferencia — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/products/components/InventoryTab.tsx

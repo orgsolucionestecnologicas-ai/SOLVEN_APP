@@ -22,6 +22,7 @@ export type CreateProductInput = {
   salePrice: number;
   stock: number;
   minStock?: number;
+  maxStock?: number;
   ivaRate?: number;
 };
 
@@ -32,6 +33,7 @@ export type ValidatedProductInput = {
   salePrice: number;
   stock: number;
   minStock: number;
+  maxStock?: number;
   ivaRate: number;
 };
 
@@ -70,6 +72,15 @@ export function validateCreateProductInput(
       ? (productInput.minStock ?? 0)
       : 0;
 
+  let maxStock: number | undefined;
+  if (productInput.maxStock !== undefined) {
+    if (!Number.isInteger(productInput.maxStock) || productInput.maxStock < 0) {
+      validationErrors.push("maxStock must be a non-negative integer.");
+    } else {
+      maxStock = productInput.maxStock;
+    }
+  }
+
   const categoryName =
     typeof productInput.categoryName === "string" &&
     (PRODUCT_CATEGORIES as readonly string[]).includes(productInput.categoryName)
@@ -96,6 +107,7 @@ export function validateCreateProductInput(
     salePrice: productInput.salePrice,
     stock: productInput.stock,
     minStock,
+    maxStock,
     ivaRate
   };
 }
@@ -110,14 +122,15 @@ export type UpdateProductInput = {
   costPrice?: number;
   salePrice?: number;
   minStock?: number;
+  maxStock?: number;
   ivaRate?: number;
 };
 
 export function validateUpdateProductInput(
   input: UpdateProductInput
-): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; ivaRate?: number } {
+): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number } {
   const errors: string[] = [];
-  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; ivaRate?: number } = {};
+  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -164,6 +177,14 @@ export function validateUpdateProductInput(
       errors.push("minStock must be a non-negative integer.");
     } else {
       result.minStock = input.minStock;
+    }
+  }
+
+  if (input.maxStock !== undefined) {
+    if (!Number.isInteger(input.maxStock) || input.maxStock < 0) {
+      errors.push("maxStock must be a non-negative integer.");
+    } else {
+      result.maxStock = input.maxStock;
     }
   }
 
