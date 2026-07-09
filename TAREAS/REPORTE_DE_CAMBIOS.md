@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 048 — Dashboard de inventario: valor total · productos críticos · sin movimiento — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/products/components/InventoryTab.tsx
+**Cambios realizados:** Se agregaron 2 tarjetas nuevas a las 4 métricas existentes del inventario: "Valor total de inventario" (suma client-side de `stock × costPrice` de todos los productos cargados, formateada en ARS con `formatARS`) y "Sin movimiento reciente" (productos cuyo último `InventoryMovement` —calculado con un `Map` de `productId` → fecha más reciente a partir de los `movements` ya cargados— tiene más de 30 días, o que no tienen ningún movimiento registrado). El grid pasó de `lg:grid-cols-4` a `lg:grid-cols-6` para acomodar las 6 tarjetas sin romper el layout responsive de 2 columnas en mobile. `MetricCard` ahora acepta un `formattedValue` opcional para mostrar el valor en ARS en vez del número plano. Al hacer clic en "Ver productos →" de la tarjeta de "Sin movimiento reciente" se navega a la pestaña "Stock actual", donde los productos sin movimiento reciente quedan resaltados con borde/fondo ámbar en `StockTable`/`StockRow` (mismo patrón de resaltado ya usado para movimientos negativos en la Tarea 045, vía un `Set<string>` de IDs).
+**Notas:** No se modificó `/api/inventory-movements` ni `/api/products`, ni el schema de Prisma — todo el cálculo es sobre los datos ya fetcheados en el cliente. Solo se tocó InventoryTab.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 197 pasaron, única falla preexistente y ya documentada (`route.integration.test.ts` — "creates a credit sale with debt through the API flow"). En una corrida intermedia aparecieron 2 fallas adicionales (`sale-data-access.integration.test.ts` y `debt-payment-data-access.integration.test.ts` — pago concurrente), ambas sin relación con este cambio (que solo toca `InventoryTab.tsx`); se confirmó como transitorio reejecutando ambos archivos de forma aislada (pasaron limpio) y la suite completa una vez más. Una segunda corrida completa mostró además un "Failed Suite" en `dashboard/summary/route.integration.test.ts` por caída de conexión a Neon durante el cleanup (`Server has closed the connection`), sin afectar el conteo de tests fallidos (se mantuvo en 1, la falla conocida) — mismo patrón de flakiness de Neon ya documentado en tareas anteriores.
+---
+
 ## Tarea 047 — Exportar CSV de movimientos de inventario filtrados — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/products/components/InventoryTab.tsx

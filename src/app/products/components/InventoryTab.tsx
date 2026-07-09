@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatARS } from "@/lib/format-currency";
 
 type ProductRecord = {
   id: string;
@@ -294,6 +295,31 @@ export function InventoryTab() {
   const outOfStockCount = useMemo(() => products.filter((p) => p.stock === 0).length, [products]);
   const alertProducts = useMemo(() => products.filter((p) => p.stock <= 5), [products]);
 
+  const totalInventoryValue = useMemo(
+    () => products.reduce((sum, p) => sum + p.stock * Number(p.costPrice), 0),
+    [products]
+  );
+
+  const lastMovementDateByProduct = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const m of movements) {
+      const time = new Date(m.createdAt).getTime();
+      const current = map.get(m.productId);
+      if (current === undefined || time > current) map.set(m.productId, time);
+    }
+    return map;
+  }, [movements]);
+
+  const staleProductIds = useMemo(() => {
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const ids = new Set<string>();
+    for (const p of products) {
+      const lastMovement = lastMovementDateByProduct.get(p.id);
+      if (lastMovement === undefined || lastMovement < thirtyDaysAgo) ids.add(p.id);
+    }
+    return ids;
+  }, [products, lastMovementDateByProduct]);
+
   const movementsByType = useMemo(() => ({
     entrada: movements.filter((m) => getMovementType(m) === "entrada"),
     salida: movements.filter((m) => getMovementType(m) === "salida"),
@@ -465,7 +491,7 @@ export function InventoryTab() {
       ) : null}
 
       {/* Metric cards */}
-      <div className="grid grid-cols-2 gap-4 px-6 py-5 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 px-6 py-5 lg:grid-cols-6">
         <MetricCard
           Icon={Package}
           iconClass="bg-violet-100 text-violet-600"
@@ -499,6 +525,24 @@ export function InventoryTab() {
           subtitleClass="cursor-pointer text-rose-600 hover:text-rose-800"
           title="Sin stock"
           value={outOfStockCount}
+        />
+        <MetricCard
+          Icon={Layers}
+          formattedValue={formatARS(totalInventoryValue)}
+          iconClass="bg-violet-100 text-violet-600"
+          subtitle="Costo × stock actual"
+          subtitleClass="text-slate-500"
+          title="Valor total de inventario"
+          value={totalInventoryValue}
+        />
+        <MetricCard
+          Icon={AlertTriangle}
+          iconClass="bg-amber-100 text-amber-600"
+          onSubtitleClick={() => handleTabChange("Stock actual")}
+          subtitle="Ver productos →"
+          subtitleClass="cursor-pointer text-amber-600 hover:text-amber-800"
+          title="Sin movimiento reciente"
+          value={staleProductIds.size}
         />
       </div>
 
@@ -604,6 +648,7 @@ export function InventoryTab() {
                       onMenuToggle={(id) => setOpenMenuId(openMenuId === id ? null : id)}
                       openMenuId={openMenuId}
                       products={paginatedProducts}
+                      staleProductIds={staleProductIds}
                     />
                   )
                 ) : null}
@@ -757,6 +802,7 @@ type MetricCardProps = {
   iconClass: string;
   title: string;
   value: number;
+  formattedValue?: string;
   subtitle: string;
   subtitleClass: string;
   onSubtitleClick?: () => void;
@@ -767,6 +813,7 @@ function MetricCard({
   iconClass,
   title,
   value,
+  formattedValue,
   subtitle,
   subtitleClass,
   onSubtitleClick
@@ -777,7 +824,7 @@ function MetricCard({
         <div>
           <p className="text-xs font-medium text-slate-500">{title}</p>
           <p className="mt-1 text-2xl font-bold text-slate-950">
-            {numberFormatter.format(value)}
+            {formattedValue ?? numberFormatter.format(value)}
           </p>
         </div>
         <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconClass}`}>
@@ -830,12 +877,14 @@ function StockTable({
   products,
   openMenuId,
   onMenuToggle,
-  onAdjustStock
+  onAdjustStock,
+  staleProductIds
 }: {
   products: ProductRecord[];
   openMenuId: string | null;
   onMenuToggle: (id: string) => void;
   onAdjustStock: (product: ProductRecord) => void;
+  staleProductIds: Set<string>;
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white">
@@ -867,6 +916,7 @@ function StockTable({
             {products.map((product) => (
               <StockRow
                 isMenuOpen={openMenuId === product.id}
+                isStale={staleProductIds.has(product.id)}
                 key={product.id}
                 onAdjustStock={() => onAdjustStock(product)}
                 onMenuToggle={() => onMenuToggle(product.id)}
@@ -883,11 +933,13 @@ function StockTable({
 function StockRow({
   product,
   isMenuOpen,
+  isStale,
   onMenuToggle,
   onAdjustStock
 }: {
   product: ProductRecord;
   isMenuOpen: boolean;
+  isStale: boolean;
   onMenuToggle: () => void;
   onAdjustStock: () => void;
 }) {
@@ -895,7 +947,9 @@ function StockRow({
   const badgeColor = BADGE_COLORS[category] ?? BADGE_COLORS["Otros"];
 
   return (
-    <tr className="hover:bg-slate-50/50">
+    <tr
+      className={`hover:bg-slate-50/50 ${isStale ? "border-l-2 border-amber-400 bg-amber-50/40" : ""}`}
+    >
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 shrink-0 rounded-lg bg-slate-100" />
