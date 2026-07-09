@@ -1,7 +1,7 @@
 "use client";
 
 import {
-
+  AlertTriangle,
   Barcode,
   ChevronLeft,
   ChevronRight,
@@ -1102,8 +1102,15 @@ function ProductRow({
       </td>
 
       <td className="px-4 py-3 text-right">
-        <span className="text-sm font-medium text-slate-950">
-          {formatMoney(product.salePrice)}
+        <span className="inline-flex items-center justify-end gap-1">
+          {Number(product.costPrice) > 0 && Number(product.salePrice) <= Number(product.costPrice) ? (
+            <span title="El precio de venta es menor o igual al costo: esta venta generará pérdida o margen cero.">
+              <AlertTriangle className="text-rose-600" size={13} />
+            </span>
+          ) : null}
+          <span className="text-sm font-medium text-slate-950">
+            {formatMoney(product.salePrice)}
+          </span>
         </span>
       </td>
 

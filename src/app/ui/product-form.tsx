@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowUpCircle,
   Barcode,
@@ -264,6 +265,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
   const saleNum = parseFloat(salePrice) || 0;
   const marginNum = parseFloat(margin) || 0;
   const profitPerUnit = saleNum - costNum;
+  const isLossOrZeroMargin = costNum > 0 && saleNum <= costNum;
   const stockNum = parseInt(stock, 10) || 0;
   const minStockNum = parseInt(minStock, 10) || 0;
   const stockAlertNum = parseInt(stockAlert, 10) || 0;
@@ -839,6 +841,14 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                 <h3 className="mb-3 text-sm font-semibold text-slate-950">
                   Resumen del producto
                 </h3>
+                {isLossOrZeroMargin ? (
+                  <div className="mb-3 flex items-start gap-1.5 rounded-lg border border-rose-200 bg-rose-50 p-3">
+                    <AlertTriangle className="mt-0.5 shrink-0 text-rose-600" size={14} />
+                    <p className="text-xs font-medium text-rose-800">
+                      El precio de venta es menor o igual al costo: esta venta generará pérdida o margen cero.
+                    </p>
+                  </div>
+                ) : null}
                 <dl className="space-y-2">
                   <div className="flex items-center justify-between">
                     <dt className="text-xs text-slate-500">Precio de compra</dt>

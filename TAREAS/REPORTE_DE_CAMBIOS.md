@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 057 — Alerta visual cuando el precio de costo supera o iguala al precio de venta — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/product-form.tsx, src/app/ui/products-inventory.tsx
+**Cambios realizados:** En `product-form.tsx` se agregó la constante derivada `isLossOrZeroMargin = costNum > 0 && saleNum <= costNum` y, dentro del panel "Resumen del producto", un banner rojo con ícono `AlertTriangle` (mismo patrón visual ya usado en `reports.tsx` para márgenes negativos) que se muestra cuando esta condición se cumple, con el mensaje "El precio de venta es menor o igual al costo: esta venta generará pérdida o margen cero." — visible tanto al crear como al editar un producto, sin bloquear el guardado. En `products-inventory.tsx` se agregó el mismo ícono de alerta (con `title` como tooltip) junto al precio de venta en cada fila de la tabla (`ProductRow`) cuando el producto guardado cumple la misma condición (`costPrice > 0 && salePrice <= costPrice`).
+**Notas:** No se modificó `product-validation.ts` ni ninguna validación de backend — la alerta es puramente informativa y no impide guardar el producto, tal como exige la tarea. No se cambió el color existente de "Ganancia por unidad" (ya maneja el caso negativo por separado); el banner nuevo cubre específicamente el caso de margen cero que antes no generaba ninguna alerta. `npm run build`, lint y typecheck ejecutados sin errores (se corrigió en el camino un error de tipos: los íconos de `lucide-react` no aceptan la prop `title` directamente, se envolvió el ícono en un `span` con `title` para el tooltip). `npm test`: 197 pasaron, única falla preexistente y ya documentada (`sales/route.integration.test.ts` — "creates a credit sale with debt through the API flow"); sin fallas nuevas.
+---
+
 ## Tarea 056 — Cálculo automático del precio de venta sugerido: costo + % de margen deseado — 2026-07-09
 **Estado:** ✅ Ya implementada (verificado, sin cambios)
 **Archivos modificados:** ninguno
