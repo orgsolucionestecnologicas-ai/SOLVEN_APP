@@ -73,6 +73,56 @@ const BADGE_COLORS: Record<string, string> = {
   Otros: "bg-slate-100 text-slate-700"
 };
 
+const TIPOS_AJUSTE_NEGATIVO = [
+  "Pérdida / Deterioro",
+  "Conteo físico",
+  "Daño",
+  "Robo",
+  "Donación",
+  "Corrección",
+  "Otro"
+] as const;
+
+const MOTIVOS_BY_TIPO_NEGATIVO: Record<string, string[]> = {
+  "Pérdida / Deterioro": [
+    "Vencimiento de producto",
+    "Deterioro por manejo",
+    "Condiciones de almacenamiento",
+    "Otro"
+  ],
+  "Conteo físico": [
+    "Diferencia en conteo",
+    "Corrección de inventario",
+    "Error de conteo",
+    "Otro"
+  ],
+  Daño: [
+    "Daño accidental",
+    "Daño en transporte",
+    "Daño en almacenamiento",
+    "Otro"
+  ],
+  Robo: [
+    "Robo externo",
+    "Robo interno",
+    "Pérdida no justificada",
+    "Otro"
+  ],
+  Donación: [
+    "Donación a terceros",
+    "Muestra gratuita",
+    "Producto de cortesía",
+    "Otro"
+  ],
+  Corrección: [
+    "Error administrativo",
+    "Ajuste contable",
+    "Corrección de sistema",
+    "Otro"
+  ],
+  Otro: ["Otro motivo"]
+};
+
 const CHART_ENTRIES: [string, string][] = [
   ["Abarrotes", "#7c3aed"],
   ["Bebidas", "#3b82f6"],
@@ -1185,6 +1235,8 @@ function AdjustStockModal({
 }) {
   const [newStock, setNewStock] = useState("");
   const [reason, setReason] = useState("");
+  const [tipoAjuste, setTipoAjuste] = useState("");
+  const [motivo, setMotivo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -1193,11 +1245,22 @@ function AdjustStockModal({
     newStockNumber !== null && Number.isInteger(newStockNumber)
       ? newStockNumber - product.stock
       : null;
+  const isNegativeAdjustment = difference !== null && difference < 0;
+
+  function handleTipoChange(tipo: string) {
+    setTipoAjuste(tipo);
+    const motivoOpts = MOTIVOS_BY_TIPO_NEGATIVO[tipo] ?? [];
+    setMotivo(motivoOpts[0] ?? "");
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     setSubmitError(null);
+
+    const finalReason = isNegativeAdjustment
+      ? `${tipoAjuste} - ${motivo}`
+      : reason.trim();
 
     try {
       const response = await fetch("/api/inventory-adjustments", {
@@ -1206,7 +1269,7 @@ function AdjustStockModal({
         body: JSON.stringify({
           productId: product.id,
           newStock: Number(newStock),
-          reason: reason.trim()
+          reason: finalReason
         })
       });
       const responseBody = (await response.json()) as StockAdjustmentResponse;
@@ -1299,24 +1362,75 @@ function AdjustStockModal({
             ) : null}
           </div>
 
-          <div>
-            <label
-              className="mb-1.5 block text-sm font-medium text-slate-700"
-              htmlFor="inv-adj-reason"
-            >
-              Motivo del ajuste
-            </label>
-            <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
-              disabled={isSubmitting}
-              id="inv-adj-reason"
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Ej. Conteo físico, merma, donación"
-              required
-              type="text"
-              value={reason}
-            />
-          </div>
+          {isNegativeAdjustment ? (
+            <>
+              <div>
+                <label
+                  className="mb-1.5 block text-sm font-medium text-slate-700"
+                  htmlFor="inv-adj-tipo"
+                >
+                  Tipo de ajuste
+                </label>
+                <select
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                  disabled={isSubmitting}
+                  id="inv-adj-tipo"
+                  onChange={(e) => handleTipoChange(e.target.value)}
+                  required
+                  value={tipoAjuste}
+                >
+                  <option value="">Selecciona un tipo</option>
+                  {TIPOS_AJUSTE_NEGATIVO.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label
+                  className="mb-1.5 block text-sm font-medium text-slate-700"
+                  htmlFor="inv-adj-motivo"
+                >
+                  Motivo específico
+                </label>
+                <select
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none disabled:opacity-50"
+                  disabled={isSubmitting || !tipoAjuste}
+                  id="inv-adj-motivo"
+                  onChange={(e) => setMotivo(e.target.value)}
+                  required
+                  value={motivo}
+                >
+                  <option value="">Selecciona un motivo</option>
+                  {(MOTIVOS_BY_TIPO_NEGATIVO[tipoAjuste] ?? []).map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          ) : (
+            <div>
+              <label
+                className="mb-1.5 block text-sm font-medium text-slate-700"
+                htmlFor="inv-adj-reason"
+              >
+                Motivo del ajuste
+              </label>
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+                disabled={isSubmitting}
+                id="inv-adj-reason"
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Ej. Conteo físico, merma, donación"
+                required
+                type="text"
+                value={reason}
+              />
+            </div>
+          )}
 
           {submitError ? (
             <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">

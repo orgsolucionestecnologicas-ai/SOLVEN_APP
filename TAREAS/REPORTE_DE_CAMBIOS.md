@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 043 — Motivo estructurado y obligatorio en ajustes negativos de stock — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/products/components/InventoryTab.tsx
+**Cambios realizados:** Se verificó primero `src/app/ui/inventory-adjust-form.tsx`, que ya usaba un selector estructurado de tipo + motivo (`TIPOS_AJUSTE`/`MOTIVOS_BY_TIPO`), mientras que el modal rápido `AdjustStockModal` dentro de `InventoryTab.tsx` solo pedía un campo de texto libre `reason` para cualquier ajuste. Se agregaron las constantes `TIPOS_AJUSTE_NEGATIVO`/`MOTIVOS_BY_TIPO_NEGATIVO` (duplicadas con los mismos valores que `inventory-adjust-form.tsx`, per instrucción explícita de la tarea de que la duplicación es aceptable si extraerlas complica el alcance) y un booleano derivado `isNegativeAdjustment` (`difference < 0`). Cuando el nuevo stock es menor al actual, el modal ahora muestra dos `<select>` obligatorios en cascada (tipo de ajuste → motivo específico, con `handleTipoChange` autoseleccionando el primer motivo del tipo elegido) en lugar del campo de texto libre; el motivo final se compone como `${tipoAjuste} - ${motivo}` (ej. "Pérdida / Deterioro - Vencimiento de producto"). Para ajustes positivos o sin cambio, se mantiene sin modificaciones el campo de texto libre `reason` existente.
+**Notas:** No se modificó `/api/inventory-adjustments` ni el schema de Prisma — solo el formulario cliente en InventoryTab.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 195 pasaron, 3 fallas — la única preexistente y ya documentada (`route.integration.test.ts` — "creates a credit sale with debt through the API flow") más 2 fallas transitorias de conectividad a Neon en `expenses/route.integration.test.ts` (archivo sin relación alguna con este cambio; se confirmó re-ejecutando los tests de ventas de forma aislada, que pasaron limpio tras limpiar un `Sale` huérfano sin `SaleItem` — dato de prueba, no de producción — que había quedado de una corrida anterior interrumpida por caída de conexión a Neon). Sin fallas nuevas relacionadas al cambio.
+---
+
 ## Tarea 042 — Botón 'Cerrar Caja' con confirmación de dos pasos y resumen final — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/cash-register-close.tsx
