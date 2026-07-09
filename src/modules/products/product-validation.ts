@@ -24,6 +24,7 @@ export type CreateProductInput = {
   minStock?: number;
   maxStock?: number;
   ivaRate?: number;
+  supplierId?: string | null;
 };
 
 export type ValidatedProductInput = {
@@ -35,6 +36,7 @@ export type ValidatedProductInput = {
   minStock: number;
   maxStock?: number;
   ivaRate: number;
+  supplierId?: string | null;
 };
 
 export class ProductValidationError extends Error {
@@ -96,6 +98,11 @@ export function validateCreateProductInput(
     }
   }
 
+  const supplierId =
+    typeof productInput.supplierId === "string" && productInput.supplierId.trim().length > 0
+      ? productInput.supplierId.trim()
+      : undefined;
+
   if (validationErrors.length > 0) {
     throw new ProductValidationError(validationErrors);
   }
@@ -108,7 +115,8 @@ export function validateCreateProductInput(
     stock: productInput.stock,
     minStock,
     maxStock,
-    ivaRate
+    ivaRate,
+    supplierId
   };
 }
 
@@ -124,13 +132,14 @@ export type UpdateProductInput = {
   minStock?: number;
   maxStock?: number;
   ivaRate?: number;
+  supplierId?: string | null;
 };
 
 export function validateUpdateProductInput(
   input: UpdateProductInput
-): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number } {
+): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null } {
   const errors: string[] = [];
-  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number } = {};
+  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -186,6 +195,13 @@ export function validateUpdateProductInput(
     } else {
       result.maxStock = input.maxStock;
     }
+  }
+
+  if (input.supplierId !== undefined) {
+    result.supplierId =
+      typeof input.supplierId === "string" && input.supplierId.trim().length > 0
+        ? input.supplierId.trim()
+        : null;
   }
 
   if (errors.length > 0) {

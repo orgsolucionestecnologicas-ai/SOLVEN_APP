@@ -15,6 +15,7 @@ type ProductData = {
   minStock: number;
   maxStock: number | null;
   productCode: string | null;
+  supplierId: string | null;
 };
 
 type ApiResponse = {
@@ -65,7 +66,8 @@ export function ProductEditView({ productId }: { productId: string }) {
           stock: product.stock,
           minStock: product.minStock,
           maxStock: product.maxStock,
-          productCode: product.productCode
+          productCode: product.productCode,
+          supplierId: product.supplierId
         }}
         productId={productId}
       />

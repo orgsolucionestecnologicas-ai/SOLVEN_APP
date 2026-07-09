@@ -61,6 +61,7 @@ type InitialProductData = {
   minStock?: number;
   maxStock?: number | null;
   productCode?: string | null;
+  supplierId?: string | null;
 };
 
 type ProductFormProps = {
@@ -72,6 +73,13 @@ type CategoryApiRecord = {
   id: string;
   name: string;
   subcategories: { id: string; name: string }[];
+};
+
+type SupplierApiRecord = {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
 };
 
 function generateSku(productName: string): string {
@@ -120,7 +128,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
   );
   const [stockAlert, setStockAlert] = useState("0");
   const [location, setLocation] = useState("");
-  const [supplier, setSupplier] = useState("");
+  const [supplierId, setSupplierId] = useState(initialData?.supplierId ?? "");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
   const [isActive, setIsActive] = useState(true);
@@ -128,6 +136,8 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
 
   const [subcategoryName, setSubcategoryName] = useState("");
   const [apiCategories, setApiCategories] = useState<CategoryApiRecord[]>([]);
+  const [apiSuppliers, setApiSuppliers] = useState<SupplierApiRecord[]>([]);
+  const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -144,6 +154,24 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
     }
     void loadCategories();
   }, []);
+
+  useEffect(() => {
+    async function loadSuppliers() {
+      try {
+        const res = await fetch("/api/suppliers", { headers: { Accept: "application/json" } });
+        if (!res.ok) return;
+        const body = (await res.json()) as { data?: SupplierApiRecord[] };
+        if (body.data) setApiSuppliers(body.data);
+      } catch {}
+    }
+    void loadSuppliers();
+  }, []);
+
+  function handleSupplierCreated(newSupplier: SupplierApiRecord) {
+    setApiSuppliers((prev) => [...prev, newSupplier].sort((a, b) => a.name.localeCompare(b.name)));
+    setSupplierId(newSupplier.id);
+    setShowNewSupplierModal(false);
+  }
 
   const selectedCategoryRecord = apiCategories.find((c) => c.name === categoryName);
   const availableSubcategories = selectedCategoryRecord?.subcategories ?? [];
@@ -210,9 +238,10 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
       const url = isEditMode ? `/api/products/${productId}` : "/api/products";
       const method = isEditMode ? "PUT" : "POST";
       const maxStockValue = maxStock.trim() === "" ? undefined : parseInt(maxStock, 10);
+      const supplierIdValue = supplierId.trim() === "" ? null : supplierId;
       const payload = isEditMode
-        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue }
-        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue };
+        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue }
+        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue };
 
       const response = await fetch(url, {
         method,
@@ -649,14 +678,20 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                         className={selectClass}
                         disabled={isSubmitting}
                         id="pf-supplier"
-                        onChange={(e) => setSupplier(e.target.value)}
-                        value={supplier}
+                        onChange={(e) => setSupplierId(e.target.value)}
+                        value={supplierId}
                       >
                         <option value="">Selecciona un proveedor</option>
+                        {apiSuppliers.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
                       </select>
                     </FormField>
                     <button
                       className="mt-1.5 text-xs font-medium text-violet-600 hover:text-violet-800"
+                      onClick={() => setShowNewSupplierModal(true)}
                       type="button"
                     >
                       + Nuevo proveedor
@@ -896,6 +931,125 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {showNewSupplierModal ? (
+        <NewSupplierModal
+          onCancel={() => setShowNewSupplierModal(false)}
+          onCreated={handleSupplierCreated}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+type NewSupplierResponse = {
+  data?: SupplierApiRecord;
+  error?: { message: string; details?: string[] };
+};
+
+function NewSupplierModal({
+  onCancel,
+  onCreated
+}: {
+  onCancel: () => void;
+  onCreated: (supplier: SupplierApiRecord) => void;
+}) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleCreate() {
+    if (!name.trim()) {
+      setError("El nombre del proveedor es obligatorio.");
+      return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/suppliers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.trim() || undefined,
+          email: email.trim() || undefined
+        })
+      });
+      const body = (await response.json()) as NewSupplierResponse;
+      if (!response.ok || !body.data) {
+        setError(body.error?.details?.[0] ?? body.error?.message ?? "No se pudo crear el proveedor.");
+        return;
+      }
+      onCreated(body.data);
+    } catch {
+      setError("No se pudo crear el proveedor.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
+        <h3 className="mb-4 text-sm font-semibold text-slate-950">Nuevo proveedor</h3>
+        <div className="space-y-3">
+          <FormField htmlFor="ns-name" label="Nombre" required>
+            <input
+              autoFocus
+              className={inputClass}
+              disabled={isSubmitting}
+              id="ns-name"
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ej. Distribuidora del Sur"
+              type="text"
+              value={name}
+            />
+          </FormField>
+          <FormField htmlFor="ns-phone" label="Teléfono">
+            <input
+              className={inputClass}
+              disabled={isSubmitting}
+              id="ns-phone"
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Ej. 11 5555-5555"
+              type="text"
+              value={phone}
+            />
+          </FormField>
+          <FormField htmlFor="ns-email" label="Email">
+            <input
+              className={inputClass}
+              disabled={isSubmitting}
+              id="ns-email"
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Ej. contacto@proveedor.com"
+              type="email"
+              value={email}
+            />
+          </FormField>
+          {error ? <p className="text-xs font-medium text-rose-600">{error}</p> : null}
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            disabled={isSubmitting}
+            onClick={onCancel}
+            type="button"
+          >
+            Cancelar
+          </button>
+          <button
+            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+            disabled={isSubmitting}
+            onClick={handleCreate}
+            type="button"
+          >
+            {isSubmitting ? "Guardando..." : "Crear proveedor"}
+          </button>
         </div>
       </div>
     </div>

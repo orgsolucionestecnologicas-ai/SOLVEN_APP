@@ -88,6 +88,7 @@ model Tenant {
   debts             Debt[]
   debtPayments      DebtPayment[]
   categories        Category[]
+  suppliers         Supplier[]
   services          Service[]
   promotions        Promotion[]
   inventoryMovements InventoryMovement[]
@@ -133,8 +134,10 @@ model Product {
   maxStock           Int?
   categoryId         String?
   subcategoryId      String?
+  supplierId         String?
   category           Category?           @relation(fields: [categoryId], references: [id])
   subcategory        Subcategory?        @relation(fields: [subcategoryId], references: [id])
+  supplier           Supplier?           @relation(fields: [supplierId], references: [id])
   saleItems          SaleItem[]
   inventoryMovements InventoryMovement[]
   createdAt          DateTime            @default(now())
@@ -143,6 +146,7 @@ model Product {
   @@index([tenantId])
   @@index([categoryId])
   @@index([subcategoryId])
+  @@index([supplierId])
 }
 
 model Sale {
@@ -385,6 +389,20 @@ model Subcategory {
 
   @@unique([name, categoryId])
   @@index([categoryId])
+}
+
+model Supplier {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  name      String
+  phone     String?
+  email     String?
+  products  Product[]
+  createdAt DateTime  @default(now())
+
+  @@unique([name, tenantId])
+  @@index([tenantId])
 }
 
 model Service {
