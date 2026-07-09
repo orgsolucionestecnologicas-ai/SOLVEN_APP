@@ -71,6 +71,7 @@ type ProductRecord = {
   salePrice: string;
   stock: number;
   ivaRate: number;
+  unit: string;
 };
 
 type ProductsResponse = {
@@ -112,6 +113,7 @@ type CartItem = {
   ivaRate: number;
   discount: number;
   discountType: "percent" | "fixed";
+  unit?: string;
 };
 
 function cartItemKey(item: CartItem): string {
@@ -120,6 +122,12 @@ function cartItemKey(item: CartItem): string {
 
 function formatQuantity(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(3);
+}
+
+function getUnitAbbreviation(unit?: string): string {
+  if (!unit) return "";
+  const match = unit.match(/\(([^)]+)\)/);
+  return match ? match[1] : unit;
 }
 
 type LastSale = {
@@ -1149,6 +1157,7 @@ export function Pos() {
           ivaRate: product.ivaRate != null ? Number(product.ivaRate) : 0.21,
           discount: 0,
           discountType: "percent",
+          unit: product.unit,
         },
       ];
     });
@@ -2790,7 +2799,7 @@ export function Pos() {
                           {item.productName}
                         </td>
                         <td className="py-2 text-center text-sm text-slate-700">
-                          {item.quantity}
+                          {item.quantity} {getUnitAbbreviation(item.unit)}
                         </td>
                         <td className="py-2 text-right tabular-nums text-sm text-slate-700">
                           {formatMoneyNum(item.unitPrice)}

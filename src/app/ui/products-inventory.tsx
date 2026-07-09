@@ -27,6 +27,7 @@ type ProductRecord = {
   salePrice: string;
   ivaRate: number;
   stock: number;
+  unit: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -1116,7 +1117,7 @@ function ProductRow({
                 : "text-sm font-semibold text-emerald-600"
           }
         >
-          {numberFormatter.format(product.stock)}
+          {numberFormatter.format(product.stock)} {getUnitAbbreviation(product.unit)}
         </span>
       </td>
 
@@ -1173,6 +1174,11 @@ function ProductRow({
       </td>
     </tr>
   );
+}
+
+function getUnitAbbreviation(unit: string): string {
+  const match = unit.match(/\(([^)]+)\)/);
+  return match ? match[1] : unit;
 }
 
 function StockStatusBadge({ stock }: { stock: number }) {

@@ -21,7 +21,8 @@ describe("validateCreateProductInput", () => {
       salePrice: 15,
       stock: 20,
       minStock: 0,
-      ivaRate: 0.21
+      ivaRate: 0.21,
+      unit: "Unidad (ud)"
     });
   });
 

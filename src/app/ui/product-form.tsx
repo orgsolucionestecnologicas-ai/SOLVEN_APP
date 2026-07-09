@@ -16,6 +16,8 @@ import { type FormEvent, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
+import { PRODUCT_UNITS } from "@/modules/products/product-validation";
+
 const SELECTABLE_CATEGORIES = [
   "Alimentos",
   "Bebidas",
@@ -26,17 +28,6 @@ const SELECTABLE_CATEGORIES = [
   "Panadería",
   "Snacks",
   "Otros"
-] as const;
-
-const UNITS = [
-  "Unidad (ud)",
-  "Kilogramo (kg)",
-  "Gramo (g)",
-  "Litro (L)",
-  "Mililitro (ml)",
-  "Caja",
-  "Bolsa",
-  "Paquete"
 ] as const;
 
 const LOCATIONS = [
@@ -62,6 +53,7 @@ type InitialProductData = {
   maxStock?: number | null;
   productCode?: string | null;
   supplierId?: string | null;
+  unit?: string;
 };
 
 type ProductFormProps = {
@@ -108,7 +100,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
   const [barcode, setBarcode] = useState("");
   const [categoryName, setCategoryName] = useState(initialData?.categoryName ?? "");
   const [brand, setBrand] = useState("");
-  const [unit, setUnit] = useState<string>("Unidad (ud)");
+  const [unit, setUnit] = useState<string>(initialData?.unit ?? "Unidad (ud)");
   const [costPrice, setCostPrice] = useState(initialData?.costPrice ?? "");
   const [margin, setMargin] = useState(() => {
     if (initialData) {
@@ -240,8 +232,8 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
       const maxStockValue = maxStock.trim() === "" ? undefined : parseInt(maxStock, 10);
       const supplierIdValue = supplierId.trim() === "" ? null : supplierId;
       const payload = isEditMode
-        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue }
-        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue };
+        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue, unit }
+        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue, unit };
 
       const response = await fetch(url, {
         method,
@@ -480,7 +472,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                       onChange={(e) => setUnit(e.target.value)}
                       value={unit}
                     >
-                      {UNITS.map((u) => (
+                      {PRODUCT_UNITS.map((u) => (
                         <option key={u} value={u}>
                           {u}
                         </option>

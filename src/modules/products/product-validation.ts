@@ -15,6 +15,20 @@ export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 export const IVA_RATES = [0, 0.105, 0.21, 0.27] as const;
 export type IvaRate = (typeof IVA_RATES)[number];
 
+export const PRODUCT_UNITS = [
+  "Unidad (ud)",
+  "Kilogramo (kg)",
+  "Gramo (g)",
+  "Litro (L)",
+  "Mililitro (ml)",
+  "Metro (m)",
+  "Hora (hs)",
+  "Caja",
+  "Bolsa",
+  "Paquete"
+] as const;
+export type ProductUnit = (typeof PRODUCT_UNITS)[number];
+
 export type CreateProductInput = {
   name: string;
   categoryName?: string;
@@ -25,6 +39,7 @@ export type CreateProductInput = {
   maxStock?: number;
   ivaRate?: number;
   supplierId?: string | null;
+  unit?: string;
 };
 
 export type ValidatedProductInput = {
@@ -37,6 +52,7 @@ export type ValidatedProductInput = {
   maxStock?: number;
   ivaRate: number;
   supplierId?: string | null;
+  unit: string;
 };
 
 export class ProductValidationError extends Error {
@@ -103,6 +119,12 @@ export function validateCreateProductInput(
       ? productInput.supplierId.trim()
       : undefined;
 
+  const unit =
+    typeof productInput.unit === "string" &&
+    (PRODUCT_UNITS as readonly string[]).includes(productInput.unit)
+      ? productInput.unit
+      : "Unidad (ud)";
+
   if (validationErrors.length > 0) {
     throw new ProductValidationError(validationErrors);
   }
@@ -116,7 +138,8 @@ export function validateCreateProductInput(
     minStock,
     maxStock,
     ivaRate,
-    supplierId
+    supplierId,
+    unit
   };
 }
 
@@ -133,13 +156,14 @@ export type UpdateProductInput = {
   maxStock?: number;
   ivaRate?: number;
   supplierId?: string | null;
+  unit?: string;
 };
 
 export function validateUpdateProductInput(
   input: UpdateProductInput
-): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null } {
+): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string } {
   const errors: string[] = [];
-  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null } = {};
+  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -202,6 +226,12 @@ export function validateUpdateProductInput(
       typeof input.supplierId === "string" && input.supplierId.trim().length > 0
         ? input.supplierId.trim()
         : null;
+  }
+
+  if (input.unit !== undefined) {
+    result.unit = (PRODUCT_UNITS as readonly string[]).includes(input.unit)
+      ? input.unit
+      : "Unidad (ud)";
   }
 
   if (errors.length > 0) {
