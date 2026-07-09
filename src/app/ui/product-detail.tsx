@@ -43,6 +43,91 @@ function formatDate(iso: string): string {
   });
 }
 
+type PriceChangeMetadata = {
+  costPriceBefore: number;
+  costPriceAfter: number;
+  salePriceBefore: number;
+  salePriceAfter: number;
+};
+
+type PriceHistoryEntry = {
+  id: string;
+  createdAt: string;
+  metadata: PriceChangeMetadata;
+  user: { name: string };
+};
+
+type PriceHistoryApiResponse = { data?: PriceHistoryEntry[]; error?: { message: string } };
+
+const arsFormatter = new Intl.NumberFormat("es-AR", {
+  style: "currency",
+  currency: "ARS",
+});
+
+export function ProductPriceHistory({ productId }: { productId: string }) {
+  const [entries, setEntries] = useState<PriceHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/products/${productId}/price-history`)
+      .then((res) => res.json())
+      .then((body: PriceHistoryApiResponse) => {
+        if (body.data) setEntries(body.data);
+        else setError(body.error?.message ?? "Error al cargar el historial de precios.");
+      })
+      .catch(() => setError("Error al cargar el historial de precios."))
+      .finally(() => setLoading(false));
+  }, [productId]);
+
+  return (
+    <div className="mt-8">
+      <h2 className="mb-4 text-base font-semibold text-slate-950">
+        Historial de precios
+      </h2>
+
+      {loading && (
+        <p className="text-sm text-slate-500">Cargando historial de precios...</p>
+      )}
+
+      {error && (
+        <p className="text-sm text-rose-600">{error}</p>
+      )}
+
+      {!loading && !error && entries.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white py-12 text-center">
+          <p className="text-sm text-slate-500">Sin cambios de precio registrados para este producto.</p>
+        </div>
+      )}
+
+      {!loading && !error && entries.length > 0 && (
+        <ul className="space-y-3">
+          {entries.map((entry) => (
+            <li key={entry.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-sm font-semibold text-slate-700">{entry.user.name}</span>
+                <span className="flex-shrink-0 text-xs text-slate-400">{formatDate(entry.createdAt)}</span>
+              </div>
+              <div className="mt-2 flex flex-col gap-1 text-xs text-slate-500 sm:flex-row sm:gap-6">
+                <span>
+                  Costo: <strong className="text-slate-700">{arsFormatter.format(entry.metadata.costPriceBefore)}</strong>
+                  <span className="text-slate-300"> → </span>
+                  <strong className="text-slate-700">{arsFormatter.format(entry.metadata.costPriceAfter)}</strong>
+                </span>
+                <span>
+                  Venta: <strong className="text-slate-700">{arsFormatter.format(entry.metadata.salePriceBefore)}</strong>
+                  <span className="text-slate-300"> → </span>
+                  <strong className="text-slate-700">{arsFormatter.format(entry.metadata.salePriceAfter)}</strong>
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function ProductMovementsTimeline({ productId }: { productId: string }) {
   const [movements, setMovements] = useState<MovementRecord[]>([]);
   const [loading, setLoading] = useState(true);

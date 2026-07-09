@@ -9,6 +9,7 @@ export type AuditAction =
   | "PRODUCT_CREATED"
   | "PRODUCT_UPDATED"
   | "PRODUCT_DELETED"
+  | "PRODUCT_PRICE_CHANGE"
   | "INVENTORY_ADJUSTED"
   | "USER_CREATED"
   | "USER_ROLE_CHANGED"
@@ -71,4 +72,17 @@ export async function listAuditLogs(
     prisma.auditLog.count({ where })
   ]);
   return { data: data as AuditLogEntry[], total };
+}
+
+export async function listAuditLogsByEntity(
+  entityType: string,
+  entityId: string,
+  tenantId: string
+): Promise<AuditLogEntry[]> {
+  const data = await prisma.auditLog.findMany({
+    where: { tenantId, entityType, entityId },
+    orderBy: { createdAt: "desc" },
+    include: { user: { select: { name: true } } }
+  });
+  return data as AuditLogEntry[];
 }

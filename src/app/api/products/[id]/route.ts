@@ -66,7 +66,7 @@ export async function PUT(
   }
 
   try {
-    const product = await updateProduct(id, body as UpdateProductInput, tenantId);
+    const product = await updateProduct(id, body as UpdateProductInput, tenantId, userId);
     void logAudit({
       tenantId,
       userId,

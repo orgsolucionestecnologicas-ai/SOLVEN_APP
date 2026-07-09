@@ -2,6 +2,7 @@ import type { Product } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { generateCode } from "@/lib/generate-code";
+import { logAudit } from "@/modules/audit";
 
 import {
   type CreateProductInput,
@@ -46,12 +47,33 @@ export async function getProductById(
 export async function updateProduct(
   id: string,
   input: UpdateProductInput,
-  tenantId: string
+  tenantId: string,
+  userId: string
 ): Promise<Product> {
   const data = validateUpdateProductInput(input);
 
-  return prisma.product.update({
+  const existing = await prisma.product.findFirstOrThrow({ where: { id, tenantId } });
+
+  const product = await prisma.product.update({
     where: { id, tenantId },
     data
   });
+
+  const costPriceBefore = existing.costPrice.toNumber();
+  const salePriceBefore = existing.salePrice.toNumber();
+  const costPriceAfter = product.costPrice.toNumber();
+  const salePriceAfter = product.salePrice.toNumber();
+
+  if (costPriceBefore !== costPriceAfter || salePriceBefore !== salePriceAfter) {
+    void logAudit({
+      tenantId,
+      userId,
+      action: "PRODUCT_PRICE_CHANGE",
+      entityType: "Product",
+      entityId: product.id,
+      metadata: { costPriceBefore, costPriceAfter, salePriceBefore, salePriceAfter }
+    });
+  }
+
+  return product;
 }

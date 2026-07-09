@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { ProductForm } from "../../ui/product-form";
-import { ProductMovementsTimeline } from "../../ui/product-detail";
+import { ProductMovementsTimeline, ProductPriceHistory } from "../../ui/product-detail";
 
 type ProductData = {
   id: string;
@@ -74,6 +74,7 @@ export function ProductEditView({ productId }: { productId: string }) {
         productId={productId}
       />
       <ProductMovementsTimeline productId={productId} />
+      <ProductPriceHistory productId={productId} />
     </div>
   );
 }
