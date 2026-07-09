@@ -240,6 +240,7 @@ export function InventoryTab() {
   const [pageSize] = useState(15);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [adjustingProduct, setAdjustingProduct] = useState<ProductRecord | null>(null);
+  const [adjustModalMode, setAdjustModalMode] = useState<"ajuste" | "conteo">("ajuste");
   const [isStockEntryOpen, setIsStockEntryOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -419,6 +420,7 @@ export function InventoryTab() {
 
   function handleStockAdjusted() {
     setAdjustingProduct(null);
+    setAdjustModalMode("ajuste");
     setRefreshKey((k) => k + 1);
     showSuccess("Stock actualizado exitosamente.");
   }
@@ -659,7 +661,16 @@ export function InventoryTab() {
                       <EmptyState label="No hay productos que coincidan" />
                     ) : (
                       <StockTable
-                        onAdjustStock={(p) => { setAdjustingProduct(p); setOpenMenuId(null); }}
+                        onAdjustStock={(p) => {
+                          setAdjustModalMode("ajuste");
+                          setAdjustingProduct(p);
+                          setOpenMenuId(null);
+                        }}
+                        onCountStock={(p) => {
+                          setAdjustModalMode("conteo");
+                          setAdjustingProduct(p);
+                          setOpenMenuId(null);
+                        }}
                         onMenuToggle={(id) => setOpenMenuId(openMenuId === id ? null : id)}
                         openMenuId={openMenuId}
                         products={paginatedProducts}
@@ -794,7 +805,8 @@ export function InventoryTab() {
       {/* Modals */}
       {adjustingProduct ? (
         <AdjustStockModal
-          onClose={() => setAdjustingProduct(null)}
+          mode={adjustModalMode}
+          onClose={() => { setAdjustingProduct(null); setAdjustModalMode("ajuste"); }}
           onSuccess={handleStockAdjusted}
           product={adjustingProduct}
         />
@@ -894,12 +906,14 @@ function StockTable({
   openMenuId,
   onMenuToggle,
   onAdjustStock,
+  onCountStock,
   staleProductIds
 }: {
   products: ProductRecord[];
   openMenuId: string | null;
   onMenuToggle: (id: string) => void;
   onAdjustStock: (product: ProductRecord) => void;
+  onCountStock: (product: ProductRecord) => void;
   staleProductIds: Set<string>;
 }) {
   return (
@@ -938,6 +952,7 @@ function StockTable({
                 isStale={staleProductIds.has(product.id)}
                 key={product.id}
                 onAdjustStock={() => onAdjustStock(product)}
+                onCountStock={() => onCountStock(product)}
                 onMenuToggle={() => onMenuToggle(product.id)}
                 product={product}
               />
@@ -954,13 +969,15 @@ function StockRow({
   isMenuOpen,
   isStale,
   onMenuToggle,
-  onAdjustStock
+  onAdjustStock,
+  onCountStock
 }: {
   product: ProductRecord;
   isMenuOpen: boolean;
   isStale: boolean;
   onMenuToggle: () => void;
   onAdjustStock: () => void;
+  onCountStock: () => void;
 }) {
   const category = getProductCategory(product.name);
   const badgeColor = BADGE_COLORS[category] ?? BADGE_COLORS["Otros"];
@@ -1024,6 +1041,13 @@ function StockRow({
                   type="button"
                 >
                   Ajustar stock
+                </button>
+                <button
+                  className="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={onCountStock}
+                  type="button"
+                >
+                  Conteo físico
                 </button>
               </div>
             ) : null}
@@ -1446,10 +1470,12 @@ function ErrorState({ message }: { message: string }) {
 
 function AdjustStockModal({
   product,
+  mode,
   onClose,
   onSuccess
 }: {
   product: ProductRecord;
+  mode: "ajuste" | "conteo";
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -1461,6 +1487,7 @@ function AdjustStockModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showConfirmStep, setShowConfirmStep] = useState(false);
 
+  const isConteo = mode === "conteo";
   const newStockNumber = newStock === "" ? null : parseInt(newStock, 10);
   const difference =
     newStockNumber !== null && Number.isInteger(newStockNumber)
@@ -1487,9 +1514,11 @@ function AdjustStockModal({
     setIsSubmitting(true);
     setSubmitError(null);
 
-    const finalReason = isNegativeAdjustment
-      ? `${tipoAjuste} - ${motivo}`
-      : reason.trim();
+    const finalReason = isConteo
+      ? "Conteo físico"
+      : isNegativeAdjustment
+        ? `${tipoAjuste} - ${motivo}`
+        : reason.trim();
 
     try {
       const response = await fetch("/api/inventory-adjustments", {
@@ -1530,7 +1559,9 @@ function AdjustStockModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <h2 className="text-sm font-semibold text-slate-950">Ajustar stock</h2>
+          <h2 className="text-sm font-semibold text-slate-950">
+            {isConteo ? "Conteo físico" : "Ajustar stock"}
+          </h2>
           <button className="text-slate-400 hover:text-slate-700" onClick={onClose} type="button">
             ✕
           </button>
@@ -1543,7 +1574,9 @@ function AdjustStockModal({
               <dd className="text-sm font-medium text-slate-950">{product.name}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-sm text-slate-500">Stock actual</dt>
+              <dt className="text-sm text-slate-500">
+                {isConteo ? "Stock registrado" : "Stock actual"}
+              </dt>
               <dd className="text-sm font-semibold text-slate-950">
                 {numberFormatter.format(product.stock)}
               </dd>
@@ -1556,7 +1589,9 @@ function AdjustStockModal({
             <div className="space-y-3">
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <p className="text-sm font-medium text-amber-900">
-                  Estás por dar de baja stock. Revisá los datos antes de confirmar.
+                  {isConteo
+                    ? "El conteo físico detectó un faltante. Revisá los datos antes de confirmar."
+                    : "Estás por dar de baja stock. Revisá los datos antes de confirmar."}
                 </p>
               </div>
               <dl className="space-y-2">
@@ -1565,19 +1600,25 @@ function AdjustStockModal({
                   <dd className="text-sm font-medium text-slate-950">{product.name}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-sm text-slate-500">Stock actual</dt>
+                  <dt className="text-sm text-slate-500">
+                    {isConteo ? "Stock registrado" : "Stock actual"}
+                  </dt>
                   <dd className="text-sm font-semibold text-slate-950">
                     {numberFormatter.format(product.stock)}
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-sm text-slate-500">Nuevo stock</dt>
+                  <dt className="text-sm text-slate-500">
+                    {isConteo ? "Stock real contado" : "Nuevo stock"}
+                  </dt>
                   <dd className="text-sm font-semibold text-slate-950">
                     {numberFormatter.format(newStockNumber ?? 0)}
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-sm text-slate-500">Cantidad a dar de baja</dt>
+                  <dt className="text-sm text-slate-500">
+                    {isConteo ? "Faltante detectado" : "Cantidad a dar de baja"}
+                  </dt>
                   <dd className="text-sm font-semibold text-rose-700">
                     {numberFormatter.format(Math.abs(difference ?? 0))}
                   </dd>
@@ -1591,7 +1632,7 @@ function AdjustStockModal({
                   className="mb-1.5 block text-sm font-medium text-slate-700"
                   htmlFor="inv-adj-stock"
                 >
-                  Nuevo stock
+                  {isConteo ? "Stock real contado" : "Nuevo stock"}
                 </label>
                 <input
                   autoFocus
@@ -1616,16 +1657,22 @@ function AdjustStockModal({
                           : "mt-1 text-xs text-rose-700"
                     }
                   >
-                    {difference > 0
-                      ? `+${numberFormatter.format(difference)} unidades`
-                      : difference < 0
-                        ? `${numberFormatter.format(difference)} unidades`
-                        : "Sin cambio"}
+                    {isConteo
+                      ? difference > 0
+                        ? `Sobrante de ${numberFormatter.format(difference)} unidades`
+                        : difference < 0
+                          ? `Faltante de ${numberFormatter.format(Math.abs(difference))} unidades`
+                          : "Sin diferencia"
+                      : difference > 0
+                        ? `+${numberFormatter.format(difference)} unidades`
+                        : difference < 0
+                          ? `${numberFormatter.format(difference)} unidades`
+                          : "Sin cambio"}
                   </p>
                 ) : null}
               </div>
 
-              {isNegativeAdjustment ? (
+              {isConteo ? null : isNegativeAdjustment ? (
                 <>
                   <div>
                     <label
@@ -1719,7 +1766,7 @@ function AdjustStockModal({
                   disabled={isSubmitting}
                   type="submit"
                 >
-                  {isSubmitting ? "Guardando..." : "Confirmar ajuste"}
+                  {isSubmitting ? "Guardando..." : isConteo ? "Confirmar conteo" : "Confirmar ajuste"}
                 </button>
               </>
             ) : (
@@ -1737,7 +1784,7 @@ function AdjustStockModal({
                   disabled={isSubmitting}
                   type="submit"
                 >
-                  {isSubmitting ? "Guardando..." : "Guardar ajuste"}
+                  {isSubmitting ? "Guardando..." : isConteo ? "Guardar conteo" : "Guardar ajuste"}
                 </button>
               </>
             )}

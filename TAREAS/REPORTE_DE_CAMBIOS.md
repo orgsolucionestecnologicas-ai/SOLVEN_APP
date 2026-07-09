@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 050 — Conteo físico: ingresar stock real y que SOLVEN calcule la diferencia — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/products/components/InventoryTab.tsx
+**Cambios realizados:** Se reutilizó `AdjustStockModal` (sin crear un componente nuevo) agregándole un prop `mode: "ajuste" | "conteo"` y un booleano derivado `isConteo`. En el menú "..." de cada fila de `StockTable` se agregó una segunda opción "Conteo físico" junto a "Ajustar stock", ambas abren el mismo modal con un nuevo estado `adjustModalMode` que controla el modo. En modo conteo: el título pasa a "Conteo físico", la etiqueta "Stock actual" pasa a "Stock registrado", el input "Nuevo stock" pasa a "Stock real contado", el mensaje de diferencia usa el texto "Sobrante de X unidades" / "Faltante de X unidades" / "Sin diferencia" (mismos colores verde/rojo/gris ya existentes), los selectores de tipo/motivo y el campo de texto libre de motivo se ocultan por completo (el motivo se fija automáticamente en "Conteo físico"), y los botones de guardar pasan a "Guardar conteo"/"Confirmar conteo". El paso de confirmación de la Tarea 044 se reutiliza sin cambios ya que `isNegativeAdjustment` depende únicamente del signo de la diferencia, no del modo — un conteo físico con faltante dispara la misma confirmación de dos pasos que un ajuste negativo manual. Se envía el mismo `POST /api/inventory-adjustments` con `newStock` = stock contado y `reason` = "Conteo físico".
+**Notas:** No se modificó `/api/inventory-adjustments` ni el schema de Prisma. Solo se tocó InventoryTab.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 198 pasaron, única falla preexistente y ya documentada (`route.integration.test.ts` — "creates a credit sale with debt through the API flow"). Apareció 1 falla adicional en `debt-payment-data-access.integration.test.ts` (pago concurrente), sin relación con este cambio; se confirmó como transitoria reejecutando el archivo de forma aislada (pasó limpio).
+---
+
 ## Tarea 049 — Valorización del inventario: stock actual × precio costo en la tabla — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/products/components/InventoryTab.tsx
