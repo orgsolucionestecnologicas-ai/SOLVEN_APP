@@ -196,6 +196,9 @@ export function InventoryTab() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState<ActiveTab>("Stock actual");
   const [searchQuery, setSearchQuery] = useState("");
+  const [movementProductFilter, setMovementProductFilter] = useState("");
+  const [movementDateFrom, setMovementDateFrom] = useState("");
+  const [movementDateTo, setMovementDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(15);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -295,8 +298,37 @@ export function InventoryTab() {
         (m) => m.product.name.toLowerCase().includes(q) || m.reason.toLowerCase().includes(q)
       );
     }
+
+    if (movementProductFilter) {
+      result = result.filter((m) => m.productId === movementProductFilter);
+    }
+
+    if (movementDateFrom) {
+      const from = new Date(movementDateFrom);
+      result = result.filter((m) => new Date(m.createdAt) >= from);
+    }
+
+    if (movementDateTo) {
+      const to = new Date(movementDateTo);
+      to.setHours(23, 59, 59, 999);
+      result = result.filter((m) => new Date(m.createdAt) <= to);
+    }
+
     return result;
-  }, [movements, movementsByType, activeTab, searchQuery]);
+  }, [
+    movements,
+    movementsByType,
+    activeTab,
+    searchQuery,
+    movementProductFilter,
+    movementDateFrom,
+    movementDateTo
+  ]);
+
+  const movementProductOptions = useMemo(
+    () => [...products].sort((a, b) => a.name.localeCompare(b.name)),
+    [products]
+  );
 
   const activeList: unknown[] =
     activeTab === "Stock actual" ? filteredProducts
@@ -341,6 +373,28 @@ export function InventoryTab() {
     setActiveTab(tab);
     setCurrentPage(1);
     setSearchQuery("");
+  }
+
+  function handleMovementProductFilterChange(value: string) {
+    setMovementProductFilter(value);
+    setCurrentPage(1);
+  }
+
+  function handleMovementDateFromChange(value: string) {
+    setMovementDateFrom(value);
+    setCurrentPage(1);
+  }
+
+  function handleMovementDateToChange(value: string) {
+    setMovementDateTo(value);
+    setCurrentPage(1);
+  }
+
+  function clearMovementFilters() {
+    setMovementProductFilter("");
+    setMovementDateFrom("");
+    setMovementDateTo("");
+    setCurrentPage(1);
   }
 
   return (
@@ -438,20 +492,59 @@ export function InventoryTab() {
           {/* Search */}
           {activeTab !== "Alertas" ? (
             <div className="border-b border-slate-100 px-5 py-3">
-              <div className="relative max-w-sm">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={14}
-                />
-                <input
-                  className="w-full rounded-lg border border-slate-200 py-1.5 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
-                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                  placeholder={
-                    activeTab === "Stock actual" ? "Buscar producto..." : "Buscar movimiento..."
-                  }
-                  type="text"
-                  value={searchQuery}
-                />
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative max-w-sm flex-1 min-w-[200px]">
+                  <Search
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={14}
+                  />
+                  <input
+                    className="w-full rounded-lg border border-slate-200 py-1.5 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
+                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                    placeholder={
+                      activeTab === "Stock actual" ? "Buscar producto..." : "Buscar movimiento..."
+                    }
+                    type="text"
+                    value={searchQuery}
+                  />
+                </div>
+
+                {["Movimientos", "Entradas", "Salidas", "Ajustes"].includes(activeTab) ? (
+                  <>
+                    <select
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+                      onChange={(e) => handleMovementProductFilterChange(e.target.value)}
+                      value={movementProductFilter}
+                    >
+                      <option value="">Todos los productos</option>
+                      {movementProductOptions.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+                      onChange={(e) => handleMovementDateFromChange(e.target.value)}
+                      type="date"
+                      value={movementDateFrom}
+                    />
+                    <span className="text-xs text-slate-400">a</span>
+                    <input
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+                      onChange={(e) => handleMovementDateToChange(e.target.value)}
+                      type="date"
+                      value={movementDateTo}
+                    />
+                    <button
+                      className="rounded-lg px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-50"
+                      onClick={clearMovementFilters}
+                      type="button"
+                    >
+                      Limpiar filtros
+                    </button>
+                  </>
+                ) : null}
               </div>
             </div>
           ) : null}

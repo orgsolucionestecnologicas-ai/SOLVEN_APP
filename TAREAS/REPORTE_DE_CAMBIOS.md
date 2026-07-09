@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 046 — Filtro por producto o por fecha en el historial de movimientos — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/products/components/InventoryTab.tsx
+**Cambios realizados:** En las pestañas "Movimientos", "Entradas", "Salidas" y "Ajustes" se agregó, junto al buscador de texto ya existente, un selector de producto (`movementProductFilter`, opciones derivadas de `products` ordenadas alfabéticamente, con "Todos los productos") y un filtro de rango de fechas (`movementDateFrom`/`movementDateTo`, `<input type="date">`). Los tres filtros se combinan entre sí y con la pestaña activa y la búsqueda de texto ya existentes dentro de `filteredMovements` (todos aplicados en conjunto sobre los `movements` ya cargados en el cliente, sin llamadas nuevas a la API). Cambiar cualquiera de los dos filtros nuevos resetea la paginación a la página 1, igual que ya hacía `handleTabChange`. Se agregó el botón "Limpiar filtros", que resetea únicamente producto y fechas (no toca la búsqueda de texto ni la pestaña activa).
+**Notas:** No se modificó `/api/inventory-movements` ni el schema de Prisma — el filtrado es puramente client-side. Solo se tocó InventoryTab.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 197 pasaron, única falla preexistente y ya documentada (`route.integration.test.ts` — "creates a credit sale with debt through the API flow"); sin fallas nuevas.
+---
+
 ## Tarea 045 — Movimientos negativos resaltados en rojo en el historial — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/products/components/InventoryTab.tsx
