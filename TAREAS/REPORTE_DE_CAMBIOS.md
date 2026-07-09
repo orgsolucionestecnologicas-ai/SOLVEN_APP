@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 044 — Confirmación antes de ajuste negativo de stock (prevenir errores) — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/products/components/InventoryTab.tsx
+**Cambios realizados:** En `AdjustStockModal`, cuando el ajuste es negativo (`difference < 0`), al hacer clic en "Guardar ajuste" ya no se envía el `POST` directamente: se agregó el estado `showConfirmStep` que reemplaza el contenido del formulario (dentro del mismo modal, sin abrir uno nuevo) por un paso de confirmación con producto, stock actual, nuevo stock y la cantidad a dar de baja, junto con los botones "Volver" (vuelve al formulario sin enviar nada) y "Confirmar ajuste" (recién ahí ejecuta el `POST` a `/api/inventory-adjustments`). Se separó `handleSubmit` en `handleFormSubmit` (intercepta el submit: si es un ajuste negativo y todavía no se mostró la confirmación, solo la muestra; en cualquier otro caso ejecuta el envío real) y `performSubmit` (la llamada al API, sin cambios en su lógica). Los ajustes positivos o sin cambio mantienen el comportamiento directo de siempre, sin paso adicional.
+**Notas:** No se modificó el endpoint `/api/inventory-adjustments`, el schema de Prisma, ni `inventory-adjust-form.tsx`. Solo se tocó InventoryTab.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 197 pasaron, única falla preexistente y ya documentada (`route.integration.test.ts` — "creates a credit sale with debt through the API flow"); sin fallas nuevas.
+---
+
 ## Tarea 043 — Motivo estructurado y obligatorio en ajustes negativos de stock — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/products/components/InventoryTab.tsx

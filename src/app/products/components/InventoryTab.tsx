@@ -1239,6 +1239,7 @@ function AdjustStockModal({
   const [motivo, setMotivo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showConfirmStep, setShowConfirmStep] = useState(false);
 
   const newStockNumber = newStock === "" ? null : parseInt(newStock, 10);
   const difference =
@@ -1253,8 +1254,16 @@ function AdjustStockModal({
     setMotivo(motivoOpts[0] ?? "");
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isNegativeAdjustment && !showConfirmStep) {
+      setShowConfirmStep(true);
+      return;
+    }
+    void performSubmit();
+  }
+
+  async function performSubmit() {
     setIsSubmitting(true);
     setSubmitError(null);
 
@@ -1322,114 +1331,150 @@ function AdjustStockModal({
           </dl>
         </div>
 
-        <form className="space-y-4 px-6 py-5" onSubmit={handleSubmit}>
-          <div>
-            <label
-              className="mb-1.5 block text-sm font-medium text-slate-700"
-              htmlFor="inv-adj-stock"
-            >
-              Nuevo stock
-            </label>
-            <input
-              autoFocus
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
-              disabled={isSubmitting}
-              id="inv-adj-stock"
-              min="0"
-              onChange={(e) => setNewStock(e.target.value)}
-              placeholder="0"
-              required
-              step="1"
-              type="number"
-              value={newStock}
-            />
-            {difference !== null ? (
-              <p
-                className={
-                  difference === 0
-                    ? "mt-1 text-xs text-slate-500"
-                    : difference > 0
-                      ? "mt-1 text-xs text-emerald-700"
-                      : "mt-1 text-xs text-rose-700"
-                }
-              >
-                {difference > 0
-                  ? `+${numberFormatter.format(difference)} unidades`
-                  : difference < 0
-                    ? `${numberFormatter.format(difference)} unidades`
-                    : "Sin cambio"}
-              </p>
-            ) : null}
-          </div>
-
-          {isNegativeAdjustment ? (
+        <form className="space-y-4 px-6 py-5" onSubmit={handleFormSubmit}>
+          {isNegativeAdjustment && showConfirmStep ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="text-sm font-medium text-amber-900">
+                  Estás por dar de baja stock. Revisá los datos antes de confirmar.
+                </p>
+              </div>
+              <dl className="space-y-2">
+                <div className="flex justify-between">
+                  <dt className="text-sm text-slate-500">Producto</dt>
+                  <dd className="text-sm font-medium text-slate-950">{product.name}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-slate-500">Stock actual</dt>
+                  <dd className="text-sm font-semibold text-slate-950">
+                    {numberFormatter.format(product.stock)}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-slate-500">Nuevo stock</dt>
+                  <dd className="text-sm font-semibold text-slate-950">
+                    {numberFormatter.format(newStockNumber ?? 0)}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-slate-500">Cantidad a dar de baja</dt>
+                  <dd className="text-sm font-semibold text-rose-700">
+                    {numberFormatter.format(Math.abs(difference ?? 0))}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          ) : (
             <>
               <div>
                 <label
                   className="mb-1.5 block text-sm font-medium text-slate-700"
-                  htmlFor="inv-adj-tipo"
+                  htmlFor="inv-adj-stock"
                 >
-                  Tipo de ajuste
+                  Nuevo stock
                 </label>
-                <select
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                <input
+                  autoFocus
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
                   disabled={isSubmitting}
-                  id="inv-adj-tipo"
-                  onChange={(e) => handleTipoChange(e.target.value)}
+                  id="inv-adj-stock"
+                  min="0"
+                  onChange={(e) => setNewStock(e.target.value)}
+                  placeholder="0"
                   required
-                  value={tipoAjuste}
-                >
-                  <option value="">Selecciona un tipo</option>
-                  {TIPOS_AJUSTE_NEGATIVO.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                  step="1"
+                  type="number"
+                  value={newStock}
+                />
+                {difference !== null ? (
+                  <p
+                    className={
+                      difference === 0
+                        ? "mt-1 text-xs text-slate-500"
+                        : difference > 0
+                          ? "mt-1 text-xs text-emerald-700"
+                          : "mt-1 text-xs text-rose-700"
+                    }
+                  >
+                    {difference > 0
+                      ? `+${numberFormatter.format(difference)} unidades`
+                      : difference < 0
+                        ? `${numberFormatter.format(difference)} unidades`
+                        : "Sin cambio"}
+                  </p>
+                ) : null}
               </div>
-              <div>
-                <label
-                  className="mb-1.5 block text-sm font-medium text-slate-700"
-                  htmlFor="inv-adj-motivo"
-                >
-                  Motivo específico
-                </label>
-                <select
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none disabled:opacity-50"
-                  disabled={isSubmitting || !tipoAjuste}
-                  id="inv-adj-motivo"
-                  onChange={(e) => setMotivo(e.target.value)}
-                  required
-                  value={motivo}
-                >
-                  <option value="">Selecciona un motivo</option>
-                  {(MOTIVOS_BY_TIPO_NEGATIVO[tipoAjuste] ?? []).map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
+
+              {isNegativeAdjustment ? (
+                <>
+                  <div>
+                    <label
+                      className="mb-1.5 block text-sm font-medium text-slate-700"
+                      htmlFor="inv-adj-tipo"
+                    >
+                      Tipo de ajuste
+                    </label>
+                    <select
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                      disabled={isSubmitting}
+                      id="inv-adj-tipo"
+                      onChange={(e) => handleTipoChange(e.target.value)}
+                      required
+                      value={tipoAjuste}
+                    >
+                      <option value="">Selecciona un tipo</option>
+                      {TIPOS_AJUSTE_NEGATIVO.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      className="mb-1.5 block text-sm font-medium text-slate-700"
+                      htmlFor="inv-adj-motivo"
+                    >
+                      Motivo específico
+                    </label>
+                    <select
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none disabled:opacity-50"
+                      disabled={isSubmitting || !tipoAjuste}
+                      id="inv-adj-motivo"
+                      onChange={(e) => setMotivo(e.target.value)}
+                      required
+                      value={motivo}
+                    >
+                      <option value="">Selecciona un motivo</option>
+                      {(MOTIVOS_BY_TIPO_NEGATIVO[tipoAjuste] ?? []).map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label
+                    className="mb-1.5 block text-sm font-medium text-slate-700"
+                    htmlFor="inv-adj-reason"
+                  >
+                    Motivo del ajuste
+                  </label>
+                  <input
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+                    disabled={isSubmitting}
+                    id="inv-adj-reason"
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="Ej. Conteo físico, merma, donación"
+                    required
+                    type="text"
+                    value={reason}
+                  />
+                </div>
+              )}
             </>
-          ) : (
-            <div>
-              <label
-                className="mb-1.5 block text-sm font-medium text-slate-700"
-                htmlFor="inv-adj-reason"
-              >
-                Motivo del ajuste
-              </label>
-              <input
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
-                disabled={isSubmitting}
-                id="inv-adj-reason"
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Ej. Conteo físico, merma, donación"
-                required
-                type="text"
-                value={reason}
-              />
-            </div>
           )}
 
           {submitError ? (
@@ -1439,21 +1484,43 @@ function AdjustStockModal({
           ) : null}
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
-              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-              disabled={isSubmitting}
-              onClick={onClose}
-              type="button"
-            >
-              Cancelar
-            </button>
-            <button
-              className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-              disabled={isSubmitting}
-              type="submit"
-            >
-              {isSubmitting ? "Guardando..." : "Guardar ajuste"}
-            </button>
+            {isNegativeAdjustment && showConfirmStep ? (
+              <>
+                <button
+                  className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  disabled={isSubmitting}
+                  onClick={() => setShowConfirmStep(false)}
+                  type="button"
+                >
+                  Volver
+                </button>
+                <button
+                  className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  disabled={isSubmitting}
+                  type="submit"
+                >
+                  {isSubmitting ? "Guardando..." : "Confirmar ajuste"}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  disabled={isSubmitting}
+                  onClick={onClose}
+                  type="button"
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  disabled={isSubmitting}
+                  type="submit"
+                >
+                  {isSubmitting ? "Guardando..." : "Guardar ajuste"}
+                </button>
+              </>
+            )}
           </div>
         </form>
       </div>
