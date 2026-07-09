@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 058 — Indicador de margen % visible directamente en la lista de productos — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/products-inventory.tsx
+**Cambios realizados:** Se agregó la columna "Margen %" al listado principal de productos, entre "Precio" y "Stock". Se creó la función pura `calculateMarginPercent(costPrice, salePrice)` (mismo cálculo que ya usa `product-form.tsx`: `((salePrice - costPrice) / costPrice) * 100`), que devuelve `null` cuando `costPrice` es 0 para evitar la división por cero, y el componente `MarginBadge` que renderiza "—" en ese caso o el porcentaje coloreado: verde (`> 20%`), ámbar (`0% < margen <= 20%`) o rojo (`<= 0%`) — mismos umbrales que el banner/ícono de alerta de la Tarea 057, para que ambas señales visuales sean consistentes entre sí.
+**Notas:** No se modificó `/api/products` — `costPrice` y `salePrice` ya venían en la respuesta. Cálculo puramente client-side, sin nuevas peticiones. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 197 pasaron, única falla preexistente y ya documentada (`sales/route.integration.test.ts` — "creates a credit sale with debt through the API flow"); sin fallas nuevas.
+---
+
 ## Tarea 057 — Alerta visual cuando el precio de costo supera o iguala al precio de venta — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/product-form.tsx, src/app/ui/products-inventory.tsx

@@ -832,6 +832,9 @@ export function ProductsInventory() {
                         Precio
                       </th>
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Margen %
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Stock
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1115,6 +1118,10 @@ function ProductRow({
       </td>
 
       <td className="px-4 py-3 text-right">
+        <MarginBadge costPrice={product.costPrice} salePrice={product.salePrice} />
+      </td>
+
+      <td className="px-4 py-3 text-right">
         <span
           className={
             product.stock === 0
@@ -1186,6 +1193,27 @@ function ProductRow({
 function getUnitAbbreviation(unit: string): string {
   const match = unit.match(/\(([^)]+)\)/);
   return match ? match[1] : unit;
+}
+
+function calculateMarginPercent(costPrice: string, salePrice: string): number | null {
+  const cost = Number(costPrice);
+  const sale = Number(salePrice);
+  if (!cost) return null;
+  return ((sale - cost) / cost) * 100;
+}
+
+function MarginBadge({ costPrice, salePrice }: { costPrice: string; salePrice: string }) {
+  const margin = calculateMarginPercent(costPrice, salePrice);
+  if (margin === null) {
+    return <span className="text-sm text-slate-400">—</span>;
+  }
+  const colorClass =
+    margin > 20
+      ? "text-emerald-600"
+      : margin > 0
+        ? "text-amber-600"
+        : "text-rose-600";
+  return <span className={`text-sm font-semibold ${colorClass}`}>{margin.toFixed(1)}%</span>;
 }
 
 function StockStatusBadge({ stock }: { stock: number }) {
