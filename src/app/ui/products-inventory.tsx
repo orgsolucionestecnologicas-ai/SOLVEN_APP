@@ -16,6 +16,7 @@ import {
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InventoryTab } from "../products/components/InventoryTab";
+import { IVA_RATES } from "@/modules/products/product-validation";
 
 type ProductRecord = {
   id: string;
@@ -73,6 +74,16 @@ type CreateServiceResponse = {
 
 type StatusFilter = "Todos" | "Con stock" | "Stock bajo" | "Sin stock";
 type StockRangeFilter = "Todos" | "0" | "1-5" | "6-20" | "20+";
+
+type BulkAction =
+  | { type: "category"; categoryName: string }
+  | { type: "ivaRate"; ivaRate: number }
+  | { type: "price"; mode: "percent" | "fixed"; value: number };
+
+type BulkUpdateResponse = {
+  data?: { updated: number };
+  error?: { message: string; details?: string[] };
+};
 
 type ApiCategoryTree = {
   id: string;
@@ -140,6 +151,10 @@ export function ProductsInventory() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<BulkAction | null>(null);
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -290,6 +305,71 @@ export function ProductsInventory() {
     (safePage - 1) * pageSize,
     safePage * pageSize
   );
+
+  const allPageSelected =
+    paginatedProducts.length > 0 && paginatedProducts.every((p) => selectedIds.has(p.id));
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        paginatedProducts.forEach((p) => next.delete(p.id));
+      } else {
+        paginatedProducts.forEach((p) => next.add(p.id));
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  async function handleBulkApply() {
+    if (!bulkAction) return;
+    setBulkSubmitting(true);
+    setBulkError(null);
+
+    try {
+      const payload: Record<string, unknown> = { ids: Array.from(selectedIds) };
+      if (bulkAction.type === "category") payload.categoryName = bulkAction.categoryName;
+      if (bulkAction.type === "ivaRate") payload.ivaRate = bulkAction.ivaRate;
+      if (bulkAction.type === "price") {
+        payload.priceAdjustment = { mode: bulkAction.mode, value: bulkAction.value };
+      }
+
+      const response = await fetch("/api/products/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const responseBody = (await response.json()) as BulkUpdateResponse;
+
+      if (!response.ok || !responseBody.data) {
+        setBulkError(responseBody.error?.message ?? "No se pudo aplicar el cambio masivo.");
+        return;
+      }
+
+      const { updated } = responseBody.data;
+      setBulkAction(null);
+      clearSelection();
+      setRefreshKey((k) => k + 1);
+      showSuccess(`${updated} producto${updated === 1 ? "" : "s"} actualizado${updated === 1 ? "" : "s"}.`);
+    } catch {
+      setBulkError("Error de red. Intentá de nuevo.");
+    } finally {
+      setBulkSubmitting(false);
+    }
+  }
 
   function showSuccess(message: string) {
     setSuccessMessage(message);
@@ -708,6 +788,16 @@ export function ProductsInventory() {
             ) : null}
           </div>
 
+          {/* Bulk actions */}
+          {selectedIds.size > 0 ? (
+            <BulkActionsBar
+              categories={selectableCategories}
+              count={selectedIds.size}
+              onApply={setBulkAction}
+              onClear={clearSelection}
+            />
+          ) : null}
+
           {/* Table */}
           {isLoading ? <LoadingState /> : null}
           {!isLoading && loadError ? <ErrorState message={loadError} /> : null}
@@ -722,7 +812,9 @@ export function ProductsInventory() {
                     <tr>
                       <th className="w-10 px-3 py-3">
                         <input
+                          checked={allPageSelected}
                           className="rounded border-slate-300"
+                          onChange={toggleSelectAll}
                           type="checkbox"
                         />
                       </th>
@@ -753,6 +845,7 @@ export function ProductsInventory() {
                     {paginatedProducts.map((product) => (
                       <ProductRow
                         isMenuOpen={openMenuId === product.id}
+                        isSelected={selectedIds.has(product.id)}
                         key={product.id}
                         onAdjustStock={() => {
                           setAdjustingProduct(product);
@@ -771,6 +864,7 @@ export function ProductsInventory() {
                             openMenuId === product.id ? null : product.id
                           )
                         }
+                        onToggleSelect={() => toggleSelectOne(product.id)}
                         product={product}
                       />
                     ))}
@@ -923,6 +1017,20 @@ export function ProductsInventory() {
           service={editingService}
         />
       ) : null}
+
+      {bulkAction ? (
+        <BulkConfirmModal
+          action={bulkAction}
+          count={selectedIds.size}
+          error={bulkError}
+          isSubmitting={bulkSubmitting}
+          onCancel={() => {
+            setBulkAction(null);
+            setBulkError(null);
+          }}
+          onConfirm={() => void handleBulkApply()}
+        />
+      ) : null}
     </div>
   );
 }
@@ -930,19 +1038,23 @@ export function ProductsInventory() {
 type ProductRowProps = {
   product: ProductRecord;
   isMenuOpen: boolean;
+  isSelected: boolean;
   onMenuToggle: () => void;
   onEdit: () => void;
   onAdjustStock: () => void;
   onDelete: () => void;
+  onToggleSelect: () => void;
 };
 
 function ProductRow({
   product,
   isMenuOpen,
+  isSelected,
   onMenuToggle,
   onEdit,
   onAdjustStock,
-  onDelete
+  onDelete,
+  onToggleSelect
 }: ProductRowProps) {
   const router = useRouter();
   const category = product.categoryName;
@@ -952,7 +1064,12 @@ function ProductRow({
   return (
     <tr className="hover:bg-slate-50/50">
       <td className="px-3 py-3">
-        <input className="rounded border-slate-300" type="checkbox" />
+        <input
+          checked={isSelected}
+          className="rounded border-slate-300"
+          onChange={onToggleSelect}
+          type="checkbox"
+        />
       </td>
 
       <td className="px-4 py-3">
@@ -1077,6 +1194,181 @@ function StockStatusBadge({ stock }: { stock: number }) {
     <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
       Con stock
     </span>
+  );
+}
+
+type BulkActionsBarProps = {
+  categories: string[];
+  count: number;
+  onApply: (action: BulkAction) => void;
+  onClear: () => void;
+};
+
+function BulkActionsBar({ categories, count, onApply, onClear }: BulkActionsBarProps) {
+  const [category, setCategory] = useState("");
+  const [ivaRate, setIvaRate] = useState("");
+  const [priceMode, setPriceMode] = useState<"percent" | "fixed">("percent");
+  const [priceValue, setPriceValue] = useState("");
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5">
+      <span className="text-sm font-medium text-violet-800">
+        {count} producto{count === 1 ? "" : "s"} seleccionado{count === 1 ? "" : "s"}
+      </span>
+
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <select
+          className="rounded-lg border border-violet-300 bg-white px-2 py-1.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+          onChange={(e) => setCategory(e.target.value)}
+          value={category}
+        >
+          <option value="">Cambiar categoría...</option>
+          {categories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
+        </select>
+        <button
+          className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-40"
+          disabled={!category}
+          onClick={() => onApply({ type: "category", categoryName: category })}
+          type="button"
+        >
+          Aplicar
+        </button>
+
+        <select
+          className="rounded-lg border border-violet-300 bg-white px-2 py-1.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+          onChange={(e) => setIvaRate(e.target.value)}
+          value={ivaRate}
+        >
+          <option value="">Cambiar IVA...</option>
+          {IVA_RATES.map((rate) => (
+            <option key={rate} value={rate}>
+              {(rate * 100).toLocaleString("es-AR")}%
+            </option>
+          ))}
+        </select>
+        <button
+          className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-40"
+          disabled={ivaRate === ""}
+          onClick={() => onApply({ type: "ivaRate", ivaRate: Number(ivaRate) })}
+          type="button"
+        >
+          Aplicar
+        </button>
+
+        <select
+          className="rounded-lg border border-violet-300 bg-white px-2 py-1.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+          onChange={(e) => setPriceMode(e.target.value as "percent" | "fixed")}
+          value={priceMode}
+        >
+          <option value="percent">% precio</option>
+          <option value="fixed">Monto fijo</option>
+        </select>
+        <input
+          className="w-24 rounded-lg border border-violet-300 bg-white px-2 py-1.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+          onChange={(e) => setPriceValue(e.target.value)}
+          placeholder={priceMode === "percent" ? "Ej. 10" : "Ej. 500"}
+          step="0.01"
+          type="number"
+          value={priceValue}
+        />
+        <button
+          className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-40"
+          disabled={priceValue.trim() === "" || Number.isNaN(Number(priceValue))}
+          onClick={() => onApply({ type: "price", mode: priceMode, value: Number(priceValue) })}
+          type="button"
+        >
+          Aplicar
+        </button>
+
+        <button
+          className="text-xs font-medium text-violet-700 hover:text-violet-900"
+          onClick={onClear}
+          type="button"
+        >
+          Cancelar selección
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type BulkConfirmModalProps = {
+  action: BulkAction;
+  count: number;
+  error: string | null;
+  isSubmitting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+function BulkConfirmModal({
+  action,
+  count,
+  error,
+  isSubmitting,
+  onCancel,
+  onConfirm
+}: BulkConfirmModalProps) {
+  const plural = count === 1 ? "" : "s";
+  const description =
+    action.type === "category"
+      ? `Vas a cambiar la categoría de ${count} producto${plural} a "${action.categoryName}".`
+      : action.type === "ivaRate"
+        ? `Vas a cambiar la alícuota de IVA de ${count} producto${plural} a ${(action.ivaRate * 100).toLocaleString("es-AR")}%.`
+        : action.mode === "percent"
+          ? `Vas a ajustar el precio de venta de ${count} producto${plural} en ${action.value > 0 ? "+" : ""}${action.value}%.`
+          : `Vas a ajustar el precio de venta de ${count} producto${plural} en ${action.value > 0 ? "+" : ""}${formatMoney(String(action.value))}.`;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">Confirmar edición masiva</h2>
+          <button className="text-slate-400 hover:text-slate-700" onClick={onCancel} type="button">
+            ✕
+          </button>
+        </div>
+
+        <div className="space-y-4 px-6 py-5">
+          <p className="text-sm text-slate-600">{description}</p>
+
+          {error ? (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+              <p className="text-sm font-medium text-rose-900">{error}</p>
+            </div>
+          ) : null}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              disabled={isSubmitting}
+              onClick={onCancel}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              disabled={isSubmitting}
+              onClick={onConfirm}
+              type="button"
+            >
+              {isSubmitting ? "Aplicando..." : "Confirmar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
