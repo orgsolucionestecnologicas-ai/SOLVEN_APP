@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 056 — Cálculo automático del precio de venta sugerido: costo + % de margen deseado — 2026-07-09
+**Estado:** ✅ Ya implementada (verificado, sin cambios)
+**Archivos modificados:** ninguno
+**Cambios realizados:** Ninguno. Se verificó `src/app/ui/product-form.tsx` y el comportamiento descrito en la tarea ya funciona correctamente en ambos sentidos: `handleCostPriceChange`/`handleMarginChange` recalculan `salePrice` a partir de costo + margen, y `handleSalePriceChange` recalcula `margin` a partir del precio de venta ingresado manualmente (todos disparados directamente por los `onChange` de los inputs, tanto en modo alta como en modo edición). Se revisó específicamente el caso "margen inicial no refleja costo/venta guardados" al editar un producto existente: el estado inicial de `margin` se calcula con un inicializador lazy de `useState` a partir de `initialData.costPrice`/`initialData.salePrice` cuando ambos están disponibles, por lo que al abrir un producto para editar el margen mostrado ya refleja los valores guardados desde el primer render. No se encontró ningún caso roto.
+**Notas:** No se modificó ningún archivo, según indica la tarea cuando la funcionalidad ya está implementada correctamente ("NO hagas ningún cambio: documentá en el reporte que la tarea ya estaba implementada y salí sin modificar archivos"). No se ejecutó `npm run build` porque no hubo cambios de código.
+---
+
 ## Tarea 055 — Historial de cambios de precio por producto (quién cambió, cuándo y de cuánto a cuánto) — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/modules/audit/audit-data-access.ts, src/modules/audit/index.ts, src/modules/products/product-data-access.ts, src/app/api/products/[id]/route.ts, src/app/api/products/[id]/price-history/route.ts (nuevo), src/app/ui/product-detail.tsx, src/app/products/[id]/product-edit-view.tsx
