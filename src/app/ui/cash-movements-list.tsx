@@ -124,6 +124,13 @@ function getCategory(m: CashMovementRecord): string {
   }
 }
 
+function getMovementCategoryStyle(m: CashMovementRecord): { label: string; className: string } {
+  if (m.source === "SALE") return { label: "Venta", className: "bg-emerald-100 text-emerald-700" };
+  if (m.source === "EXPENSE") return { label: "Gasto", className: "bg-orange-100 text-orange-700" };
+  if (m.source === "MANUAL" && m.type === "OUT") return { label: "Retiro", className: "bg-rose-100 text-rose-700" };
+  return { label: "Ajuste", className: "bg-slate-100 text-slate-600" };
+}
+
 function getSourceLabel(source: string): string {
   switch (source) {
     case "SALE": return "Venta";
@@ -541,17 +548,25 @@ export function CashMovementsList() {
                       const isIN = m.type === "IN";
                       const ref = m.referenceId;
                       const shortRef = ref ? (ref.length > 14 ? `${ref.slice(0, 10)}...` : ref) : "—";
+                      const categoryStyle = getMovementCategoryStyle(m);
                       return (
                         <tr className="hover:bg-slate-50/50" key={m.id}>
                           <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-500">
                             {fmtTime(m.movementDate)}
                           </td>
                           <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${isIN ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}
-                            >
-                              {isIN ? "↑ Ingreso" : "↓ Salida"}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${isIN ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}
+                              >
+                                {isIN ? "↑ Ingreso" : "↓ Salida"}
+                              </span>
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${categoryStyle.className}`}
+                              >
+                                {categoryStyle.label}
+                              </span>
+                            </div>
                           </td>
                           <td className="max-w-[200px] truncate px-4 py-3 text-sm font-medium text-slate-950">
                             {getDescription(m)}

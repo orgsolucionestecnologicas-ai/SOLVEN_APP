@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 041 — Movimientos por tipo con color: VENTA=verde · GASTO=naranja · RETIRO=rojo · AJUSTE=gris — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/cash-movements-list.tsx
+**Cambios realizados:** Se agregó `getMovementCategoryStyle(m)`, que deriva una categoría visual a partir de `source` + `type`: `SALE` → "Venta" (emerald-100/emerald-700), `EXPENSE` → "Gasto" (orange-100/orange-700), `MANUAL` con `type: "OUT"` → "Retiro" (rose-100/rose-700), cualquier otro caso (`MANUAL` + `IN`, `DEBT_PAYMENT`, `RETURN`, etc.) → "Ajuste" (slate-100/slate-600). En cada fila del listado se agregó un segundo badge con esta categoría junto al badge existente de "↑ Ingreso"/"↓ Salida" (que no fue reemplazado, solo se le sumó el refuerzo visual de color por categoría).
+**Notas:** No se modificó el schema de Prisma ni los valores reales de `source`/`type` que graban los módulos de ventas, gastos, deudas y retornos. Solo se tocó cash-movements-list.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 197 pasaron, única falla preexistente y no relacionada (`route.integration.test.ts` — "creates a credit sale with debt through the API flow"); sin nuevas fallas.
+---
+
 ## Tarea 040 — Descarga del resumen de cierre en PDF para archivo o impresión — 2026-07-02
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/ui/cash-movements-list.tsx
