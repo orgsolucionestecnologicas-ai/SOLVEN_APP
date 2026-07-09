@@ -28,7 +28,19 @@
       "PowerShell(npm test 2>&1)",
       "PowerShell(npx vitest run src/modules/noa-internal/noa-tools.test.ts 2>&1)",
       "PowerShell(npx vitest run src/app/api/dashboard/summary/route.integration.test.ts 2>&1)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(git stash *)",
+      "Bash(git checkout *)",
+      "Bash(npm test *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git commit -m ' *)",
+      "Bash(node -e \"const m = require\\('lucide-react'\\); console.log\\(typeof m.History, typeof m.Clock, typeof m.ChevronDown, typeof m.ChevronUp\\);\")",
+      "Bash(npx prisma *)",
+      "Read(//c/Users/SOLVEN/AppData/Local/Temp/**)",
+      "Bash(grep -n -A 30 \"prevents concurrent payments from overpaying a debt\" \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\full_test_059.log\" | head -60)",
+      "Bash(git fetch *)"
     ],
     "additionalDirectories": [
       "/home/diegogama/Escritorio/SOLVEN_APP/src/app/customers/[id]"
