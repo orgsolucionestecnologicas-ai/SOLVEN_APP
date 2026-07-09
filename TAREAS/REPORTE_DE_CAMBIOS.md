@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 047 — Exportar CSV de movimientos de inventario filtrados — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/products/components/InventoryTab.tsx
+**Cambios realizados:** Se agregó un botón "Exportar CSV" junto a los filtros de las pestañas "Movimientos", "Entradas", "Salidas" y "Ajustes" (mismo bloque condicional agregado en la Tarea 046, junto al selector de producto, el rango de fechas y "Limpiar filtros"). Se agregaron las funciones `escapeCsvValue` y `exportMovementsToCsv`, replicando el patrón ya establecido en `cash-movements-list.tsx`/`sales-list.tsx` (sin librerías nuevas): arman un CSV con columnas Fecha, Producto, Tipo, Motivo y Cantidad a partir de `filteredMovements` (es decir, respeta la pestaña activa, la búsqueda de texto y los filtros de producto/fecha de la Tarea 046), reutilizando los helpers ya existentes `dateFormatter`, `getMovementType` y `formatReason`. El archivo se descarga como `movimientos_inventario_YYYY-MM-DD.csv` mediante `Blob` + `URL.createObjectURL`.
+**Notas:** No se modificó `/api/inventory-movements` ni el schema de Prisma — exportación puramente client-side. Solo se tocó InventoryTab.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 197 pasaron, única falla preexistente y ya documentada (`route.integration.test.ts` — "creates a credit sale with debt through the API flow"); sin fallas nuevas.
+---
+
 ## Tarea 046 — Filtro por producto o por fecha en el historial de movimientos — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/products/components/InventoryTab.tsx

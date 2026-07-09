@@ -7,6 +7,7 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
+  Download,
   Layers,
   MoreHorizontal,
   Package,
@@ -155,6 +156,37 @@ function formatReason(reason: string): string {
   if (reason.startsWith("SALE:")) return "Venta";
   if (reason.startsWith("RETURN:")) return "Devolución";
   return reason;
+}
+
+function escapeCsvValue(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function exportMovementsToCsv(movements: InventoryMovementRecord[]) {
+  const header = ["Fecha", "Producto", "Tipo", "Motivo", "Cantidad"];
+  const rows = movements.map((m) => [
+    dateFormatter.format(new Date(m.createdAt)),
+    m.product.name,
+    getMovementType(m),
+    formatReason(m.reason),
+    String(m.quantityChange)
+  ]);
+  const csvContent = [header, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `movimientos_inventario_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 function getPageNumbers(current: number, total: number): (number | "...")[] {
@@ -542,6 +574,14 @@ export function InventoryTab() {
                       type="button"
                     >
                       Limpiar filtros
+                    </button>
+                    <button
+                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                      onClick={() => exportMovementsToCsv(filteredMovements)}
+                      type="button"
+                    >
+                      <Download size={13} />
+                      Exportar CSV
                     </button>
                   </>
                 ) : null}
