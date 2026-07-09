@@ -1128,9 +1128,12 @@ function ProductRow({
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 shrink-0 rounded-lg bg-slate-100" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-950">
-              {product.name}
-            </p>
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="truncate text-sm font-semibold text-slate-950">
+                {product.name}
+              </p>
+              <MarginWarningBadge costPrice={product.costPrice} salePrice={product.salePrice} />
+            </div>
             <p className="text-xs text-slate-400">
               {product.productCode ? product.productCode : "Presentación: " + presentation}
             </p>
@@ -1248,6 +1251,23 @@ function calculateMarginPercent(costPrice: string, salePrice: string): number | 
   const sale = Number(salePrice);
   if (!cost) return null;
   return ((sale - cost) / cost) * 100;
+}
+
+function MarginWarningBadge({ costPrice, salePrice }: { costPrice: string; salePrice: string }) {
+  const margin = calculateMarginPercent(costPrice, salePrice);
+  if (margin === null || margin >= 10) return null;
+  if (margin < 0) {
+    return (
+      <span className="inline-flex shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+        Margen negativo
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+      Margen bajo
+    </span>
+  );
 }
 
 function MarginBadge({ costPrice, salePrice }: { costPrice: string; salePrice: string }) {

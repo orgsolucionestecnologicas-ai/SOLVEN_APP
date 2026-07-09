@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 060 — Badge rojo/naranja en productos con margen negativo o menor al 10% — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/ui/products-inventory.tsx
+**Cambios realizados:** Se creó el componente `MarginWarningBadge`, que reutiliza `calculateMarginPercent` (de la Tarea 058) y no realiza ningún cálculo nuevo. Renderiza un badge tipo píldora "Margen negativo" (rojo/rose) cuando `margin < 0`, "Margen bajo" (ámbar) cuando `0 <= margin < 10`, y ningún badge cuando el margen es 10% o mayor (o cuando `costPrice` es 0, mismo caso sin dato que ya maneja `MarginBadge` de la Tarea 058). El badge se colocó junto al nombre del producto en la primera celda de cada fila (`ProductRow`), envuelto en un `div` flex con `min-w-0`/`shrink-0` para que el nombre siga truncándose correctamente sin empujar el badge fuera de la celda.
+**Notas:** Se usó ámbar (`bg-amber-100`/`text-amber-700`) en lugar de naranja literal para el caso "Margen bajo": CLAUDE.md del proyecto reserva `orange-*` exclusivamente para el estado de suscripción PAST_DUE (con una única excepción ya documentada para la serie de "gastos" en gráficos combinados), por lo que introducir un naranja nuevo aquí violaría esa regla no negociable. El ámbar además mantiene consistencia visual con el umbral 0%–20% que ya usa `MarginBadge` (columna "Margen %" de la Tarea 058) en ese mismo tono. Los umbrales del badge (< 0 rojo, 0–10 ámbar, >= 10 sin badge) no son idénticos a los de la columna de la Tarea 058 (<=0 rojo, 0–20 ámbar, >20 verde) porque la propia Tarea 060 define sus propios cortes explícitamente — ambas señales conviven sin contradecirse porque son complementarias (columna: valor numérico exacto siempre visible; badge: alerta textual solo en los casos más urgentes) y comparten la misma paleta de colores por severidad. No se tocó `/api/products` ni el schema de Prisma. Cálculo puramente client-side. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 196 pasaron, mismas 2 fallas que en la Tarea 059 (la ya documentada de `sales/route.integration.test.ts` y la intermitente de `debt-payment-data-access.integration.test.ts` reconfirmada como flaky, no relacionada con este cambio de UI); sin fallas nuevas.
+---
+
 ## Tarea 059 — Ordenamiento por margen, stock o más vendido (columna clickeable) — 2026-07-09
 **Estado:** ✅ Completada (parcial, según lo previsto por la tarea)
 **Archivos modificados:** src/app/ui/products-inventory.tsx
