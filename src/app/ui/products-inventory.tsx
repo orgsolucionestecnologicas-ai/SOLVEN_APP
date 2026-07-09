@@ -2,6 +2,9 @@
 
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Barcode,
   ChevronLeft,
   ChevronRight,
@@ -137,6 +140,8 @@ export function ProductsInventory() {
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [sortColumn, setSortColumn] = useState<"stock" | "margin" | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<"Productos" | "Servicios" | "Inventario">("Productos");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -300,9 +305,30 @@ export function ProductsInventory() {
     return result;
   }, [products, searchQuery, categoryFilter, statusFilter, stockRangeFilter]);
 
+  const sortedProducts = useMemo(() => {
+    if (!sortColumn) return filteredProducts;
+    const sign = sortDirection === "asc" ? 1 : -1;
+    return [...filteredProducts].sort((a, b) => {
+      const aValue =
+        sortColumn === "stock" ? a.stock : (calculateMarginPercent(a.costPrice, a.salePrice) ?? -Infinity);
+      const bValue =
+        sortColumn === "stock" ? b.stock : (calculateMarginPercent(b.costPrice, b.salePrice) ?? -Infinity);
+      return (aValue - bValue) * sign;
+    });
+  }, [filteredProducts, sortColumn, sortDirection]);
+
+  function handleSort(column: "stock" | "margin") {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
-  const paginatedProducts = filteredProducts.slice(
+  const paginatedProducts = sortedProducts.slice(
     (safePage - 1) * pageSize,
     safePage * pageSize
   );
@@ -832,10 +858,32 @@ export function ProductsInventory() {
                         Precio
                       </th>
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Margen %
+                        <button
+                          className="inline-flex items-center gap-1 hover:text-slate-800"
+                          onClick={() => handleSort("margin")}
+                          type="button"
+                        >
+                          Margen %
+                          {sortColumn === "margin" ? (
+                            sortDirection === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                          ) : (
+                            <ArrowUpDown size={12} className="text-slate-300" />
+                          )}
+                        </button>
                       </th>
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Stock
+                        <button
+                          className="inline-flex items-center gap-1 hover:text-slate-800"
+                          onClick={() => handleSort("stock")}
+                          type="button"
+                        >
+                          Stock
+                          {sortColumn === "stock" ? (
+                            sortDirection === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                          ) : (
+                            <ArrowUpDown size={12} className="text-slate-300" />
+                          )}
+                        </button>
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Estado
