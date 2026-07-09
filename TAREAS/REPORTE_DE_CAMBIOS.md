@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 045 — Movimientos negativos resaltados en rojo en el historial — 2026-07-09
+**Estado:** ✅ Completada
+**Archivos modificados:** src/app/products/components/InventoryTab.tsx
+**Cambios realizados:** Se verificó que `quantityChange` ya se mostraba en rojo y el ícono circular ya cambiaba a rojo para salidas, pero faltaba resaltar la fila/tarjeta completa. En `MovementsList`, la `<tr>` ahora agrega `border-l-2 border-rose-400 bg-rose-50/40` cuando `m.quantityChange < 0`, sin romper el `hover:bg-slate-50/50` existente. En `RecentMovements` (sidebar de "Últimos movimientos"), la tarjeta de cada movimiento aplica el mismo criterio (borde izquierdo rojo + fondo suave) en lugar del `border-slate-100 bg-slate-50` por defecto. Se usó directamente `m.quantityChange < 0` en ambos lugares, sin duplicar `getMovementType`.
+**Notas:** No se modificó el endpoint de movimientos ni el schema de Prisma. Solo se tocó InventoryTab.tsx. `npm run build`, lint y typecheck ejecutados sin errores. `npm test`: 199 pasaron, única falla preexistente y ya documentada (`route.integration.test.ts` — "creates a credit sale with debt through the API flow"); dos fallas adicionales vistas en una corrida intermedia (`dashboard/summary/route.integration.test.ts` y una repetición del caso de crédito) resultaron transitorias por carga concurrente de la suite — se confirmó reejecutando el archivo de dashboard aislado (pasó limpio) y la suite completa una vez más (solo la falla conocida); sin relación con este cambio.
+---
+
 ## Tarea 044 — Confirmación antes de ajuste negativo de stock (prevenir errores) — 2026-07-09
 **Estado:** ✅ Completada
 **Archivos modificados:** src/app/products/components/InventoryTab.tsx

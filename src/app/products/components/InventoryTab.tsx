@@ -873,7 +873,12 @@ function MovementsList({ movements }: { movements: InventoryMovementRecord[] }) 
             {movements.map((m) => {
               const type = getMovementType(m);
               return (
-                <tr className="hover:bg-slate-50/50" key={m.id}>
+                <tr
+                  className={`hover:bg-slate-50/50 ${
+                    m.quantityChange < 0 ? "border-l-2 border-rose-400 bg-rose-50/40" : ""
+                  }`}
+                  key={m.id}
+                >
                   <td className="px-4 py-3">
                     <div
                       className={`flex h-7 w-7 items-center justify-center rounded-full ${
@@ -1107,7 +1112,11 @@ function RecentMovements({ movements }: { movements: InventoryMovementRecord[] }
         const type = getMovementType(m);
         return (
           <div
-            className="flex items-start gap-2.5 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5"
+            className={`flex items-start gap-2.5 rounded-lg border px-3 py-2.5 ${
+              m.quantityChange < 0
+                ? "border-l-2 border-rose-400 bg-rose-50/40"
+                : "border-slate-100 bg-slate-50"
+            }`}
             key={m.id}
           >
             <div
