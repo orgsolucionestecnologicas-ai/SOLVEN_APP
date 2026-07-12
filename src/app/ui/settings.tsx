@@ -442,6 +442,7 @@ function DocumentosSection() {
   const [logoUrl, setLogoUrl] = useState("");
   const [receiptFooterMessage, setReceiptFooterMessage] = useState("");
   const [receiptThankYouMessage, setReceiptThankYouMessage] = useState("¡Gracias por su compra!");
+  const [initialReceiptNumber, setInitialReceiptNumber] = useState("0");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -458,6 +459,9 @@ function DocumentosSection() {
           setReceiptThankYouMessage(
             typeof body.data.receiptThankYouMessage === "string" ? body.data.receiptThankYouMessage : "¡Gracias por su compra!"
           );
+          setInitialReceiptNumber(
+            typeof body.data.initialReceiptNumber === "number" ? String(body.data.initialReceiptNumber) : "0"
+          );
         }
       })
       .catch(() => {})
@@ -472,7 +476,13 @@ function DocumentosSection() {
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...raw, logoUrl, receiptFooterMessage, receiptThankYouMessage })
+        body: JSON.stringify({
+          ...raw,
+          logoUrl,
+          receiptFooterMessage,
+          receiptThankYouMessage,
+          initialReceiptNumber: Number(initialReceiptNumber) || 0
+        })
       });
       if (!res.ok) throw new Error();
       setSaved(true);
@@ -527,6 +537,21 @@ function DocumentosSection() {
             type="text"
             value={receiptFooterMessage}
           />
+        </div>
+        <div>
+          <label className={labelCls}>Número inicial de comprobante</label>
+          <input
+            className={inputCls}
+            disabled={loading}
+            min={0}
+            onChange={(e) => setInitialReceiptNumber(e.target.value)}
+            placeholder="0"
+            type="number"
+            value={initialReceiptNumber}
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Solo aplica al primer comprobante que emitas (si migrás desde otro sistema y querés continuar la numeración). No afecta comprobantes ya emitidos.
+          </p>
         </div>
       </div>
       <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">

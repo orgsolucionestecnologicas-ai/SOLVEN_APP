@@ -121,13 +121,21 @@ export async function createSale(
     });
     const nextFolio = (lastSale?.folio ?? 0) + 1;
 
-    const receiptPrefix = validatedSale.receiptType === "INVOICE" ? "FAC" : "TKT";
-    const receiptCounter = await transaction.codeCounter.upsert({
-      where: { id: receiptPrefix },
-      create: { id: receiptPrefix, lastVal: 1 },
-      update: { lastVal: { increment: 1 } }
+    const lastReceiptSale = await transaction.sale.findFirst({
+      where: { tenantId, receiptType: validatedSale.receiptType },
+      orderBy: { receiptNumber: "desc" },
+      select: { receiptNumber: true }
     });
-    const receiptNumber = receiptCounter.lastVal;
+    let receiptNumber: number;
+    if (lastReceiptSale) {
+      receiptNumber = lastReceiptSale.receiptNumber + 1;
+    } else {
+      const storeSettings = await transaction.storeSettings.findUnique({
+        where: { tenantId },
+        select: { initialReceiptNumber: true }
+      });
+      receiptNumber = storeSettings && storeSettings.initialReceiptNumber > 0 ? storeSettings.initialReceiptNumber : 1;
+    }
 
     const sale = await transaction.sale.create({
       data: {

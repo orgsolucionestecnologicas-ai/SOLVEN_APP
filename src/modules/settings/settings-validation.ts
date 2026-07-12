@@ -17,6 +17,7 @@ export type UpsertSettingsInput = {
   logoUrl?: string;
   receiptFooterMessage?: string;
   receiptThankYouMessage?: string;
+  initialReceiptNumber?: number;
 };
 
 export type ValidatedSettingsInput = {
@@ -38,6 +39,7 @@ export type ValidatedSettingsInput = {
   logoUrl: string;
   receiptFooterMessage: string;
   receiptThankYouMessage: string;
+  initialReceiptNumber: number;
 };
 
 export class SettingsValidationError extends Error {
@@ -74,5 +76,9 @@ export function validateUpsertSettingsInput(input: UpsertSettingsInput): Validat
     logoUrl: typeof input.logoUrl === "string" ? input.logoUrl.trim() : "",
     receiptFooterMessage: typeof input.receiptFooterMessage === "string" ? input.receiptFooterMessage.trim() : "",
     receiptThankYouMessage: typeof input.receiptThankYouMessage === "string" ? input.receiptThankYouMessage.trim() : "¡Gracias por su compra!",
+    initialReceiptNumber:
+      typeof input.initialReceiptNumber === "number" && Number.isFinite(input.initialReceiptNumber) && input.initialReceiptNumber >= 0
+        ? Math.floor(input.initialReceiptNumber)
+        : 0,
   };
 }

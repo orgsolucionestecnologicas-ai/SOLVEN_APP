@@ -7,6 +7,20 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 097 — Número inicial de comprobante — 2026-07-13
+**Estado:** ✅ Completada
+**Archivos modificados:** `prisma/schema.prisma` (+ migración `20260712225153_add_initial_receipt_number`), `src/modules/sales/sale-data-access.ts`, `src/modules/settings/settings-validation.ts`, `src/app/ui/settings.tsx`
+**Hallazgo previo a implementar:** `folio` es un contador por tenant (`sale.findFirst({ where: { tenantId }, orderBy: { folio: "desc" } })`), pero `receiptNumber` usaba el modelo `CodeCounter` (sin `tenantId`, sin scope de tenant) con una fila global compartida por **todos los tenants** para cada prefijo ("TKT"/"FAC"). Esto significa que, antes de este cambio, la numeración de tickets/facturas era global entre negocios distintos, no por negocio — una violación de la regla "TODOS los queries Prisma deben tener where: tenantId" de `CLAUDE.md`. Configurar un "número inicial" por tenant sobre un contador global habría numerado mal los comprobantes de otros tenants, así que era un prerrequisito necesario (no una tarea aparte) corregir el scope de `receiptNumber` para que sea por tenant y por `receiptType`, igual que `folio`. Se verificó que ningún otro módulo usa `codeCounter` con los ids "TKT"/"FAC" (los otros prefijos — CLI/SRV/PROD/COT — no se tocaron).
+**Cambios realizados:**
+- `StoreSettings.initialReceiptNumber Int @default(0)` (default `0` = sin efecto para tenants existentes).
+- `createSale` ahora busca la última venta del mismo tenant y mismo `receiptType` ordenada por `receiptNumber` descendente; si existe, el próximo comprobante es `último + 1` (igual que antes, pero ahora scopeado por tenant). Si no existe ninguna venta previa de ese tipo para ese tenant, usa `StoreSettings.initialReceiptNumber` (si es mayor a 0) o `1` por defecto. Nunca reescribe ni renumera ventas ya emitidas.
+- Se eliminó el uso de `codeCounter.upsert` en `createSale` (reemplazado por el cálculo scopeado por tenant descrito arriba).
+- Nuevo campo "Número inicial de comprobante" en la sección "Documentos" de `settings.tsx` (input numérico, con nota de que solo aplica antes del primer comprobante), guardado vía `PATCH /api/settings`.
+**Validación:** `npm run lint` ok, `npm run typecheck` ok, `npm run build` ok, migración aplicada. `npm test`: 204 passed / 1 failed / 2 skipped — el único fallo es el bug conocido y preexistente de Tarea 081 (`createSale` no crea `Debt` para ventas CREDIT), no relacionado a este cambio. Los tests de `sale-data-access` y de la ruta de ventas (salvo ese caso CREDIT ya roto) pasan igual que antes.
+**Notas:** No se tocó la lógica ARCA/AFIP (la numeración fiscal de facturas electrónicas usa el CAE de ARCA, no `receiptNumber`).
+
+---
+
 ## Tarea 096 — Datos AFIP completos: punto de venta, condición IVA, tipo de responsable — 2026-07-13
 **Estado:** ✅ Verificada (ya estaba implementada)
 **Archivos modificados:** ninguno

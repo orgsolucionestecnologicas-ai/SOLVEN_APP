@@ -494,6 +494,7 @@ model StoreSettings {
   logoUrl              String   @default("")
   receiptFooterMessage String   @default("")
   receiptThankYouMessage String @default("¡Gracias por su compra!")
+  initialReceiptNumber Int      @default(0)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
