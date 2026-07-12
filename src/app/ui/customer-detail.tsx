@@ -18,7 +18,7 @@ import {
   Wallet
 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { formatARS as fmtMoney } from "@/lib/format-currency";
 
@@ -108,7 +108,9 @@ function saleItemsSummary(items: SaleRecord["items"]): string {
 export function CustomerDetail() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const customerId = params.id as string;
+  const fromDeudas = searchParams.get("from") === "deudas";
 
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [allSales, setAllSales] = useState<SaleRecord[]>([]);
@@ -308,10 +310,10 @@ export function CustomerDetail() {
         <div className="flex items-center gap-4">
           <Link
             className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800"
-            href="/customers"
+            href={fromDeudas ? "/debts" : "/customers"}
           >
             <ArrowLeft size={15} />
-            Volver a clientes
+            {fromDeudas ? "Volver a Deudas" : "Volver a clientes"}
           </Link>
           <div className="h-4 w-px bg-slate-200" />
           <div>

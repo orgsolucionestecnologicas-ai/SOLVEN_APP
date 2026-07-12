@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 093 — Click en el cliente navega al perfil completo sin perder el contexto — 2026-07-12
+**Estado:** ✅ Completada
+**Archivos modificados:** `src/app/ui/debts-list.tsx`, `src/app/ui/customer-detail.tsx`
+**Cambios realizados:** El `Link` al nombre del cliente en la tabla de `debts-list.tsx` ya navegaba a `/customers/${debt.customerId}`; se le agregó el query param `?from=deudas`. En `customer-detail.tsx` (usado por `src/app/customers/[id]/page.tsx`) se agregó `useSearchParams()` para detectar `from=deudas`; cuando está presente, el enlace "Volver a clientes" que ya existía arriba del contenido del perfil cambia dinámicamente a "Volver a Deudas" y apunta a `/debts` en vez de `/customers`. No se implementó persistencia completa de filtros en la URL de `/debts` (fuera de alcance según la restricción explícita de la tarea) — alcanza con volver a la sección.
+**Notas:** Build, lint y typecheck OK. `npm test`: 205 passed / 2 failed / 2 skipped en la corrida completa — 1 es el bug preexistente ya documentado en la Tarea 081, y el otro (`products API database integration > lists products after creation`, `Can't reach database server`) es un flake transitorio de conexión a Neon, confirmado al re-ejecutar ese archivo en aislamiento (pasó limpio, 2/2). Esta tarea no tocó nada relacionado a productos.
+
+---
+
 ## Tarea 092 — Monto total adeudado en grande en la parte superior — 2026-07-12
 **Estado:** ✅ Verificada (ya cubierta por la Tarea 085)
 **Archivos modificados:** ninguno

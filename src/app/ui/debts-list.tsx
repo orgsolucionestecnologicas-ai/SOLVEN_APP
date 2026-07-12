@@ -492,7 +492,7 @@ export function DebtsList() {
                               <CustomerAvatar name={debt.customer.name} />
                               <Link
                                 className="max-w-[150px] truncate text-sm font-semibold text-slate-950 hover:text-violet-600 hover:underline"
-                                href={`/customers/${debt.customerId}`}
+                                href={`/customers/${debt.customerId}?from=deudas`}
                               >
                                 {debt.customer.name}
                               </Link>
