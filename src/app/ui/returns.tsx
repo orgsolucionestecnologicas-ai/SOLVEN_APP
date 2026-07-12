@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, PackageX, RotateCcw, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, CheckCircle2, History, PackageX, RotateCcw, Search } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +41,37 @@ type ReturnResponse = {
   error?: { message: string };
 };
 
+type ReturnHistoryItem = {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+};
+
+type ReturnHistoryRecord = {
+  id: string;
+  saleId: string;
+  totalAmount: string;
+  createdAt: string;
+  sale: { id: string; saleDate: string; customerName: string | null };
+  items: ReturnHistoryItem[];
+};
+
+type PaginationMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+};
+
+type ReturnHistoryResponse = {
+  data?: ReturnHistoryRecord[];
+  pagination?: PaginationMeta;
+  error?: { message: string };
+};
+
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
 const moneyFormatter = new Intl.NumberFormat("es-AR", {
@@ -67,6 +98,7 @@ function formatDate(iso: string) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function Returns() {
+  const [activeTab, setActiveTab] = useState<"new" | "history">("new");
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -165,8 +197,38 @@ export function Returns() {
           <span className="font-medium text-slate-900">Devoluciones</span>
         </div>
         <h1 className="mt-1 text-lg font-semibold text-slate-900">Devoluciones</h1>
+
+        <div className="mt-4 flex gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab("new")}
+            className={`flex items-center gap-1.5 rounded-t-lg border-b-2 px-4 py-2 text-sm font-medium ${
+              activeTab === "new"
+                ? "border-violet-600 text-violet-700"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <RotateCcw className="h-4 w-4" />
+            Nueva devolución
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={`flex items-center gap-1.5 rounded-t-lg border-b-2 px-4 py-2 text-sm font-medium ${
+              activeTab === "history"
+                ? "border-violet-600 text-violet-700"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <History className="h-4 w-4" />
+            Historial
+          </button>
+        </div>
       </div>
 
+      {activeTab === "history" ? (
+        <ReturnHistoryPanel />
+      ) : (
       <div className="mx-auto w-full max-w-screen-xl px-4 py-6 sm:px-6">
 
         {/* Success banner */}
@@ -399,6 +461,121 @@ export function Returns() {
             )}
           </div>
         </div>
+      </div>
+      )}
+    </div>
+  );
+}
+
+// ─── History Panel ────────────────────────────────────────────────────────────
+
+function ReturnHistoryPanel() {
+  const [records, setRecords] = useState<ReturnHistoryRecord[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const fetchHistory = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const res = await fetch(`/api/returns?page=${page}&limit=20`, {
+        headers: { Accept: "application/json" }
+      });
+      const body = (await res.json()) as ReturnHistoryResponse;
+      if (body.data) setRecords(body.data);
+      else setLoadError(body.error?.message ?? "No se pudo cargar el historial de devoluciones.");
+      if (body.pagination) setPagination(body.pagination);
+    } catch {
+      setLoadError("No se pudo cargar el historial de devoluciones.");
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+
+  useEffect(() => {
+    void fetchHistory();
+  }, [fetchHistory]);
+
+  return (
+    <div className="mx-auto w-full max-w-screen-xl px-4 py-6 sm:px-6">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-5 py-4">
+          <h2 className="text-sm font-semibold text-slate-900">Historial de devoluciones</h2>
+        </div>
+
+        {loading ? (
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-16 animate-pulse rounded-lg bg-slate-100" />
+            ))}
+          </div>
+        ) : loadError ? (
+          <p className="p-4 text-sm text-rose-600">{loadError}</p>
+        ) : records.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <History className="mb-2 h-8 w-8 text-slate-300" />
+            <p className="text-sm text-slate-500">Todavía no hay devoluciones registradas</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {records.map((record) => (
+              <div key={record.id} className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900">
+                      Venta #{record.sale.id.slice(-8).toUpperCase()}
+                    </p>
+                    <span className="text-slate-300">·</span>
+                    <p className="text-xs text-slate-500">{formatDate(record.createdAt)}</p>
+                    {record.sale.customerName ? (
+                      <>
+                        <span className="text-slate-300">·</span>
+                        <p className="text-xs text-slate-500">{record.sale.customerName}</p>
+                      </>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {record.items.map((item) => `${item.productName} x${item.quantity}`).join(", ")}
+                  </p>
+                </div>
+                <p className="shrink-0 text-sm font-semibold text-slate-900">
+                  {formatMoney(record.totalAmount)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {pagination && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
+            <p className="text-xs text-slate-500">
+              {pagination.total} devolución{pagination.total !== 1 ? "es" : ""}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={!pagination.hasPrev}
+                className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Anterior
+              </button>
+              <span className="text-xs text-slate-500">
+                {pagination.page} / {pagination.totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                disabled={!pagination.hasNext}
+                className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

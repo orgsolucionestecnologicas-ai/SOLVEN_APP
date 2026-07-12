@@ -21,6 +21,74 @@ export class ReturnValidationError extends Error {
   }
 }
 
+export type ReturnListItem = {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+};
+
+export type ReturnListRecord = {
+  id: string;
+  saleId: string;
+  totalAmount: Prisma.Decimal;
+  createdAt: Date;
+  sale: { id: string; saleDate: Date; customerName: string | null };
+  items: ReturnListItem[];
+};
+
+export async function listReturns(
+  tenantId: string,
+  filters: { page?: number; limit?: number } = {}
+): Promise<{ data: ReturnListRecord[]; total: number }> {
+  const { page = 1, limit = 20 } = filters;
+
+  const where: Prisma.ReturnWhereInput = { sale: { tenantId } };
+
+  const [returns, total] = await prisma.$transaction([
+    prisma.return.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: (page - 1) * limit,
+      include: {
+        items: true,
+        sale: { select: { id: true, saleDate: true, customer: { select: { name: true } } } }
+      }
+    }),
+    prisma.return.count({ where })
+  ]);
+
+  const productIds = [...new Set(returns.flatMap((r) => r.items.map((i) => i.productId)))];
+  const products = productIds.length
+    ? await prisma.product.findMany({
+        where: { id: { in: productIds }, tenantId },
+        select: { id: true, name: true }
+      })
+    : [];
+  const nameById = new Map(products.map((p) => [p.id, p.name]));
+
+  const data: ReturnListRecord[] = returns.map((r) => ({
+    id: r.id,
+    saleId: r.saleId,
+    totalAmount: r.totalAmount,
+    createdAt: r.createdAt,
+    sale: {
+      id: r.sale.id,
+      saleDate: r.sale.saleDate,
+      customerName: r.sale.customer?.name ?? null
+    },
+    items: r.items.map((i) => ({
+      id: i.id,
+      productId: i.productId,
+      productName: nameById.get(i.productId) ?? i.productId,
+      quantity: i.quantity
+    }))
+  }));
+
+  return { data, total };
+}
+
 export async function processReturn(
   saleId: string,
   items: ReturnItemInput[],
