@@ -31,6 +31,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!user.active) {
+    return NextResponse.json(
+      { error: "Usuario desactivado. Contactá al propietario de la cuenta." },
+      { status: 401 }
+    );
+  }
+
   const subscription = await prisma.subscription.findUnique({
     where: { tenantId: user.tenantId }
   });

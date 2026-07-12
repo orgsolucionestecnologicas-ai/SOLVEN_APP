@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import {
   deleteUser,
+  setUserActive,
   updateUserRole,
   UserValidationError
 } from "../../../../modules/users";
@@ -42,7 +43,10 @@ export async function PATCH(
   }
 
   try {
-    const user = await updateUserRole(id, requestBody as { role: string }, tenantId, userId);
+    const body = requestBody as { role?: string; active?: boolean };
+    const user = typeof body.active === "boolean"
+      ? await setUserActive(id, body.active, tenantId, userId)
+      : await updateUserRole(id, { role: body.role ?? "" }, tenantId, userId);
     return successResponse(user);
   } catch (error) {
     if (error instanceof UserValidationError) {

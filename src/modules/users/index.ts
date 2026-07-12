@@ -2,6 +2,7 @@ export {
   createUser,
   deleteUser,
   listUsers,
+  setUserActive,
   updateUserRole,
   type UserSummary
 } from "./user-data-access";

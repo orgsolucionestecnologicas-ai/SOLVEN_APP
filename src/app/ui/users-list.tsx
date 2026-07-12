@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Shield, Trash2, X } from "lucide-react";
+import { Plus, Power, Shield, Trash2, X } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 
 type UserRecord = {
@@ -9,6 +9,7 @@ type UserRecord = {
   email: string;
   role: string;
   userCode: string | null;
+  active: boolean;
   createdAt: string;
 };
 
@@ -51,6 +52,7 @@ export function UsersList() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<UserRecord | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -115,6 +117,26 @@ export function UsersList() {
     } catch {
       setUsers(previousUsers);
       setError("No se pudo actualizar el rol.");
+    }
+  }
+
+  async function handleToggleActive(user: UserRecord, active: boolean) {
+    const previousUsers = users;
+    setUsers((list) => list.map((item) => (item.id === user.id ? { ...item, active } : item)));
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active })
+      });
+      const body = (await res.json()) as ApiResponse<UserRecord>;
+      if (!res.ok || !body.data) {
+        setUsers(previousUsers);
+        setError(body.error?.details?.[0] ?? body.error?.message ?? "No se pudo actualizar el estado del usuario.");
+      }
+    } catch {
+      setUsers(previousUsers);
+      setError("No se pudo actualizar el estado del usuario.");
     }
   }
 
@@ -183,6 +205,7 @@ export function UsersList() {
               <th className="px-4 py-3 font-medium">Código</th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Rol</th>
+              <th className="px-4 py-3 font-medium">Estado</th>
               <th className="px-4 py-3 font-medium">Creado</th>
               <th className="px-4 py-3 text-right font-medium">Acciones</th>
             </tr>
@@ -190,11 +213,11 @@ export function UsersList() {
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-400" colSpan={6}>Cargando…</td>
+                <td className="px-4 py-6 text-center text-slate-400" colSpan={7}>Cargando…</td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-400" colSpan={6}>No hay usuarios para mostrar.</td>
+                <td className="px-4 py-6 text-center text-slate-400" colSpan={7}>No hay usuarios para mostrar.</td>
               </tr>
             ) : (
               users.map((user) => (
@@ -224,16 +247,37 @@ export function UsersList() {
                       </select>
                     </div>
                   </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                        user.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {user.active ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{formatDate(user.createdAt)}</td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
-                      onClick={() => setDeleteTarget(user)}
-                      type="button"
-                    >
-                      <Trash2 size={13} />
-                      Eliminar
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                        onClick={() =>
+                          user.active ? setDeactivateTarget(user) : handleToggleActive(user, true)
+                        }
+                        type="button"
+                      >
+                        <Power size={13} />
+                        {user.active ? "Desactivar" : "Activar"}
+                      </button>
+                      <button
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
+                        onClick={() => setDeleteTarget(user)}
+                        type="button"
+                      >
+                        <Trash2 size={13} />
+                        Eliminar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -275,6 +319,38 @@ export function UsersList() {
                 type="button"
               >
                 Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deactivateTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+            <div className="px-6 py-5">
+              <p className="text-sm font-semibold text-slate-950">¿Desactivar usuario?</p>
+              <p className="mt-1.5 text-sm text-slate-500">
+                <strong>{deactivateTarget.name || deactivateTarget.email}</strong> no podrá iniciar sesión hasta que lo reactives. Su historial de ventas y movimientos se conserva.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-3">
+              <button
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => setDeactivateTarget(null)}
+                type="button"
+              >
+                Cancelar
+              </button>
+              <button
+                className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                onClick={() => {
+                  handleToggleActive(deactivateTarget, false);
+                  setDeactivateTarget(null);
+                }}
+                type="button"
+              >
+                Desactivar
               </button>
             </div>
           </div>

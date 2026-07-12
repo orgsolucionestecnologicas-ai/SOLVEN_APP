@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 094 — Estado activo/inactivo de usuario — 2026-07-12
+**Estado:** ✅ Completada
+**Archivos modificados:** `prisma/schema.prisma` (+ migración `20260712212556_add_user_active`), `src/app/api/auth/login/route.ts`, `src/modules/users/user-data-access.ts`, `src/modules/users/index.ts`, `src/app/api/users/[id]/route.ts`, `src/app/ui/users-list.tsx`
+**Cambios realizados:** Se agregó `active Boolean @default(true)` al modelo `User`. En `POST /api/auth/login`, después de verificar la contraseña y antes de buscar la suscripción, se bloquea el login con 401 (`"Usuario desactivado. Contactá al propietario de la cuenta."`) si `user.active === false`, sin crear sesión. Se agregó `setUserActive(id, active, tenantId, currentUserId)` en `user-data-access.ts`, replicando el mismo resguardo de auto-protección que ya tenían `updateUserRole`/`deleteUser` (un usuario no puede desactivarse a sí mismo). Se extendió el `PATCH /api/users/[id]` existente (en vez de crear una ruta nueva) para aceptar un body `{ active: boolean }` además del `{ role: string }` ya soportado, sin romper el uso actual desde `handleRoleChange`. En `users-list.tsx`: nueva columna "Estado" con badge Activo/Inactivo, y un botón "Activar"/"Desactivar" (ícono `Power`) junto al de "Eliminar"; desactivar requiere confirmación en un modal (mismo patrón que el de eliminar), reactivar es inmediato. Se verificó que `deleteUser` no tiene ningún resguardo de historial (solo bloquea auto-eliminación) y que `AuditLog.userId` es una relación FK real hacia `User` sin `onDelete` explícito — por lo que eliminar un usuario con historial de auditoría ya fallaría por restricción de base de datos; desactivar es la alternativa segura que preserva ventas y auditoría intactas.
+**Notas:** No se implementó cierre de sesión forzado para usuarios ya logueados al momento de desactivarlos (su sesión JWT seguirá siendo válida hasta que expire o cierren sesión manualmente) — limitación conocida, fuera de alcance de esta tarea. No se tocó `DELETE /api/users/[id]` (se mantiene disponible). Build, lint y typecheck OK. `npm test`: 203 passed / 2 failed / 2 skipped — 1 es el bug preexistente ya documentado en la Tarea 081, y el otro (`dashboard summary > calculates core business metrics from existing database data`, `Can't reach database server`) es un flake transitorio de conexión a Neon, confirmado al re-ejecutar ese archivo en aislamiento (pasó limpio, 1/1). Esta tarea no tocó nada relacionado al dashboard.
+
+---
+
 ## Tarea 093 — Click en el cliente navega al perfil completo sin perder el contexto — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `src/app/ui/debts-list.tsx`, `src/app/ui/customer-detail.tsx`

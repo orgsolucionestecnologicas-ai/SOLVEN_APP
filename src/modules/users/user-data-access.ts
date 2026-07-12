@@ -18,6 +18,7 @@ export type UserSummary = {
   email: string;
   role: string;
   userCode: string | null;
+  active: boolean;
   createdAt: Date;
 };
 
@@ -27,6 +28,7 @@ const userSummarySelect = {
   email: true,
   role: true,
   userCode: true,
+  active: true,
   createdAt: true
 } satisfies Prisma.UserSelect;
 
@@ -98,6 +100,23 @@ export async function updateUserRole(
   return prisma.user.update({
     where: { id, tenantId },
     data: { role },
+    select: userSummarySelect
+  });
+}
+
+export async function setUserActive(
+  id: string,
+  active: boolean,
+  tenantId: string,
+  currentUserId: string
+): Promise<UserSummary> {
+  if (id === currentUserId) {
+    throw new UserValidationError(["No podés desactivarte a vos mismo."]);
+  }
+
+  return prisma.user.update({
+    where: { id, tenantId },
+    data: { active },
     select: userSummarySelect
   });
 }
