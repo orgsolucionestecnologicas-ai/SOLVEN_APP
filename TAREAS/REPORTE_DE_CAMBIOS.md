@@ -7,6 +7,9 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### Tarea 073 — Número secuencial visible en cotización (ya implementada)
+Verificado de punta a punta: `Quote.quoteNumber` (formato "COT-XXXX") ya se muestra como primera columna en la tabla de `QuotesList`, como título en `QuoteDetailModal`, y también en el PDF descargable (`quote-pdf.tsx`), en el encabezado violeta destacado junto al nombre del negocio ("Cotización N° {quote.quoteNumber}"), con jerarquía visual clara. No se realizó ningún cambio de código, conforme a lo indicado en la tarea cuando el número ya es visible de forma clara en el PDF.
+
 ### Tarea 072 — Descuento global como porcentaje en cotizaciones
 Verificado: el descuento global ya funcionaba de punta a punta como monto fijo en ARS (`Quote.discountAmount`). Se agregó únicamente el modo porcentaje en el cliente: en `NewQuoteModal` (`quotes-list.tsx`) se reemplazó el estado `discountAmount` por `discountMode` ("amount" | "percent") + `discountInput`, con un selector de dos botones ("Monto ($)" / "Porcentaje (%)") junto al label. El `discountAmount` real (en ARS) ahora se calcula: en modo monto es el valor ingresado, en modo porcentaje es `subtotal * (porcentaje / 100)` (porcentaje acotado a 0-100). El backend sigue recibiendo y guardando siempre un monto en ARS, sin cambios en `quote-validation.ts` ni `quote-data-access.ts`. El resumen (Subtotal/Descuento/Total) muestra "Descuento (N%)" cuando el modo es porcentaje. No se modificó el schema de Prisma. Build, lint y typecheck OK.
 
