@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Eye,
   Filter,
   MoreHorizontal,
@@ -542,20 +543,28 @@ export function PromotionsList() {
     }
   }
 
-  function handleDuplicate(promo: PromotionRecord) {
+  async function handleDuplicate(promo: PromotionRecord) {
     setOpenMenuId(null);
-    const form = promotionToForm(promo, products);
-    setEditingPromotion(null);
-    setIsModalOpen(true);
-    setDuplicateForm({ ...form, name: `${form.name} — Copia`, code: "" });
+    try {
+      const res = await fetch(`/api/promotions/${promo.id}/duplicate`, { method: "POST" });
+      const body = (await res.json()) as ApiResponse<Omit<PromotionRecord, "_count">>;
+      if (!res.ok || !body.data) {
+        showSuccess(body.error?.message ?? "No se pudo duplicar la promoción.");
+        return;
+      }
+      const duplicated: PromotionRecord = { ...body.data, _count: { usages: 0 } };
+      setPromotions((prev) => [duplicated, ...prev]);
+      setEditingPromotion(duplicated);
+      setIsModalOpen(true);
+      showSuccess("Promoción duplicada. Revisá los datos antes de activarla.");
+    } catch {
+      showSuccess("No se pudo duplicar la promoción.");
+    }
   }
-
-  const [duplicateForm, setDuplicateForm] = useState<PromotionFormData | null>(null);
 
   function handleModalSaved(saved: PromotionRecord) {
     setIsModalOpen(false);
     setEditingPromotion(null);
-    setDuplicateForm(null);
     setPromotions((prev) => {
       const idx = prev.findIndex((p) => p.id === saved.id);
       if (idx >= 0) {
@@ -886,6 +895,7 @@ export function PromotionsList() {
         <aside className="hidden w-80 flex-shrink-0 overflow-y-auto border-l border-slate-200 lg:block">
           <PromotionSidebar
             promotion={selectedPromotion}
+            onDuplicate={() => selectedPromotion && handleDuplicate(selectedPromotion)}
             onEdit={() => selectedPromotion && openEdit(selectedPromotion)}
           />
         </aside>
@@ -896,11 +906,9 @@ export function PromotionsList() {
         <PromotionModal
           editing={editingPromotion}
           products={products}
-          initialForm={duplicateForm ?? undefined}
           onClose={() => {
             setIsModalOpen(false);
             setEditingPromotion(null);
-            setDuplicateForm(null);
           }}
           onSaved={handleModalSaved}
         />
@@ -1123,9 +1131,11 @@ function PromotionRow({
 
 function PromotionSidebar({
   promotion,
+  onDuplicate,
   onEdit,
 }: {
   promotion: PromotionRecord | null;
+  onDuplicate: () => void;
   onEdit: () => void;
 }) {
   if (!promotion) {
@@ -1204,14 +1214,24 @@ function PromotionSidebar({
             {statusStyle.label}
           </span>
         </div>
-        <button
-          className="flex-shrink-0 rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50"
-          onClick={onEdit}
-          title="Editar"
-          type="button"
-        >
-          <Pencil size={13} />
-        </button>
+        <div className="flex flex-shrink-0 gap-1.5">
+          <button
+            className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50"
+            onClick={onDuplicate}
+            title="Duplicar"
+            type="button"
+          >
+            <Copy size={13} />
+          </button>
+          <button
+            className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50"
+            onClick={onEdit}
+            title="Editar"
+            type="button"
+          >
+            <Pencil size={13} />
+          </button>
+        </div>
       </div>
 
       {/* Large icon */}
@@ -1286,18 +1306,16 @@ function PromotionSidebar({
 function PromotionModal({
   editing,
   products,
-  initialForm,
   onClose,
   onSaved,
 }: {
   editing: PromotionRecord | null;
   products: ProductRecord[];
-  initialForm?: PromotionFormData;
   onClose: () => void;
   onSaved: (saved: PromotionRecord) => void;
 }) {
   const [form, setForm] = useState<PromotionFormData>(
-    initialForm ?? (editing ? promotionToForm(editing, products) : EMPTY_FORM)
+    editing ? promotionToForm(editing, products) : EMPTY_FORM
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);

@@ -10,6 +10,7 @@ export {
 export {
   createPromotion,
   deletePromotion,
+  duplicatePromotion,
   findOverlappingPromotions,
   getActivePromotions,
   getExpiringPromotions,

@@ -7,6 +7,9 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### Tarea 064 — Duplicar promoción
+Nueva función `duplicatePromotion(id, tenantId)` en `promotion-data-access.ts`: clona una promoción existente del tenant quitando `id`/`code`/`createdAt`/`updatedAt`, agrega " (copia)" al nombre y fuerza `isActive: false`. Nuevo endpoint `POST /api/promotions/[id]/duplicate`. Se encontró que la UI ya tenía un botón "Duplicar" parcialmente cableado (menú de la fila) pero con una implementación cliente-only (`handleDuplicate` duplicado, prellenaba el formulario sin persistir) que no coincidía con el comportamiento pedido; se reemplazó por la llamada real al nuevo endpoint, que persiste la copia inmediatamente y abre el formulario de edición sobre ella. Se eliminó el estado `duplicateForm` y la prop `initialForm` de `PromotionModal`, ambos ya sin uso tras el cambio. Se agregó botón "Duplicar" (ícono Copy) también en la vista de detalle (`PromotionSidebar`). Build, lint y typecheck OK.
+
 ### Tarea 063 — Alerta de solapamiento de promociones
 Nueva función `findOverlappingPromotions(input, tenantId, excludeId?)` en `promotion-data-access.ts`: busca promociones activas del tenant con el mismo `application` (y mismo `categoryName`/`productAId` según corresponda) cuyo rango de fechas se cruza con el ingresado. Nuevo endpoint `POST /api/promotions/check-overlap`. En el formulario de promoción (`promotions.tsx`) se agregó un `useEffect` debounced (400ms) que consulta el endpoint cada vez que cambian aplicación/categoría/producto/fechas, mostrando un banner ámbar no bloqueante con los nombres de las promociones solapadas si existen. No se modificó `promotion-engine.ts` ni el schema de Prisma. Build, lint y typecheck OK.
 

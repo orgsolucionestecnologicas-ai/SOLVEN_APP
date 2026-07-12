@@ -109,6 +109,32 @@ export async function deletePromotion(
   await prisma.promotion.delete({ where: { id } });
 }
 
+export async function duplicatePromotion(
+  id: string,
+  tenantId: string
+): Promise<Promotion> {
+  const existing = await prisma.promotion.findFirst({ where: { id, tenantId } });
+  if (!existing) throw new PromotionNotFoundError(id);
+
+  const {
+    id: _id,
+    code: _code,
+    createdAt: _createdAt,
+    updatedAt: _updatedAt,
+    tenantId: _tenantId,
+    ...rest
+  } = existing;
+
+  return prisma.promotion.create({
+    data: {
+      ...rest,
+      name: `${existing.name} (copia)`,
+      isActive: false,
+      tenantId
+    }
+  });
+}
+
 export async function getExpiringPromotions(
   tenantId: string,
   hoursAhead = 48
