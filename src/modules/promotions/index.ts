@@ -10,11 +10,13 @@ export {
 export {
   createPromotion,
   deletePromotion,
+  findOverlappingPromotions,
   getActivePromotions,
   getExpiringPromotions,
   getPromotionByCode,
   getPromotionById,
   listPromotions,
+  type OverlapCheckInput,
   PromotionHasUsagesError,
   PromotionNotFoundError,
   type PromotionWithUsageCount,

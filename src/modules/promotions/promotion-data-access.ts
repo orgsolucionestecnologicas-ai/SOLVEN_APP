@@ -1,4 +1,4 @@
-import type { Promotion, PromotionUsage } from "@prisma/client";
+import type { Prisma, Promotion, PromotionApplication, PromotionUsage } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -124,6 +124,40 @@ export async function getExpiringPromotions(
     },
     orderBy: { endsAt: "asc" }
   });
+}
+
+export type OverlapCheckInput = {
+  application: PromotionApplication;
+  categoryName?: string;
+  productAId?: string;
+  startsAt: Date;
+  endsAt: Date;
+};
+
+export async function findOverlappingPromotions(
+  input: OverlapCheckInput,
+  tenantId: string,
+  excludeId?: string
+): Promise<Promotion[]> {
+  const where: Prisma.PromotionWhereInput = {
+    tenantId,
+    isActive: true,
+    application: input.application,
+    startsAt: { lt: input.endsAt },
+    endsAt: { gt: input.startsAt }
+  };
+
+  if (excludeId) {
+    where.id = { not: excludeId };
+  }
+
+  if (input.application === "CATEGORY") {
+    where.categoryName = input.categoryName;
+  } else if (input.application === "SPECIFIC_PRODUCT" || input.application === "BUNDLED") {
+    where.productAId = input.productAId;
+  }
+
+  return prisma.promotion.findMany({ where, orderBy: { startsAt: "asc" } });
 }
 
 export async function getActivePromotions(

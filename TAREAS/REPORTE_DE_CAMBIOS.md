@@ -7,6 +7,9 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### Tarea 063 — Alerta de solapamiento de promociones
+Nueva función `findOverlappingPromotions(input, tenantId, excludeId?)` en `promotion-data-access.ts`: busca promociones activas del tenant con el mismo `application` (y mismo `categoryName`/`productAId` según corresponda) cuyo rango de fechas se cruza con el ingresado. Nuevo endpoint `POST /api/promotions/check-overlap`. En el formulario de promoción (`promotions.tsx`) se agregó un `useEffect` debounced (400ms) que consulta el endpoint cada vez que cambian aplicación/categoría/producto/fechas, mostrando un banner ámbar no bloqueante con los nombres de las promociones solapadas si existen. No se modificó `promotion-engine.ts` ni el schema de Prisma. Build, lint y typecheck OK.
+
 ### Tarea 062 — Notificación de promoción por vencer
 Nueva función `getExpiringPromotions(tenantId, hoursAhead = 48)` en `promotion-data-access.ts` (mismo criterio que `getExpiringQuotes`). Nuevo endpoint `GET /api/promotions/expiring`. En `src/app/ui/promotions.tsx` se agregó un badge ámbar junto al título "Promociones" con la cantidad de promociones que vencen en las próximas 48 horas; al hacer clic filtra la lista para mostrar solo esas promociones. Build, lint y typecheck OK.
 

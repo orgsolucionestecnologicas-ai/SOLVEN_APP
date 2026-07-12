@@ -1303,6 +1303,7 @@ function PromotionModal({
   const [errors, setErrors] = useState<string[]>([]);
   const [productAOpen, setProductAOpen] = useState(false);
   const [productBOpen, setProductBOpen] = useState(false);
+  const [overlappingPromotions, setOverlappingPromotions] = useState<PromotionRecord[]>([]);
 
   const filteredProductsA = useMemo(
     () =>
@@ -1387,6 +1388,51 @@ function PromotionModal({
       : null;
 
   const effectiveApplication = forcedApplication ?? form.application;
+
+  useEffect(() => {
+    if (!form.startsAt || !form.endsAt) {
+      setOverlappingPromotions([]);
+      return;
+    }
+    if (effectiveApplication === "CATEGORY" && !form.categoryName) {
+      setOverlappingPromotions([]);
+      return;
+    }
+    if (
+      (effectiveApplication === "SPECIFIC_PRODUCT" || effectiveApplication === "BUNDLED") &&
+      !form.productAId
+    ) {
+      setOverlappingPromotions([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetch("/api/promotions/check-overlap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          application: effectiveApplication,
+          categoryName: form.categoryName || undefined,
+          productAId: form.productAId || undefined,
+          startsAt: new Date(form.startsAt).toISOString(),
+          endsAt: new Date(form.endsAt).toISOString(),
+          excludeId: editing?.id,
+        }),
+      })
+        .then((res) => res.json())
+        .then((body: ApiResponse<PromotionRecord[]>) => {
+          setOverlappingPromotions(body.data ?? []);
+        })
+        .catch(() => {});
+    }, 400);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [effectiveApplication, form.categoryName, form.productAId, form.startsAt, form.endsAt, editing?.id]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -1785,6 +1831,15 @@ function PromotionModal({
                     />
                   </div>
                 </div>
+
+                {overlappingPromotions.length > 0 ? (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <AlertTriangle className="mt-0.5 shrink-0 text-amber-600" size={14} />
+                    <p className="text-xs text-amber-700">
+                      Se solapa con {overlappingPromotions.length === 1 ? "otra promoción" : `${overlappingPromotions.length} promociones`} vigente{overlappingPromotions.length === 1 ? "" : "s"} en el mismo alcance: {overlappingPromotions.map((p) => p.name).join(", ")}. Podés guardar igual.
+                    </p>
+                  </div>
+                ) : null}
 
                 <div>
                   <label className="mb-2 block text-xs font-medium text-slate-700">
