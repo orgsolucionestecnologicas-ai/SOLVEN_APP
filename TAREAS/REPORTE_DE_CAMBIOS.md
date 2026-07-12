@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 092 — Monto total adeudado en grande en la parte superior — 2026-07-12
+**Estado:** ✅ Verificada (ya cubierta por la Tarea 085)
+**Archivos modificados:** ninguno
+**Cambios realizados:** Se verificó que `MetricCard Icon={AlertCircle}` ("Total deuda", `totalDebt`) es la primera de las 4 tarjetas de métricas en `src/app/ui/debts-list.tsx` (línea 381), y que las 4 tarjetas comparten `text-2xl font-bold` (línea 683 de `MetricCard`) — es decir, el monto total adeudado ya es lo primero y más grande que se ve al entrar a la sección de deudas, tal cual lo dejó la Tarea 085. No se hizo ningún cambio de código, siguiendo la instrucción explícita del prompt de la tarea de no duplicar la tarjeta ni modificar tamaños si ya está cubierto.
+**Notas:** No se ejecutó build/test porque no hubo cambios de código.
+
+---
+
 ## Tarea 091 — Barra de progreso de pago por deuda — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `src/app/ui/debts-list.tsx`
