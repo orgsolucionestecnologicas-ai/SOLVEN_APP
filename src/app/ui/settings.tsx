@@ -6,6 +6,7 @@ import {
   Camera,
   CheckCircle,
   CheckCircle2,
+  ChevronDown,
   Cloud,
   CreditCard,
   Crown,
@@ -66,11 +67,14 @@ type DbSettings = {
   desktopNotifications: boolean;
 };
 
+type SectionGroupId = "negocio" | "fiscal" | "sistema";
+
 type Category = {
   id: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
+  group: SectionGroupId;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -99,19 +103,25 @@ const DEFAULT_TOGGLES: TogglesConfig = {
 };
 
 const CATEGORIES: Category[] = [
-  { id: "general", label: "General", icon: Store },
-  { id: "usuarios", label: "Usuarios", icon: Users },
-  { id: "pagos", label: "Métodos de pago", icon: CreditCard },
-  { id: "descuentos", label: "Descuentos", icon: Percent },
-  { id: "nube", label: "Nube y respaldo", icon: Cloud },
-  { id: "sucursales", label: "Sucursales", icon: Building },
-  { id: "documentos", label: "Documentos", icon: FileText },
-  { id: "inventario", label: "Inventario", icon: Layers },
-  { id: "notificaciones", label: "Notificaciones", icon: Bell },
-  { id: "integraciones", label: "Integraciones", icon: Plug },
-  { id: "arca", label: "Facturación Electrónica", icon: Receipt },
-  { id: "sistema", label: "Sistema", icon: SettingsIcon },
-  { id: "seguridad", label: "Seguridad", icon: Shield }
+  { id: "general", label: "General", icon: Store, group: "negocio" },
+  { id: "usuarios", label: "Usuarios", icon: Users, group: "negocio" },
+  { id: "pagos", label: "Métodos de pago", icon: CreditCard, group: "negocio" },
+  { id: "descuentos", label: "Descuentos", icon: Percent, group: "negocio" },
+  { id: "sucursales", label: "Sucursales", icon: Building, group: "negocio" },
+  { id: "inventario", label: "Inventario", icon: Layers, group: "negocio" },
+  { id: "documentos", label: "Documentos", icon: FileText, group: "fiscal" },
+  { id: "arca", label: "Facturación Electrónica", icon: Receipt, group: "fiscal" },
+  { id: "nube", label: "Nube y respaldo", icon: Cloud, group: "sistema" },
+  { id: "notificaciones", label: "Notificaciones", icon: Bell, group: "sistema" },
+  { id: "integraciones", label: "Integraciones", icon: Plug, group: "sistema" },
+  { id: "sistema", label: "Sistema", icon: SettingsIcon, group: "sistema" },
+  { id: "seguridad", label: "Seguridad", icon: Shield, group: "sistema" }
+];
+
+const SECTION_GROUPS: { id: SectionGroupId; label: string }[] = [
+  { id: "negocio", label: "Negocio" },
+  { id: "fiscal", label: "Fiscal" },
+  { id: "sistema", label: "Sistema" }
 ];
 
 // ─── Toggle Switch ────────────────────────────────────────────────────────────
@@ -1231,6 +1241,18 @@ function FacturacionARCASection() {
 export function Settings() {
   const [activeCategory, setActiveCategory] = useState("general");
   const [businessName, setBusinessName] = useState("");
+  const [expandedGroups, setExpandedGroups] = useState<Record<SectionGroupId, boolean>>({
+    negocio: true,
+    fiscal: false,
+    sistema: false
+  });
+
+  useEffect(() => {
+    const activeGroup = CATEGORIES.find((c) => c.id === activeCategory)?.group;
+    if (activeGroup) {
+      setExpandedGroups((prev) => (prev[activeGroup] ? prev : { ...prev, [activeGroup]: true }));
+    }
+  }, [activeCategory]);
 
   function renderContent() {
     switch (activeCategory) {
@@ -1277,28 +1299,50 @@ export function Settings() {
           {/* Left sidebar — categories */}
           <nav className="hidden w-52 flex-shrink-0 lg:block">
             <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="px-3 py-3">
-                {CATEGORIES.map((cat) => {
-                  const isActive = cat.id === activeCategory;
-                  return (
+              {SECTION_GROUPS.map((group) => {
+                const isExpanded = expandedGroups[group.id];
+                const categoriesInGroup = CATEGORIES.filter((cat) => cat.group === group.id);
+                return (
+                  <div key={group.id} className="border-b border-slate-100 last:border-b-0">
                     <button
-                      key={cat.id}
                       type="button"
-                      onClick={() => setActiveCategory(cat.id)}
-                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
-                        isActive
-                          ? "bg-violet-50 font-semibold text-violet-700"
-                          : "font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                      }`}
+                      onClick={() =>
+                        setExpandedGroups((prev) => ({ ...prev, [group.id]: !prev[group.id] }))
+                      }
+                      className="flex w-full items-center justify-between px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-600"
                     >
-                      <cat.icon
-                        className={`h-4 w-4 flex-shrink-0 ${isActive ? "text-violet-600" : "text-slate-400"}`}
+                      {group.label}
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                       />
-                      {cat.label}
                     </button>
-                  );
-                })}
-              </div>
+                    {isExpanded && (
+                      <div className="px-3 pb-3">
+                        {categoriesInGroup.map((cat) => {
+                          const isActive = cat.id === activeCategory;
+                          return (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => setActiveCategory(cat.id)}
+                              className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+                                isActive
+                                  ? "bg-violet-50 font-semibold text-violet-700"
+                                  : "font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                              }`}
+                            >
+                              <cat.icon
+                                className={`h-4 w-4 flex-shrink-0 ${isActive ? "text-violet-600" : "text-slate-400"}`}
+                              />
+                              {cat.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </nav>
 

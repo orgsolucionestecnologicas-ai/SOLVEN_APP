@@ -7,6 +7,19 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 099 — Secciones colapsables: Negocio / Fiscal / Sistema — 2026-07-13
+**Estado:** ✅ Completada
+**Archivos modificados:** `src/app/ui/settings.tsx`
+**Hallazgo previo a implementar:** la tarea suponía que "Mi Negocio" era un formulario largo y continuo con secciones (datos del negocio, regional, ARCA, toggles de sistema) visibles todas juntas. En realidad `settings.tsx` ya usa un patrón de barra lateral de categorías (`CATEGORIES`, 13 ítems) + panel único (`renderContent()`/`activeCategory`) que muestra una sola categoría a la vez — no hay contenido largo para "colapsar" dentro de una vista continua. Se adaptó el pedido a la arquitectura real: en vez de colapsar secciones de un formulario, se agruparon las 13 categorías de la barra lateral en 3 bloques colapsables (Negocio/Fiscal/Sistema), cada uno expandible/colapsable de forma independiente, sin tocar `renderContent()`, `activeCategory` ni ninguna sección individual (`GeneralSection`, `DocumentosSection`, `FacturacionARCASection`, `SeguridadSection`, `SistemaSection`, `ComingSoonSection`).
+**Cambios realizados:**
+- `Category` ahora incluye `group: "negocio" | "fiscal" | "sistema"`. Mapeo aplicado a las 13 categorías existentes (ninguna eliminada ni renombrada): Negocio = general, usuarios, pagos, descuentos, sucursales, inventario. Fiscal = documentos, arca (incluye los campos de Tareas 096-098). Sistema = nube, notificaciones, integraciones, sistema, seguridad (toggles de `TogglesConfig` + seguridad).
+- Nuevo estado `expandedGroups` (uno por grupo, `negocio` expandido por defecto ya que contiene la categoría inicial "general") con un `useEffect` que expande automáticamente el grupo de la categoría activa al cambiarla (por ejemplo, al navegar desde `QuickCards` o el `<select>` mobile a una categoría de un grupo colapsado), sin colapsar los demás grupos que el usuario haya abierto manualmente.
+- La barra lateral desktop (`lg:block`) ahora renderiza 3 encabezados de grupo (botón + ícono `ChevronDown` que rota) con la lista de categorías de cada grupo debajo, visible solo si el grupo está expandido.
+- El `<select>` mobile y `QuickCards` (que ya navegaban por `CATEGORIES` sin pasar por la barra lateral) quedaron intactos — siguen mostrando las 13 categorías sin agrupar, ya que no dependen de la agrupación visual de la barra lateral.
+- No se tocó `SettingsNav.tsx`, `SettingsContent.tsx` ni `NegocioPanel.tsx` (navegación de nivel superior "Mi Negocio"/"Usuarios"/"Suscripción" sin cambios). No se cambió el comportamiento de guardado de ningún campo, solo la agrupación visual de la barra lateral de categorías.
+**Validación:** `npm run lint` ok, `npm run typecheck` ok, `npm run build` ok (requerido explícitamente por la tarea).
+**Notas:** "Usuarios" no se convirtió en bloque colapsable propio dentro de esta vista (ya vive en su página propia vía `SettingsNav`), tal como indica la tarea — la categoría interna "usuarios" (placeholder `ComingSoonSection`, distinta de la página real) se dejó agrupada dentro de "Negocio" sin eliminarla.
+
 ## Tarea 098 — IVA por defecto configurable para productos nuevos — 2026-07-13
 **Estado:** ✅ Completada
 **Archivos modificados:** `prisma/schema.prisma` (+ migración `20260712230538_add_default_iva_rate`), `src/modules/settings/settings-validation.ts`, `src/app/ui/settings.tsx`, `src/app/ui/products-inventory.tsx`
