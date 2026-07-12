@@ -1,4 +1,4 @@
-import type { Prisma, Promotion, PromotionApplication, PromotionUsage } from "@prisma/client";
+import { Prisma, type Promotion, type PromotionApplication, type PromotionUsage } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -23,6 +23,13 @@ export type PromotionUsageHistoryEntry = Pick<
 > & {
   sale: { id: string; saleDate: Date; totalAmount: Prisma.Decimal } | null;
   customerName: string | null;
+};
+
+export type PromotionRankingEntry = {
+  promotionId: string;
+  name: string;
+  totalDiscounted: Prisma.Decimal;
+  usageCount: number;
 };
 
 export class PromotionNotFoundError extends Error {
@@ -173,6 +180,32 @@ export async function getPromotionUsageHistory(
     sale: usage.sale,
     customerName: usage.customerId ? (customerNameById.get(usage.customerId) ?? null) : null
   }));
+}
+
+export async function getPromotionRanking(tenantId: string): Promise<PromotionRankingEntry[]> {
+  const grouped = await prisma.promotionUsage.groupBy({
+    by: ["promotionId"],
+    where: { promotion: { tenantId } },
+    _sum: { discountAmount: true },
+    _count: true
+  });
+
+  if (grouped.length === 0) return [];
+
+  const promotions = await prisma.promotion.findMany({
+    where: { id: { in: grouped.map((g) => g.promotionId) } },
+    select: { id: true, name: true }
+  });
+  const nameById = new Map(promotions.map((p) => [p.id, p.name]));
+
+  return grouped
+    .map((g) => ({
+      promotionId: g.promotionId,
+      name: nameById.get(g.promotionId) ?? "",
+      totalDiscounted: g._sum.discountAmount ?? new Prisma.Decimal(0),
+      usageCount: g._count
+    }))
+    .sort((a, b) => b.totalDiscounted.comparedTo(a.totalDiscounted));
 }
 
 export async function getExpiringPromotions(

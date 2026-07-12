@@ -75,6 +75,13 @@ type PromotionUsageRecord = {
   sale: { id: string; saleDate: string; totalAmount: string } | null;
 };
 
+type PromotionRankingRecord = {
+  promotionId: string;
+  name: string;
+  totalDiscounted: string;
+  usageCount: number;
+};
+
 type ProductRecord = {
   id: string;
   name: string;
@@ -390,7 +397,7 @@ export function PromotionsList() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [activeTab, setActiveTab] = useState<"all" | PromotionStatus>("all");
+  const [activeTab, setActiveTab] = useState<"all" | PromotionStatus | "ranking">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterEstado, setFilterEstado] = useState("");
   const [filterTipo, setFilterTipo] = useState("");
@@ -495,7 +502,7 @@ export function PromotionsList() {
   const filtered = useMemo(() => {
     let result = [...promotions];
 
-    if (activeTab !== "all") {
+    if (activeTab !== "all" && activeTab !== "ranking") {
       result = result.filter((p) => getPromotionStatus(p) === activeTab);
     }
 
@@ -755,6 +762,7 @@ export function PromotionsList() {
               { key: "active", label: "Activas" },
               { key: "scheduled", label: "Programadas" },
               { key: "ended", label: "Finalizadas" },
+              { key: "ranking", label: "Ranking de impacto" },
             ] as const
           ).map(({ key, label }) => (
             <button
@@ -774,6 +782,11 @@ export function PromotionsList() {
       </div>
 
       {/* Body */}
+      {activeTab === "ranking" ? (
+        <div className="flex-1 overflow-auto border-t border-slate-100 px-5 py-4">
+          <PromotionRankingPanel />
+        </div>
+      ) : (
       <div className="flex flex-1 overflow-hidden border-t border-slate-100">
         {/* Left: table */}
         <div className="flex min-w-0 flex-1 flex-col overflow-auto px-5 py-4">
@@ -964,6 +977,7 @@ export function PromotionsList() {
           />
         </aside>
       </div>
+      )}
 
       {/* Modal */}
       {isModalOpen ? (
@@ -1188,6 +1202,86 @@ function PromotionRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+// ─── PromotionRankingPanel ────────────────────────────────────────────────────
+
+function PromotionRankingPanel() {
+  const [ranking, setRanking] = useState<PromotionRankingRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    fetch("/api/promotions/ranking", { headers: { Accept: "application/json" } })
+      .then((res) => res.json())
+      .then((body: ApiResponse<PromotionRankingRecord[]>) => {
+        if (!active) return;
+        if (!body.data) {
+          setError("No se pudo cargar el ranking de promociones.");
+          return;
+        }
+        setRanking(body.data);
+        setError(null);
+      })
+      .catch(() => {
+        if (active) setError("No se pudo cargar el ranking de promociones.");
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  if (isLoading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
+  if (ranking.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
+        Todavía no hay usos de promociones registrados.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-slate-100">
+          <thead className="bg-slate-50">
+            <tr>
+              {["#", "Promoción", "Usos", "Total descontado"].map((col) => (
+                <th
+                  key={col}
+                  className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50 bg-white">
+            {ranking.map((entry, i) => (
+              <tr key={entry.promotionId}>
+                <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-slate-500">
+                  {i + 1}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-slate-800">
+                  {entry.name}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
+                  {entry.usageCount}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-emerald-600">
+                  {formatMoney(entry.totalDiscounted)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

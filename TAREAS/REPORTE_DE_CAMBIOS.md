@@ -7,6 +7,9 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### Tarea 069 — Ranking de promociones por impacto
+Nueva función `getPromotionRanking(tenantId)` en `promotion-data-access.ts`: usa `prisma.promotionUsage.groupBy` (agrupado por `promotionId`, filtrado por tenant vía la relación `promotion.tenantId`) para sumar `discountAmount` y contar usos por promoción, resuelve los nombres con una consulta a `Promotion` y ordena de mayor a menor monto total descontado; las promociones sin usos no aparecen (no hay grupo si no hay `PromotionUsage`). Nuevo endpoint `GET /api/promotions/ranking`. En `src/app/ui/promotions.tsx` se agregó una pestaña "Ranking de impacto" junto a Todas/Activas/Programadas/Finalizadas; al seleccionarla, `PromotionRankingPanel` reemplaza la tabla y el panel lateral habituales y muestra una tabla simple (posición, nombre, usos, total descontado). No se modificó el schema de Prisma ni `promotion-engine.ts`. Build, lint y typecheck OK.
+
 ### Tarea 068 — Historial de uso por promoción
 Nueva función `getPromotionUsageHistory(id, tenantId)` en `promotion-data-access.ts`: lista las `PromotionUsage` de una promoción (verificando primero que pertenezca al tenant), ordenadas por `appliedAt` descendente, incluyendo la venta relacionada vía `sale` (`id`, `saleDate`, `totalAmount` — sí existe relación de Prisma) y resolviendo el nombre del cliente con una consulta separada a `Customer` por los `customerId` presentes, ya que `PromotionUsage.customerId` no tiene relación declarada en el schema. Nuevo endpoint `GET /api/promotions/[id]/usages`. En `PromotionSidebar` (`promotions.tsx`) se agregó una sección "Historial de uso" que consulta ese endpoint al seleccionar una promoción y lista fecha, venta (id corto) y cliente (o "Consumidor final"), con monto descontado; muestra un estado vacío si no hay usos registrados. No se modificó el schema de Prisma ni `promotion-engine.ts`. Build, lint y typecheck OK.
 
