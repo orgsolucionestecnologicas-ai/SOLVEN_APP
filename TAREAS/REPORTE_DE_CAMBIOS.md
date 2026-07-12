@@ -7,6 +7,9 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### Tarea 066 — Vista previa de descuento en el formulario de promoción
+En `src/app/ui/promotions.tsx` se agregó `getFormPreviewText(form)`, un cálculo puramente de cliente (no toca `promotion-engine.ts` ni ningún endpoint) que, según el tipo de promoción y sus valores cargados, arma un texto de ejemplo sobre un producto de referencia de $1000 (ej. "Un producto de $1000 quedaría en $800"). Se muestra en un panel violeta dentro del formulario, actualizándose en tiempo real (`useMemo` sobre `form`) mientras se completan los campos; no se muestra nada si los valores relevantes todavía no son válidos. Build, lint y typecheck OK.
+
 ### Tarea 065 — Segmentación de clientes en promociones
 Nuevo enum `CustomerSegment` (`NINGUNO | NUEVO | RECURRENTE | VIP`) en `prisma/schema.prisma` (migración `20260712140559_add_customer_segment`). Se agregó `Customer.segment` (default `NINGUNO`) editable desde el modal de edición de cliente (`customer-detail.tsx`), y `Promotion.customerSegment` (opcional) validado en `promotion-validation.ts` (creación y actualización). En `promotion-engine.ts`, `applyPromotionsToCart` acepta un cuarto parámetro opcional `customerSegment`: si la promoción tiene un segmento asignado y no coincide con el de la venta, se omite; las promociones sin segmento asignado siguen aplicando a todos los clientes (sin cambio de comportamiento). No se conectó inferencia automática de segmento ni se modificó `/api/promotions/apply` para pasar el segmento del cliente (fuera del alcance pedido). Se agregó el selector de segmento al formulario de promoción (`promotions.tsx`). Tests nuevos en `promotion-engine.test.ts` para los tres casos (coincide, no coincide, sin segmento). Build, lint y typecheck OK.
 

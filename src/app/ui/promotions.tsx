@@ -237,6 +237,54 @@ function getDiscountLabel(promo: PromotionRecord): string {
   }
 }
 
+const PREVIEW_REFERENCE_PRICE = 1000;
+
+function getFormPreviewText(form: PromotionFormData): string | null {
+  switch (form.type) {
+    case "PERCENTAGE": {
+      const pct = Number(form.discountValue);
+      if (!form.discountValue || Number.isNaN(pct) || pct < 0) return null;
+      const final = PREVIEW_REFERENCE_PRICE * (1 - pct / 100);
+      return `Un producto de ${formatMoney(PREVIEW_REFERENCE_PRICE)} quedaría en ${formatMoney(Math.max(final, 0))}.`;
+    }
+    case "FIXED_AMOUNT": {
+      const amount = Number(form.discountValue);
+      if (!form.discountValue || Number.isNaN(amount) || amount < 0) return null;
+      const final = Math.max(PREVIEW_REFERENCE_PRICE - amount, 0);
+      return `Un producto de ${formatMoney(PREVIEW_REFERENCE_PRICE)} quedaría en ${formatMoney(final)}.`;
+    }
+    case "SPECIAL_PRICE": {
+      const price = Number(form.fixedPrice);
+      if (!form.fixedPrice || Number.isNaN(price) || price < 0) return null;
+      const note = price >= PREVIEW_REFERENCE_PRICE
+        ? " (para productos de menor precio, este valor no genera un descuento real)"
+        : "";
+      return `Un producto de ${formatMoney(PREVIEW_REFERENCE_PRICE)} pasaría a costar ${formatMoney(price)}${note}.`;
+    }
+    case "TWO_FOR_ONE":
+      return `Llevando 2 unidades de ${formatMoney(PREVIEW_REFERENCE_PRICE)}, pagás 1.`;
+    case "THREE_FOR_TWO":
+      return `Llevando 3 unidades de ${formatMoney(PREVIEW_REFERENCE_PRICE)}, pagás 2.`;
+    case "MINIMUM_PURCHASE": {
+      const minAmount = Number(form.minimumAmount);
+      const discount = Number(form.discountValue);
+      if (!form.minimumAmount || Number.isNaN(minAmount) || minAmount <= 0) return null;
+      if (!form.discountValue || Number.isNaN(discount) || discount < 0) return null;
+      const discountText = form.minimumPurchaseDiscountType === "FIXED_AMOUNT"
+        ? formatMoney(discount)
+        : `${discount}%`;
+      return `Con una compra de ${formatMoney(minAmount)} o más, se descuenta ${discountText}.`;
+    }
+    case "BUNDLED_PRODUCTS": {
+      const discount = Number(form.productBDiscount);
+      if (!form.productBDiscount || Number.isNaN(discount) || discount < 0) return null;
+      return `El segundo producto tendría ${discount}% de descuento.`;
+    }
+    default:
+      return null;
+  }
+}
+
 function generateCode(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
@@ -1350,6 +1398,8 @@ function PromotionModal({
     [products, form.productBSearch]
   );
 
+  const previewText = useMemo(() => getFormPreviewText(form), [form]);
+
   function set(field: keyof PromotionFormData, value: unknown) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
@@ -1766,6 +1816,13 @@ function PromotionModal({
                       </div>
                     </div>
                   </>
+                ) : null}
+
+                {previewText ? (
+                  <div className="rounded-lg border border-violet-100 bg-violet-50 px-3 py-2 text-xs text-violet-700">
+                    <span className="font-semibold">Vista previa: </span>
+                    {previewText}
+                  </div>
                 ) : null}
 
                 {/* Application selector */}
