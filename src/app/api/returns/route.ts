@@ -32,8 +32,22 @@ export async function GET(request: Request) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
 
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
+  const sellerIdParam = searchParams.get("sellerId");
+
+  const from = fromParam ? new Date(`${fromParam}T00:00:00`) : undefined;
+  const to = toParam ? new Date(`${toParam}T23:59:59.999`) : undefined;
+  const sellerId = sellerIdParam && sellerIdParam.trim().length > 0 ? sellerIdParam.trim() : undefined;
+
   try {
-    const result = await listReturns(tenantId, { page, limit });
+    const result = await listReturns(tenantId, {
+      page,
+      limit,
+      from: from && !Number.isNaN(from.getTime()) ? from : undefined,
+      to: to && !Number.isNaN(to.getTime()) ? to : undefined,
+      sellerId
+    });
     return paginatedResponse(result.data, page, limit, result.total);
   } catch {
     return errorResponse("No se pudieron cargar las devoluciones.");

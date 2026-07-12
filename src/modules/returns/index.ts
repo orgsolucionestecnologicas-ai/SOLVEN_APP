@@ -46,11 +46,14 @@ export type ReturnListRecord = {
 
 export async function listReturns(
   tenantId: string,
-  filters: { page?: number; limit?: number } = {}
+  filters: { page?: number; limit?: number; from?: Date; to?: Date; sellerId?: string } = {}
 ): Promise<{ data: ReturnListRecord[]; total: number }> {
-  const { page = 1, limit = 20 } = filters;
+  const { page = 1, limit = 20, from, to, sellerId } = filters;
 
-  const where: Prisma.ReturnWhereInput = { sale: { tenantId } };
+  const where: Prisma.ReturnWhereInput = {
+    sale: { tenantId, ...(sellerId ? { sellerId } : {}) },
+    ...((from || to) ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {})
+  };
 
   const [returns, total] = await prisma.$transaction([
     prisma.return.findMany({

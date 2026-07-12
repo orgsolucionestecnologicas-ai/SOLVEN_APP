@@ -72,6 +72,16 @@ type ReturnHistoryResponse = {
   error?: { message: string };
 };
 
+type UserSummary = {
+  id: string;
+  name: string;
+};
+
+type UsersResponse = {
+  data?: UserSummary[];
+  error?: { message: string };
+};
+
 type ReturnReasonCategory = "DEFECTO" | "ERROR_VENTA" | "CAMBIO_OPINION" | "OTRO";
 
 const RETURN_REASON_OPTIONS: { value: ReturnReasonCategory; label: string }[] = [
@@ -529,12 +539,30 @@ function ReturnHistoryPanel() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [sellerId, setSellerId] = useState("");
+  const [sellers, setSellers] = useState<UserSummary[]>([]);
+
+  useEffect(() => {
+    fetch("/api/users", { headers: { Accept: "application/json" } })
+      .then((res) => res.json())
+      .then((body: UsersResponse) => {
+        if (body.data) setSellers(body.data);
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch(`/api/returns?page=${page}&limit=20`, {
+      const params = new URLSearchParams({ page: String(page), limit: "20" });
+      if (fromDate) params.set("from", fromDate);
+      if (toDate) params.set("to", toDate);
+      if (sellerId) params.set("sellerId", sellerId);
+
+      const res = await fetch(`/api/returns?${params.toString()}`, {
         headers: { Accept: "application/json" }
       });
       const body = (await res.json()) as ReturnHistoryResponse;
@@ -546,17 +574,58 @@ function ReturnHistoryPanel() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, fromDate, toDate, sellerId]);
 
   useEffect(() => {
     void fetchHistory();
   }, [fetchHistory]);
+
+  function handleFilterChange(setter: (value: string) => void, value: string) {
+    setter(value);
+    setPage(1);
+  }
 
   return (
     <div className="mx-auto w-full max-w-screen-xl px-4 py-6 sm:px-6">
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-slate-900">Historial de devoluciones</h2>
+
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Desde</label>
+              <input
+                type="date"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-violet-400 focus:outline-none"
+                value={fromDate}
+                onChange={(e) => handleFilterChange(setFromDate, e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Hasta</label>
+              <input
+                type="date"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-violet-400 focus:outline-none"
+                value={toDate}
+                onChange={(e) => handleFilterChange(setToDate, e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Vendedor</label>
+              <select
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-violet-400 focus:outline-none"
+                value={sellerId}
+                onChange={(e) => handleFilterChange(setSellerId, e.target.value)}
+              >
+                <option value="">Todos</option>
+                {sellers.map((seller) => (
+                  <option key={seller.id} value={seller.id}>
+                    {seller.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {loading ? (
