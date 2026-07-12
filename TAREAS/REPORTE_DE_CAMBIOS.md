@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 088 — Enviar recordatorio de pago por WhatsApp desde la deuda — 2026-07-12
+**Estado:** ✅ Completada
+**Archivos modificados:** `src/modules/debts/debt-data-access.ts`, `src/app/ui/debts-list.tsx`
+**Cambios realizados:** Se agregó `phone: true` al `select` del cliente en `listDebts` (`debt-data-access.ts`), y `DebtWithCustomer`/`DebtRecord` ahora incluyen `customer.phone`. En `debts-list.tsx` se agregó un botón verde "Recordar por WhatsApp" (ícono `MessageCircle`) en cada fila de deuda pendiente de la tabla y en `DebtDetailModal`, replicando el patrón existente `shareLastSaleWhatsApp` de `pos.tsx`: arma un texto con `encodeURIComponent` (nombre del negocio, nombre del cliente, saldo pendiente, fecha de vencimiento si existe) y abre `https://wa.me/<telefono-limpio>?text=...` en una pestaña nueva, apuntando directo al teléfono del cliente (limpiado de caracteres no numéricos) en vez de abrir el selector de contacto. El nombre del negocio se obtiene de `GET /api/settings` (mismo patrón que `pos.tsx`). Si el cliente no tiene teléfono cargado, el botón queda deshabilitado con tooltip "Cliente sin teléfono registrado".
+**Notas:** No se integró ninguna API oficial de WhatsApp Business — es siempre una acción manual del usuario vía `wa.me`, igual que el patrón ya existente. No se modificó el schema de Prisma. Build, lint y typecheck OK. `npm test`: 204 passed / 1 failed / 2 skipped — el único fallo es el mismo bug preexistente y no relacionado ya documentado en la Tarea 081 (`createSale` no genera `Debt` para ventas a crédito). El flake transitorio de Neon visto en tareas anteriores (`prevents concurrent payments from overpaying a debt`) no se repitió en esta corrida.
+
+---
+
 ## Tarea 087 — Exportar listado de deudas a CSV / Excel — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `src/app/ui/debts-list.tsx`

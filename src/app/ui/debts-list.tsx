@@ -9,6 +9,7 @@ import {
   DollarSign,
   Download,
   Eye,
+  MessageCircle,
   MoreHorizontal,
   Plus,
   RotateCcw,
@@ -24,7 +25,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 type DebtRecord = {
   id: string;
   customerId: string;
-  customer: { name: string };
+  customer: { name: string; phone: string | null };
   totalAmount: string;
   remainingAmount: string;
   dueDate: string | null;
@@ -34,6 +35,20 @@ type DebtRecord = {
 
 function isOverdueDebt(debt: DebtRecord): boolean {
   return debt.dueDate !== null && new Date(debt.dueDate) < new Date() && Number(debt.remainingAmount) > 0;
+}
+
+function sendDebtReminderWhatsApp(debt: DebtRecord, businessName: string) {
+  if (!debt.customer.phone) return;
+  const cleanedPhone = debt.customer.phone.replace(/\D/g, "");
+  const lines = [
+    businessName ? businessName : null,
+    `Hola ${debt.customer.name}, te escribimos para recordarte tu saldo pendiente.`,
+    `Monto adeudado: ${formatMoney(Number(debt.remainingAmount))}`,
+    debt.dueDate ? `Vencimiento: ${formatDate(debt.dueDate)}` : null,
+    "¡Gracias!"
+  ].filter((line) => line !== null);
+  const text = lines.join("\n");
+  window.open(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(text)}`, "_blank");
 }
 
 type DebtPaymentRecord = {
@@ -137,6 +152,18 @@ export function DebtsList() {
   const [detailDebt, setDetailDebt] = useState<DebtRecord | null>(null);
   const [showCreateDebtModal, setShowCreateDebtModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [businessName, setBusinessName] = useState("");
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const res = await fetch("/api/settings", { headers: { Accept: "application/json" } });
+        const body = await res.json();
+        if (res.ok && body.data?.businessName) setBusinessName(body.data.businessName);
+      } catch { /* default empty */ }
+    }
+    void loadSettings();
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -483,6 +510,17 @@ export function DebtsList() {
                                   <DollarSign size={13} />
                                 </button>
                               ) : null}
+                              {!isPaid ? (
+                                <button
+                                  className="rounded-md p-1.5 text-slate-400 hover:bg-emerald-100 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                                  disabled={!debt.customer.phone}
+                                  onClick={() => sendDebtReminderWhatsApp(debt, businessName)}
+                                  title={debt.customer.phone ? "Recordar por WhatsApp" : "Cliente sin teléfono registrado"}
+                                  type="button"
+                                >
+                                  <MessageCircle size={13} />
+                                </button>
+                              ) : null}
                               <button
                                 className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                                 onClick={() => setDetailDebt(debt)}
@@ -569,6 +607,7 @@ export function DebtsList() {
 
       {detailDebt ? (
         <DebtDetailModal
+          businessName={businessName}
           debt={detailDebt}
           payments={payments.filter((p) => p.debtId === detailDebt.id)}
           onClose={() => setDetailDebt(null)}
@@ -896,7 +935,8 @@ function CreateDebtModal({ onClose, onCreated }: { onClose: () => void; onCreate
   );
 }
 
-function DebtDetailModal({ debt, payments, onClose, onPay }: {
+function DebtDetailModal({ businessName, debt, payments, onClose, onPay }: {
+  businessName: string;
   debt: DebtRecord;
   payments: DebtPaymentRecord[];
   onClose: () => void;
@@ -957,6 +997,18 @@ function DebtDetailModal({ debt, payments, onClose, onPay }: {
 
         <div className="flex gap-3 border-t border-slate-200 px-6 py-4">
           <button className="flex-1 rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={onClose} type="button">Cerrar</button>
+          {!isPaid ? (
+            <button
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-emerald-600 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+              disabled={!debt.customer.phone}
+              onClick={() => sendDebtReminderWhatsApp(debt, businessName)}
+              title={debt.customer.phone ? "Recordar por WhatsApp" : "Cliente sin teléfono registrado"}
+              type="button"
+            >
+              <MessageCircle size={14} />
+              Recordar
+            </button>
+          ) : null}
           {!isPaid ? (
             <button className="flex-1 rounded-lg bg-violet-600 py-2 text-sm font-medium text-white hover:bg-violet-700" onClick={onPay} type="button">Registrar pago</button>
           ) : null}

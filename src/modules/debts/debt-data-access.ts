@@ -7,7 +7,7 @@ import {
   validateCreateDebtInput
 } from "./debt-validation";
 
-export type DebtWithCustomer = Debt & { customer: { name: string } };
+export type DebtWithCustomer = Debt & { customer: { name: string; phone: string | null } };
 
 export async function createDebt(
   debtInput: CreateDebtInput,
@@ -37,7 +37,7 @@ export async function listDebts(
     ...(from ? { createdAt: { gte: from, ...(to ? { lte: to } : {}) } } : {})
   };
   const [data, total] = await prisma.$transaction([
-    prisma.debt.findMany({ where, orderBy: { createdAt: "desc" }, take: limit, skip: (page - 1) * limit, include: { customer: { select: { name: true } } } }),
+    prisma.debt.findMany({ where, orderBy: { createdAt: "desc" }, take: limit, skip: (page - 1) * limit, include: { customer: { select: { name: true, phone: true } } } }),
     prisma.debt.count({ where }),
   ]);
   return { data, total };
