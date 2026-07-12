@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 089 — Ordenar por mayor monto / más antigua / más reciente / por cliente — 2026-07-12
+**Estado:** ✅ Completada
+**Archivos modificados:** `src/app/ui/debts-list.tsx`
+**Cambios realizados:** El selector de orden ya implementaba "Más recientes", "Mayor deuda" y "Cliente A-Z". Se agregó la opción faltante `"oldest"` ("Más antiguas") tanto en el `<select>` como en la rama correspondiente del `useMemo` de `filteredDebts` (`result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())`). Ordenamiento puramente client-side, igual que los otros 3 criterios.
+**Notas:** No se modificó `/api/debts` ni el schema de Prisma. Build, lint y typecheck OK. `npm test`: 205 passed / 2 failed / 2 skipped en la corrida completa — 1 es el mismo bug preexistente y no relacionado ya documentado en la Tarea 081, y el otro son 2 fallos de conexión a Neon (`Timed out fetching a new connection from the connection pool` y `Server has closed the connection`) que desaparecieron al re-ejecutar los archivos afectados (`core-business-flow.integration.test.ts`, `debt-payments/route.integration.test.ts`) en aislamiento — confirmados como flakes transitorios, no relacionados con este cambio puramente de UI.
+
+---
+
 ## Tarea 088 — Enviar recordatorio de pago por WhatsApp desde la deuda — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `src/modules/debts/debt-data-access.ts`, `src/app/ui/debts-list.tsx`

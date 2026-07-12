@@ -286,6 +286,7 @@ export function DebtsList() {
     }
 
     if (sortOrder === "recent") result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    else if (sortOrder === "oldest") result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     else if (sortOrder === "amount") result.sort((a, b) => Number(b.remainingAmount) - Number(a.remainingAmount));
     else if (sortOrder === "name") result.sort((a, b) => a.customer.name.localeCompare(b.customer.name));
 
@@ -438,6 +439,7 @@ export function DebtsList() {
               value={sortOrder}
             >
               <option value="recent">Más recientes</option>
+              <option value="oldest">Más antiguas</option>
               <option value="amount">Mayor deuda</option>
               <option value="name">Cliente A-Z</option>
             </select>
