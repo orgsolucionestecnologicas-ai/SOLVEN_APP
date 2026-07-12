@@ -7,6 +7,16 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 100 — Preview en tiempo real del ticket — 2026-07-13
+**Estado:** ✅ Completada
+**Archivos modificados:** `src/app/ui/settings.tsx`
+**Cambios realizados:**
+- Nuevo componente `TicketPreview` (fuera de `DocumentosSection`, sin dependencias de `pos.tsx`/`handlePrintTicket`): tarjeta con un recibo de ancho acotado (`max-w-[260px]`, `fontFamily: monospace`, fondo blanco, borde) que muestra el logo (si `logoUrl` no está vacío, con `onError` que lo oculta si la URL no carga), el nombre del negocio, dos líneas de ítems de ejemplo fijas con un total de ejemplo, el mensaje de agradecimiento y el pie de página.
+- `DocumentosSection` ahora envuelve el formulario existente y el nuevo `TicketPreview` en un grid de 2 columnas en desktop (formulario ocupa 2/3, preview 1/3; se apilan en mobile). El preview recibe `businessName` (derivado del `raw` ya obtenido por el único `fetch` existente de la sección, sin llamada nueva a la API), `logoUrl`, `receiptThankYouMessage` y `receiptFooterMessage` — los mismos estados controlados del formulario, así que se actualiza en cada tecla sin necesidad de guardar.
+- No se modificó `handlePrintTicket` ni ningún flujo de impresión real en `pos.tsx`. No se agregaron llamadas nuevas a la API.
+**Validación:** `npm run lint` ok, `npm run typecheck` ok, `npm run build` ok (requerido explícitamente por la tarea).
+**Notas:** Esta era la última tarea del lote 081-100.
+
 ## Tarea 099 — Secciones colapsables: Negocio / Fiscal / Sistema — 2026-07-13
 **Estado:** ✅ Completada
 **Archivos modificados:** `src/app/ui/settings.tsx`

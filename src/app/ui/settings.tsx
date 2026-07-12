@@ -447,6 +447,54 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
 
 // ─── Documentos Section ───────────────────────────────────────────────────────
 
+function TicketPreview({
+  businessName,
+  logoUrl,
+  receiptThankYouMessage,
+  receiptFooterMessage
+}: {
+  businessName: string;
+  logoUrl: string;
+  receiptThankYouMessage: string;
+  receiptFooterMessage: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h3 className="text-sm font-semibold text-slate-900">Vista previa del ticket</h3>
+        <p className="mt-0.5 text-xs text-slate-500">Se actualiza mientras editás los campos.</p>
+      </div>
+      <div className="flex justify-center px-6 py-5">
+        <div
+          className="w-full max-w-[260px] border border-slate-200 bg-white px-4 py-4 text-slate-900 shadow-sm"
+          style={{ fontFamily: "monospace" }}
+        >
+          {logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              alt="Logo"
+              className="mx-auto mb-2 max-h-16 max-w-full object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+              src={logoUrl}
+            />
+          )}
+          <p className="text-center text-sm font-bold">{businessName || "SOLVEN"}</p>
+          <div className="my-2 border-t border-dashed border-slate-300" />
+          <p className="text-xs">Producto de ejemplo x1 — $1000</p>
+          <p className="text-xs">Otro producto x2 — $2500</p>
+          <div className="my-2 border-t border-dashed border-slate-300" />
+          <p className="text-xs font-bold">TOTAL — $3500</p>
+          <div className="my-2 border-t border-dashed border-slate-300" />
+          {receiptThankYouMessage && <p className="text-center text-xs">{receiptThankYouMessage}</p>}
+          {receiptFooterMessage && <p className="mt-1 text-center text-[11px] text-slate-500">{receiptFooterMessage}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DocumentosSection() {
   const [raw, setRaw] = useState<Record<string, unknown> | null>(null);
   const [logoUrl, setLogoUrl] = useState("");
@@ -511,8 +559,11 @@ function DocumentosSection() {
     "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 disabled:opacity-50";
   const labelCls = "mb-1.5 block text-xs font-medium text-slate-600";
 
+  const businessName = typeof raw?.businessName === "string" ? raw.businessName : "SOLVEN";
+
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+      <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
       <div className="border-b border-slate-100 px-6 py-4">
         <h3 className="text-sm font-semibold text-slate-900">Personalización del ticket</h3>
         <p className="mt-0.5 text-xs text-slate-500">Logo, pie de página y mensaje de agradecimiento que se imprimen en cada ticket.</p>
@@ -603,7 +654,16 @@ function DocumentosSection() {
           Guardar cambios
         </button>
       </div>
-    </form>
+      </form>
+      <div className="lg:col-span-1">
+        <TicketPreview
+          businessName={businessName}
+          logoUrl={logoUrl}
+          receiptThankYouMessage={receiptThankYouMessage}
+          receiptFooterMessage={receiptFooterMessage}
+        />
+      </div>
+    </div>
   );
 }
 
