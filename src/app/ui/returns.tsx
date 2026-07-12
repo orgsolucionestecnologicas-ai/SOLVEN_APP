@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, Download, History, PackageX, RotateCcw, Search } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, FileText, History, PackageX, RotateCcw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -742,9 +742,20 @@ function ReturnHistoryPanel() {
                     {record.items.map((item) => `${item.productName} x${item.quantity}`).join(", ")}
                   </p>
                 </div>
-                <p className="shrink-0 text-sm font-semibold text-slate-900">
-                  {formatMoney(record.totalAmount)}
-                </p>
+                <div className="flex shrink-0 items-center gap-3">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {formatMoney(record.totalAmount)}
+                  </p>
+                  <a
+                    href={`/api/returns/${record.id}/pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Nota de crédito
+                  </a>
+                </div>
               </div>
             ))}
           </div>

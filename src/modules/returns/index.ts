@@ -104,6 +104,76 @@ export async function listReturns(
   return { data, total };
 }
 
+export type ReturnDetailItem = ReturnListItem & {
+  unitPrice: Prisma.Decimal;
+  total: Prisma.Decimal;
+};
+
+export type ReturnDetailRecord = Omit<ReturnListRecord, "items"> & {
+  items: ReturnDetailItem[];
+};
+
+export async function getReturnById(
+  id: string,
+  tenantId: string
+): Promise<ReturnDetailRecord | null> {
+  const returnRecord = await prisma.return.findFirst({
+    where: { id, sale: { tenantId } },
+    include: {
+      items: true,
+      sale: {
+        select: {
+          id: true,
+          saleDate: true,
+          customer: { select: { name: true } },
+          items: true
+        }
+      }
+    }
+  });
+
+  if (!returnRecord) {
+    return null;
+  }
+
+  const productIds = [...new Set(returnRecord.items.map((i) => i.productId))];
+  const products = productIds.length
+    ? await prisma.product.findMany({
+        where: { id: { in: productIds }, tenantId },
+        select: { id: true, name: true }
+      })
+    : [];
+  const nameById = new Map(products.map((p) => [p.id, p.name]));
+  const saleItemByProductId = new Map(
+    returnRecord.sale.items.map((si) => [si.productId, si])
+  );
+
+  return {
+    id: returnRecord.id,
+    saleId: returnRecord.saleId,
+    totalAmount: returnRecord.totalAmount,
+    createdAt: returnRecord.createdAt,
+    reasonCategory: returnRecord.reasonCategory,
+    reasonNote: returnRecord.reasonNote,
+    sale: {
+      id: returnRecord.sale.id,
+      saleDate: returnRecord.sale.saleDate,
+      customerName: returnRecord.sale.customer?.name ?? null
+    },
+    items: returnRecord.items.map((i) => {
+      const unitPrice = saleItemByProductId.get(i.productId)?.unitPrice ?? new Prisma.Decimal(0);
+      return {
+        id: i.id,
+        productId: i.productId,
+        productName: nameById.get(i.productId) ?? i.productId,
+        quantity: i.quantity,
+        unitPrice,
+        total: unitPrice.mul(i.quantity)
+      };
+    })
+  };
+}
+
 export async function processReturn(
   saleId: string,
   items: ReturnItemInput[],
