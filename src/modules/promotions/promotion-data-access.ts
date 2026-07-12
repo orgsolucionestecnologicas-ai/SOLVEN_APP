@@ -109,6 +109,23 @@ export async function deletePromotion(
   await prisma.promotion.delete({ where: { id } });
 }
 
+export async function getExpiringPromotions(
+  tenantId: string,
+  hoursAhead = 48
+): Promise<Promotion[]> {
+  const now = new Date();
+  const cutoff = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000);
+
+  return prisma.promotion.findMany({
+    where: {
+      tenantId,
+      isActive: true,
+      endsAt: { gte: now, lte: cutoff }
+    },
+    orderBy: { endsAt: "asc" }
+  });
+}
+
 export async function getActivePromotions(
   tenantId: string
 ): Promise<PromotionWithUsages[]> {

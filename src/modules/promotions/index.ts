@@ -11,6 +11,7 @@ export {
   createPromotion,
   deletePromotion,
   getActivePromotions,
+  getExpiringPromotions,
   getPromotionByCode,
   getPromotionById,
   listPromotions,

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -336,6 +337,8 @@ export function PromotionsList() {
   const [editingPromotion, setEditingPromotion] = useState<PromotionRecord | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [expiringPromotions, setExpiringPromotions] = useState<PromotionRecord[]>([]);
+  const [showOnlyExpiring, setShowOnlyExpiring] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -343,14 +346,16 @@ export function PromotionsList() {
 
     async function load() {
       try {
-        const [promoRes, prodRes] = await Promise.all([
+        const [promoRes, prodRes, expiringRes] = await Promise.all([
           fetch("/api/promotions", { headers: { Accept: "application/json" } }),
           fetch("/api/products", { headers: { Accept: "application/json" } }),
+          fetch("/api/promotions/expiring", { headers: { Accept: "application/json" } }),
         ]);
-        const [promoBody, prodBody] = (await Promise.all([
+        const [promoBody, prodBody, expiringBody] = (await Promise.all([
           promoRes.json(),
           prodRes.json(),
-        ])) as [ApiResponse<PromotionRecord[]>, ApiResponse<ProductRecord[]>];
+          expiringRes.json(),
+        ])) as [ApiResponse<PromotionRecord[]>, ApiResponse<ProductRecord[]>, ApiResponse<PromotionRecord[]>];
 
         if (!active) return;
 
@@ -361,6 +366,7 @@ export function PromotionsList() {
 
         setPromotions(promoBody.data);
         setProducts(prodBody.data ?? []);
+        setExpiringPromotions(expiringBody.data ?? []);
         setLoadError(null);
       } catch {
         if (active) setLoadError("No se pudieron cargar las promociones.");
@@ -428,6 +434,11 @@ export function PromotionsList() {
       result = result.filter((p) => getPromotionStatus(p) === activeTab);
     }
 
+    if (showOnlyExpiring) {
+      const expiringIds = new Set(expiringPromotions.map((p) => p.id));
+      result = result.filter((p) => expiringIds.has(p.id));
+    }
+
     const statusFilter =
       filterEstado === "active" || filterEstado === "scheduled" || filterEstado === "ended"
         ? filterEstado as PromotionStatus
@@ -461,7 +472,7 @@ export function PromotionsList() {
     }
 
     return result;
-  }, [promotions, activeTab, filterEstado, filterTipo, searchQuery, sortBy]);
+  }, [promotions, activeTab, filterEstado, filterTipo, searchQuery, sortBy, showOnlyExpiring, expiringPromotions]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -574,7 +585,23 @@ export function PromotionsList() {
       <div className="border-b border-slate-200 px-6 py-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-slate-950">Promociones</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold text-slate-950">Promociones</h1>
+              {expiringPromotions.length > 0 ? (
+                <button
+                  className={
+                    showOnlyExpiring
+                      ? "flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-medium text-white"
+                      : "flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 hover:bg-amber-200"
+                  }
+                  onClick={() => { setShowOnlyExpiring((v) => !v); setCurrentPage(1); }}
+                  type="button"
+                >
+                  <AlertTriangle size={11} />
+                  {expiringPromotions.length} por vencer
+                </button>
+              ) : null}
+            </div>
             <p className="mt-0.5 text-sm text-slate-500">
               Crea, gestiona y analiza tus promociones
             </p>
