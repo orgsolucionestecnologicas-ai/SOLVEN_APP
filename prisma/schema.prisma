@@ -248,6 +248,7 @@ model Debt {
   customerId      String
   totalAmount     Decimal       @db.Decimal(12, 2)
   remainingAmount Decimal       @db.Decimal(12, 2)
+  dueDate         DateTime?
   customer        Customer      @relation(fields: [customerId], references: [id])
   sale            Sale?
   payments        DebtPayment[]

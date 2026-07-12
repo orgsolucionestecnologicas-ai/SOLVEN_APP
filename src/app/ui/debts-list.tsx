@@ -26,9 +26,14 @@ type DebtRecord = {
   customer: { name: string };
   totalAmount: string;
   remainingAmount: string;
+  dueDate: string | null;
   createdAt: string;
   updatedAt: string;
 };
+
+function isOverdueDebt(debt: DebtRecord): boolean {
+  return debt.dueDate !== null && new Date(debt.dueDate) < new Date() && Number(debt.remainingAmount) > 0;
+}
 
 type DebtPaymentRecord = {
   id: string;
@@ -402,6 +407,8 @@ export function DebtsList() {
                           <td className="whitespace-nowrap px-4 py-3">
                             {isPaid ? (
                               <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">Pagada</span>
+                            ) : isOverdueDebt(debt) ? (
+                              <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">Vencida</span>
                             ) : (
                               <span className="inline-flex rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-800">Pendiente</span>
                             )}
@@ -701,6 +708,7 @@ function DebtDetailModal({ debt, payments, onClose, onPay }: {
   onPay: () => void;
 }) {
   const isPaid = Number(debt.remainingAmount) === 0;
+  const overdue = isOverdueDebt(debt);
   const paidAmount = Number(debt.totalAmount) - Number(debt.remainingAmount);
 
   return (
@@ -711,8 +719,8 @@ function DebtDetailModal({ debt, payments, onClose, onPay }: {
             <CustomerAvatar name={debt.customer.name} />
             <div>
               <h2 className="text-sm font-semibold text-slate-950">{debt.customer.name}</h2>
-              <span className={`text-xs ${isPaid ? "text-emerald-600" : "text-rose-600"}`}>
-                {isPaid ? "Deuda pagada" : "Saldo pendiente"}
+              <span className={`text-xs ${isPaid ? "text-emerald-600" : overdue ? "text-red-600" : "text-rose-600"}`}>
+                {isPaid ? "Deuda pagada" : overdue ? "Vencida" : "Saldo pendiente"}
               </span>
             </div>
           </div>

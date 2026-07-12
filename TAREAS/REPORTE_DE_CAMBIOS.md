@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 084 — Deudas vencidas automáticamente marcadas con badge 'Vencida' en rojo — 2026-07-12
+**Estado:** ✅ Completada
+**Archivos modificados:** `prisma/schema.prisma`, `prisma/migrations/20260712190719_add_debt_due_date/`, `src/app/ui/debts-list.tsx`
+**Cambios realizados:** Se agregó el campo opcional `dueDate DateTime?` al modelo `Debt` (migración `add-debt-due-date`, aplicada). En `debts-list.tsx` se agregó `dueDate: string | null` al tipo `DebtRecord` y una función `isOverdueDebt` con el criterio exacto `dueDate !== null && new Date(dueDate) < new Date() && Number(remainingAmount) > 0`. Cuando una deuda cumple ese criterio, la tabla principal y el detalle (`DebtDetailModal`) muestran un badge rojo "Vencida" en lugar de "Pendiente" en la columna/estado.
+**Notas:** No se tocó `debt-data-access.ts` — `listDebts` usa `include` (no `select`) por lo que `dueDate` ya se devuelve automáticamente. No se agregó formulario para cargar `dueDate` (queda para la Tarea 086). Build, lint y typecheck OK. `npm test`: 199 passed / 4 failed / 2 skipped en la corrida completa, pero al re-ejecutar en aislamiento los 3 archivos de integración que fallaron (`dashboard/summary`, `products`, `debt-payment-data-access`) los 7 tests pasaron sin cambios — fueron cortes transitorios de conexión a Neon ("Can't reach database server"), no una regresión. El único fallo restante es el mismo bug preexistente y no relacionado ya documentado en la Tarea 081 (`createSale` no genera `Debt` para ventas a crédito).
+
+---
+
 ## Tarea 083 — Confirmación de dos pasos con resumen antes de procesar la devolución — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `src/app/ui/returns.tsx`
