@@ -124,7 +124,8 @@ function NewQuoteModal({
   const [productOptions, setProductOptions] = useState<Product[]>([]);
   const [reservedStock, setReservedStock] = useState<Map<string, number>>(new Map());
   const [items, setItems] = useState<NewItem[]>([]);
-  const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountMode, setDiscountMode] = useState<"amount" | "percent">("amount");
+  const [discountInput, setDiscountInput] = useState(0);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -201,6 +202,10 @@ function NewQuoteModal({
   }
 
   const subtotal = items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+  const discountAmount =
+    discountMode === "percent"
+      ? subtotal * (Math.min(100, Math.max(0, discountInput)) / 100)
+      : Math.max(0, discountInput);
   const total = Math.max(0, subtotal - discountAmount);
 
   async function handleSave(sendEmail: boolean) {
@@ -369,13 +374,32 @@ function NewQuoteModal({
         {/* Discount & Notes */}
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Descuento (ARS)</label>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-sm font-medium text-slate-700">Descuento</label>
+              <div className="flex overflow-hidden rounded-md border border-slate-300 text-xs">
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 font-medium ${discountMode === "amount" ? "bg-violet-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+                  onClick={() => setDiscountMode("amount")}
+                >
+                  Monto ($)
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 font-medium ${discountMode === "percent" ? "bg-violet-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+                  onClick={() => setDiscountMode("percent")}
+                >
+                  Porcentaje (%)
+                </button>
+              </div>
+            </div>
             <input
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
               min={0}
+              max={discountMode === "percent" ? 100 : undefined}
               type="number"
-              value={discountAmount || ""}
-              onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
+              value={discountInput || ""}
+              onChange={(e) => setDiscountInput(Number(e.target.value) || 0)}
             />
           </div>
           <div>
@@ -397,7 +421,9 @@ function NewQuoteModal({
           </div>
           {discountAmount > 0 && (
             <div className="flex justify-between text-red-600">
-              <span>Descuento</span>
+              <span>
+                Descuento{discountMode === "percent" ? ` (${discountInput}%)` : ""}
+              </span>
               <span>- {formatARS(discountAmount)}</span>
             </div>
           )}
