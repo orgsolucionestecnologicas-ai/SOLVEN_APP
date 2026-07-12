@@ -1,7 +1,10 @@
 export const dynamic = 'force-dynamic';
+import { ReturnReasonCategory } from "@prisma/client";
+
 import {
   listReturns,
   processReturn,
+  RETURN_REASON_CATEGORIES,
   ReturnValidationError,
   type ReturnItemInput
 } from "../../../modules/returns";
@@ -58,7 +61,12 @@ export async function POST(request: Request) {
     return errorResponse("El cuerpo de la solicitud debe ser un objeto.", 400);
   }
 
-  const input = body as { saleId?: unknown; items?: unknown };
+  const input = body as {
+    saleId?: unknown;
+    items?: unknown;
+    reasonCategory?: unknown;
+    reasonNote?: unknown;
+  };
 
   if (typeof input.saleId !== "string" || input.saleId.trim().length === 0) {
     return errorResponse("El campo saleId es obligatorio.", 400);
@@ -66,6 +74,17 @@ export async function POST(request: Request) {
 
   if (!Array.isArray(input.items) || input.items.length === 0) {
     return errorResponse("Debés seleccionar al menos un producto para devolver.", 400);
+  }
+
+  if (
+    typeof input.reasonCategory !== "string" ||
+    !RETURN_REASON_CATEGORIES.includes(input.reasonCategory as ReturnReasonCategory)
+  ) {
+    return errorResponse("El motivo de la devolución es obligatorio.", 400);
+  }
+
+  if (input.reasonNote !== undefined && typeof input.reasonNote !== "string") {
+    return errorResponse("La nota del motivo debe ser texto.", 400);
   }
 
   for (const item of input.items as unknown[]) {
@@ -89,7 +108,13 @@ export async function POST(request: Request) {
   const returnItems = input.items as ReturnItemInput[];
 
   try {
-    const result = await processReturn(input.saleId.trim(), returnItems, tenantId);
+    const result = await processReturn(
+      input.saleId.trim(),
+      returnItems,
+      tenantId,
+      input.reasonCategory as ReturnReasonCategory,
+      input.reasonNote as string | undefined
+    );
     return successResponse(result, 201);
   } catch (error) {
     if (error instanceof ReturnValidationError) {

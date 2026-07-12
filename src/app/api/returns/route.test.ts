@@ -15,6 +15,8 @@ import { POST } from "./route";
 
 vi.mock("../../../modules/returns", () => ({
   processReturn: vi.fn(),
+  listReturns: vi.fn(),
+  RETURN_REASON_CATEGORIES: ["DEFECTO", "ERROR_VENTA", "CAMBIO_OPINION", "OTRO"],
   ReturnValidationError: class ReturnValidationError extends Error {
     constructor(message: string) {
       super(message);
@@ -44,16 +46,21 @@ describe("returns API route", () => {
         method: "POST",
         body: JSON.stringify({
           saleId: "sale-1",
-          items: [{ productId: "product-1", quantity: 1 }]
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO"
         })
       })
     );
 
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ data: result });
-    expect(mockedProcessReturn).toHaveBeenCalledWith("sale-1", [
-      { productId: "product-1", quantity: 1 }
-    ], "test-tenant-id");
+    expect(mockedProcessReturn).toHaveBeenCalledWith(
+      "sale-1",
+      [{ productId: "product-1", quantity: 1 }],
+      "test-tenant-id",
+      "OTRO",
+      undefined
+    );
   });
 
   it("returns 400 when saleId is missing", async () => {
@@ -88,7 +95,8 @@ describe("returns API route", () => {
         method: "POST",
         body: JSON.stringify({
           saleId: "sale-1",
-          items: [{ productId: "product-1", quantity: 0 }]
+          items: [{ productId: "product-1", quantity: 0 }],
+          reasonCategory: "OTRO"
         })
       })
     );
@@ -96,6 +104,39 @@ describe("returns API route", () => {
     expect(response.status).toBe(400);
     const body = (await response.json()) as { error: { message: string } };
     expect(body.error.message).toContain("cantidad");
+  });
+
+  it("returns 400 when reasonCategory is missing", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/returns", {
+        method: "POST",
+        body: JSON.stringify({
+          saleId: "sale-1",
+          items: [{ productId: "product-1", quantity: 1 }]
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("motivo");
+  });
+
+  it("returns 400 when reasonCategory is invalid", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/returns", {
+        method: "POST",
+        body: JSON.stringify({
+          saleId: "sale-1",
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "INVALIDO"
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("motivo");
   });
 
   it("returns 400 when sale is not found", async () => {
@@ -108,7 +149,8 @@ describe("returns API route", () => {
         method: "POST",
         body: JSON.stringify({
           saleId: "missing-sale",
-          items: [{ productId: "product-1", quantity: 1 }]
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO"
         })
       })
     );
@@ -131,7 +173,8 @@ describe("returns API route", () => {
         method: "POST",
         body: JSON.stringify({
           saleId: "sale-1",
-          items: [{ productId: "product-1", quantity: 1 }]
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO"
         })
       })
     );
@@ -156,7 +199,8 @@ describe("returns API route", () => {
         method: "POST",
         body: JSON.stringify({
           saleId: "sale-1",
-          items: [{ productId: "product-1", quantity: 5 }]
+          items: [{ productId: "product-1", quantity: 5 }],
+          reasonCategory: "OTRO"
         })
       })
     );
@@ -174,7 +218,8 @@ describe("returns API route", () => {
         method: "POST",
         body: JSON.stringify({
           saleId: "sale-1",
-          items: [{ productId: "product-1", quantity: 1 }]
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO"
         })
       })
     );
@@ -197,7 +242,8 @@ describe("returns API route", () => {
         method: "POST",
         body: JSON.stringify({
           saleId: "sale-1",
-          items: [{ productId: "product-1", quantity: 1 }]
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO"
         })
       })
     );
@@ -221,7 +267,8 @@ describe("returns API route", () => {
         method: "POST",
         body: JSON.stringify({
           saleId: "sale-credit-1",
-          items: [{ productId: "product-1", quantity: 1 }]
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO"
         })
       })
     );

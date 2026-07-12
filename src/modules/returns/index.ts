@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, ReturnReasonCategory } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -6,6 +6,13 @@ export type ReturnItemInput = {
   productId: string;
   quantity: number;
 };
+
+export const RETURN_REASON_CATEGORIES = [
+  "DEFECTO",
+  "ERROR_VENTA",
+  "CAMBIO_OPINION",
+  "OTRO"
+] as const satisfies readonly ReturnReasonCategory[];
 
 export type ReturnResult = {
   returnId: string;
@@ -92,8 +99,14 @@ export async function listReturns(
 export async function processReturn(
   saleId: string,
   items: ReturnItemInput[],
-  tenantId: string
+  tenantId: string,
+  reasonCategory: ReturnReasonCategory,
+  reasonNote?: string
 ): Promise<ReturnResult> {
+  if (!RETURN_REASON_CATEGORIES.includes(reasonCategory)) {
+    throw new ReturnValidationError("El motivo de la devolución es inválido.");
+  }
+
   return prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findFirst({
       where: { id: saleId, tenantId },
@@ -196,6 +209,8 @@ export async function processReturn(
       data: {
         saleId,
         totalAmount: returnTotal,
+        reasonCategory,
+        reasonNote: reasonNote?.trim() || null,
         items: {
           create: items.map((item) => ({
             productId: item.productId,

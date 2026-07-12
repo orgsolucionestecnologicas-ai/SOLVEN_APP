@@ -431,13 +431,22 @@ model Service {
   @@index([tenantId])
 }
 
+enum ReturnReasonCategory {
+  DEFECTO
+  ERROR_VENTA
+  CAMBIO_OPINION
+  OTRO
+}
+
 model Return {
-  id          String       @id @default(cuid())
-  saleId      String
-  sale        Sale         @relation(fields: [saleId], references: [id])
-  items       ReturnItem[]
-  totalAmount Decimal      @db.Decimal(12, 2)
-  createdAt   DateTime     @default(now())
+  id             String               @id @default(cuid())
+  saleId         String
+  sale           Sale                 @relation(fields: [saleId], references: [id])
+  items          ReturnItem[]
+  totalAmount    Decimal              @db.Decimal(12, 2)
+  reasonCategory ReturnReasonCategory @default(OTRO)
+  reasonNote     String?
+  createdAt      DateTime             @default(now())
 
   @@index([saleId])
 }

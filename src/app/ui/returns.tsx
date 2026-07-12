@@ -72,6 +72,15 @@ type ReturnHistoryResponse = {
   error?: { message: string };
 };
 
+type ReturnReasonCategory = "DEFECTO" | "ERROR_VENTA" | "CAMBIO_OPINION" | "OTRO";
+
+const RETURN_REASON_OPTIONS: { value: ReturnReasonCategory; label: string }[] = [
+  { value: "DEFECTO", label: "Producto defectuoso" },
+  { value: "ERROR_VENTA", label: "Error en la venta" },
+  { value: "CAMBIO_OPINION", label: "Cambio de opinión del cliente" },
+  { value: "OTRO", label: "Otro" }
+];
+
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
 const moneyFormatter = new Intl.NumberFormat("es-AR", {
@@ -108,6 +117,8 @@ export function Returns() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [returnResult, setReturnResult] = useState<ReturnResult | null>(null);
+  const [reasonCategory, setReasonCategory] = useState<ReturnReasonCategory | "">("");
+  const [reasonNote, setReasonNote] = useState("");
 
   useEffect(() => {
     fetch("/api/sales", { headers: { Accept: "application/json" } })
@@ -135,6 +146,8 @@ export function Returns() {
     setSelectedSale(sale);
     setReturnResult(null);
     setSubmitError(null);
+    setReasonCategory("");
+    setReasonNote("");
     const initial: Record<string, number> = {};
     for (const item of sale.items) {
       if (item.productId) initial[item.productId] = 0;
@@ -150,6 +163,7 @@ export function Returns() {
 
   const productItems = selectedSale?.items.filter((i) => i.productId) ?? [];
   const hasItemsToReturn = Object.values(returnQuantities).some((q) => q > 0);
+  const canSubmit = hasItemsToReturn && reasonCategory !== "";
 
   const previewTotal = productItems.reduce((acc, item) => {
     const qty = returnQuantities[item.productId!] ?? 0;
@@ -157,7 +171,7 @@ export function Returns() {
   }, 0);
 
   async function handleSubmit() {
-    if (!selectedSale || !hasItemsToReturn) return;
+    if (!selectedSale || !canSubmit) return;
 
     const items = productItems
       .filter((item) => (returnQuantities[item.productId!] ?? 0) > 0)
@@ -170,7 +184,12 @@ export function Returns() {
       const res = await fetch("/api/returns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ saleId: selectedSale.id, items })
+        body: JSON.stringify({
+          saleId: selectedSale.id,
+          items,
+          reasonCategory,
+          reasonNote: reasonNote.trim() || undefined
+        })
       });
       const body = (await res.json()) as ReturnResponse;
       if (!res.ok || !body.data) {
@@ -433,6 +452,37 @@ export function Returns() {
                         <span className="text-base font-bold text-slate-900">{formatMoney(previewTotal)}</span>
                       </div>
 
+                      <div className="mb-3">
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                          Motivo de la devolución <span className="text-rose-500">*</span>
+                        </label>
+                        <select
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none"
+                          value={reasonCategory}
+                          onChange={(e) => setReasonCategory(e.target.value as ReturnReasonCategory)}
+                        >
+                          <option value="">Seleccioná un motivo...</option>
+                          {RETURN_REASON_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="mb-4">
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                          Nota adicional (opcional)
+                        </label>
+                        <textarea
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-violet-400 focus:outline-none"
+                          rows={2}
+                          placeholder="Detalles adicionales sobre el motivo..."
+                          value={reasonNote}
+                          onChange={(e) => setReasonNote(e.target.value)}
+                        />
+                      </div>
+
                       {submitError ? (
                         <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-3">
                           <p className="text-sm font-medium text-rose-800">{submitError}</p>
@@ -442,7 +492,7 @@ export function Returns() {
                       <button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={!hasItemsToReturn || isSubmitting}
+                        disabled={!canSubmit || isSubmitting}
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
                       >
                         <RotateCcw className="h-4 w-4" />
@@ -452,6 +502,10 @@ export function Returns() {
                       {!hasItemsToReturn ? (
                         <p className="mt-2 text-center text-xs text-slate-400">
                           Ingresá al menos una cantidad para continuar
+                        </p>
+                      ) : reasonCategory === "" ? (
+                        <p className="mt-2 text-center text-xs text-slate-400">
+                          Seleccioná un motivo para continuar
                         </p>
                       ) : null}
                     </div>
