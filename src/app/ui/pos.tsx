@@ -3415,6 +3415,9 @@ function PrintModal({
 }) {
   const [emailSent, setEmailSent] = useState(false);
   const [businessName, setBusinessName] = useState("Mi negocio");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [receiptFooterMessage, setReceiptFooterMessage] = useState("");
+  const [receiptThankYouMessage, setReceiptThankYouMessage] = useState("¡Gracias por su compra!");
   const receiptPrefix = receiptType === "INVOICE" ? "FAC" : "TKT";
   const saleNumber = `${receiptPrefix}-${String(receiptNumber).padStart(4, "0")}`;
   const saleDate = new Intl.DateTimeFormat("es-419", {
@@ -3429,6 +3432,11 @@ function PrintModal({
       .then((r) => r.json())
       .then((body) => {
         if (body.data?.businessName) setBusinessName(body.data.businessName);
+        if (typeof body.data?.logoUrl === "string") setLogoUrl(body.data.logoUrl);
+        if (typeof body.data?.receiptFooterMessage === "string") setReceiptFooterMessage(body.data.receiptFooterMessage);
+        if (typeof body.data?.receiptThankYouMessage === "string" && body.data.receiptThankYouMessage) {
+          setReceiptThankYouMessage(body.data.receiptThankYouMessage);
+        }
       })
       .catch(() => {});
   }, []);
@@ -3456,6 +3464,7 @@ function PrintModal({
       td{padding:2px 0}.center{text-align:center}
       .total{font-weight:bold;font-size:13px;border-top:1px dashed #000;padding-top:4px;margin-top:4px}
     </style></head><body>
+      ${logoUrl ? `<p class="center"><img src="${logoUrl}" style="max-width:100%;max-height:60px" /></p>` : ""}
       <h2>${businessName}</h2>
       <p class="center">${receiptType === "INVOICE" ? "FACTURA" : "TICKET DE VENTA"} ${saleNumber}</p>
       <p class="center">${saleDate}</p>
@@ -3468,7 +3477,8 @@ function PrintModal({
       ${discountRow}
       <p class="total center">Total: ${formatARS(total)}</p>
       <p class="center" style="font-size:9px;margin-top:4px">IVA incluido en los precios</p>
-      <p class="center" style="margin-top:8px;font-size:10px">¡Gracias por su compra!</p>
+      <p class="center" style="margin-top:8px;font-size:10px">${receiptThankYouMessage}</p>
+      ${receiptFooterMessage ? `<p class="center" style="margin-top:4px;font-size:9px;color:#555">${receiptFooterMessage}</p>` : ""}
     </body></html>`);
   }
 

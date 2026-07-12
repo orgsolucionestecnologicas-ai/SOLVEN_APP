@@ -491,6 +491,9 @@ model StoreSettings {
   darkMode             Boolean  @default(false)
   desktopNotifications Boolean  @default(false)
   arcaEnabled          Boolean  @default(false)
+  logoUrl              String   @default("")
+  receiptFooterMessage String   @default("")
+  receiptThankYouMessage String @default("¡Gracias por su compra!")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }

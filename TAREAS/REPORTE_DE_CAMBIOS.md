@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 095 — Personalización del ticket: logo, pie de página, mensaje de agradecimiento — 2026-07-13
+**Estado:** ✅ Completada
+**Archivos modificados:** `prisma/schema.prisma` (+ migración `20260712221619_add_receipt_customization`), `src/modules/settings/settings-validation.ts`, `src/app/ui/settings.tsx`, `src/app/ui/pos.tsx`
+**Cambios realizados:** Se agregaron `logoUrl String @default("")`, `receiptFooterMessage String @default("")` y `receiptThankYouMessage String @default("¡Gracias por su compra!")` al modelo `StoreSettings`. Se extendió `validateUpsertSettingsInput` en `settings-validation.ts` para aceptar y persistir estos 3 campos (necesario para que `PATCH /api/settings` no los descarte). En `settings.tsx` se creó `DocumentosSection` (nueva, cableada a la categoría "documentos" que antes mostraba `ComingSoonSection`) con los 3 campos editables, guardados vía el mismo `PATCH /api/settings` ya usado por el resto de `StoreSettings` — el guardado envía de vuelta el objeto completo recibido del `GET /api/settings` (`{ ...raw, logoUrl, receiptFooterMessage, receiptThankYouMessage }`) en lugar de solo los 3 campos nuevos, para no pisar con valores por defecto el resto de la configuración del negocio (la validación de este endpoint reconstruye el registro completo a partir del payload recibido, no hace merge parcial contra la base). En `pos.tsx`, `PrintModal` ahora trae `logoUrl`/`receiptFooterMessage`/`receiptThankYouMessage` en el mismo fetch a `/api/settings` que ya traía `businessName`, e inyecta en `handlePrintTicket`: el logo como `<img>` centrado arriba del nombre del negocio (solo si `logoUrl` no está vacío), el mensaje de agradecimiento reemplazando el texto fijo anterior, y el pie de página como línea adicional al final del ticket (solo si no está vacío).
+**Notas:** No se tocó `handlePrintInvoice` (factura) ni el resto del template del ticket (ítems, totales) — cambio acotado a lo pedido. No se implementó subida de archivos: el logo es una URL externa pegada manualmente, según restricción explícita de la tarea. Build, lint, typecheck y migración OK. `npm test`: 204 passed / 1 failed / 2 skipped — el único fallo es el mismo bug preexistente y no relacionado ya documentado en la Tarea 081.
+
+---
+
 ## Tarea 094 — Estado activo/inactivo de usuario — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `prisma/schema.prisma` (+ migración `20260712212556_add_user_active`), `src/app/api/auth/login/route.ts`, `src/modules/users/user-data-access.ts`, `src/modules/users/index.ts`, `src/app/api/users/[id]/route.ts`, `src/app/ui/users-list.tsx`

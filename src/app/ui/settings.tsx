@@ -435,6 +435,123 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
   );
 }
 
+// ─── Documentos Section ───────────────────────────────────────────────────────
+
+function DocumentosSection() {
+  const [raw, setRaw] = useState<Record<string, unknown> | null>(null);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [receiptFooterMessage, setReceiptFooterMessage] = useState("");
+  const [receiptThankYouMessage, setReceiptThankYouMessage] = useState("¡Gracias por su compra!");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings", { headers: { Accept: "application/json" } })
+      .then((res) => res.json())
+      .then((body: { data?: Record<string, unknown> }) => {
+        if (body.data) {
+          setRaw(body.data);
+          setLogoUrl(typeof body.data.logoUrl === "string" ? body.data.logoUrl : "");
+          setReceiptFooterMessage(typeof body.data.receiptFooterMessage === "string" ? body.data.receiptFooterMessage : "");
+          setReceiptThankYouMessage(
+            typeof body.data.receiptThankYouMessage === "string" ? body.data.receiptThankYouMessage : "¡Gracias por su compra!"
+          );
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...raw, logoUrl, receiptFooterMessage, receiptThankYouMessage })
+      });
+      if (!res.ok) throw new Error();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setError("Ocurrió un error. Intenta de nuevo.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputCls =
+    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 disabled:opacity-50";
+  const labelCls = "mb-1.5 block text-xs font-medium text-slate-600";
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h3 className="text-sm font-semibold text-slate-900">Personalización del ticket</h3>
+        <p className="mt-0.5 text-xs text-slate-500">Logo, pie de página y mensaje de agradecimiento que se imprimen en cada ticket.</p>
+      </div>
+      <div className="space-y-4 px-6 py-5">
+        <div>
+          <label className={labelCls}>URL del logo</label>
+          <input
+            className={inputCls}
+            disabled={loading}
+            onChange={(e) => setLogoUrl(e.target.value)}
+            placeholder="https://misitio.com/logo.png"
+            type="text"
+            value={logoUrl}
+          />
+        </div>
+        <div>
+          <label className={labelCls}>Mensaje de agradecimiento</label>
+          <input
+            className={inputCls}
+            disabled={loading}
+            onChange={(e) => setReceiptThankYouMessage(e.target.value)}
+            placeholder="¡Gracias por su compra!"
+            type="text"
+            value={receiptThankYouMessage}
+          />
+        </div>
+        <div>
+          <label className={labelCls}>Pie de página</label>
+          <input
+            className={inputCls}
+            disabled={loading}
+            onChange={(e) => setReceiptFooterMessage(e.target.value)}
+            placeholder="Ej. Cambios dentro de 10 días con ticket"
+            type="text"
+            value={receiptFooterMessage}
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
+        {error ? (
+          <span className="text-xs font-medium text-rose-600">{error}</span>
+        ) : saved ? (
+          <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Cambios guardados
+          </span>
+        ) : (
+          <span />
+        )}
+        <button
+          type="submit"
+          disabled={loading || saving}
+          className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50 focus:outline-none"
+        >
+          Guardar cambios
+        </button>
+      </div>
+    </form>
+  );
+}
+
 // ─── Seguridad Section ────────────────────────────────────────────────────────
 
 function SeguridadSection() {
@@ -1074,6 +1191,8 @@ export function Settings() {
     switch (activeCategory) {
       case "general":
         return <GeneralSection onBusinessNameChange={setBusinessName} />;
+      case "documentos":
+        return <DocumentosSection />;
       case "arca":
         return <FacturacionARCASection />;
       case "seguridad":

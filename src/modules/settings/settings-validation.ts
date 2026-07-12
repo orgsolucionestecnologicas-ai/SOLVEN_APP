@@ -14,6 +14,9 @@ export type UpsertSettingsInput = {
   darkMode?: boolean;
   desktopNotifications?: boolean;
   arcaEnabled?: boolean;
+  logoUrl?: string;
+  receiptFooterMessage?: string;
+  receiptThankYouMessage?: string;
 };
 
 export type ValidatedSettingsInput = {
@@ -32,6 +35,9 @@ export type ValidatedSettingsInput = {
   darkMode: boolean;
   desktopNotifications: boolean;
   arcaEnabled: boolean;
+  logoUrl: string;
+  receiptFooterMessage: string;
+  receiptThankYouMessage: string;
 };
 
 export class SettingsValidationError extends Error {
@@ -65,5 +71,8 @@ export function validateUpsertSettingsInput(input: UpsertSettingsInput): Validat
     darkMode: Boolean(input.darkMode),
     desktopNotifications: Boolean(input.desktopNotifications),
     arcaEnabled: Boolean(input.arcaEnabled),
+    logoUrl: typeof input.logoUrl === "string" ? input.logoUrl.trim() : "",
+    receiptFooterMessage: typeof input.receiptFooterMessage === "string" ? input.receiptFooterMessage.trim() : "",
+    receiptThankYouMessage: typeof input.receiptThankYouMessage === "string" ? input.receiptThankYouMessage.trim() : "¡Gracias por su compra!",
   };
 }
