@@ -66,6 +66,15 @@ type PromotionRecord = {
 
 type CustomerSegment = "NINGUNO" | "NUEVO" | "RECURRENTE" | "VIP";
 
+type PromotionUsageRecord = {
+  id: string;
+  appliedAt: string;
+  discountAmount: string;
+  customerId: string | null;
+  customerName: string | null;
+  sale: { id: string; saleDate: string; totalAmount: string } | null;
+};
+
 type ProductRecord = {
   id: string;
   name: string;
@@ -1193,6 +1202,23 @@ function PromotionSidebar({
   onDuplicate: () => void;
   onEdit: () => void;
 }) {
+  const [usageHistory, setUsageHistory] = useState<PromotionUsageRecord[]>([]);
+
+  useEffect(() => {
+    if (!promotion) {
+      setUsageHistory([]);
+      return;
+    }
+    const controller = new AbortController();
+    fetch(`/api/promotions/${promotion.id}/usages`, { signal: controller.signal })
+      .then((res) => res.json())
+      .then((body: ApiResponse<PromotionUsageRecord[]>) => {
+        setUsageHistory(body.data ?? []);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [promotion]);
+
   if (!promotion) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8 text-center">
@@ -1344,6 +1370,38 @@ function PromotionSidebar({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Historial de uso */}
+      <div className="mb-4">
+        <p className="mb-3 text-xs font-semibold text-slate-700">Historial de uso</p>
+        {usageHistory.length === 0 ? (
+          <p className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-400">
+            Esta promoción todavía no fue utilizada.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {usageHistory.map((usage) => (
+              <div
+                key={usage.id}
+                className="flex items-center justify-between rounded-lg border border-slate-100 bg-white p-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-slate-800">
+                    {usage.customerName ?? "Consumidor final"}
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    {shortDateFmt.format(new Date(usage.appliedAt))}
+                    {usage.sale ? ` · Venta #${usage.sale.id.slice(-6)}` : ""}
+                  </p>
+                </div>
+                <p className="flex-shrink-0 text-xs font-semibold text-emerald-600">
+                  -{formatMoney(usage.discountAmount)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <button

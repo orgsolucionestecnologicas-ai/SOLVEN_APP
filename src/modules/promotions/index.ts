@@ -16,10 +16,12 @@ export {
   getExpiringPromotions,
   getPromotionByCode,
   getPromotionById,
+  getPromotionUsageHistory,
   listPromotions,
   type OverlapCheckInput,
   PromotionHasUsagesError,
   PromotionNotFoundError,
+  type PromotionUsageHistoryEntry,
   type PromotionWithUsageCount,
   type PromotionWithUsages,
   updatePromotion

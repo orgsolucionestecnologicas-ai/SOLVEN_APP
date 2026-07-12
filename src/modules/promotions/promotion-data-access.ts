@@ -17,6 +17,14 @@ export type PromotionWithUsages = Promotion & {
   usages: Pick<PromotionUsage, "id" | "customerId">[];
 };
 
+export type PromotionUsageHistoryEntry = Pick<
+  PromotionUsage,
+  "id" | "appliedAt" | "discountAmount" | "customerId"
+> & {
+  sale: { id: string; saleDate: Date; totalAmount: Prisma.Decimal } | null;
+  customerName: string | null;
+};
+
 export class PromotionNotFoundError extends Error {
   constructor(id: string) {
     super(`Promoción ${id} no encontrada.`);
@@ -133,6 +141,38 @@ export async function duplicatePromotion(
       tenantId
     }
   });
+}
+
+export async function getPromotionUsageHistory(
+  id: string,
+  tenantId: string
+): Promise<PromotionUsageHistoryEntry[]> {
+  const promotion = await prisma.promotion.findFirst({ where: { id, tenantId } });
+  if (!promotion) throw new PromotionNotFoundError(id);
+
+  const usages = await prisma.promotionUsage.findMany({
+    where: { promotionId: id },
+    orderBy: { appliedAt: "desc" },
+    include: { sale: { select: { id: true, saleDate: true, totalAmount: true } } }
+  });
+
+  const customerIds = [...new Set(usages.map((usage) => usage.customerId).filter((customerId): customerId is string => Boolean(customerId)))];
+  const customers = customerIds.length
+    ? await prisma.customer.findMany({
+        where: { id: { in: customerIds }, tenantId },
+        select: { id: true, name: true }
+      })
+    : [];
+  const customerNameById = new Map(customers.map((customer) => [customer.id, customer.name]));
+
+  return usages.map((usage) => ({
+    id: usage.id,
+    appliedAt: usage.appliedAt,
+    discountAmount: usage.discountAmount,
+    customerId: usage.customerId,
+    sale: usage.sale,
+    customerName: usage.customerId ? (customerNameById.get(usage.customerId) ?? null) : null
+  }));
 }
 
 export async function getExpiringPromotions(

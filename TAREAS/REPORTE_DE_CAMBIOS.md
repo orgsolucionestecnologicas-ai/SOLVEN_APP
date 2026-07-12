@@ -7,6 +7,9 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### Tarea 068 — Historial de uso por promoción
+Nueva función `getPromotionUsageHistory(id, tenantId)` en `promotion-data-access.ts`: lista las `PromotionUsage` de una promoción (verificando primero que pertenezca al tenant), ordenadas por `appliedAt` descendente, incluyendo la venta relacionada vía `sale` (`id`, `saleDate`, `totalAmount` — sí existe relación de Prisma) y resolviendo el nombre del cliente con una consulta separada a `Customer` por los `customerId` presentes, ya que `PromotionUsage.customerId` no tiene relación declarada en el schema. Nuevo endpoint `GET /api/promotions/[id]/usages`. En `PromotionSidebar` (`promotions.tsx`) se agregó una sección "Historial de uso" que consulta ese endpoint al seleccionar una promoción y lista fecha, venta (id corto) y cliente (o "Consumidor final"), con monto descontado; muestra un estado vacío si no hay usos registrados. No se modificó el schema de Prisma ni `promotion-engine.ts`. Build, lint y typecheck OK.
+
 ### Tarea 067 — Límite de usos totales por promoción (ya implementada)
 Verificado de punta a punta: el modelo `Promotion` ya tiene `maxUsages Int?`, `promotion-validation.ts` ya lo valida como entero positivo, y `promotion-engine.ts` (`isUsageWithinLimits`) ya descarta la promoción del carrito cuando `promotion.usages.length >= promotion.maxUsages`. El campo "Usos máximos totales" ya está expuesto en el formulario de creación/edición en `promotions.tsx` (conectado a `form.maxUsages` e incluido en `buildSubmitPayload`), y `getActivePromotions` ya incluye `usages` para que `/api/promotions/apply` respete el límite correctamente vía `applyPromotionsToCart`. No se realizó ningún cambio de código, conforme a lo indicado en la tarea cuando ambas condiciones ya están satisfechas.
 
