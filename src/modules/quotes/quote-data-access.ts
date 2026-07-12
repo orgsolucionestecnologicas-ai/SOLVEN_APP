@@ -376,6 +376,29 @@ export async function getExpiringQuotes(
   });
 }
 
+export async function duplicateQuote(
+  quoteId: string,
+  tenantId: string
+): Promise<QuoteWithItems> {
+  const original = await getQuoteById(quoteId, tenantId);
+
+  const input: CreateQuoteInput = {
+    customerId: original.customerId ?? undefined,
+    customerName: original.customerName,
+    customerEmail: original.customerEmail,
+    customerPhone: original.customerPhone,
+    items: original.items.map((item) => ({
+      productId: item.productId ?? undefined,
+      serviceId: item.serviceId ?? undefined,
+      quantity: item.quantity,
+    })),
+    notes: original.notes ?? undefined,
+    discountAmount: original.discountAmount.toNumber(),
+  };
+
+  return createQuote(input, tenantId);
+}
+
 export async function getReservedStockByProduct(
   tenantId: string
 ): Promise<Map<string, number>> {

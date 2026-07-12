@@ -7,6 +7,9 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### Tarea 071 — Duplicar cotización
+Nueva función `duplicateQuote(quoteId, tenantId)` en `quote-data-access.ts`: busca la cotización original con `getQuoteById`, arma un `CreateQuoteInput` con el mismo cliente, mismos ítems (producto/servicio y cantidad) y mismo `discountAmount`, y llama a `createQuote` para reutilizar toda su lógica de recálculo de precios vigentes, generación de `quoteNumber` y `validUntil` (+5 días desde ahora); la copia siempre queda en estado `DRAFT`. Nuevo endpoint `POST /api/quotes/[id]/duplicate` (mismo patrón de auth con `requireRole(["OWNER", "CASHIER"])` que el resto de mutaciones de cotizaciones). En `src/app/ui/quotes-list.tsx` se agregó un botón "Duplicar" (ícono Copy) en cada fila de la tabla y en `QuoteDetailModal`; al hacer clic llama al endpoint, refresca la lista y abre automáticamente el detalle de la nueva cotización creada para que el usuario la revise. No se modificó el schema de Prisma ni `confirmQuote`/`cancelQuote`/la lógica de stock reservado. Build, lint, typecheck y tests (169/169) OK.
+
 ### Tarea 070 — Badge de estado de promoción (copy "Próxima")
 Verificado: la funcionalidad de badges de estado ya estaba completamente implementada (`getPromotionStatus` con los tres estados, `STATUS_STYLES` con colores diferenciados, visible tanto en la tabla como en el detalle de promoción). Único cambio: el label del estado intermedio pasó de "Programada" a "Próxima" en `STATUS_STYLES.scheduled`, y se actualizaron para consistencia los otros dos lugares que usaban el mismo texto: la pestaña de filtro superior ("Programadas" → "Próximas") y la opción del selector de estado ("Programada" → "Próxima"). No se modificó `getPromotionStatus` ni el schema de Prisma. Build, lint y typecheck OK.
 

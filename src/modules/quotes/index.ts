@@ -4,6 +4,7 @@ export {
   getQuoteById,
   confirmQuote,
   cancelQuote,
+  duplicateQuote,
   expireOverdueQuotes,
   getExpiringQuotes,
   getReservedStockByProduct,

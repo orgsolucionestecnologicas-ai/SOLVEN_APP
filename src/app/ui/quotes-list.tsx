@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
   Eye,
   FileText,
   Mail,
@@ -433,15 +434,18 @@ function QuoteDetailModal({
   quote,
   onClose,
   onAction,
+  onDuplicate,
 }: {
   quote: Quote;
   onClose: () => void;
   onAction: () => void;
+  onDuplicate: (quoteId: string) => Promise<void>;
 }) {
   const [sending, setSending] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [paymentType] = useState<"CASH">("CASH");
   const [cancelling, setCancelling] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [actionError, setActionError] = useState("");
 
   const discountAmount = Number(quote.discountAmount);
@@ -498,6 +502,18 @@ function QuoteDetailModal({
       setActionError(e instanceof Error ? e.message : "Error al cancelar");
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleDuplicate() {
+    setDuplicating(true);
+    setActionError("");
+    try {
+      await onDuplicate(quote.id);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Error al duplicar");
+    } finally {
+      setDuplicating(false);
     }
   }
 
@@ -588,7 +604,7 @@ function QuoteDetailModal({
           </p>
         )}
 
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap gap-2">
           <a
             href={`/api/quotes/${quote.id}/pdf`}
             target="_blank"
@@ -600,6 +616,14 @@ function QuoteDetailModal({
             </svg>
             Descargar PDF
           </a>
+          <button
+            className="flex w-fit items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+            disabled={duplicating}
+            onClick={handleDuplicate}
+          >
+            <Copy size={16} />
+            {duplicating ? "Duplicando…" : "Duplicar"}
+          </button>
         </div>
 
         {actionError && <p className="mb-3 text-sm text-red-600">{actionError}</p>}
@@ -703,6 +727,14 @@ export function QuotesList() {
   function handleAction() {
     setSelectedQuote(null);
     void fetchQuotes();
+  }
+
+  async function handleDuplicate(quoteId: string) {
+    const res = await fetch(`/api/quotes/${quoteId}/duplicate`, { method: "POST" });
+    const body = (await res.json()) as { data?: Quote; error?: { message: string } };
+    if (!res.ok || !body.data) throw new Error(body.error?.message ?? "Error al duplicar");
+    await fetchQuotes();
+    setSelectedQuote(body.data);
   }
 
   const STATUS_OPTIONS = [
@@ -836,6 +868,15 @@ export function QuotesList() {
                         >
                           <Eye size={15} />
                         </button>
+                        <button
+                          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                          title="Duplicar cotización"
+                          onClick={() => {
+                            void handleDuplicate(quote.id);
+                          }}
+                        >
+                          <Copy size={15} />
+                        </button>
                         {isActive && quote.customerEmail && (
                           <button
                             className="rounded p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
@@ -917,6 +958,7 @@ export function QuotesList() {
           quote={selectedQuote}
           onClose={() => setSelectedQuote(null)}
           onAction={handleAction}
+          onDuplicate={handleDuplicate}
         />
       )}
     </div>
