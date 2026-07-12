@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 090 — Marcar deuda como incobrable con nota (baja contable) — 2026-07-12
+**Estado:** ✅ Completada
+**Archivos modificados:** `prisma/schema.prisma` (+ migración `20260712202356_add_debt_write_off`), `src/modules/debts/debt-data-access.ts`, `src/modules/debts/index.ts`, `src/app/api/debts/[id]/write-off/route.ts` (nuevo), `src/app/ui/debts-list.tsx`
+**Cambios realizados:** Se agregaron los campos `writtenOff Boolean @default(false)`, `writeOffNote String?` y `writeOffAt DateTime?` al modelo `Debt`, aplicados con `npx prisma migrate dev --name add-debt-write-off`. Se agregó `writeOffDebt(id, note, tenantId)` en `debt-data-access.ts`, que valida nota no vacía y actualiza con `where: { id, tenantId }` (mismo patrón de scoping por tenant que `updateUserRole`/`deleteUser`, 404 automático vía `P2025` si la deuda no pertenece al tenant). Se creó `PATCH /api/debts/[id]/write-off` con `requireRole(["OWNER"])` (decisión contable sensible). En `debts-list.tsx`: nuevo botón ícono `Ban` "Marcar como incobrable" en cada fila con saldo pendiente y en el footer de `DebtDetailModal` (nuevo prop `onWriteOff`), que abren `WriteOffDebtModal` (nota obligatoria vía `<textarea>`, mismo patrón `submitError`/`isSubmitting` que los demás modales). Las deudas con `writtenOff: true` muestran un badge gris/slate "Incobrable" (prioridad sobre Pagada/Vencida/Pendiente) en la tabla y en el header de `DebtDetailModal`, y se excluyen de `totalDebt`, `activeDebtsCount`, `customersWithDebtCount` y `topDebtors`. No se borra ningún `Debt` ni `DebtPayment` — la baja es un estado, el historial de pagos se conserva intacto.
+**Notas:** No se modificó `exportDebtsToCsv` (Tarea 087) — queda fuera de alcance de esta tarea (solo pide tabla y `DebtDetailModal`); una deuda incobrable exportará hoy como "Pendiente" en el CSV, pendiente de una tarea futura si se requiere. Build, lint y typecheck OK. `npm test`: 204 passed / 1 failed / 2 skipped — el único fallo es el mismo bug preexistente y no relacionado ya documentado en la Tarea 081 (`createSale` no genera `Debt` para ventas a crédito).
+
+---
+
 ## Tarea 089 — Ordenar por mayor monto / más antigua / más reciente / por cliente — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `src/app/ui/debts-list.tsx`

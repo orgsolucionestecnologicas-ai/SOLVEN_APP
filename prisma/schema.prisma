@@ -249,6 +249,9 @@ model Debt {
   totalAmount     Decimal       @db.Decimal(12, 2)
   remainingAmount Decimal       @db.Decimal(12, 2)
   dueDate         DateTime?
+  writtenOff      Boolean       @default(false)
+  writeOffNote    String?
+  writeOffAt      DateTime?
   customer        Customer      @relation(fields: [customerId], references: [id])
   sale            Sale?
   payments        DebtPayment[]

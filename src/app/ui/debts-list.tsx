@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  Ban,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
@@ -29,6 +30,8 @@ type DebtRecord = {
   totalAmount: string;
   remainingAmount: string;
   dueDate: string | null;
+  writtenOff: boolean;
+  writeOffNote: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -151,6 +154,7 @@ export function DebtsList() {
   const [selectedDebt, setSelectedDebt] = useState<DebtRecord | null>(null);
   const [detailDebt, setDetailDebt] = useState<DebtRecord | null>(null);
   const [showCreateDebtModal, setShowCreateDebtModal] = useState(false);
+  const [writeOffTarget, setWriteOffTarget] = useState<DebtRecord | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState("");
 
@@ -224,12 +228,12 @@ export function DebtsList() {
 
   // ── Metrics ────────────────────────────────────────────────────────────────
 
-  const totalDebt = useMemo(() => debts.reduce((s, d) => s + Number(d.remainingAmount), 0), [debts]);
+  const totalDebt = useMemo(() => debts.filter((d) => !d.writtenOff).reduce((s, d) => s + Number(d.remainingAmount), 0), [debts]);
 
-  const activeDebtsCount = useMemo(() => debts.filter((d) => Number(d.remainingAmount) > 0).length, [debts]);
+  const activeDebtsCount = useMemo(() => debts.filter((d) => Number(d.remainingAmount) > 0 && !d.writtenOff).length, [debts]);
 
   const customersWithDebtCount = useMemo(() => {
-    const ids = new Set(debts.filter((d) => Number(d.remainingAmount) > 0).map((d) => d.customerId));
+    const ids = new Set(debts.filter((d) => Number(d.remainingAmount) > 0 && !d.writtenOff).map((d) => d.customerId));
     return ids.size;
   }, [debts]);
 
@@ -249,7 +253,7 @@ export function DebtsList() {
     const map: Record<string, { name: string; remaining: number }> = {};
     for (const d of debts) {
       const rem = Number(d.remainingAmount);
-      if (rem > 0) {
+      if (rem > 0 && !d.writtenOff) {
         if (!map[d.customerId]) map[d.customerId] = { name: d.customer.name, remaining: 0 };
         map[d.customerId].remaining += rem;
       }
@@ -313,6 +317,14 @@ export function DebtsList() {
     setShowCreateDebtModal(false);
     setRefreshKey((k) => k + 1);
     setSuccessMessage("Deuda registrada exitosamente.");
+    setTimeout(() => setSuccessMessage(null), 4000);
+  }
+
+  function handleDebtWrittenOff() {
+    setWriteOffTarget(null);
+    setDetailDebt(null);
+    setRefreshKey((k) => k + 1);
+    setSuccessMessage("Deuda marcada como incobrable.");
     setTimeout(() => setSuccessMessage(null), 4000);
   }
 
@@ -491,7 +503,9 @@ export function DebtsList() {
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
-                            {isPaid ? (
+                            {debt.writtenOff ? (
+                              <span className="inline-flex rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-700">Incobrable</span>
+                            ) : isPaid ? (
                               <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">Pagada</span>
                             ) : isOverdueDebt(debt) ? (
                               <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">Vencida</span>
@@ -521,6 +535,16 @@ export function DebtsList() {
                                   type="button"
                                 >
                                   <MessageCircle size={13} />
+                                </button>
+                              ) : null}
+                              {!isPaid && !debt.writtenOff ? (
+                                <button
+                                  className="rounded-md p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                                  onClick={() => setWriteOffTarget(debt)}
+                                  title="Marcar como incobrable"
+                                  type="button"
+                                >
+                                  <Ban size={13} />
                                 </button>
                               ) : null}
                               <button
@@ -614,11 +638,20 @@ export function DebtsList() {
           payments={payments.filter((p) => p.debtId === detailDebt.id)}
           onClose={() => setDetailDebt(null)}
           onPay={() => { setDetailDebt(null); setSelectedDebt(detailDebt); }}
+          onWriteOff={() => { setDetailDebt(null); setWriteOffTarget(detailDebt); }}
         />
       ) : null}
 
       {showCreateDebtModal ? (
         <CreateDebtModal onClose={() => setShowCreateDebtModal(false)} onCreated={handleDebtCreated} />
+      ) : null}
+
+      {writeOffTarget ? (
+        <WriteOffDebtModal
+          debt={writeOffTarget}
+          onClose={() => setWriteOffTarget(null)}
+          onSuccess={handleDebtWrittenOff}
+        />
       ) : null}
     </div>
   );
@@ -803,6 +836,76 @@ function RegisterDebtPaymentModal({ debt, onClose, onSuccess }: { debt: DebtReco
   );
 }
 
+function WriteOffDebtModal({ debt, onClose, onSuccess }: { debt: DebtRecord; onClose: () => void; onSuccess: () => void }) {
+  const [note, setNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (note.trim().length === 0) { setSubmitError("La nota es obligatoria."); return; }
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const response = await fetch(`/api/debts/${debt.id}/write-off`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note })
+      });
+      const body = (await response.json()) as ApiResponse<{ id: string }>;
+      if (!response.ok || !body.data) {
+        setSubmitError(body.error?.details?.[0] ?? body.error?.message ?? "No se pudo marcar la deuda como incobrable.");
+        return;
+      }
+      onSuccess();
+    } catch {
+      setSubmitError("No se pudo marcar la deuda como incobrable.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">Marcar como incobrable</h2>
+          <button className="text-slate-400 hover:text-slate-700" onClick={onClose} type="button">✕</button>
+        </div>
+        <div className="border-b border-slate-100 px-6 py-4">
+          <dl className="space-y-2">
+            <div className="flex justify-between"><dt className="text-sm text-slate-500">Cliente</dt><dd className="text-sm font-medium text-slate-950">{debt.customer.name}</dd></div>
+            <div className="flex justify-between"><dt className="text-sm text-slate-500">Saldo pendiente</dt><dd className="text-sm font-semibold text-rose-600">{formatMoney(Number(debt.remainingAmount))}</dd></div>
+          </dl>
+        </div>
+        <form className="space-y-4 px-6 py-5" onSubmit={handleSubmit}>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="write-off-note">Motivo (obligatorio)</label>
+            <textarea
+              autoFocus
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="write-off-note"
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Ej: cliente inubicable, deuda judicializada, etc."
+              required
+              rows={3}
+              value={note}
+            />
+          </div>
+          {submitError ? <div className="rounded-lg border border-rose-200 bg-rose-50 p-3"><p className="text-sm font-medium text-rose-900">{submitError}</p></div> : null}
+          <div className="flex justify-end gap-3 pt-2">
+            <button className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100" disabled={isSubmitting} onClick={onClose} type="button">Cancelar</button>
+            <button className="rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50" disabled={isSubmitting} type="submit">
+              {isSubmitting ? "Guardando..." : "Marcar como incobrable"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 type CustomerOption = { id: string; name: string };
 
 function CreateDebtModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
@@ -937,12 +1040,13 @@ function CreateDebtModal({ onClose, onCreated }: { onClose: () => void; onCreate
   );
 }
 
-function DebtDetailModal({ businessName, debt, payments, onClose, onPay }: {
+function DebtDetailModal({ businessName, debt, payments, onClose, onPay, onWriteOff }: {
   businessName: string;
   debt: DebtRecord;
   payments: DebtPaymentRecord[];
   onClose: () => void;
   onPay: () => void;
+  onWriteOff: () => void;
 }) {
   const isPaid = Number(debt.remainingAmount) === 0;
   const overdue = isOverdueDebt(debt);
@@ -956,8 +1060,8 @@ function DebtDetailModal({ businessName, debt, payments, onClose, onPay }: {
             <CustomerAvatar name={debt.customer.name} />
             <div>
               <h2 className="text-sm font-semibold text-slate-950">{debt.customer.name}</h2>
-              <span className={`text-xs ${isPaid ? "text-emerald-600" : overdue ? "text-red-600" : "text-rose-600"}`}>
-                {isPaid ? "Deuda pagada" : overdue ? "Vencida" : "Saldo pendiente"}
+              <span className={`text-xs ${debt.writtenOff ? "text-slate-500" : isPaid ? "text-emerald-600" : overdue ? "text-red-600" : "text-rose-600"}`}>
+                {debt.writtenOff ? "Incobrable" : isPaid ? "Deuda pagada" : overdue ? "Vencida" : "Saldo pendiente"}
               </span>
             </div>
           </div>
@@ -997,22 +1101,34 @@ function DebtDetailModal({ businessName, debt, payments, onClose, onPay }: {
           )}
         </div>
 
-        <div className="flex gap-3 border-t border-slate-200 px-6 py-4">
-          <button className="flex-1 rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={onClose} type="button">Cerrar</button>
-          {!isPaid ? (
+        <div className="flex flex-col gap-2 border-t border-slate-200 px-6 py-4">
+          <div className="flex gap-3">
+            <button className="flex-1 rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={onClose} type="button">Cerrar</button>
+            {!isPaid ? (
+              <button
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-emerald-600 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                disabled={!debt.customer.phone}
+                onClick={() => sendDebtReminderWhatsApp(debt, businessName)}
+                title={debt.customer.phone ? "Recordar por WhatsApp" : "Cliente sin teléfono registrado"}
+                type="button"
+              >
+                <MessageCircle size={14} />
+                Recordar
+              </button>
+            ) : null}
+            {!isPaid ? (
+              <button className="flex-1 rounded-lg bg-violet-600 py-2 text-sm font-medium text-white hover:bg-violet-700" onClick={onPay} type="button">Registrar pago</button>
+            ) : null}
+          </div>
+          {!isPaid && !debt.writtenOff ? (
             <button
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-emerald-600 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-              disabled={!debt.customer.phone}
-              onClick={() => sendDebtReminderWhatsApp(debt, businessName)}
-              title={debt.customer.phone ? "Recordar por WhatsApp" : "Cliente sin teléfono registrado"}
+              className="flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              onClick={onWriteOff}
               type="button"
             >
-              <MessageCircle size={14} />
-              Recordar
+              <Ban size={13} />
+              Marcar como incobrable
             </button>
-          ) : null}
-          {!isPaid ? (
-            <button className="flex-1 rounded-lg bg-violet-600 py-2 text-sm font-medium text-white hover:bg-violet-700" onClick={onPay} type="button">Registrar pago</button>
           ) : null}
         </div>
       </div>

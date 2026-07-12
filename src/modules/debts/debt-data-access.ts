@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 import {
   type CreateDebtInput,
+  DebtValidationError,
   validateCreateDebtInput
 } from "./debt-validation";
 
@@ -22,6 +23,26 @@ export async function createDebt(
       totalAmount: validatedDebt.totalAmount,
       remainingAmount: validatedDebt.remainingAmount,
       dueDate: validatedDebt.dueDate
+    }
+  });
+}
+
+export async function writeOffDebt(
+  id: string,
+  note: string,
+  tenantId: string
+): Promise<Debt> {
+  const trimmedNote = typeof note === "string" ? note.trim() : "";
+  if (trimmedNote.length === 0) {
+    throw new DebtValidationError(["Write-off note is required."]);
+  }
+
+  return prisma.debt.update({
+    where: { id, tenantId },
+    data: {
+      writtenOff: true,
+      writeOffNote: trimmedNote,
+      writeOffAt: new Date()
     }
   });
 }
