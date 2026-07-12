@@ -7,6 +7,9 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### Tarea 067 — Límite de usos totales por promoción (ya implementada)
+Verificado de punta a punta: el modelo `Promotion` ya tiene `maxUsages Int?`, `promotion-validation.ts` ya lo valida como entero positivo, y `promotion-engine.ts` (`isUsageWithinLimits`) ya descarta la promoción del carrito cuando `promotion.usages.length >= promotion.maxUsages`. El campo "Usos máximos totales" ya está expuesto en el formulario de creación/edición en `promotions.tsx` (conectado a `form.maxUsages` e incluido en `buildSubmitPayload`), y `getActivePromotions` ya incluye `usages` para que `/api/promotions/apply` respete el límite correctamente vía `applyPromotionsToCart`. No se realizó ningún cambio de código, conforme a lo indicado en la tarea cuando ambas condiciones ya están satisfechas.
+
 ### Tarea 066 — Vista previa de descuento en el formulario de promoción
 En `src/app/ui/promotions.tsx` se agregó `getFormPreviewText(form)`, un cálculo puramente de cliente (no toca `promotion-engine.ts` ni ningún endpoint) que, según el tipo de promoción y sus valores cargados, arma un texto de ejemplo sobre un producto de referencia de $1000 (ej. "Un producto de $1000 quedaría en $800"). Se muestra en un panel violeta dentro del formulario, actualizándose en tiempo real (`useMemo` sobre `form`) mientras se completan los campos; no se muestra nada si los valores relevantes todavía no son válidos. Build, lint y typecheck OK.
 
