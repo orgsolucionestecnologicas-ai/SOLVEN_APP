@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, Download, FileText, History, PackageX, RotateCcw, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileText, History, PackageX, RotateCcw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -86,6 +86,11 @@ type UsersResponse = {
 
 type ReturnReasonCategory = "DEFECTO" | "ERROR_VENTA" | "CAMBIO_OPINION" | "OTRO";
 
+type ProductStockResponse = {
+  data?: { id: string; stock: number };
+  error?: { message: string };
+};
+
 const RETURN_REASON_OPTIONS: { value: ReturnReasonCategory; label: string }[] = [
   { value: "DEFECTO", label: "Producto defectuoso" },
   { value: "ERROR_VENTA", label: "Error en la venta" },
@@ -127,6 +132,7 @@ export function Returns() {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
   const [restockByProduct, setRestockByProduct] = useState<Record<string, boolean>>({});
+  const [productStockById, setProductStockById] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [returnResult, setReturnResult] = useState<ReturnResult | null>(null);
@@ -171,6 +177,23 @@ export function Returns() {
     }
     setReturnQuantities(initial);
     setRestockByProduct(initialRestock);
+    setProductStockById({});
+
+    const productIds = Object.keys(initial);
+    Promise.all(
+      productIds.map((productId) =>
+        fetch(`/api/products/${productId}`, { headers: { Accept: "application/json" } })
+          .then((res) => res.json())
+          .then((body: ProductStockResponse) => [productId, body.data?.stock] as const)
+          .catch(() => [productId, undefined] as const)
+      )
+    ).then((results) => {
+      const stockById: Record<string, number> = {};
+      for (const [productId, stock] of results) {
+        if (typeof stock === "number") stockById[productId] = stock;
+      }
+      setProductStockById(stockById);
+    });
   }
 
   function handleQuantityChange(productId: string, value: string, max: number) {
@@ -470,15 +493,23 @@ export function Returns() {
                               </div>
                             </div>
                             {currentQty > 0 ? (
-                              <label className="flex items-center gap-2 pl-1 text-xs text-slate-600">
-                                <input
-                                  type="checkbox"
-                                  className="h-3.5 w-3.5 rounded border-slate-300 text-violet-600 focus:ring-violet-400"
-                                  checked={restock}
-                                  onChange={(e) => handleRestockChange(item.productId!, e.target.checked)}
-                                />
-                                Reponer al inventario
-                              </label>
+                              <>
+                                <label className="flex items-center gap-2 pl-1 text-xs text-slate-600">
+                                  <input
+                                    type="checkbox"
+                                    className="h-3.5 w-3.5 rounded border-slate-300 text-violet-600 focus:ring-violet-400"
+                                    checked={restock}
+                                    onChange={(e) => handleRestockChange(item.productId!, e.target.checked)}
+                                  />
+                                  Reponer al inventario
+                                </label>
+                                {!restock && productStockById[item.productId!] === 0 ? (
+                                  <p className="flex items-center gap-1.5 pl-1 text-xs text-amber-600">
+                                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                                    Este producto ya está sin stock y no se repondrá — seguirá sin stock disponible para la venta.
+                                  </p>
+                                ) : null}
+                              </>
                             ) : null}
                           </div>
                         );

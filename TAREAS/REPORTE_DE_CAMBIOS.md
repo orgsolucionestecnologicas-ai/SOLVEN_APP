@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 082 — Advertencia si el producto ya tiene stock 0 y no puede reponerse — 2026-07-12
+**Estado:** ✅ Completada
+**Archivos modificados:** `src/app/ui/returns.tsx`
+**Cambios realizados:** Al seleccionar una venta en "Nueva devolución", ahora se consulta el stock actual de cada producto involucrado vía `GET /api/products/[id]` (en paralelo, sin endpoint nuevo) y se guarda en el estado `productStockById`. Si el checkbox "Reponer al inventario" (Tarea 079) está destildado para un producto y su stock actual es 0, se muestra una advertencia ámbar con ícono `AlertTriangle` junto a la línea del producto: "Este producto ya está sin stock y no se repondrá — seguirá sin stock disponible para la venta." Es puramente informativa, no bloquea el envío.
+**Notas:** Build, lint y typecheck OK. No se modificó `processReturn` ni `/api/returns`.
+
+---
+
 ## Tarea 081 — Nota de crédito de la devolución en PDF descargable — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `src/app/ui/return-credit-note-pdf.tsx` (nuevo), `src/app/api/returns/[id]/pdf/route.tsx` (nuevo), `src/modules/returns/index.ts` (agregada función `getReturnById`), `src/app/ui/returns.tsx`
