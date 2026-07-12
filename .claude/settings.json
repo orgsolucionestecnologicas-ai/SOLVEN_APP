@@ -40,10 +40,30 @@
       "Bash(npx prisma *)",
       "Read(//c/Users/SOLVEN/AppData/Local/Temp/**)",
       "Bash(grep -n -A 30 \"prevents concurrent payments from overpaying a debt\" \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\full_test_059.log\" | head -60)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(mkdir -p \"c:\\\\Users\\\\SOLVEN\\\\Desktop\\\\PROYECTO NOA\\\\SOLVEN\\\\SOLVEN_APP\\\\src\\\\app\\\\api\\\\promotions\\\\[id]\\\\usages\")",
+      "Bash(mkdir -p \"c:\\\\Users\\\\SOLVEN\\\\Desktop\\\\PROYECTO NOA\\\\SOLVEN\\\\SOLVEN_APP\\\\src\\\\app\\\\api\\\\quotes\\\\[id]\\\\duplicate\")",
+      "Bash(exit 0)",
+      "Bash(tee \"/c/Users/SOLVEN/AppData/Local/Temp/claude/c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP/b4ed986d-28cd-40af-b46c-2267a4bc4084/scratchpad/full_test_output.txt\")",
+      "Bash(tee \"/c/Users/SOLVEN/AppData/Local/Temp/claude/c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP/b4ed986d-28cd-40af-b46c-2267a4bc4084/scratchpad/test_083.txt\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\test_084.txt\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\test_084_retry.txt\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\test_086.txt\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\test_086_retry.txt\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\test_087.txt\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\test_088.txt\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\test_089.txt\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\test-090.log\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\test-091.log\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\test-093.log\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\tarea094-test.log\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\tarea095-test.log\")",
+      "Bash(tee \"C:\\\\Users\\\\SOLVEN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP\\\\b4ed986d-28cd-40af-b46c-2267a4bc4084\\\\scratchpad\\\\test-097.log\")"
     ],
     "additionalDirectories": [
-      "/home/diegogama/Escritorio/SOLVEN_APP/src/app/customers/[id]"
+      "/home/diegogama/Escritorio/SOLVEN_APP/src/app/customers/[id]",
+      "c:\\Users\\SOLVEN\\Desktop\\PROYECTO NOA\\SOLVEN\\SOLVEN_APP\\src\\app\\api\\promotions\\[id]",
+      "c:\\Users\\SOLVEN\\Desktop\\PROYECTO NOA\\SOLVEN\\SOLVEN_APP\\src\\app\\api\\quotes\\[id]"
     ]
   }
 }
