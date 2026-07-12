@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 085 — Total global adeudado visible en el encabezado de la sección — 2026-07-12
+**Estado:** ✅ Ya estaba implementada — sin cambios
+**Archivos modificados:** ninguno
+**Verificación:** En `src/app/ui/debts-list.tsx`, la primera de las 4 tarjetas de métricas (`MetricCard` con ícono `AlertCircle` rojo, título "Total deuda") ya muestra `totalDebt` (suma de `remainingAmount` de todas las deudas) en `text-2xl font-bold`, justo debajo del encabezado "Deudas" de la sección. Es suficientemente prominente y no se mezcla con las otras 3 tarjetas. No se modificó `totalDebt`, `/api/debts` ni el schema de Prisma.
+
+---
+
 ## Tarea 084 — Deudas vencidas automáticamente marcadas con badge 'Vencida' en rojo — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `prisma/schema.prisma`, `prisma/migrations/20260712190719_add_debt_due_date/`, `src/app/ui/debts-list.tsx`
