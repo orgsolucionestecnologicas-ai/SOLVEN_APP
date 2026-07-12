@@ -918,11 +918,12 @@ export function QuotesList() {
                         {isActive && (
                           <>
                             <button
-                              className="rounded p-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600"
-                              title="Confirmar cotización"
+                              className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                              title="Convertir en venta"
                               onClick={() => setSelectedQuote(quote)}
                             >
-                              <Check size={15} />
+                              <Check size={13} />
+                              <span className="hidden sm:inline">Convertir en venta</span>
                             </button>
                             <button
                               className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"

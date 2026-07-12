@@ -7,6 +7,9 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### Tarea 074 — Botón "Convertir en venta" más prominente en la tabla
+En `QuoteDetailModal` el botón de confirmación ya era prominente (ancho completo, verde, con ícono). En la tabla principal (`QuotesList`), el ícono pequeño de confirmar (`Check` de 15px mezclado con los demás íconos de la fila) se reemplazó por un botón con fondo `emerald-600`, texto blanco y label "Convertir en venta" (oculto en viewports angostos vía `hidden sm:inline`, dejando solo el ícono en pantallas chicas para no romper el layout de la tabla). El comportamiento al hacer clic no cambió: sigue abriendo `QuoteDetailModal` para confirmar desde ahí. No se modificó `confirmQuote` ni el endpoint de confirmación. Build, lint y typecheck OK.
+
 ### Tarea 073 — Número secuencial visible en cotización (ya implementada)
 Verificado de punta a punta: `Quote.quoteNumber` (formato "COT-XXXX") ya se muestra como primera columna en la tabla de `QuotesList`, como título en `QuoteDetailModal`, y también en el PDF descargable (`quote-pdf.tsx`), en el encabezado violeta destacado junto al nombre del negocio ("Cotización N° {quote.quoteNumber}"), con jerarquía visual clara. No se realizó ningún cambio de código, conforme a lo indicado en la tarea cuando el número ya es visible de forma clara en el PDF.
 
