@@ -7,6 +7,9 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### Tarea 070 — Badge de estado de promoción (copy "Próxima")
+Verificado: la funcionalidad de badges de estado ya estaba completamente implementada (`getPromotionStatus` con los tres estados, `STATUS_STYLES` con colores diferenciados, visible tanto en la tabla como en el detalle de promoción). Único cambio: el label del estado intermedio pasó de "Programada" a "Próxima" en `STATUS_STYLES.scheduled`, y se actualizaron para consistencia los otros dos lugares que usaban el mismo texto: la pestaña de filtro superior ("Programadas" → "Próximas") y la opción del selector de estado ("Programada" → "Próxima"). No se modificó `getPromotionStatus` ni el schema de Prisma. Build, lint y typecheck OK.
+
 ### Tarea 069 — Ranking de promociones por impacto
 Nueva función `getPromotionRanking(tenantId)` en `promotion-data-access.ts`: usa `prisma.promotionUsage.groupBy` (agrupado por `promotionId`, filtrado por tenant vía la relación `promotion.tenantId`) para sumar `discountAmount` y contar usos por promoción, resuelve los nombres con una consulta a `Promotion` y ordena de mayor a menor monto total descontado; las promociones sin usos no aparecen (no hay grupo si no hay `PromotionUsage`). Nuevo endpoint `GET /api/promotions/ranking`. En `src/app/ui/promotions.tsx` se agregó una pestaña "Ranking de impacto" junto a Todas/Activas/Programadas/Finalizadas; al seleccionarla, `PromotionRankingPanel` reemplaza la tabla y el panel lateral habituales y muestra una tabla simple (posición, nombre, usos, total descontado). No se modificó el schema de Prisma ni `promotion-engine.ts`. Build, lint y typecheck OK.
 

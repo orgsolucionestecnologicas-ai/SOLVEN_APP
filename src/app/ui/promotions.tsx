@@ -150,7 +150,7 @@ const TYPE_STYLES: Record<PromotionType, TypeStyle> = {
 
 const STATUS_STYLES: Record<PromotionStatus, { label: string; bg: string; text: string }> = {
   active:    { label: "Activa",     bg: "bg-emerald-50", text: "text-emerald-700" },
-  scheduled: { label: "Programada", bg: "bg-blue-50",    text: "text-blue-700" },
+  scheduled: { label: "Próxima",    bg: "bg-blue-50",    text: "text-blue-700" },
   ended:     { label: "Finalizada", bg: "bg-slate-100",  text: "text-slate-600" },
 };
 
@@ -760,7 +760,7 @@ export function PromotionsList() {
             [
               { key: "all", label: "Todas" },
               { key: "active", label: "Activas" },
-              { key: "scheduled", label: "Programadas" },
+              { key: "scheduled", label: "Próximas" },
               { key: "ended", label: "Finalizadas" },
               { key: "ranking", label: "Ranking de impacto" },
             ] as const
@@ -816,7 +816,7 @@ export function PromotionsList() {
             >
               <option value="">Estado: Todos</option>
               <option value="active">Activa</option>
-              <option value="scheduled">Programada</option>
+              <option value="scheduled">Próxima</option>
               <option value="ended">Finalizada</option>
             </select>
             <select
