@@ -36,6 +36,13 @@ enum PromotionActivation {
   BOTH
 }
 
+enum CustomerSegment {
+  NINGUNO
+  NUEVO
+  RECURRENTE
+  VIP
+}
+
 enum CashRegisterStatus {
   OPEN
   CLOSED
@@ -224,6 +231,7 @@ model Customer {
   phone        String?
   email        String?
   customerCode String?  @unique
+  segment      CustomerSegment @default(NINGUNO)
   debts        Debt[]
   sales        Sale[]
   quotes       Quote[]
@@ -303,6 +311,7 @@ model Promotion {
   daysOfWeek                  String?
   maxUsages                   Int?
   maxUsagesPerCustomer        Int?
+  customerSegment             CustomerSegment?
   isActive                    Boolean              @default(true)
   usages                      PromotionUsage[]
   createdAt                   DateTime             @default(now())

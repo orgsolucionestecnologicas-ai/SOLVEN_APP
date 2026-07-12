@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import type {
+  CustomerSegment,
   PromotionActivation,
   PromotionApplication,
   PromotionType
@@ -32,6 +33,7 @@ export type EnginePromotion = {
   daysOfWeek: string | null;
   maxUsages: number | null;
   maxUsagesPerCustomer: number | null;
+  customerSegment: CustomerSegment | null;
   usages: Array<{ customerId: string | null }>;
 };
 
@@ -322,7 +324,8 @@ function applyBundledPromotion(
 export function applyPromotionsToCart(
   cartItems: CartItem[],
   promotions: EnginePromotion[],
-  customerId?: string
+  customerId?: string,
+  customerSegment?: CustomerSegment
 ): CartResult {
   const workingItems: WorkingItem[] = cartItems.map((item) => ({
     ...item,
@@ -336,6 +339,13 @@ export function applyPromotionsToCart(
   for (const promotion of promotions) {
     if (!isPromotionTimeValid(promotion)) continue;
     if (!isUsageWithinLimits(promotion, customerId)) continue;
+    if (
+      promotion.customerSegment &&
+      promotion.customerSegment !== "NINGUNO" &&
+      promotion.customerSegment !== customerSegment
+    ) {
+      continue;
+    }
 
     let promotionDiscount: Prisma.Decimal;
 

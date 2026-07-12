@@ -32,6 +32,7 @@ function makePromotion(
     daysOfWeek: null,
     maxUsages: null,
     maxUsagesPerCustomer: null,
+    customerSegment: null,
     usages: [],
     ...overrides
   };
@@ -431,6 +432,45 @@ describe("applyPromotionsToCart", () => {
     const result = applyPromotionsToCart(items, [promo], "cust-1");
 
     expect(result.totalDiscount.toNumber()).toBe(0);
+  });
+
+  it("does not apply when customerSegment is set and does not match the cart's segment", () => {
+    const items = [makeCartItem({ quantity: 1, unitPrice: 100 })];
+    const promo = makePromotion({
+      type: "PERCENTAGE",
+      discountValue: new Prisma.Decimal(10),
+      customerSegment: "VIP"
+    });
+
+    const result = applyPromotionsToCart(items, [promo], undefined, "NUEVO");
+
+    expect(result.totalDiscount.toNumber()).toBe(0);
+  });
+
+  it("applies when customerSegment is set and matches the cart's segment", () => {
+    const items = [makeCartItem({ quantity: 1, unitPrice: 100 })];
+    const promo = makePromotion({
+      type: "PERCENTAGE",
+      discountValue: new Prisma.Decimal(10),
+      customerSegment: "VIP"
+    });
+
+    const result = applyPromotionsToCart(items, [promo], undefined, "VIP");
+
+    expect(result.totalDiscount.toNumber()).toBe(10);
+  });
+
+  it("applies to any customer segment when customerSegment is not set", () => {
+    const items = [makeCartItem({ quantity: 1, unitPrice: 100 })];
+    const promo = makePromotion({
+      type: "PERCENTAGE",
+      discountValue: new Prisma.Decimal(10),
+      customerSegment: null
+    });
+
+    const result = applyPromotionsToCart(items, [promo]);
+
+    expect(result.totalDiscount.toNumber()).toBe(10);
   });
 
   it("does not stack the same promotion type twice on the same item", () => {

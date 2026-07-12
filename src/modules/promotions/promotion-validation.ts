@@ -1,4 +1,5 @@
 import type {
+  CustomerSegment,
   PromotionActivation,
   PromotionApplication,
   PromotionType
@@ -23,6 +24,7 @@ export type CreatePromotionInput = {
   daysOfWeek?: string;
   maxUsages?: number;
   maxUsagesPerCustomer?: number;
+  customerSegment?: string;
   isActive?: boolean;
 };
 
@@ -47,6 +49,7 @@ export type ValidatedCreatePromotionInput = {
   daysOfWeek?: string;
   maxUsages?: number;
   maxUsagesPerCustomer?: number;
+  customerSegment?: CustomerSegment;
   isActive: boolean;
 };
 
@@ -76,6 +79,8 @@ const VALID_ACTIVATIONS: PromotionActivation[] = [
   "MANUAL_CODE",
   "BOTH"
 ];
+
+const VALID_SEGMENTS: CustomerSegment[] = ["NINGUNO", "NUEVO", "RECURRENTE", "VIP"];
 
 export class PromotionValidationError extends Error {
   constructor(public readonly reasons: string[]) {
@@ -201,6 +206,13 @@ export function validateCreatePromotion(
     errors.push("El límite de usos por cliente debe ser un entero positivo.");
   }
 
+  if (
+    input.customerSegment !== undefined &&
+    !VALID_SEGMENTS.includes(input.customerSegment as CustomerSegment)
+  ) {
+    errors.push("El segmento de cliente es inválido.");
+  }
+
   if (errors.length > 0) {
     throw new PromotionValidationError(errors);
   }
@@ -230,6 +242,8 @@ export function validateCreatePromotion(
   if (input.maxUsages !== undefined) result.maxUsages = input.maxUsages;
   if (input.maxUsagesPerCustomer !== undefined)
     result.maxUsagesPerCustomer = input.maxUsagesPerCustomer;
+  if (input.customerSegment !== undefined)
+    result.customerSegment = input.customerSegment as CustomerSegment;
 
   return result;
 }
@@ -325,6 +339,14 @@ export function validateUpdatePromotion(
     result.productBId = input.productBId?.trim() || undefined;
   if (input.productBDiscount !== undefined)
     result.productBDiscount = input.productBDiscount;
+
+  if (input.customerSegment !== undefined) {
+    if (!VALID_SEGMENTS.includes(input.customerSegment as CustomerSegment)) {
+      errors.push("El segmento de cliente es inválido.");
+    } else {
+      result.customerSegment = input.customerSegment as CustomerSegment;
+    }
+  }
 
   if (errors.length > 0) {
     throw new PromotionValidationError(errors);

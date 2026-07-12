@@ -1,3 +1,7 @@
+import type { CustomerSegment } from "@prisma/client";
+
+const VALID_SEGMENTS: CustomerSegment[] = ["NINGUNO", "NUEVO", "RECURRENTE", "VIP"];
+
 export type CreateCustomerInput = {
   name: string;
   phone?: string;
@@ -21,6 +25,7 @@ export type UpdateCustomerInput = {
   name?: string;
   phone?: string;
   email?: string;
+  segment?: string;
 };
 
 export function validateCreateCustomerInput(
@@ -56,9 +61,9 @@ export function validateCreateCustomerInput(
 
 export function validateUpdateCustomerInput(
   input: UpdateCustomerInput
-): { name?: string; phone?: string | null; email?: string | null } {
+): { name?: string; phone?: string | null; email?: string | null; segment?: CustomerSegment } {
   const validationErrors: string[] = [];
-  const result: { name?: string; phone?: string | null; email?: string | null } = {};
+  const result: { name?: string; phone?: string | null; email?: string | null; segment?: CustomerSegment } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -75,6 +80,14 @@ export function validateUpdateCustomerInput(
 
   if (input.email !== undefined) {
     result.email = typeof input.email === "string" ? input.email.trim() || null : null;
+  }
+
+  if (input.segment !== undefined) {
+    if (!VALID_SEGMENTS.includes(input.segment as CustomerSegment)) {
+      validationErrors.push("El segmento del cliente es inválido.");
+    } else {
+      result.segment = input.segment as CustomerSegment;
+    }
   }
 
   if (validationErrors.length > 0) {

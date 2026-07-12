@@ -98,6 +98,7 @@ const customerJson = {
   phone: null,
   email: null,
   customerCode: null,
+  segment: "NINGUNO",
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z"
 };
@@ -108,6 +109,7 @@ function buildCustomerRecord(): Awaited<ReturnType<typeof createCustomer>> {
     phone: null,
     email: null,
     customerCode: null,
+    segment: "NINGUNO",
     createdAt: new Date(customerJson.createdAt),
     updatedAt: new Date(customerJson.updatedAt)
   };

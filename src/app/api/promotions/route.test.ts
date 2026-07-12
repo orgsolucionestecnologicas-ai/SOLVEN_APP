@@ -140,6 +140,7 @@ function buildPromotionRecord(): PromotionWithUsageCount {
     daysOfWeek: null,
     maxUsages: null,
     maxUsagesPerCustomer: null,
+    customerSegment: null,
     isActive: true,
     createdAt: new Date("2026-01-01"),
     updatedAt: new Date("2026-01-01"),

@@ -57,11 +57,14 @@ type PromotionRecord = {
   daysOfWeek: string | null;
   maxUsages: number | null;
   maxUsagesPerCustomer: number | null;
+  customerSegment: CustomerSegment | null;
   isActive: boolean;
   _count: { usages: number };
   createdAt: string;
   updatedAt: string;
 };
+
+type CustomerSegment = "NINGUNO" | "NUEVO" | "RECURRENTE" | "VIP";
 
 type ProductRecord = {
   id: string;
@@ -93,6 +96,7 @@ type PromotionFormData = {
   daysOfWeek: number[];
   maxUsages: string;
   maxUsagesPerCustomer: string;
+  customerSegment: string;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -165,6 +169,7 @@ const EMPTY_FORM: PromotionFormData = {
   daysOfWeek: [],
   maxUsages: "",
   maxUsagesPerCustomer: "",
+  customerSegment: "",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -265,6 +270,7 @@ function promotionToForm(promo: PromotionRecord, products: ProductRecord[]): Pro
     daysOfWeek,
     maxUsages: promo.maxUsages ? String(promo.maxUsages) : "",
     maxUsagesPerCustomer: promo.maxUsagesPerCustomer ? String(promo.maxUsagesPerCustomer) : "",
+    customerSegment: promo.customerSegment ?? "",
   };
 }
 
@@ -313,6 +319,7 @@ function buildSubmitPayload(form: PromotionFormData): Record<string, unknown> {
   if (form.maxUsages.trim()) payload.maxUsages = Number(form.maxUsages);
   if (form.maxUsagesPerCustomer.trim())
     payload.maxUsagesPerCustomer = Number(form.maxUsagesPerCustomer);
+  if (form.customerSegment) payload.customerSegment = form.customerSegment;
 
   return payload;
 }
@@ -1910,6 +1917,22 @@ function PromotionModal({
                       value={form.maxUsagesPerCustomer}
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">
+                    Segmento de clientes (opcional)
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
+                    onChange={(e) => set("customerSegment", e.target.value)}
+                    value={form.customerSegment}
+                  >
+                    <option value="">Todos los clientes</option>
+                    <option value="NUEVO">Nuevo</option>
+                    <option value="RECURRENTE">Recurrente</option>
+                    <option value="VIP">VIP</option>
+                  </select>
                 </div>
               </div>
             </div>

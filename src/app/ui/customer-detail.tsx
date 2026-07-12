@@ -22,12 +22,15 @@ import { useParams, useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { formatARS as fmtMoney } from "@/lib/format-currency";
 
+type CustomerSegment = "NINGUNO" | "NUEVO" | "RECURRENTE" | "VIP";
+
 type CustomerRecord = {
   id: string;
   name: string;
   phone?: string | null;
   email?: string | null;
   customerCode?: string;
+  segment?: CustomerSegment;
   createdAt: string;
   updatedAt: string;
 };
@@ -1037,6 +1040,7 @@ function EditCustomerModal({
   const [name, setName] = useState(customer.name);
   const [phone, setPhone] = useState(customer.phone ?? "");
   const [email, setEmail] = useState(customer.email ?? "");
+  const [segment, setSegment] = useState<CustomerSegment>(customer.segment ?? "NINGUNO");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -1052,6 +1056,7 @@ function EditCustomerModal({
           name: name.trim(),
           phone: phone.trim() || null,
           email: email.trim() || null,
+          segment,
         })
       });
       const body = (await res.json()) as ApiResponse<CustomerRecord>;
@@ -1127,6 +1132,24 @@ function EditCustomerModal({
                 value={email}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-segment">
+              Segmento
+            </label>
+            <select
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="edit-segment"
+              onChange={(e) => setSegment(e.target.value as CustomerSegment)}
+              value={segment}
+            >
+              <option value="NINGUNO">Ninguno</option>
+              <option value="NUEVO">Nuevo</option>
+              <option value="RECURRENTE">Recurrente</option>
+              <option value="VIP">VIP</option>
+            </select>
           </div>
 
           {submitError ? (
