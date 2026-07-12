@@ -20,7 +20,8 @@ export async function createDebt(
       tenantId,
       customerId: validatedDebt.customerId,
       totalAmount: validatedDebt.totalAmount,
-      remainingAmount: validatedDebt.remainingAmount
+      remainingAmount: validatedDebt.remainingAmount,
+      dueDate: validatedDebt.dueDate
     }
   });
 }

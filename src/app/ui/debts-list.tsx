@@ -18,7 +18,7 @@ import {
 import Link from "next/link";
 import { getDateRangeParams } from "@/lib/date-filter";
 import { formatARS as formatMoney } from "@/lib/format-currency";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type DebtRecord = {
   id: string;
@@ -98,6 +98,7 @@ export function DebtsList() {
 
   const [selectedDebt, setSelectedDebt] = useState<DebtRecord | null>(null);
   const [detailDebt, setDetailDebt] = useState<DebtRecord | null>(null);
+  const [showCreateDebtModal, setShowCreateDebtModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -243,6 +244,13 @@ export function DebtsList() {
     setTimeout(() => setSuccessMessage(null), 4000);
   }
 
+  function handleDebtCreated() {
+    setShowCreateDebtModal(false);
+    setRefreshKey((k) => k + 1);
+    setSuccessMessage("Deuda registrada exitosamente.");
+    setTimeout(() => setSuccessMessage(null), 4000);
+  }
+
   const tabs: { id: Tab; label: string }[] = [
     { id: "todas", label: "Todas" },
     { id: "pendientes", label: "Pendientes" },
@@ -263,7 +271,11 @@ export function DebtsList() {
           <p className="mt-0.5 text-sm text-slate-500">Controla las deudas y créditos de tus clientes</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50" type="button">
+          <button
+            className="flex items-center gap-1.5 rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            onClick={() => setShowCreateDebtModal(true)}
+            type="button"
+          >
             <Plus size={14} />
             Nueva deuda
           </button>
@@ -518,6 +530,10 @@ export function DebtsList() {
           onPay={() => { setDetailDebt(null); setSelectedDebt(detailDebt); }}
         />
       ) : null}
+
+      {showCreateDebtModal ? (
+        <CreateDebtModal onClose={() => setShowCreateDebtModal(false)} onCreated={handleDebtCreated} />
+      ) : null}
     </div>
   );
 }
@@ -693,6 +709,140 @@ function RegisterDebtPaymentModal({ debt, onClose, onSuccess }: { debt: DebtReco
             <button className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100" disabled={isSubmitting} onClick={onClose} type="button">Cancelar</button>
             <button className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50" disabled={isSubmitting} type="submit">
               {isSubmitting ? "Registrando..." : "Registrar pago"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+type CustomerOption = { id: string; name: string };
+
+function CreateDebtModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
+  const [totalAmount, setTotalAmount] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (customerQuery.length < 2) { setCustomerOptions([]); return; }
+    debounceRef.current = setTimeout(() => {
+      fetch(`/api/customers?search=${encodeURIComponent(customerQuery)}&limit=10`)
+        .then((r) => r.json())
+        .then((body: { data?: CustomerOption[] }) => {
+          if (body.data) setCustomerOptions(body.data);
+        })
+        .catch(() => {});
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [customerQuery]);
+
+  function selectCustomer(c: CustomerOption) {
+    setSelectedCustomer(c);
+    setCustomerQuery(c.name);
+    setCustomerOptions([]);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedCustomer) { setSubmitError("Seleccioná un cliente."); return; }
+    const amount = Number(totalAmount);
+    if (!amount || amount <= 0) { setSubmitError("El monto debe ser mayor a cero."); return; }
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const response = await fetch("/api/debts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId: selectedCustomer.id, totalAmount: amount, dueDate: dueDate || null })
+      });
+      const body = (await response.json()) as ApiResponse<{ id: string }>;
+      if (!response.ok || !body.data) {
+        setSubmitError(body.error?.details?.[0] ?? body.error?.message ?? "No se pudo registrar la deuda.");
+        return;
+      }
+      onCreated();
+    } catch {
+      setSubmitError("No se pudo registrar la deuda.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">Nueva deuda</h2>
+          <button className="text-slate-400 hover:text-slate-700" onClick={onClose} type="button">✕</button>
+        </div>
+        <form className="space-y-4 px-6 py-5" onSubmit={handleSubmit}>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="debt-customer">Cliente</label>
+            <div className="relative">
+              <input
+                autoFocus
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+                disabled={isSubmitting}
+                id="debt-customer"
+                onChange={(e) => { setCustomerQuery(e.target.value); setSelectedCustomer(null); }}
+                placeholder="Buscar cliente..."
+                required
+                value={customerQuery}
+              />
+              {customerOptions.length > 0 ? (
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                  {customerOptions.map((c) => (
+                    <button
+                      className="flex w-full flex-col px-3 py-2 text-left hover:bg-violet-50"
+                      key={c.id}
+                      onClick={() => selectCustomer(c)}
+                      type="button"
+                    >
+                      <span className="text-sm font-medium text-slate-900">{c.name}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="debt-amount">Monto total</label>
+            <input
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="debt-amount"
+              min="0.01"
+              onChange={(e) => setTotalAmount(e.target.value)}
+              placeholder="0.00"
+              required
+              step="0.01"
+              type="number"
+              value={totalAmount}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="debt-due-date">Fecha de vencimiento (opcional)</label>
+            <input
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="debt-due-date"
+              onChange={(e) => setDueDate(e.target.value)}
+              type="date"
+              value={dueDate}
+            />
+          </div>
+          {submitError ? <div className="rounded-lg border border-rose-200 bg-rose-50 p-3"><p className="text-sm font-medium text-rose-900">{submitError}</p></div> : null}
+          <div className="flex justify-end gap-3 pt-2">
+            <button className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100" disabled={isSubmitting} onClick={onClose} type="button">Cancelar</button>
+            <button className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50" disabled={isSubmitting || !selectedCustomer} type="submit">
+              {isSubmitting ? "Guardando..." : "Crear deuda"}
             </button>
           </div>
         </form>

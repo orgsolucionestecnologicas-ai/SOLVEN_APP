@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 086 — Fecha de vencimiento de deuda configurable al registrarla — 2026-07-12
+**Estado:** ✅ Completada
+**Archivos modificados:** `src/app/ui/debts-list.tsx`, `src/modules/debts/debt-validation.ts`, `src/modules/debts/debt-data-access.ts`, `src/modules/debts/debt-validation.test.ts`
+**Cambios realizados:** El botón "Nueva deuda" (antes decorativo, sin `onClick`) ahora abre un nuevo componente `CreateDebtModal` con buscador de cliente con debounce (mismo patrón que `NewQuoteModal` en `quotes-list.tsx`, contra `GET /api/customers?search=...`), un campo de monto total obligatorio y un campo de fecha de vencimiento opcional (`<input type="date">`). Al confirmar hace `POST /api/debts` con `{ customerId, totalAmount, dueDate }`; al éxito cierra el modal y refresca la lista (mismo patrón `refreshKey` usado tras registrar un pago). Se agregó soporte para `dueDate` (opcional, valida que sea una fecha válida si viene) en `CreateDebtInput`/`validateCreateDebtInput`, y `createDebt` ahora persiste el campo agregado en la Tarea 084. No se modificó `/api/debts/route.ts` — ya pasaba el body completo a `createDebt` sin cambios necesarios. No se tocó cómo se generan las deudas automáticas desde ventas a crédito.
+**Notas:** Build, lint y typecheck OK. Se actualizó el test unitario existente `debt-validation.test.ts` (el resultado de `validateCreateDebtInput` ahora incluye `dueDate`) y se agregaron 2 casos nuevos (fecha válida / fecha inválida). `npm test`: tras el ajuste, 203 passed / 1 failed / 2 skipped — el único fallo es el mismo bug preexistente y no relacionado ya documentado en la Tarea 081 (`createSale` no genera `Debt` para ventas a crédito). Dos fallos adicionales vistos en la corrida completa (`prevents concurrent payments from overpaying a debt` y `stock-adjustment` con timeout de transacción) fueron confirmados como flakes transitorios de Neon al re-ejecutarse en aislamiento — pasaron sin cambios de código.
+
+---
+
 ## Tarea 085 — Total global adeudado visible en el encabezado de la sección — 2026-07-12
 **Estado:** ✅ Ya estaba implementada — sin cambios
 **Archivos modificados:** ninguno
