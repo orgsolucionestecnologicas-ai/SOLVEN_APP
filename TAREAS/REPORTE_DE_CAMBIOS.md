@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 096 — Datos AFIP completos: punto de venta, condición IVA, tipo de responsable — 2026-07-13
+**Estado:** ✅ Verificada (ya estaba implementada)
+**Archivos modificados:** ninguno
+**Cambios realizados:** Se verificó que `TenantARCAConfig` ya tiene `cuit String`, `puntoVenta Int` y `condicionIVA String` (comentario en el schema: `"RI" | "MONO"`), y que `FacturacionARCASection` en `src/app/ui/settings.tsx` expone los tres como formulario editable ("Datos del emisor": CUIT sin guiones, punto de venta numérico, y un `<select>` de Condición IVA con "Responsable Inscripto"/"Monotributista"), conectado a `POST /api/tenants/arca-config` (guarda) y `GET /api/tenants/arca-config` (carga inicial). "Condición IVA" cubre el "tipo de responsable" pedido por la tarea — no son dos campos separados que falten. No se agregó "Exento" ni otra condición fiscal adicional al `<select>`: para el perfil de emisor de SOLVEN (comercios minoristas chicos/medianos que emiten con ARCA/AFIP) Responsable Inscripto y Monotributista cubren la casuística real del proyecto; agregar opciones no solicitadas específicamente iba en contra de la regla de "menos es más".
+**Notas:** No se ejecutó build/test porque no hubo cambios de código.
+
+---
+
 ## Tarea 095 — Personalización del ticket: logo, pie de página, mensaje de agradecimiento — 2026-07-13
 **Estado:** ✅ Completada
 **Archivos modificados:** `prisma/schema.prisma` (+ migración `20260712221619_add_receipt_customization`), `src/modules/settings/settings-validation.ts`, `src/app/ui/settings.tsx`, `src/app/ui/pos.tsx`
