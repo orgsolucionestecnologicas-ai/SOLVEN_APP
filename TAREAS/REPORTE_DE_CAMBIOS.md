@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 087 — Exportar listado de deudas a CSV / Excel — 2026-07-12
+**Estado:** ✅ Completada
+**Archivos modificados:** `src/app/ui/debts-list.tsx`
+**Cambios realizados:** Se agregó un botón "Exportar CSV" al inicio de la fila de filtros (mismo lugar y estilo que en `sales-list.tsx`/`cash-movements-list.tsx`). Genera el CSV en el cliente con el mismo patrón ya usado (`escapeCsvValue` + `Blob` + `URL.createObjectURL` + click programático + `revokeObjectURL`, sin librerías nuevas) a partir de `filteredDebts` (las deudas visibles según los filtros aplicados, no solo la página actual), con columnas Cliente, Deuda total, Saldo pendiente, Estado (Pendiente/Pagada/Vencida, reutilizando `isOverdueDebt` de la Tarea 084), Fecha de creación y Fecha de vencimiento. Descarga con nombre `deudas_YYYY-MM-DD.csv` (fecha actual).
+**Notas:** No se modificó `/api/debts` ni el schema de Prisma. No existe archivo de test dedicado para `debts-list.tsx`. Build, lint y typecheck OK. `npm test`: 203 passed / 2 failed / 2 skipped — ambos fallos son preexistentes y no relacionados: `creates a credit sale with debt through the API flow` es el mismo bug ya documentado en la Tarea 081 (`createSale` no genera `Debt` para ventas a crédito), y `prevents concurrent payments from overpaying a debt` es el mismo flake transitorio de Neon ya visto y confirmado en las Tareas 084 y 086. Esta tarea no tocó ningún archivo de backend/API, por lo que ninguno de los dos fallos puede ser una regresión introducida aquí.
+
+---
+
 ## Tarea 086 — Fecha de vencimiento de deuda configurable al registrarla — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `src/app/ui/debts-list.tsx`, `src/modules/debts/debt-validation.ts`, `src/modules/debts/debt-data-access.ts`, `src/modules/debts/debt-validation.test.ts`

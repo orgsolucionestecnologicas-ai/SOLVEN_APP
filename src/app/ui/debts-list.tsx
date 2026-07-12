@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Clock,
   DollarSign,
+  Download,
   Eye,
   MoreHorizontal,
   Plus,
@@ -70,6 +71,42 @@ function getAvatarColor(name: string): string {
   let s = 0;
   for (const ch of name) s += ch.charCodeAt(0);
   return AVATAR_COLORS[s % AVATAR_COLORS.length];
+}
+
+function escapeCsvValue(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function exportDebtsToCsv(debts: DebtRecord[]) {
+  const header = ["Cliente", "Deuda total", "Saldo pendiente", "Estado", "Fecha de creación", "Fecha de vencimiento"];
+  const rows = debts.map((d) => {
+    const isPaid = Number(d.remainingAmount) === 0;
+    const estado = isPaid ? "Pagada" : isOverdueDebt(d) ? "Vencida" : "Pendiente";
+    return [
+      d.customer.name,
+      formatMoney(Number(d.totalAmount)),
+      formatMoney(Number(d.remainingAmount)),
+      estado,
+      formatDate(d.createdAt),
+      d.dueDate ? formatDate(d.dueDate) : ""
+    ];
+  });
+  const csvContent = [header, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `deudas_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 function getPageNumbers(current: number, total: number): (number | "...")[] {
@@ -331,6 +368,14 @@ export function DebtsList() {
 
           {/* Filters */}
           <div className="mb-4 flex flex-wrap items-center gap-2">
+            <button
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              onClick={() => exportDebtsToCsv(filteredDebts)}
+              type="button"
+            >
+              <Download size={13} />
+              Exportar CSV
+            </button>
             <div className="relative min-w-[180px] flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <input
