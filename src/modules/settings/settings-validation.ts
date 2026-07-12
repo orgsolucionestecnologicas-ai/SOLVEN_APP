@@ -1,3 +1,5 @@
+import { IVA_RATES, type IvaRate } from "@/modules/products/product-validation";
+
 export type UpsertSettingsInput = {
   businessName?: string;
   ownerName?: string;
@@ -18,6 +20,7 @@ export type UpsertSettingsInput = {
   receiptFooterMessage?: string;
   receiptThankYouMessage?: string;
   initialReceiptNumber?: number;
+  defaultIvaRate?: number;
 };
 
 export type ValidatedSettingsInput = {
@@ -40,6 +43,7 @@ export type ValidatedSettingsInput = {
   receiptFooterMessage: string;
   receiptThankYouMessage: string;
   initialReceiptNumber: number;
+  defaultIvaRate: number;
 };
 
 export class SettingsValidationError extends Error {
@@ -80,5 +84,9 @@ export function validateUpsertSettingsInput(input: UpsertSettingsInput): Validat
       typeof input.initialReceiptNumber === "number" && Number.isFinite(input.initialReceiptNumber) && input.initialReceiptNumber >= 0
         ? Math.floor(input.initialReceiptNumber)
         : 0,
+    defaultIvaRate:
+      typeof input.defaultIvaRate === "number" && IVA_RATES.includes(input.defaultIvaRate as IvaRate)
+        ? input.defaultIvaRate
+        : 0.21,
   };
 }

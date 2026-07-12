@@ -495,6 +495,7 @@ model StoreSettings {
   receiptFooterMessage String   @default("")
   receiptThankYouMessage String @default("¡Gracias por su compra!")
   initialReceiptNumber Int      @default(0)
+  defaultIvaRate       Float    @default(0.21)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }

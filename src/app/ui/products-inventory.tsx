@@ -1831,6 +1831,17 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetch("/api/settings", { headers: { Accept: "application/json" } })
+      .then((res) => res.json())
+      .then((body: { data?: { defaultIvaRate?: number } }) => {
+        if (typeof body.data?.defaultIvaRate === "number") {
+          setIvaRate(body.data.defaultIvaRate);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);

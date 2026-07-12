@@ -443,6 +443,7 @@ function DocumentosSection() {
   const [receiptFooterMessage, setReceiptFooterMessage] = useState("");
   const [receiptThankYouMessage, setReceiptThankYouMessage] = useState("¡Gracias por su compra!");
   const [initialReceiptNumber, setInitialReceiptNumber] = useState("0");
+  const [defaultIvaRate, setDefaultIvaRate] = useState(0.21);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -462,6 +463,7 @@ function DocumentosSection() {
           setInitialReceiptNumber(
             typeof body.data.initialReceiptNumber === "number" ? String(body.data.initialReceiptNumber) : "0"
           );
+          setDefaultIvaRate(typeof body.data.defaultIvaRate === "number" ? body.data.defaultIvaRate : 0.21);
         }
       })
       .catch(() => {})
@@ -481,7 +483,8 @@ function DocumentosSection() {
           logoUrl,
           receiptFooterMessage,
           receiptThankYouMessage,
-          initialReceiptNumber: Number(initialReceiptNumber) || 0
+          initialReceiptNumber: Number(initialReceiptNumber) || 0,
+          defaultIvaRate
         })
       });
       if (!res.ok) throw new Error();
@@ -551,6 +554,23 @@ function DocumentosSection() {
           />
           <p className="mt-1 text-xs text-slate-400">
             Solo aplica al primer comprobante que emitas (si migrás desde otro sistema y querés continuar la numeración). No afecta comprobantes ya emitidos.
+          </p>
+        </div>
+        <div>
+          <label className={labelCls}>IVA por defecto para productos nuevos</label>
+          <select
+            className={inputCls}
+            disabled={loading}
+            onChange={(e) => setDefaultIvaRate(parseFloat(e.target.value))}
+            value={defaultIvaRate}
+          >
+            <option value={0.21}>21% — Alícuota general</option>
+            <option value={0.105}>10,5% — Alícuota reducida</option>
+            <option value={0.27}>27% — Alícuota incrementada</option>
+            <option value={0}>0% / Exento</option>
+          </select>
+          <p className="mt-1 text-xs text-slate-400">
+            Se usa como valor sugerido al crear un producto nuevo. No modifica el IVA de productos ya existentes.
           </p>
         </div>
       </div>

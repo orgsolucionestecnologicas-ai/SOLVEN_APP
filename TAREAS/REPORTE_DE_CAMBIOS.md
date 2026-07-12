@@ -7,6 +7,19 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 098 — IVA por defecto configurable para productos nuevos — 2026-07-13
+**Estado:** ✅ Completada
+**Archivos modificados:** `prisma/schema.prisma` (+ migración `20260712230538_add_default_iva_rate`), `src/modules/settings/settings-validation.ts`, `src/app/ui/settings.tsx`, `src/app/ui/products-inventory.tsx`
+**Hallazgo previo a implementar:** el archivo que la tarea suponía tenía el valor hardcodeado (`src/app/ui/product-form.tsx`, la página `/products/new`) en realidad **no tiene ningún campo de IVA** — ese formulario nunca envía `ivaRate` al crear un producto, así que siempre queda con el default del servidor. El selector de IVA con `useState<number>(0.21)` hardcodeado que la tarea describía está en realidad en `CreateProductModal` dentro de `src/app/ui/products-inventory.tsx` (el modal rápido de alta de producto usado desde el listado de productos). Se corrigió ahí, no en `product-form.tsx` (que no tenía nada que cambiar). No se tocó `product-validation.ts` (el fallback `let ivaRate = 0.21` para cuando `ivaRate` no viene en el payload, usado por `/products/new` y por la importación CSV) porque está fuera de los archivos permitidos por la tarea y su default sigue siendo el mismo valor (0.21) que ya representaba el comportamiento actual — no cambia nada para quien no configuró un valor distinto.
+**Cambios realizados:**
+- `StoreSettings.defaultIvaRate Float @default(0.21)` (mismo valor que hoy está hardcodeado, sin efecto hasta que se configure distinto).
+- Selector "IVA por defecto para productos nuevos" agregado a la sección "Documentos" de `settings.tsx` (mismas opciones y etiquetas que el selector de IVA ya usado en `products-inventory.tsx`: 21%/10,5%/27%/Exento), guardado vía `PATCH /api/settings`.
+- `CreateProductModal` en `products-inventory.tsx` ahora trae `defaultIvaRate` desde `GET /api/settings` al montar y lo usa como valor inicial del selector de IVA (en vez de `0.21` fijo); si el fetch falla o no hay configuración, se mantiene el fallback `0.21` original.
+**Validación:** `npm run lint` ok, `npm run typecheck` ok, `npm run build` ok, migración aplicada. `npx vitest run` en `products`, `api/products` y `settings`: 15 tests pasados, sin fallos.
+**Notas:** No se modificó `Product.ivaRate` en el schema ni el IVA de productos existentes. No se agregó campo de IVA a `product-form.tsx` — agregar uno ahí sería una funcionalidad nueva no pedida por la tarea (esa página hoy no lo pide en el formulario).
+
+---
+
 ## Tarea 097 — Número inicial de comprobante — 2026-07-13
 **Estado:** ✅ Completada
 **Archivos modificados:** `prisma/schema.prisma` (+ migración `20260712225153_add_initial_receipt_number`), `src/modules/sales/sale-data-access.ts`, `src/modules/settings/settings-validation.ts`, `src/app/ui/settings.tsx`
