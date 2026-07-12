@@ -133,6 +133,7 @@ export function Returns() {
   const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
   const [restockByProduct, setRestockByProduct] = useState<Record<string, boolean>>({});
   const [productStockById, setProductStockById] = useState<Record<string, number>>({});
+  const [formStep, setFormStep] = useState<"form" | "confirm">("form");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [returnResult, setReturnResult] = useState<ReturnResult | null>(null);
@@ -167,6 +168,7 @@ export function Returns() {
     setSubmitError(null);
     setReasonCategory("");
     setReasonNote("");
+    setFormStep("form");
     const initial: Record<string, number> = {};
     const initialRestock: Record<string, boolean> = {};
     for (const item of sale.items) {
@@ -446,6 +448,19 @@ export function Returns() {
                     <p className="text-sm text-slate-500">Esta venta no tiene productos devolvibles.</p>
                     <p className="mt-1 text-xs text-slate-400">Solo los productos de inventario pueden devolverse.</p>
                   </div>
+                ) : formStep === "confirm" ? (
+                  <ReturnConfirmStep
+                    items={productItems}
+                    quantities={returnQuantities}
+                    restockByProduct={restockByProduct}
+                    reasonCategory={reasonCategory}
+                    reasonNote={reasonNote}
+                    total={previewTotal}
+                    isSubmitting={isSubmitting}
+                    submitError={submitError}
+                    onBack={() => setFormStep("form")}
+                    onConfirm={handleSubmit}
+                  />
                 ) : (
                   <>
                     <div className="divide-y divide-slate-100">
@@ -562,12 +577,12 @@ export function Returns() {
 
                       <button
                         type="button"
-                        onClick={handleSubmit}
-                        disabled={!canSubmit || isSubmitting}
+                        onClick={() => setFormStep("confirm")}
+                        disabled={!canSubmit}
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
                       >
                         <RotateCcw className="h-4 w-4" />
-                        {isSubmitting ? "Procesando..." : "Procesar devolución"}
+                        Revisar devolución
                       </button>
 
                       {!hasItemsToReturn ? (
@@ -588,6 +603,110 @@ export function Returns() {
         </div>
       </div>
       )}
+    </div>
+  );
+}
+
+// ─── Confirm Step ─────────────────────────────────────────────────────────────
+
+function ReturnConfirmStep({
+  items,
+  quantities,
+  restockByProduct,
+  reasonCategory,
+  reasonNote,
+  total,
+  isSubmitting,
+  submitError,
+  onBack,
+  onConfirm
+}: {
+  items: SaleItem[];
+  quantities: Record<string, number>;
+  restockByProduct: Record<string, boolean>;
+  reasonCategory: ReturnReasonCategory | "";
+  reasonNote: string;
+  total: number;
+  isSubmitting: boolean;
+  submitError: string | null;
+  onBack: () => void;
+  onConfirm: () => void;
+}) {
+  const itemsToReturn = items.filter((item) => (quantities[item.productId!] ?? 0) > 0);
+  const reasonLabel =
+    RETURN_REASON_OPTIONS.find((option) => option.value === reasonCategory)?.label ?? reasonCategory;
+
+  return (
+    <div className="px-5 py-4">
+      <p className="mb-3 text-sm font-semibold text-slate-900">Confirmá la devolución</p>
+      <p className="mb-4 text-xs text-slate-500">
+        Revisá el detalle antes de procesar. Esta acción afectará el stock y no se puede deshacer.
+      </p>
+
+      <div className="mb-4 divide-y divide-slate-100 rounded-lg border border-slate-200">
+        {itemsToReturn.map((item) => {
+          const restock = restockByProduct[item.productId!] ?? true;
+          return (
+            <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-900">
+                  {item.product?.name ?? "Producto"}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Cantidad: {quantities[item.productId!]} · {restock ? "Repone stock" : "No repone stock"}
+                </p>
+              </div>
+              <p className="shrink-0 text-sm font-semibold text-slate-900">
+                {formatMoney(quantities[item.productId!] * Number(item.unitPrice))}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      <dl className="mb-4 space-y-2 text-sm">
+        <div className="flex justify-between">
+          <dt className="text-slate-500">Motivo</dt>
+          <dd className="font-medium text-slate-900">{reasonLabel}</dd>
+        </div>
+        {reasonNote.trim() ? (
+          <div className="flex justify-between gap-4">
+            <dt className="shrink-0 text-slate-500">Nota</dt>
+            <dd className="text-right text-slate-700">{reasonNote.trim()}</dd>
+          </div>
+        ) : null}
+        <div className="flex justify-between border-t border-slate-100 pt-2">
+          <dt className="font-medium text-slate-700">Total a devolver</dt>
+          <dd className="text-base font-bold text-slate-900">{formatMoney(total)}</dd>
+        </div>
+      </dl>
+
+      {submitError ? (
+        <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-3">
+          <p className="text-sm font-medium text-rose-800">{submitError}</p>
+        </div>
+      ) : null}
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={isSubmitting}
+          className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={isSubmitting}
+          className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+        >
+          <RotateCcw className="h-4 w-4" />
+          {isSubmitting ? "Procesando..." : "Confirmar devolución"}
+        </button>
+      </div>
     </div>
   );
 }

@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 083 — Confirmación de dos pasos con resumen antes de procesar la devolución — 2026-07-12
+**Estado:** ✅ Completada
+**Archivos modificados:** `src/app/ui/returns.tsx`
+**Cambios realizados:** El botón "Procesar devolución" del formulario "Nueva devolución" ahora es "Revisar devolución" y no envía nada directamente — pasa a un paso intermedio dentro del mismo formulario (estado `formStep`, sin modal aparte) que muestra un resumen: productos a devolver con cantidad y si reponen o no stock, el motivo y nota seleccionados, y el monto total, con botones "Volver" (regresa al formulario conservando todo lo cargado: cantidades, motivo, nota, checkboxes de reposición) y "Confirmar devolución" (recién ahí dispara el `POST /api/returns` existente).
+**Notas:** Build, lint y typecheck OK. No se modificó `processReturn` ni `/api/returns` ni el schema de Prisma. `npm test`: 202 passed / 1 failed / 2 skipped — el único fallo es el mismo bug preexistente y no relacionado ya documentado en la Tarea 081 (`createSale` no genera `Debt` para ventas a crédito).
+
+---
+
 ## Tarea 082 — Advertencia si el producto ya tiene stock 0 y no puede reponerse — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `src/app/ui/returns.tsx`
