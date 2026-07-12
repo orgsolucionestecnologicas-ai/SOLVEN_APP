@@ -8,6 +8,7 @@ import {
   Barcode,
   ChevronLeft,
   ChevronRight,
+  Download,
   Filter,
   MoreHorizontal,
   Package,
@@ -15,8 +16,9 @@ import {
   Plus,
   RotateCcw,
   Tag,
+  Upload,
 } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InventoryTab } from "../products/components/InventoryTab";
 import { IVA_RATES } from "@/modules/products/product-validation";
@@ -127,6 +129,103 @@ function getPageNumbers(current: number, total: number): (number | "...")[] {
   return [1, "...", current - 1, current, current + 1, "...", total];
 }
 
+const IMPORT_CSV_HEADERS = [
+  "productCode",
+  "name",
+  "categoryName",
+  "costPrice",
+  "salePrice",
+  "ivaRate",
+  "unit",
+  "stock",
+  "minStock"
+];
+
+function parseCsvLine(line: string): string[] {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (inQuotes) {
+      if (char === '"' && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        current += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === ",") {
+      values.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  values.push(current);
+  return values;
+}
+
+function parseProductsCsv(text: string): Record<string, string>[] {
+  const lines = text.split(/\r\n|\n/).filter((line) => line.trim().length > 0);
+  if (lines.length < 2) return [];
+
+  const headers = parseCsvLine(lines[0]).map((h) => h.trim());
+  const rows: Record<string, string>[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCsvLine(lines[i]);
+    const row: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      row[header] = (values[index] ?? "").trim();
+    });
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function toImportRow(raw: Record<string, string>) {
+  return {
+    productCode: raw.productCode || undefined,
+    name: raw.name || "",
+    categoryName: raw.categoryName || undefined,
+    costPrice: Number(raw.costPrice),
+    salePrice: Number(raw.salePrice),
+    ivaRate: raw.ivaRate ? Number(raw.ivaRate) : undefined,
+    unit: raw.unit || undefined,
+    stock: Number(raw.stock || 0),
+    minStock: raw.minStock ? Number(raw.minStock) : undefined
+  };
+}
+
+function escapeCsvValue(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function downloadProductImportTemplate() {
+  const exampleRow = ["PROD-EJEMPLO", "Producto de ejemplo", "Otros", "100", "150", "0.21", "Unidad", "10", "2"];
+  const csvContent = [IMPORT_CSV_HEADERS, exampleRow]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "plantilla_productos.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ProductsInventory() {
   const router = useRouter();
   const [products, setProducts] = useState<ProductRecord[]>([]);
@@ -145,6 +244,7 @@ export function ProductsInventory() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<"Productos" | "Servicios" | "Inventario">("Productos");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [services, setServices] = useState<ServiceRecord[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
@@ -409,6 +509,14 @@ export function ProductsInventory() {
     showSuccess("Producto creado exitosamente.");
   }
 
+  function handleProductsImported(created: number, updated: number) {
+    setIsImportModalOpen(false);
+    if (created > 0 || updated > 0) {
+      setRefreshKey((k) => k + 1);
+      showSuccess(`Importación completa: ${created} creados, ${updated} actualizados.`);
+    }
+  }
+
   function handleProductEdited() {
     setEditingProduct(null);
     setRefreshKey((k) => k + 1);
@@ -469,6 +577,22 @@ export function ProductsInventory() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            className="flex items-center gap-1.5 rounded-lg border border-violet-300 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50"
+            onClick={downloadProductImportTemplate}
+            type="button"
+          >
+            <Download size={14} />
+            Descargar plantilla CSV
+          </button>
+          <button
+            className="flex items-center gap-1.5 rounded-lg border border-violet-300 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50"
+            onClick={() => setIsImportModalOpen(true)}
+            type="button"
+          >
+            <Upload size={14} />
+            Importar CSV
+          </button>
           <button
             className="flex items-center gap-1.5 rounded-lg border border-violet-300 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50"
             onClick={() => setIsServiceModalOpen(true)}
@@ -1014,6 +1138,13 @@ export function ProductsInventory() {
         />
       ) : null}
 
+      {isImportModalOpen ? (
+        <ImportProductsModal
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={handleProductsImported}
+        />
+      ) : null}
+
       {editingProduct ? (
         <EditProductModal
           categories={selectableCategories}
@@ -1475,6 +1606,209 @@ function BulkConfirmModal({
               {isSubmitting ? "Aplicando..." : "Confirmar"}
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ImportPreviewRow = ReturnType<typeof toImportRow>;
+
+type ImportResult = {
+  created: number;
+  updated: number;
+  errors: Array<{ row: number; message: string }>;
+};
+
+type ImportProductsModalProps = {
+  onClose: () => void;
+  onSuccess: (created: number, updated: number) => void;
+};
+
+function ImportProductsModal({ onClose, onSuccess }: ImportProductsModalProps) {
+  const [rows, setRows] = useState<ImportPreviewRow[]>([]);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setFileName(file.name);
+    setParseError(null);
+    setResult(null);
+    setSubmitError(null);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result ?? "");
+      const parsedRows = parseProductsCsv(text).map(toImportRow);
+      if (parsedRows.length === 0) {
+        setParseError("El archivo no contiene filas válidas.");
+        setRows([]);
+        return;
+      }
+      setRows(parsedRows);
+    };
+    reader.onerror = () => setParseError("No se pudo leer el archivo.");
+    reader.readAsText(file);
+  }
+
+  async function handleConfirm() {
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch("/api/products/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows })
+      });
+      const responseBody = await response.json();
+
+      if (!response.ok || !responseBody.data) {
+        setSubmitError(responseBody.error?.message ?? "No se pudo procesar la importación.");
+        return;
+      }
+
+      setResult(responseBody.data as ImportResult);
+    } catch {
+      setSubmitError("No se pudo procesar la importación.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function handleFinish() {
+    if (result) {
+      onSuccess(result.created, result.updated);
+    } else {
+      onClose();
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-2xl rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">Importar productos desde CSV</h2>
+        </div>
+
+        <div className="max-h-[70vh] overflow-y-auto px-6 py-4">
+          {!result ? (
+            <>
+              <p className="mb-3 text-sm text-slate-500">
+                Seleccioná un archivo CSV con las columnas: {IMPORT_CSV_HEADERS.join(", ")}. Si el
+                código de producto ya existe, se actualiza; si no, se crea un producto nuevo.
+              </p>
+              <input
+                accept=".csv"
+                className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-violet-700 hover:file:bg-violet-100"
+                onChange={handleFileChange}
+                type="file"
+              />
+
+              {parseError ? (
+                <p className="mt-3 text-sm text-red-600">{parseError}</p>
+              ) : null}
+
+              {submitError ? (
+                <p className="mt-3 text-sm text-red-600">{submitError}</p>
+              ) : null}
+
+              {rows.length > 0 ? (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-medium text-slate-500">
+                    {fileName} — {rows.length} filas detectadas. Vista previa (primeras 5):
+                  </p>
+                  <div className="overflow-x-auto rounded-lg border border-slate-200">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-slate-500">
+                        <tr>
+                          <th className="px-2 py-1.5">Código</th>
+                          <th className="px-2 py-1.5">Nombre</th>
+                          <th className="px-2 py-1.5">Costo</th>
+                          <th className="px-2 py-1.5">Venta</th>
+                          <th className="px-2 py-1.5">Stock</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.slice(0, 5).map((row, index) => (
+                          <tr className="border-t border-slate-100" key={index}>
+                            <td className="px-2 py-1.5">{row.productCode ?? "—"}</td>
+                            <td className="px-2 py-1.5">{row.name}</td>
+                            <td className="px-2 py-1.5">{row.costPrice}</td>
+                            <td className="px-2 py-1.5">{row.salePrice}</td>
+                            <td className="px-2 py-1.5">{row.stock}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <div>
+              <p className="text-sm text-slate-700">
+                Importación completa: <strong>{result.created}</strong> creados,{" "}
+                <strong>{result.updated}</strong> actualizados.
+              </p>
+              {result.errors.length > 0 ? (
+                <div className="mt-3">
+                  <p className="mb-1 text-xs font-medium text-red-600">
+                    {result.errors.length} filas con errores:
+                  </p>
+                  <ul className="max-h-48 space-y-1 overflow-y-auto text-xs text-red-600">
+                    {result.errors.map((err) => (
+                      <li key={err.row}>
+                        Fila {err.row}: {err.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
+          {!result ? (
+            <>
+              <button
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                onClick={onClose}
+                type="button"
+              >
+                Cancelar
+              </button>
+              <button
+                className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                disabled={rows.length === 0 || isSubmitting}
+                onClick={handleConfirm}
+                type="button"
+              >
+                {isSubmitting ? "Importando..." : "Confirmar importación"}
+              </button>
+            </>
+          ) : (
+            <button
+              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
+              onClick={handleFinish}
+              type="button"
+            >
+              Cerrar
+            </button>
+          )}
         </div>
       </div>
     </div>

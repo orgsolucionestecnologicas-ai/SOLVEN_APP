@@ -1,8 +1,11 @@
 export {
   createProduct,
   getProductById,
+  importProducts,
   listProducts,
-  updateProduct
+  updateProduct,
+  type ImportProductRow,
+  type ImportProductsResult
 } from "./product-data-access";
 export {
   IVA_RATES,

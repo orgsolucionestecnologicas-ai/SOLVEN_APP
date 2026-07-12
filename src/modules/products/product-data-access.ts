@@ -6,6 +6,7 @@ import { logAudit } from "@/modules/audit";
 
 import {
   type CreateProductInput,
+  ProductValidationError,
   type UpdateProductInput,
   validateCreateProductInput,
   validateUpdateProductInput
@@ -76,4 +77,59 @@ export async function updateProduct(
   }
 
   return product;
+}
+
+export type ImportProductRow = CreateProductInput & { productCode?: string };
+
+export type ImportProductsResult = {
+  created: number;
+  updated: number;
+  errors: Array<{ row: number; message: string }>;
+};
+
+export async function importProducts(
+  rows: ImportProductRow[],
+  tenantId: string
+): Promise<ImportProductsResult> {
+  let created = 0;
+  let updated = 0;
+  const errors: Array<{ row: number; message: string }> = [];
+
+  await prisma.$transaction(async (tx) => {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNumber = i + 1;
+      const productCode =
+        typeof row.productCode === "string" && row.productCode.trim().length > 0
+          ? row.productCode.trim()
+          : undefined;
+
+      try {
+        const existing = productCode
+          ? await tx.product.findFirst({ where: { tenantId, productCode } })
+          : null;
+
+        if (existing) {
+          const { productCode: _ignored, ...updateInput } = row;
+          const data = validateUpdateProductInput(updateInput as UpdateProductInput);
+          await tx.product.update({ where: { id: existing.id, tenantId }, data });
+          updated++;
+        } else {
+          const data = validateCreateProductInput(row);
+          await tx.product.create({
+            data: { ...data, productCode: productCode ?? null, tenantId }
+          });
+          created++;
+        }
+      } catch (error) {
+        const message =
+          error instanceof ProductValidationError
+            ? error.reasons.join(" ")
+            : "Error desconocido al procesar la fila.";
+        errors.push({ row: rowNumber, message });
+      }
+    }
+  });
+
+  return { created, updated, errors };
 }
