@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, History, PackageX, RotateCcw, Search } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, History, PackageX, RotateCcw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -53,6 +53,8 @@ type ReturnHistoryRecord = {
   saleId: string;
   totalAmount: string;
   createdAt: string;
+  reasonCategory: ReturnReasonCategory;
+  reasonNote: string | null;
   sale: { id: string; saleDate: string; customerName: string | null };
   items: ReturnHistoryItem[];
 };
@@ -559,6 +561,46 @@ export function Returns() {
   );
 }
 
+// ─── CSV Export ───────────────────────────────────────────────────────────────
+
+function escapeCsvValue(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function exportReturnsToCsv(records: ReturnHistoryRecord[]) {
+  const header = ["Fecha", "Venta origen", "Productos devueltos", "Cantidad", "Motivo", "Monto devuelto"];
+  const rows = records.map((record) => {
+    const reasonLabel =
+      RETURN_REASON_OPTIONS.find((option) => option.value === record.reasonCategory)?.label ??
+      record.reasonCategory;
+    const totalQuantity = record.items.reduce((acc, item) => acc + item.quantity, 0);
+    return [
+      formatDate(record.createdAt),
+      `#${record.sale.id.slice(-8).toUpperCase()}`,
+      record.items.map((item) => `${item.productName} x${item.quantity}`).join(", "),
+      String(totalQuantity),
+      reasonLabel,
+      formatMoney(record.totalAmount)
+    ];
+  });
+  const csvContent = [header, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `devoluciones_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 // ─── History Panel ────────────────────────────────────────────────────────────
 
 function ReturnHistoryPanel() {
@@ -653,6 +695,15 @@ function ReturnHistoryPanel() {
                 ))}
               </select>
             </div>
+            <button
+              type="button"
+              onClick={() => exportReturnsToCsv(records)}
+              disabled={records.length === 0}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            >
+              <Download className="h-4 w-4" />
+              Exportar CSV
+            </button>
           </div>
         </div>
 

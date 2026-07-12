@@ -41,6 +41,8 @@ export type ReturnListRecord = {
   saleId: string;
   totalAmount: Prisma.Decimal;
   createdAt: Date;
+  reasonCategory: ReturnReasonCategory;
+  reasonNote: string | null;
   sale: { id: string; saleDate: Date; customerName: string | null };
   items: ReturnListItem[];
 };
@@ -84,6 +86,8 @@ export async function listReturns(
     saleId: r.saleId,
     totalAmount: r.totalAmount,
     createdAt: r.createdAt,
+    reasonCategory: r.reasonCategory,
+    reasonNote: r.reasonNote,
     sale: {
       id: r.sale.id,
       saleDate: r.sale.saleDate,
