@@ -452,11 +452,12 @@ model Return {
 }
 
 model ReturnItem {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   returnId  String
-  return    Return @relation(fields: [returnId], references: [id])
+  return    Return  @relation(fields: [returnId], references: [id])
   productId String
   quantity  Int
+  restock   Boolean @default(true)
 
   @@index([returnId])
 }

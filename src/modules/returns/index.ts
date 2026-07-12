@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 export type ReturnItemInput = {
   productId: string;
   quantity: number;
+  restock?: boolean;
 };
 
 export const RETURN_REASON_CATEGORIES = [
@@ -158,25 +159,27 @@ export async function processReturn(
     for (const returnItem of items) {
       const saleItem = saleItemByProductId.get(returnItem.productId)!;
 
-      const updatedProduct = await tx.product.update({
-        where: { id: returnItem.productId },
-        data: { stock: { increment: returnItem.quantity } },
-        select: { stock: true }
-      });
+      if (returnItem.restock !== false) {
+        const updatedProduct = await tx.product.update({
+          where: { id: returnItem.productId },
+          data: { stock: { increment: returnItem.quantity } },
+          select: { stock: true }
+        });
 
-      const newStock = updatedProduct.stock;
-      const previousStock = newStock - returnItem.quantity;
+        const newStock = updatedProduct.stock;
+        const previousStock = newStock - returnItem.quantity;
 
-      await tx.inventoryMovement.create({
-        data: {
-          tenantId,
-          productId: returnItem.productId,
-          reason: `RETURN:${saleId}`,
-          previousStock,
-          newStock,
-          quantityChange: returnItem.quantity
-        }
-      });
+        await tx.inventoryMovement.create({
+          data: {
+            tenantId,
+            productId: returnItem.productId,
+            reason: `RETURN:${saleId}`,
+            previousStock,
+            newStock,
+            quantityChange: returnItem.quantity
+          }
+        });
+      }
 
       returnTotal = returnTotal.plus(saleItem.unitPrice.mul(returnItem.quantity));
     }
@@ -217,7 +220,8 @@ export async function processReturn(
         items: {
           create: items.map((item) => ({
             productId: item.productId,
-            quantity: item.quantity
+            quantity: item.quantity,
+            restock: item.restock !== false
           }))
         }
       }

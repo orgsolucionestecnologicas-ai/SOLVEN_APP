@@ -124,6 +124,7 @@ export function Returns() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
+  const [restockByProduct, setRestockByProduct] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [returnResult, setReturnResult] = useState<ReturnResult | null>(null);
@@ -159,16 +160,25 @@ export function Returns() {
     setReasonCategory("");
     setReasonNote("");
     const initial: Record<string, number> = {};
+    const initialRestock: Record<string, boolean> = {};
     for (const item of sale.items) {
-      if (item.productId) initial[item.productId] = 0;
+      if (item.productId) {
+        initial[item.productId] = 0;
+        initialRestock[item.productId] = true;
+      }
     }
     setReturnQuantities(initial);
+    setRestockByProduct(initialRestock);
   }
 
   function handleQuantityChange(productId: string, value: string, max: number) {
     const parsed = parseInt(value, 10);
     const qty = isNaN(parsed) ? 0 : Math.max(0, Math.min(parsed, max));
     setReturnQuantities((prev) => ({ ...prev, [productId]: qty }));
+  }
+
+  function handleRestockChange(productId: string, restock: boolean) {
+    setRestockByProduct((prev) => ({ ...prev, [productId]: restock }));
   }
 
   const productItems = selectedSale?.items.filter((i) => i.productId) ?? [];
@@ -185,7 +195,11 @@ export function Returns() {
 
     const items = productItems
       .filter((item) => (returnQuantities[item.productId!] ?? 0) > 0)
-      .map((item) => ({ productId: item.productId!, quantity: returnQuantities[item.productId!] }));
+      .map((item) => ({
+        productId: item.productId!,
+        quantity: returnQuantities[item.productId!],
+        restock: restockByProduct[item.productId!] ?? true
+      }));
 
     setIsSubmitting(true);
     setSubmitError(null);
@@ -413,43 +427,57 @@ export function Returns() {
                       {productItems.map((item) => {
                         const maxQty = item.quantity;
                         const currentQty = returnQuantities[item.productId!] ?? 0;
+                        const restock = restockByProduct[item.productId!] ?? true;
                         return (
-                          <div key={item.id} className="flex items-center gap-4 px-5 py-4">
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-slate-900">
-                                {item.product?.name ?? "Producto"}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                Vendidos: {maxQty} · {formatMoney(item.unitPrice)} c/u
-                              </p>
+                          <div key={item.id} className="flex flex-col gap-2 px-5 py-4">
+                            <div className="flex items-center gap-4">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-slate-900">
+                                  {item.product?.name ?? "Producto"}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  Vendidos: {maxQty} · {formatMoney(item.unitPrice)} c/u
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuantityChange(item.productId!, String(currentQty - 1), maxQty)}
+                                  disabled={currentQty === 0}
+                                  className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                                >
+                                  −
+                                </button>
+                                <input
+                                  className="w-14 rounded-md border border-slate-200 px-2 py-1 text-center text-sm font-semibold text-slate-900 focus:border-violet-400 focus:outline-none"
+                                  type="number"
+                                  min="0"
+                                  max={maxQty}
+                                  value={currentQty}
+                                  onChange={(e) => handleQuantityChange(item.productId!, e.target.value, maxQty)}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuantityChange(item.productId!, String(currentQty + 1), maxQty)}
+                                  disabled={currentQty >= maxQty}
+                                  className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                                >
+                                  +
+                                </button>
+                                <span className="w-10 text-right text-xs text-slate-400">/ {maxQty}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleQuantityChange(item.productId!, String(currentQty - 1), maxQty)}
-                                disabled={currentQty === 0}
-                                className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                              >
-                                −
-                              </button>
-                              <input
-                                className="w-14 rounded-md border border-slate-200 px-2 py-1 text-center text-sm font-semibold text-slate-900 focus:border-violet-400 focus:outline-none"
-                                type="number"
-                                min="0"
-                                max={maxQty}
-                                value={currentQty}
-                                onChange={(e) => handleQuantityChange(item.productId!, e.target.value, maxQty)}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleQuantityChange(item.productId!, String(currentQty + 1), maxQty)}
-                                disabled={currentQty >= maxQty}
-                                className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                              >
-                                +
-                              </button>
-                              <span className="w-10 text-right text-xs text-slate-400">/ {maxQty}</span>
-                            </div>
+                            {currentQty > 0 ? (
+                              <label className="flex items-center gap-2 pl-1 text-xs text-slate-600">
+                                <input
+                                  type="checkbox"
+                                  className="h-3.5 w-3.5 rounded border-slate-300 text-violet-600 focus:ring-violet-400"
+                                  checked={restock}
+                                  onChange={(e) => handleRestockChange(item.productId!, e.target.checked)}
+                                />
+                                Reponer al inventario
+                              </label>
+                            ) : null}
                           </div>
                         );
                       })}

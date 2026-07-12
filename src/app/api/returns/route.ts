@@ -102,7 +102,7 @@ export async function POST(request: Request) {
   }
 
   for (const item of input.items as unknown[]) {
-    const returnItem = item as { productId?: unknown; quantity?: unknown };
+    const returnItem = item as { productId?: unknown; quantity?: unknown; restock?: unknown };
 
     if (
       typeof returnItem.productId !== "string" ||
@@ -116,6 +116,10 @@ export async function POST(request: Request) {
       (returnItem.quantity as number) <= 0
     ) {
       return errorResponse("La cantidad a devolver debe ser un entero positivo.", 400);
+    }
+
+    if (returnItem.restock !== undefined && typeof returnItem.restock !== "boolean") {
+      return errorResponse("El campo restock debe ser booleano.", 400);
     }
   }
 
