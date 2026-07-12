@@ -483,6 +483,8 @@ export function DebtsList() {
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {paginatedDebts.map((debt) => {
                       const isPaid = Number(debt.remainingAmount) === 0;
+                      const rowTotal = Number(debt.totalAmount);
+                      const rowPaidPercent = rowTotal > 0 ? Math.min(100, ((rowTotal - Number(debt.remainingAmount)) / rowTotal) * 100) : 0;
                       return (
                         <tr key={debt.id} className="hover:bg-slate-50/50">
                           <td className="px-4 py-3">
@@ -501,6 +503,9 @@ export function DebtsList() {
                             <span className={`text-sm font-semibold ${isPaid ? "text-slate-400" : "text-rose-600"}`}>
                               {formatMoney(Number(debt.remainingAmount))}
                             </span>
+                            <div className="mt-1 h-1 w-full min-w-[60px] overflow-hidden rounded-full bg-slate-100">
+                              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${rowPaidPercent}%` }} />
+                            </div>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
                             {debt.writtenOff ? (
@@ -1051,6 +1056,7 @@ function DebtDetailModal({ businessName, debt, payments, onClose, onPay, onWrite
   const isPaid = Number(debt.remainingAmount) === 0;
   const overdue = isOverdueDebt(debt);
   const paidAmount = Number(debt.totalAmount) - Number(debt.remainingAmount);
+  const paidPercent = Number(debt.totalAmount) > 0 ? Math.min(100, (paidAmount / Number(debt.totalAmount)) * 100) : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onClick={onClose}>
@@ -1081,6 +1087,13 @@ function DebtDetailModal({ businessName, debt, payments, onClose, onPay, onWrite
             <p className="text-xs text-slate-500">Pagado</p>
             <p className="mt-0.5 text-sm font-bold text-emerald-600">{formatMoney(paidAmount)}</p>
           </div>
+        </div>
+
+        <div className="border-b border-slate-200 px-6 py-3">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${paidPercent}%` }} />
+          </div>
+          <p className="mt-1.5 text-xs text-slate-500">{Math.round(paidPercent)}% pagado</p>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">

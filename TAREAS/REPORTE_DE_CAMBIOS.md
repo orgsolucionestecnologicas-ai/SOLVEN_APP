@@ -7,6 +7,14 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## Tarea 091 — Barra de progreso de pago por deuda — 2026-07-12
+**Estado:** ✅ Completada
+**Archivos modificados:** `src/app/ui/debts-list.tsx`
+**Cambios realizados:** En `DebtDetailModal`, debajo de la grilla de 3 columnas (Deuda total / Pendiente / Pagado), se agregó una barra de progreso horizontal (`bg-slate-100` de fondo, `bg-emerald-500` de relleno con ancho `(paidAmount / totalAmount) * 100`%) con el porcentaje como texto ("X% pagado"). También se agregó una versión compacta de la misma barra en la fila de la tabla principal, debajo del monto de saldo pendiente — entró sin romper el layout existente (`whitespace-nowrap`), así que se implementó en ambos lugares. Para deudas totalmente pagadas la barra se ve completa (100%, con `Math.min(100, ...)` como resguardo contra redondeos).
+**Notas:** No se modificó `/api/debts` ni el schema de Prisma — cálculo puramente derivado de `totalAmount`/`remainingAmount` ya disponibles. Build, lint y typecheck OK. `npm test`: 204 passed / 1 failed / 2 skipped — el único fallo es el mismo bug preexistente y no relacionado ya documentado en la Tarea 081.
+
+---
+
 ## Tarea 090 — Marcar deuda como incobrable con nota (baja contable) — 2026-07-12
 **Estado:** ✅ Completada
 **Archivos modificados:** `prisma/schema.prisma` (+ migración `20260712202356_add_debt_write_off`), `src/modules/debts/debt-data-access.ts`, `src/modules/debts/index.ts`, `src/app/api/debts/[id]/write-off/route.ts` (nuevo), `src/app/ui/debts-list.tsx`
