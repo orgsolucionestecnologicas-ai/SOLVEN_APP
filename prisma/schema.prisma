@@ -252,6 +252,7 @@ model Customer {
   phone        String?
   email        String?
   address      String?
+  internalNotes String?
   customerCode String?  @unique
   segment      CustomerSegment @default(NINGUNO)
   debts        Debt[]

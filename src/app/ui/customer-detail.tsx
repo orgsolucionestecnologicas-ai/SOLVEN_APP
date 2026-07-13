@@ -30,6 +30,7 @@ type CustomerRecord = {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  internalNotes?: string | null;
   customerCode?: string;
   segment?: CustomerSegment;
   createdAt: string;
@@ -1055,6 +1056,7 @@ function EditCustomerModal({
   const [phone, setPhone] = useState(customer.phone ?? "");
   const [email, setEmail] = useState(customer.email ?? "");
   const [address, setAddress] = useState(customer.address ?? "");
+  const [internalNotes, setInternalNotes] = useState(customer.internalNotes ?? "");
   const [segment, setSegment] = useState<CustomerSegment>(customer.segment ?? "NINGUNO");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -1072,6 +1074,7 @@ function EditCustomerModal({
           phone: phone.trim() || null,
           email: email.trim() || null,
           address: address.trim() || null,
+          internalNotes: internalNotes.trim() || null,
           segment,
         })
       });
@@ -1167,6 +1170,25 @@ function EditCustomerModal({
                 value={address}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-internal-notes">
+              Notas internas
+              <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+            </label>
+            <textarea
+              className="w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="edit-internal-notes"
+              onChange={(e) => setInternalNotes(e.target.value)}
+              placeholder="Memo interno del negocio..."
+              rows={3}
+              value={internalNotes}
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Solo visible para el equipo — nunca se muestra al cliente en tickets, PDFs ni emails.
+            </p>
           </div>
 
           <div>

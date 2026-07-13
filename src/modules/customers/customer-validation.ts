@@ -28,6 +28,7 @@ export type UpdateCustomerInput = {
   phone?: string;
   email?: string;
   address?: string;
+  internalNotes?: string;
   segment?: string;
 };
 
@@ -69,9 +70,9 @@ export function validateCreateCustomerInput(
 
 export function validateUpdateCustomerInput(
   input: UpdateCustomerInput
-): { name?: string; phone?: string | null; email?: string | null; address?: string | null; segment?: CustomerSegment } {
+): { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; segment?: CustomerSegment } {
   const validationErrors: string[] = [];
-  const result: { name?: string; phone?: string | null; email?: string | null; address?: string | null; segment?: CustomerSegment } = {};
+  const result: { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; segment?: CustomerSegment } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -92,6 +93,10 @@ export function validateUpdateCustomerInput(
 
   if (input.address !== undefined) {
     result.address = typeof input.address === "string" ? input.address.trim() || null : null;
+  }
+
+  if (input.internalNotes !== undefined) {
+    result.internalNotes = typeof input.internalNotes === "string" ? input.internalNotes.trim() || null : null;
   }
 
   if (input.segment !== undefined) {
