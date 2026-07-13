@@ -368,6 +368,15 @@ export function ProductsInventory() {
     return counts;
   }, [products, allCategories]);
 
+  const inventorySummary = useMemo(() => {
+    const totalStockValue = products.reduce(
+      (sum, p) => sum + Number(p.costPrice) * p.stock,
+      0
+    );
+    const outOfStockCount = products.filter((p) => p.stock === 0).length;
+    return { totalSkus: products.length, totalStockValue, outOfStockCount };
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     let result = products;
 
@@ -719,6 +728,35 @@ export function ProductsInventory() {
 
       {/* Inventory panel */}
       {activeMainTab === "Inventario" ? <InventoryTab /> : null}
+
+      {/* Summary cards */}
+      {activeMainTab === "Productos" ? (
+        <div className="grid grid-cols-1 gap-4 border-b border-slate-200 px-6 py-4 sm:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
+              <Package className="text-violet-600" size={16} />
+            </div>
+            <p className="mt-2 text-xs font-medium text-slate-500">Total SKUs</p>
+            <p className="mt-0.5 text-xl font-semibold text-slate-950">{inventorySummary.totalSkus}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+              <Tag className="text-emerald-600" size={16} />
+            </div>
+            <p className="mt-2 text-xs font-medium text-slate-500">Valor total de stock</p>
+            <p className="mt-0.5 text-xl font-semibold text-slate-950">
+              {moneyFormatter.format(inventorySummary.totalStockValue)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50">
+              <AlertTriangle className="text-rose-600" size={16} />
+            </div>
+            <p className="mt-2 text-xs font-medium text-slate-500">Productos sin stock</p>
+            <p className="mt-0.5 text-xl font-semibold text-slate-950">{inventorySummary.outOfStockCount}</p>
+          </div>
+        </div>
+      ) : null}
 
       {/* Body */}
       <div className={`flex border-t border-slate-200 ${activeMainTab !== "Productos" ? "hidden" : ""}`}>
