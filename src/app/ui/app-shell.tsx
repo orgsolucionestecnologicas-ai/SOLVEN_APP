@@ -295,17 +295,26 @@ function GlobalSearch() {
   );
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  OWNER: "Dueño",
+  CASHIER: "Cajero",
+  INVENTORY: "Inventario",
+  READONLY: "Solo lectura"
+};
+
 function SidebarUser() {
   const [businessName, setBusinessName] = useState("");
   const [userName, setUserName] = useState("");
+  const [role, setRole] = useState("");
 
   useEffect(() => {
     fetch("/api/me")
       .then((r) => r.json())
-      .then((body: { data?: { name: string; businessName: string } }) => {
+      .then((body: { data?: { name: string; businessName: string; role?: string } }) => {
         if (body.data) {
           setBusinessName(body.data.businessName);
           setUserName(body.data.name);
+          if (body.data.role) setRole(body.data.role);
         }
       })
       .catch(() => {});
@@ -325,6 +334,9 @@ function SidebarUser() {
         <p className="truncate text-xs text-slate-400">
           {userName || <span className="text-slate-600">—</span>}
         </p>
+        {role ? (
+          <p className="truncate text-[11px] text-slate-500">{ROLE_LABELS[role] ?? role}</p>
+        ) : null}
       </div>
       <ChevronDown size={15} className="flex-shrink-0 text-slate-500" />
     </div>
