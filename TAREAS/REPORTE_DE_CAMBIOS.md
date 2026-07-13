@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### TAREA 124 — ✅ Completada
+- Qué se hizo: se agregó `User.lastLoginAt` (nullable) y se actualiza en `POST /api/auth/login` justo después de verificar contraseña/estado activo y antes de crear la sesión. `users-list.tsx` muestra una columna "Último acceso" con la fecha formateada o "Nunca" si es null.
+- Archivos modificados: `prisma/schema.prisma`, `src/app/api/auth/login/route.ts`, `src/modules/users/user-data-access.ts` (select/tipo `UserSummary`), `src/app/ui/users-list.tsx`.
+- Migraciones corridas (si aplica): `20260713180343_add_user_last_login_at` (nullable, sin backfill) — Diego debe correr `npx prisma migrate deploy` en producción.
+- Algo ya estaba implementado de otra forma / algo quedó pendiente: no se implementó indicador de "sesión activa" en tiempo real — las sesiones son JWT sin tabla de sesiones en BD (`src/lib/auth.ts`/`src/lib/tenant.ts` no llevan tracking de sesiones activas), y la tarea explícitamente prohíbe construir ese sistema. Solo se muestra "Último acceso".
+- typecheck: OK
+
 ### TAREA 122 — ✅ Completada
 - Qué se hizo: `DELETE /api/users/[id]` ahora cuenta ventas asociadas por `sellerCode` antes de borrar; si hay ventas y no viene `?confirm=true`, devuelve `{ deleted: false, salesCount }` sin borrar. En `users-list.tsx`, el modal de eliminación muestra ese número y cambia el botón a "Sí, eliminar de todas formas" para el segundo click que sí confirma el borrado.
 - Archivos modificados: `src/modules/users/user-data-access.ts`, `src/app/api/users/[id]/route.ts`, `src/app/ui/users-list.tsx`.
