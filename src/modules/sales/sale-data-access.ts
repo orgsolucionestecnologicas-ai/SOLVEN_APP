@@ -24,12 +24,20 @@ export type SaleWithItems = Sale & {
 export type SaleWithCustomer = Sale & { customer: { name: string } | null };
 
 export type SaleListRecord = Sale & {
-  customer: { name: string } | null;
+  customer: { name: string; phone: string | null; email: string | null } | null;
   items: (SaleItem & {
     product: { name: string; costPrice: Prisma.Decimal } | null;
     service: { name: string } | null;
   })[];
   returnStatus: "NONE" | "PARTIAL" | "FULL";
+};
+
+export type SaleWithCustomerAndItems = Sale & {
+  customer: { name: string; phone: string | null; email: string | null } | null;
+  items: (SaleItem & {
+    product: { name: string } | null;
+    service: { name: string } | null;
+  })[];
 };
 
 export class SaleProductNotFoundError extends Error {
@@ -50,6 +58,13 @@ export class SaleServiceNotFoundError extends Error {
   constructor(serviceId: string) {
     super(`Service ${serviceId} was not found.`);
     this.name = "SaleServiceNotFoundError";
+  }
+}
+
+export class SaleNotFoundError extends Error {
+  constructor() {
+    super("Sale was not found.");
+    this.name = "SaleNotFoundError";
   }
 }
 
@@ -278,7 +293,7 @@ export async function listSales(
       take: limit,
       skip: (page - 1) * limit,
       include: {
-        customer: { select: { name: true } },
+        customer: { select: { name: true, phone: true, email: true } },
         items: {
           include: {
             product: { select: { name: true, costPrice: true } },
@@ -314,6 +329,28 @@ export async function listSales(
   });
 
   return { data: dataWithReturnStatus, total };
+}
+
+export async function getSaleById(
+  saleId: string,
+  tenantId: string
+): Promise<SaleWithCustomerAndItems> {
+  const sale = await prisma.sale.findFirst({
+    where: { id: saleId, tenantId },
+    include: {
+      customer: { select: { name: true, phone: true, email: true } },
+      items: {
+        include: {
+          product: { select: { name: true } },
+          service: { select: { name: true } }
+        }
+      }
+    }
+  });
+
+  if (!sale) throw new SaleNotFoundError();
+
+  return sale;
 }
 
 function buildProductSaleItem(

@@ -35,7 +35,7 @@ type SaleRecord = {
   customerId: string | null;
   debtId: string | null;
   totalAmount: string;
-  customer: { name: string } | null;
+  customer: { name: string; phone: string | null; email: string | null } | null;
   items: SaleItemRecord[];
   sellerCode: string | null;
   receiptType: "TICKET" | "INVOICE";
@@ -508,6 +508,25 @@ function SaleCard({
   );
 }
 
+function shareSaleWhatsApp(sale: SaleRecord) {
+  const lines = [
+    `Venta ${formatFolio(sale.folio)}`,
+    formatDateTime(sale.saleDate),
+    "",
+    ...sale.items.map(
+      (item) => `${item.quantity} × ${item.product?.name ?? item.service?.name ?? "Ítem"}`
+    ),
+    "",
+    `Total: ${formatMoney(sale.totalAmount)}`
+  ];
+  const text = lines.join("\n");
+  const phoneDigits = sale.customer?.phone?.replace(/\D/g, "") ?? "";
+  const url = phoneDigits
+    ? `https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`
+    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
+}
+
 function SaleDetailModal({
   sale,
   onClose
@@ -515,6 +534,25 @@ function SaleDetailModal({
   sale: SaleRecord;
   onClose: () => void;
 }) {
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
+
+  async function handleSendEmail() {
+    setIsSendingEmail(true);
+    setEmailFeedback(null);
+    try {
+      const res = await fetch(`/api/sales/${sale.id}/send-email`, { method: "POST" });
+      const body = (await res.json()) as { error?: { message: string } };
+      setEmailFeedback(
+        res.ok ? "Comprobante enviado por email." : (body.error?.message ?? "No se pudo enviar el email.")
+      );
+    } catch {
+      setEmailFeedback("No se pudo enviar el email.");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
@@ -631,14 +669,37 @@ function SaleDetailModal({
           )}
         </div>
 
-        <div className="flex justify-end border-t border-slate-200 px-6 py-4">
-          <button
-            className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-            onClick={onClose}
-            type="button"
-          >
-            Cerrar
-          </button>
+        <div className="border-t border-slate-200 px-6 py-4">
+          {emailFeedback ? (
+            <p className="mb-3 text-xs text-slate-500">{emailFeedback}</p>
+          ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className="rounded-md border border-emerald-600 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+                onClick={() => shareSaleWhatsApp(sale)}
+                type="button"
+              >
+                Reenviar por WhatsApp
+              </button>
+              <button
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!sale.customer?.email || isSendingEmail}
+                onClick={handleSendEmail}
+                title={!sale.customer?.email ? "Este cliente no tiene email cargado" : undefined}
+                type="button"
+              >
+                {isSendingEmail ? "Enviando..." : "Reenviar por email"}
+              </button>
+            </div>
+            <button
+              className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              onClick={onClose}
+              type="button"
+            >
+              Cerrar
+            </button>
+          </div>
         </div>
       </div>
     </div>

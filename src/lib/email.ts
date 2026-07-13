@@ -1,4 +1,4 @@
-import type { Quote, QuoteItem } from "@prisma/client";
+import type { Quote, QuoteItem, Sale, SaleItem } from "@prisma/client";
 import { Resend } from "resend";
 
 const FROM = "SOLVEN <no-reply@solven.app>";
@@ -182,6 +182,58 @@ export async function sendQuoteEmail(
       <p style="color:#334155;margin-top:16px">Este presupuesto es válido hasta el <strong>${formatDate(quote.validUntil)}</strong>.</p>
       ${notesSection}
       <p style="color:#334155">Para confirmar, contactá a <strong>${businessName}</strong>.</p>
+    `),
+  });
+}
+
+export async function sendSaleReceiptEmail(
+  to: string,
+  sale: Sale & { customer: { name: string } | null },
+  items: (SaleItem & { product: { name: string } | null; service: { name: string } | null })[],
+  businessName: string
+): Promise<void> {
+  const resend = getResend();
+  if (!resend) return;
+
+  const rows = items
+    .map(
+      (item) =>
+        `<tr>
+          <td style="padding:8px;border-bottom:1px solid #e2e8f0">${item.product?.name ?? item.service?.name ?? "Ítem"}</td>
+          <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center">${item.quantity}</td>
+          <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatARS(Number(item.unitPrice))}</td>
+          <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatARS(Number(item.total))}</td>
+        </tr>`
+    )
+    .join("");
+
+  const folioLabel = `#${String(sale.folio).padStart(4, "0")}`;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Comprobante de tu compra ${folioLabel} — ${businessName}`,
+    html: wrap(`
+      <h2 style="color:#0f172a">Comprobante de compra ${folioLabel}</h2>
+      <p style="color:#334155">Hola${sale.customer ? ` <strong>${sale.customer.name}</strong>` : ""},</p>
+      <p style="color:#334155">Te reenviamos el comprobante de tu compra en <strong>${businessName}</strong> del ${formatDate(sale.saleDate)}:</p>
+      <table style="width:100%;border-collapse:collapse;margin-top:16px">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:8px;text-align:left;color:#64748b;font-size:12px">Producto/Servicio</th>
+            <th style="padding:8px;text-align:center;color:#64748b;font-size:12px">Cant.</th>
+            <th style="padding:8px;text-align:right;color:#64748b;font-size:12px">P. Unitario</th>
+            <th style="padding:8px;text-align:right;color:#64748b;font-size:12px">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" style="padding:8px;text-align:right;font-weight:bold">Total</td>
+            <td style="padding:8px;text-align:right;font-weight:bold;color:#0f172a">${formatARS(Number(sale.totalAmount))}</td>
+          </tr>
+        </tfoot>
+      </table>
     `),
   });
 }
