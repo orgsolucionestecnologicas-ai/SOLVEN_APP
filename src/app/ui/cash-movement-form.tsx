@@ -165,7 +165,8 @@ export function CashMovementForm() {
           type: movementType,
           amount: amountNum,
           source: "MANUAL",
-          referenceId
+          referenceId,
+          note: descripcion.trim()
         })
       });
       const body = (await res.json()) as ApiResponse<unknown>;

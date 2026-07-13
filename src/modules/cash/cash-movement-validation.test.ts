@@ -18,7 +18,8 @@ describe("validateCreateCashMovementInput", () => {
       type: "IN",
       amount: 30.5,
       source: "Sale",
-      referenceId: "sale-1"
+      referenceId: "sale-1",
+      note: null
     });
   });
 
@@ -34,7 +35,8 @@ describe("validateCreateCashMovementInput", () => {
       type: "OUT",
       amount: 15,
       source: "Expense",
-      referenceId: "expense-1"
+      referenceId: "expense-1",
+      note: null
     });
   });
 

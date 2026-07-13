@@ -34,6 +34,7 @@ type CashMovementRecord = {
   amount: string;
   source: string;
   referenceId: string | null;
+  note: string | null;
   movementDate: string;
   createdAt: string;
   updatedAt: string;
@@ -568,8 +569,11 @@ export function CashMovementsList() {
                               </span>
                             </div>
                           </td>
-                          <td className="max-w-[200px] truncate px-4 py-3 text-sm font-medium text-slate-950">
-                            {getDescription(m)}
+                          <td className="max-w-[200px] px-4 py-3">
+                            <p className="truncate text-sm font-medium text-slate-950">{getDescription(m)}</p>
+                            {m.note ? (
+                              <p className="truncate text-xs text-slate-400">{m.note}</p>
+                            ) : null}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-500">
                             {getCategory(m)}
@@ -1126,6 +1130,7 @@ function MovementDetailModal({ movement, onClose }: { movement: CashMovementReco
             {[
               { label: "Categoría", value: getCategory(movement) },
               { label: "Descripción", value: getDescription(movement) },
+              { label: "Nota", value: movement.note ?? "—" },
               { label: "Referencia", value: movement.referenceId ?? "—" },
               { label: "Fecha y hora", value: `${fmtDate(movement.movementDate)} · ${fmtTime(movement.movementDate)}` },
             ].map(({ label, value }) => (

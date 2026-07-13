@@ -5,6 +5,7 @@ export type CreateCashMovementInput = {
   amount: number;
   source: string;
   referenceId: string;
+  note?: string | null;
 };
 
 export type ValidatedCashMovementInput = {
@@ -12,6 +13,7 @@ export type ValidatedCashMovementInput = {
   amount: number;
   source: string;
   referenceId: string;
+  note: string | null;
 };
 
 export class CashMovementValidationError extends Error {
@@ -31,6 +33,8 @@ export function validateCreateCashMovementInput(
     typeof movementInput.referenceId === "string"
       ? movementInput.referenceId.trim()
       : "";
+  const note =
+    typeof movementInput.note === "string" ? movementInput.note.trim() : "";
 
   if (movementInput.type !== "IN" && movementInput.type !== "OUT") {
     validationErrors.push("Cash movement type must be IN or OUT.");
@@ -48,6 +52,10 @@ export function validateCreateCashMovementInput(
     validationErrors.push("Cash movement reference id is required.");
   }
 
+  if (source === "MANUAL" && note.length === 0) {
+    validationErrors.push("Cash movement note is required for manual movements.");
+  }
+
   if (validationErrors.length > 0) {
     throw new CashMovementValidationError(validationErrors);
   }
@@ -56,7 +64,8 @@ export function validateCreateCashMovementInput(
     type: movementInput.type,
     amount: movementInput.amount,
     source,
-    referenceId
+    referenceId,
+    note: note.length > 0 ? note : null
   };
 }
 
