@@ -68,11 +68,11 @@ const navItems: NavItem[] = [
   { type: "link",     href: "/returns",         label: "Devoluciones",  section: "returns",       Icon: RotateCcw },
   { type: "link",     href: "/products",        label: "Productos",     section: "products",      Icon: Package },
   { type: "link",     href: "/customers",       label: "Clientes",      section: "customers",     Icon: Users },
-  { type: "link",     href: "/cash-movements",  label: "Caja",          section: "cashMovements", Icon: CreditCard },
+  { type: "link",     href: "/cash-movements",  label: "Caja",          section: "cashMovements", Icon: CreditCard, hiddenForRoles: ["SUPERVISOR"] },
   { type: "link",     href: "/quotes",          label: "Cotizaciones",  section: "quotes",        Icon: FileText },
   { type: "link",     href: "/reports",         label: "Reportes",      section: "reports",       Icon: BarChart2 },
   { type: "link",     href: "/promotions",      label: "Promociones",   section: "promotions",    Icon: Tag },
-  { type: "link",     href: "/settings",        label: "Ajustes",       section: "settings",      Icon: Settings },
+  { type: "link",     href: "/settings",        label: "Ajustes",       section: "settings",      Icon: Settings, hiddenForRoles: ["SUPERVISOR"] },
   { type: "disabled",                           label: "Licencia",                                Icon: Shield },
 ];
 
@@ -299,7 +299,8 @@ const ROLE_LABELS: Record<string, string> = {
   OWNER: "Dueño",
   CASHIER: "Cajero",
   INVENTORY: "Inventario",
-  READONLY: "Solo lectura"
+  READONLY: "Solo lectura",
+  SUPERVISOR: "Supervisor"
 };
 
 function SidebarUser() {

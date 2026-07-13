@@ -20,14 +20,16 @@ const ROLE_OPTIONS = [
   { value: "OWNER", label: "Propietario" },
   { value: "CASHIER", label: "Cajero" },
   { value: "INVENTORY", label: "Inventario" },
-  { value: "READONLY", label: "Solo lectura" }
+  { value: "READONLY", label: "Solo lectura" },
+  { value: "SUPERVISOR", label: "Supervisor" }
 ];
 
 const ROLE_BADGE_CLASSES: Record<string, string> = {
   OWNER: "bg-violet-100 text-violet-700",
   CASHIER: "bg-blue-100 text-blue-700",
   INVENTORY: "bg-emerald-100 text-emerald-700",
-  READONLY: "bg-slate-100 text-slate-600"
+  READONLY: "bg-slate-100 text-slate-600",
+  SUPERVISOR: "bg-amber-100 text-amber-700"
 };
 
 function roleLabel(role: string): string {

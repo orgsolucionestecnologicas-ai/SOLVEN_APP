@@ -15,8 +15,8 @@ type SettingsNavItem = {
 };
 
 const items: SettingsNavItem[] = [
-  { key: "negocio", label: "Mi Negocio", href: "/settings?s=negocio", Icon: Store, hiddenForRoles: ["CASHIER", "READONLY"] },
-  { key: "usuarios", label: "Usuarios", href: "/settings?s=usuarios", Icon: UserCog, hiddenForRoles: ["CASHIER", "INVENTORY", "READONLY"] },
+  { key: "negocio", label: "Mi Negocio", href: "/settings?s=negocio", Icon: Store, hiddenForRoles: ["CASHIER", "READONLY", "SUPERVISOR"] },
+  { key: "usuarios", label: "Usuarios", href: "/settings?s=usuarios", Icon: UserCog, hiddenForRoles: ["CASHIER", "INVENTORY", "READONLY", "SUPERVISOR"] },
   { key: "suscripcion", label: "Suscripción", href: "/settings?s=suscripcion", Icon: CreditCard },
 ];
 

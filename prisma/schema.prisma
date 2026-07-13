@@ -53,6 +53,7 @@ enum UserRole {
   CASHIER
   INVENTORY
   READONLY
+  SUPERVISOR
 }
 
 enum SubscriptionStatus {
