@@ -604,6 +604,26 @@ export function ProductsInventory() {
           </button>
           <button
             className="flex items-center gap-1.5 rounded-lg border border-violet-300 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50"
+            onClick={() => {
+              window.location.href = "/api/reports/export?type=productos";
+            }}
+            type="button"
+          >
+            <Download size={14} />
+            Exportar catálogo
+          </button>
+          <button
+            className="flex items-center gap-1.5 rounded-lg border border-violet-300 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50"
+            onClick={() => {
+              window.location.href = "/api/reports/export-pdf?type=productos";
+            }}
+            type="button"
+          >
+            <Download size={14} />
+            Exportar PDF
+          </button>
+          <button
+            className="flex items-center gap-1.5 rounded-lg border border-violet-300 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50"
             onClick={() => setIsServiceModalOpen(true)}
             type="button"
           >
