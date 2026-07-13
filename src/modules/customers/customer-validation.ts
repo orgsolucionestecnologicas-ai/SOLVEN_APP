@@ -33,6 +33,7 @@ export type UpdateCustomerInput = {
   internalNotes?: string;
   birthDate?: string | null;
   taxId?: string;
+  creditLimit?: number | null;
   segment?: string;
 };
 
@@ -79,9 +80,9 @@ export function validateCreateCustomerInput(
 
 export function validateUpdateCustomerInput(
   input: UpdateCustomerInput
-): { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; birthDate?: Date | null; taxId?: string | null; segment?: CustomerSegment } {
+): { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; birthDate?: Date | null; taxId?: string | null; creditLimit?: number | null; segment?: CustomerSegment } {
   const validationErrors: string[] = [];
-  const result: { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; birthDate?: Date | null; taxId?: string | null; segment?: CustomerSegment } = {};
+  const result: { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; birthDate?: Date | null; taxId?: string | null; creditLimit?: number | null; segment?: CustomerSegment } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -110,6 +111,16 @@ export function validateUpdateCustomerInput(
 
   if (input.taxId !== undefined) {
     result.taxId = typeof input.taxId === "string" ? input.taxId.trim() || null : null;
+  }
+
+  if (input.creditLimit !== undefined) {
+    if (input.creditLimit === null) {
+      result.creditLimit = null;
+    } else if (typeof input.creditLimit !== "number" || !Number.isFinite(input.creditLimit) || input.creditLimit < 0) {
+      validationErrors.push("El límite de crédito debe ser un número no negativo.");
+    } else {
+      result.creditLimit = input.creditLimit;
+    }
   }
 
   if (input.birthDate !== undefined) {

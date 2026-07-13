@@ -34,6 +34,7 @@ type CustomerRecord = {
   internalNotes?: string | null;
   birthDate?: string | null;
   taxId?: string | null;
+  creditLimit?: string | null;
   customerCode?: string;
   segment?: CustomerSegment;
   createdAt: string;
@@ -1068,6 +1069,7 @@ function EditCustomerModal({
   const [taxId, setTaxId] = useState(customer.taxId ?? "");
   const [internalNotes, setInternalNotes] = useState(customer.internalNotes ?? "");
   const [birthDate, setBirthDate] = useState(customer.birthDate ? customer.birthDate.slice(0, 10) : "");
+  const [creditLimit, setCreditLimit] = useState(customer.creditLimit ?? "");
   const [segment, setSegment] = useState<CustomerSegment>(customer.segment ?? "NINGUNO");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -1088,6 +1090,7 @@ function EditCustomerModal({
           taxId: taxId.trim() || null,
           internalNotes: internalNotes.trim() || null,
           birthDate: birthDate.trim() || null,
+          creditLimit: creditLimit.toString().trim() ? Number(creditLimit) : null,
           segment,
         })
       });
@@ -1236,6 +1239,30 @@ function EditCustomerModal({
               type="date"
               value={birthDate}
             />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-credit-limit">
+              Límite de crédito
+              <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+            </label>
+            <div className="relative">
+              <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+              <input
+                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                disabled={isSubmitting}
+                id="edit-credit-limit"
+                min={0}
+                onChange={(e) => setCreditLimit(e.target.value)}
+                placeholder="Sin límite"
+                step="0.01"
+                type="number"
+                value={creditLimit}
+              />
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              Si se supera al confirmar una venta a crédito, se mostrará una advertencia (no bloqueante).
+            </p>
           </div>
 
           <div>

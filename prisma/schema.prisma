@@ -255,6 +255,7 @@ model Customer {
   internalNotes String?
   birthDate    DateTime?
   taxId        String?
+  creditLimit  Decimal? @db.Decimal(12, 2)
   customerCode String?  @unique
   segment      CustomerSegment @default(NINGUNO)
   debts        Debt[]

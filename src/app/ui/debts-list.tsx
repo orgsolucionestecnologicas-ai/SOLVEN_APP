@@ -648,7 +648,7 @@ export function DebtsList() {
       ) : null}
 
       {showCreateDebtModal ? (
-        <CreateDebtModal onClose={() => setShowCreateDebtModal(false)} onCreated={handleDebtCreated} />
+        <CreateDebtModal onClose={() => setShowCreateDebtModal(false)} onCreated={handleDebtCreated} existingDebts={debts} />
       ) : null}
 
       {writeOffTarget ? (
@@ -911,9 +911,17 @@ function WriteOffDebtModal({ debt, onClose, onSuccess }: { debt: DebtRecord; onC
   );
 }
 
-type CustomerOption = { id: string; name: string };
+type CustomerOption = { id: string; name: string; creditLimit?: string | null };
 
-function CreateDebtModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function CreateDebtModal({
+  onClose,
+  onCreated,
+  existingDebts
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+  existingDebts: DebtRecord[];
+}) {
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
@@ -948,6 +956,20 @@ function CreateDebtModal({ onClose, onCreated }: { onClose: () => void; onCreate
     if (!selectedCustomer) { setSubmitError("Seleccioná un cliente."); return; }
     const amount = Number(totalAmount);
     if (!amount || amount <= 0) { setSubmitError("El monto debe ser mayor a cero."); return; }
+
+    if (selectedCustomer.creditLimit !== null && selectedCustomer.creditLimit !== undefined) {
+      const limit = Number(selectedCustomer.creditLimit);
+      const currentDebt = existingDebts
+        .filter((d) => d.customerId === selectedCustomer.id && !d.writtenOff)
+        .reduce((sum, d) => sum + Number(d.remainingAmount), 0);
+      if (currentDebt + amount > limit) {
+        const confirmed = window.confirm(
+          `Este cliente superaría su límite de crédito de ${formatMoney(limit)} — ¿confirmar de todas formas?`
+        );
+        if (!confirmed) return;
+      }
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
     try {
