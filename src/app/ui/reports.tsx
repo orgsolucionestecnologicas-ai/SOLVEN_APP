@@ -24,7 +24,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatARS } from "@/lib/format-currency";
 
 function formatMoney(value: number | string): string {
@@ -266,6 +266,42 @@ function downloadReportPdf(type: string, from?: string, to?: string) {
   if (from) params.set("from", from);
   if (to) params.set("to", to);
   window.location.href = `/api/reports/export-pdf?${params.toString()}`;
+}
+
+function downloadSvgAsPng(svgElement: SVGSVGElement, filename: string) {
+  const width = svgElement.viewBox.baseVal.width || svgElement.clientWidth;
+  const height = svgElement.viewBox.baseVal.height || svgElement.clientHeight;
+  const clone = svgElement.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute("width", String(width));
+  clone.setAttribute("height", String(height));
+  const svgString = new XMLSerializer().serializeToString(clone);
+  const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+
+  const img = new Image();
+  img.onload = () => {
+    const scale = 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(scale, scale);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  };
+  img.src = svgDataUrl;
 }
 
 export function Reports() {
@@ -711,6 +747,7 @@ function ResumenGeneralTab({
 // ─── SalesEvolutionPanel ──────────────────────────────────────────────────────
 
 function SalesEvolutionPanel({ sales }: { sales: SaleRecord[] }) {
+  const svgRef = useRef<SVGSVGElement>(null);
   const last21 = useMemo(() => getLastNDays(21), []);
   const prev21 = useMemo(() => getLastNDays(42).slice(0, 21), []);
 
@@ -777,9 +814,17 @@ function SalesEvolutionPanel({ sales }: { sales: SaleRecord[] }) {
             Por día
             <ChevronDown className="ml-1 inline" size={11} />
           </button>
+          <button
+            className="rounded-md border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
+            onClick={() => svgRef.current && downloadSvgAsPng(svgRef.current, "evolucion-ventas.png")}
+            title="Descargar PNG"
+            type="button"
+          >
+            <Download size={12} />
+          </button>
         </div>
       </div>
-      <svg className="w-full" viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
+      <svg className="w-full" ref={svgRef} viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
         {gridFractions.map((f, i) => {
           const y = yOf(yMax * f);
           return (
@@ -835,6 +880,7 @@ function buildDonutSegments(data: { value: number; color: string; label: string 
 // ─── CategoryDonutPanel ───────────────────────────────────────────────────────
 
 function CategoryDonutPanel({ sales }: { sales: SaleRecord[] }) {
+  const svgRef = useRef<SVGSVGElement>(null);
   const categoryTotals = useMemo(() => {
     const totals: Record<string, number> = {};
     for (const sale of sales) {
@@ -860,13 +906,23 @@ function CategoryDonutPanel({ sales }: { sales: SaleRecord[] }) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-slate-950">Ventas por categoría</h3>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-950">Ventas por categoría</h3>
+        <button
+          className="rounded-md border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
+          onClick={() => svgRef.current && downloadSvgAsPng(svgRef.current, "ventas-por-categoria.png")}
+          title="Descargar PNG"
+          type="button"
+        >
+          <Download size={12} />
+        </button>
+      </div>
       {total === 0 ? (
         <p className="py-4 text-center text-xs text-slate-400">Sin datos</p>
       ) : (
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0">
-            <svg height="100" viewBox="0 0 100 100" width="100" xmlns="http://www.w3.org/2000/svg">
+            <svg height="100" ref={svgRef} viewBox="0 0 100 100" width="100" xmlns="http://www.w3.org/2000/svg">
               <circle cx={50} cy={50} fill="none" r={36} stroke="#f1f5f9" strokeWidth={14} />
               {segments.map((seg, i) => (
                 <circle
