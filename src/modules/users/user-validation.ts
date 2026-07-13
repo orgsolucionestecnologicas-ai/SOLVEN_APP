@@ -1,4 +1,4 @@
-export const USER_ROLES = ["OWNER", "CASHIER", "INVENTORY", "READONLY"] as const;
+export const USER_ROLES = ["OWNER", "CASHIER", "INVENTORY", "READONLY", "SUPERVISOR"] as const;
 export type UserRoleValue = (typeof USER_ROLES)[number];
 
 export type CreateUserInput = {
