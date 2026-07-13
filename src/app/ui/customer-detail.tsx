@@ -11,6 +11,7 @@ import {
   Lock,
   Mail,
   MapPin,
+  MessageCircle,
   MoreHorizontal,
   Pencil,
   Phone,
@@ -556,10 +557,17 @@ export function CustomerDetail() {
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Contacto</h3>
               <div className="space-y-2">
                 {customer.phone ? (
-                  <div className="flex items-center gap-2">
+                  <a
+                    className="flex items-center gap-2 text-xs text-slate-700 hover:text-emerald-600"
+                    href={`https://wa.me/${customer.phone.replace(/\D/g, "")}`}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    title="Abrir WhatsApp"
+                  >
                     <Phone size={13} className="flex-shrink-0 text-slate-400" />
-                    <span className="text-xs text-slate-700">{customer.phone}</span>
-                  </div>
+                    <span>{customer.phone}</span>
+                    <MessageCircle size={12} className="flex-shrink-0 text-emerald-500" />
+                  </a>
                 ) : null}
                 {customer.email ? (
                   <div className="flex items-center gap-2">

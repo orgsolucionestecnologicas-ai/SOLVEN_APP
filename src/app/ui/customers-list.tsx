@@ -9,6 +9,7 @@ import {
   DollarSign,
   Eye,
   Filter,
+  MessageCircle,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -948,7 +949,20 @@ function CustomerRow({
                 </span>
               ) : null}
             </p>
-            <p className="text-xs text-slate-400">{getCustomerPhone(customer.id)}</p>
+            {customer.phone ? (
+              <a
+                className="flex items-center gap-1 text-xs text-slate-400 hover:text-emerald-600"
+                href={`https://wa.me/${customer.phone.replace(/\D/g, "")}`}
+                rel="noopener noreferrer"
+                target="_blank"
+                title="Abrir WhatsApp"
+              >
+                <MessageCircle size={11} className="flex-shrink-0" />
+                {customer.phone}
+              </a>
+            ) : (
+              <p className="text-xs text-slate-400">Sin teléfono</p>
+            )}
           </div>
         </div>
       </td>
