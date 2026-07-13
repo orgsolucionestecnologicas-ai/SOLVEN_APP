@@ -236,6 +236,7 @@ export function CashRegisterClose({
   const difference = closingAmount - expectedAmount;
   const differenceIsZero = Math.abs(difference) < 0.005;
   const differenceIsPositive = difference > 0.005;
+  const noteRequiredForDifference = !differenceIsZero && !closingNotes.trim();
 
   const pendingDebts = useMemo(
     () => debts.filter((d) => Number(d.remainingAmount) > 0),
@@ -258,6 +259,7 @@ export function CashRegisterClose({
 
   function requestClose(e?: FormEvent) {
     if (e) e.preventDefault();
+    if (noteRequiredForDifference) return;
     setShowConfirmClose(true);
   }
 
@@ -349,7 +351,7 @@ export function CashRegisterClose({
             </button>
             <button
               className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
-              disabled={isSaving}
+              disabled={isSaving || noteRequiredForDifference}
               onClick={() => requestClose()}
               type="button"
             >
@@ -806,16 +808,25 @@ export function CashRegisterClose({
               </h3>
               <div className="mb-4">
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Observaciones
+                  Observaciones {!differenceIsZero ? <span className="text-rose-500">*</span> : null}
                 </label>
                 <textarea
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none ${
+                    noteRequiredForDifference
+                      ? "border-rose-300 focus:border-rose-500"
+                      : "border-slate-200 focus:border-violet-500"
+                  }`}
                   maxLength={200}
                   onChange={(e) => setClosingNotes(e.target.value)}
-                  placeholder="Notas del cierre..."
+                  placeholder={!differenceIsZero ? "Explicá el motivo de la diferencia..." : "Notas del cierre..."}
                   rows={3}
                   value={closingNotes}
                 />
+                {noteRequiredForDifference ? (
+                  <p className="mt-1 text-xs text-rose-600">
+                    Explicá el motivo de la diferencia antes de cerrar la caja.
+                  </p>
+                ) : null}
               </div>
               <div className="rounded-lg bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">Cierre realizado por</p>
@@ -849,15 +860,21 @@ export function CashRegisterClose({
             <div className="text-center">
               <button
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-8 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60 sm:w-auto"
-                disabled={isSaving}
+                disabled={isSaving || noteRequiredForDifference}
                 type="submit"
               >
                 <Lock size={15} />
                 {isSaving ? "Cerrando caja..." : "Cerrar caja y finalizar"}
               </button>
-              <p className="mt-1 text-xs text-slate-400">
-                Esta acción cerrará la sesión de caja del día.
-              </p>
+              {noteRequiredForDifference ? (
+                <p className="mt-1 text-xs font-medium text-rose-600">
+                  Explicá el motivo de la diferencia antes de cerrar la caja.
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-400">
+                  Esta acción cerrará la sesión de caja del día.
+                </p>
+              )}
             </div>
           </div>
         </div>
