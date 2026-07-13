@@ -256,6 +256,16 @@ function getPeriodRange(period: Period, customStart: string, customEnd: string):
   return getMonthRange(0);
 }
 
+function getPreviousPeriodRange(period: Period, currentMonth: { start: Date; end: Date }): { start: Date; end: Date } {
+  if (period === "month") {
+    return getMonthRange(-1);
+  }
+  const durationMs = currentMonth.end.getTime() - currentMonth.start.getTime();
+  const end = new Date(currentMonth.start.getTime() - 1);
+  const start = new Date(end.getTime() - durationMs);
+  return { start, end };
+}
+
 function downloadReportCsv(type: string, from?: string, to?: string) {
   const params = new URLSearchParams({ type });
   if (from) params.set("from", from);
@@ -367,7 +377,10 @@ export function Reports() {
     () => getPeriodRange(selectedPeriod, customStart, customEnd),
     [selectedPeriod, customStart, customEnd]
   );
-  const previousMonth = useMemo(() => getMonthRange(-1), []);
+  const previousMonth = useMemo(
+    () => getPreviousPeriodRange(selectedPeriod, currentMonth),
+    [selectedPeriod, currentMonth]
+  );
 
   const currentSales = useMemo(
     () => sales.filter((s) => { const d = new Date(s.saleDate); return d >= currentMonth.start && d <= currentMonth.end; }),
