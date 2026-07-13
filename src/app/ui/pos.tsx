@@ -548,7 +548,7 @@ export function Pos() {
 
     async function loadProducts() {
       try {
-        const response = await fetch("/api/products", {
+        const response = await fetch("/api/products?active=true", {
           headers: { Accept: "application/json" },
         });
         const body = (await response.json()) as ProductsResponse;

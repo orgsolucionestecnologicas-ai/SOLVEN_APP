@@ -33,6 +33,7 @@ type ProductRecord = {
   ivaRate: number;
   stock: number;
   unit: string;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -563,6 +564,17 @@ export function ProductsInventory() {
     } catch {}
   }
 
+  async function handleToggleProductActive(product: ProductRecord) {
+    try {
+      await fetch(`/api/products/${product.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ active: !product.active })
+      });
+      setRefreshKey((k) => k + 1);
+    } catch {}
+  }
+
   function clearFilters() {
     setSearchQuery("");
     setStatusFilter("Todos");
@@ -1070,6 +1082,9 @@ export function ProductsInventory() {
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Estado
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Activo
+                      </th>
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Acciones
                       </th>
@@ -1098,6 +1113,7 @@ export function ProductsInventory() {
                             openMenuId === product.id ? null : product.id
                           )
                         }
+                        onToggleActive={() => handleToggleProductActive(product)}
                         onToggleSelect={() => toggleSelectOne(product.id)}
                         product={product}
                       />
@@ -1285,6 +1301,7 @@ type ProductRowProps = {
   onAdjustStock: () => void;
   onDelete: () => void;
   onToggleSelect: () => void;
+  onToggleActive: () => void;
 };
 
 function ProductRow({
@@ -1295,7 +1312,8 @@ function ProductRow({
   onEdit,
   onAdjustStock,
   onDelete,
-  onToggleSelect
+  onToggleSelect,
+  onToggleActive
 }: ProductRowProps) {
   const router = useRouter();
   const category = product.categoryName;
@@ -1377,6 +1395,25 @@ function ProductRow({
 
       <td className="px-4 py-3">
         <StockStatusBadge stock={product.stock} />
+      </td>
+
+      <td className="px-4 py-3">
+        <button
+          aria-checked={product.active}
+          className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+            product.active ? "bg-violet-600" : "bg-slate-200"
+          }`}
+          onClick={onToggleActive}
+          role="switch"
+          title={product.active ? "Desactivar producto" : "Activar producto"}
+          type="button"
+        >
+          <span
+            className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ${
+              product.active ? "translate-x-4" : "translate-x-0"
+            }`}
+          />
+        </button>
       </td>
 
       <td className="px-4 py-3">

@@ -27,8 +27,10 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
+  const activeParam = searchParams.get("active");
+  const active = activeParam === "true" ? true : activeParam === "false" ? false : undefined;
   try {
-    const result = await listProducts(tenantId, { page, limit });
+    const result = await listProducts(tenantId, { page, limit, active });
     return paginatedResponse(result.data, page, limit, result.total);
   } catch {
     return errorResponse("No se pudieron cargar los productos.");

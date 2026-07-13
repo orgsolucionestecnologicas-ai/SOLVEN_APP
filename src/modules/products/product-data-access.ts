@@ -24,13 +24,13 @@ export async function createProduct(
   });
 }
 
-export type PaginationParams = { page?: number; limit?: number };
+export type PaginationParams = { page?: number; limit?: number; active?: boolean };
 
 export async function listProducts(
   tenantId: string,
-  { page = 1, limit = 20 }: PaginationParams = {}
+  { page = 1, limit = 20, active }: PaginationParams = {}
 ): Promise<{ data: Product[]; total: number }> {
-  const where = { tenantId };
+  const where = { tenantId, ...(active !== undefined ? { active } : {}) };
   const [data, total] = await prisma.$transaction([
     prisma.product.findMany({ where, orderBy: { name: "asc" }, take: limit, skip: (page - 1) * limit }),
     prisma.product.count({ where }),

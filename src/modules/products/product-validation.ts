@@ -157,13 +157,14 @@ export type UpdateProductInput = {
   ivaRate?: number;
   supplierId?: string | null;
   unit?: string;
+  active?: boolean;
 };
 
 export function validateUpdateProductInput(
   input: UpdateProductInput
-): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string } {
+): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string; active?: boolean } {
   const errors: string[] = [];
-  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string } = {};
+  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string; active?: boolean } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -232,6 +233,10 @@ export function validateUpdateProductInput(
     result.unit = (PRODUCT_UNITS as readonly string[]).includes(input.unit)
       ? input.unit
       : "Unidad (ud)";
+  }
+
+  if (input.active !== undefined) {
+    result.active = Boolean(input.active);
   }
 
   if (errors.length > 0) {
