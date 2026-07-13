@@ -346,6 +346,7 @@ function SidebarUser() {
 
 export function AppShell({ activeSection, eyebrow, title, children }: AppShellProps) {
   const [role, setRole] = useState<string | null>(null);
+  const [rolePermissions, setRolePermissions] = useState<Record<string, boolean> | null>(null);
 
   useEffect(() => {
     fetch("/api/me", { headers: { Accept: "application/json" } })
@@ -354,11 +355,25 @@ export function AppShell({ activeSection, eyebrow, title, children }: AppShellPr
         if (body.data?.role) setRole(body.data.role);
       })
       .catch(() => {});
+    fetch("/api/role-permissions", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: { role: string; section: string; canAccess: boolean }[] }) => {
+        if (!body.data) return;
+        const map: Record<string, boolean> = {};
+        for (const row of body.data) {
+          map[`${row.role}:${row.section}`] = row.canAccess;
+        }
+        setRolePermissions(map);
+      })
+      .catch(() => {});
   }, []);
 
-  const visibleNavItems = navItems.filter(
-    (item) => !(item.type === "link" && item.hiddenForRoles && role && item.hiddenForRoles.includes(role))
-  );
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.type !== "link" || !role) return true;
+    const configured = rolePermissions?.[`${role}:${item.section}`];
+    if (configured !== undefined) return configured;
+    return !(item.hiddenForRoles && item.hiddenForRoles.includes(role));
+  });
 
   return (
     <div className="min-h-screen bg-slate-100 lg:flex">

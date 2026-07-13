@@ -1,3 +1,4 @@
+import { RolePermissionsTable } from "../../ui/role-permissions-table";
 import { UsersList } from "../../ui/users-list";
 
 export function UsuariosPanel() {
@@ -9,6 +10,8 @@ export function UsuariosPanel() {
       </div>
       <hr className="border-slate-200" />
       <UsersList />
+      <hr className="border-slate-200" />
+      <RolePermissionsTable />
     </div>
   );
 }

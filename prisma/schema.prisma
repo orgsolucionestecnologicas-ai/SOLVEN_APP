@@ -108,6 +108,7 @@ model Tenant {
   arcaConfig           TenantARCAConfig?
   arcaTokenCache       ARCATokenCache?
   invoices             Invoice[]
+  rolePermissions      RolePermission[]
 }
 
 model User {
@@ -127,6 +128,20 @@ model User {
   auditLogs AuditLog[]
 
   @@unique([tenantId, userCode])
+  @@index([tenantId])
+}
+
+model RolePermission {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  role       UserRole
+  section    String
+  canAccess  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([tenantId, role, section])
   @@index([tenantId])
 }
 
