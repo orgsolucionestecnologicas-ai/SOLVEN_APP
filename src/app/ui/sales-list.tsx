@@ -579,42 +579,44 @@ function SaleDetailModal({
 
           {sale.items.length > 0 ? (
             <div className="rounded-lg border border-slate-200">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-slate-500">
-                      Producto
-                    </th>
-                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
-                      Cant.
-                    </th>
-                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
-                      Precio unit.
-                    </th>
-                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
-                      Total
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {sale.items.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-4 py-3 text-sm text-slate-950">
-                        {item.product?.name ?? item.service?.name ?? "Ítem"}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm text-slate-700">
-                        {numberFormatter.format(item.quantity)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm text-slate-700">
-                        {formatMoney(item.unitPrice)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-medium text-slate-950">
-                        {formatMoney(item.total)}
-                      </td>
+              <div className="max-h-80 overflow-x-auto overflow-y-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="sticky top-0 z-10 bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-slate-500">
+                        Producto
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
+                        Cant.
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
+                        Precio unit.
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
+                        Total
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {sale.items.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-4 py-3 text-sm text-slate-950">
+                          {item.product?.name ?? item.service?.name ?? "Ítem"}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-slate-700">
+                          {numberFormatter.format(item.quantity)}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-slate-700">
+                          {formatMoney(item.unitPrice)}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-medium text-slate-950">
+                          {formatMoney(item.total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               <div className="flex justify-end border-t border-slate-200 px-4 py-3">
                 <p className="text-sm font-semibold text-slate-950">
                   Total:{" "}
@@ -1105,53 +1107,55 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
 
             {lineItems.length > 0 ? (
               <div className="rounded-lg border border-slate-200">
-                <table className="min-w-full divide-y divide-slate-200">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-slate-500">
-                        Producto
-                      </th>
-                      <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
-                        Cant.
-                      </th>
-                      <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
-                        Precio unit.
-                      </th>
-                      <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
-                        Total
-                      </th>
-                      <th className="px-4 py-2.5" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {lineItems.map((item) => (
-                      <tr key={item.productId}>
-                        <td className="px-4 py-3 text-sm font-medium text-slate-950">
-                          {item.productName}
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm text-slate-700">
-                          {numberFormatter.format(item.quantity)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm text-slate-700">
-                          {formatMoney(String(item.unitPrice))}
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm font-medium text-slate-950">
-                          {formatMoney(String(item.unitPrice * item.quantity))}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            className="text-xs text-slate-400 hover:text-rose-600"
-                            disabled={isSubmitting}
-                            onClick={() => handleRemoveItem(item.productId)}
-                            type="button"
-                          >
-                            Quitar
-                          </button>
-                        </td>
+                <div className="max-h-80 overflow-x-auto overflow-y-auto">
+                  <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="sticky top-0 z-10 bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-slate-500">
+                          Producto
+                        </th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
+                          Cant.
+                        </th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
+                          Precio unit.
+                        </th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase text-slate-500">
+                          Total
+                        </th>
+                        <th className="px-4 py-2.5" />
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {lineItems.map((item) => (
+                        <tr key={item.productId}>
+                          <td className="px-4 py-3 text-sm font-medium text-slate-950">
+                            {item.productName}
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm text-slate-700">
+                            {numberFormatter.format(item.quantity)}
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm text-slate-700">
+                            {formatMoney(String(item.unitPrice))}
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm font-medium text-slate-950">
+                            {formatMoney(String(item.unitPrice * item.quantity))}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              className="text-xs text-slate-400 hover:text-rose-600"
+                              disabled={isSubmitting}
+                              onClick={() => handleRemoveItem(item.productId)}
+                              type="button"
+                            >
+                              Quitar
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
                 <div className="flex justify-end border-t border-slate-200 px-4 py-3">
                   <p className="text-sm font-semibold text-slate-950">

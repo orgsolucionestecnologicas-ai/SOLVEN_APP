@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### TAREA 117 — estado: ✅ Completada
+- Qué se hizo: Las dos tablas `<thead className="bg-slate-50">` de `sales-list.tsx` (línea ~583, ítems dentro del modal de detalle de venta, y línea ~1109, ítems dentro del formulario de "Nueva venta") no tenían un contenedor con altura máxima, así que agregarles `sticky top-0 z-10` al `<thead>` no habría tenido efecto visible. Envolví cada `<table>` en un nuevo `<div className="max-h-80 overflow-x-auto overflow-y-auto">` (el `<div className="rounded-lg border border-slate-200">` que ya envolvía tabla + footer de total se mantuvo intacto por fuera, sin cambiar el layout general) y agregué `sticky top-0 z-10` a ambos `<thead>` (que ya tenían `bg-slate-50`, así que el fondo tapa el contenido que pasa por debajo al hacer scroll). El footer "Total: ..." quedó fuera del contenedor con scroll en ambos casos, para que siempre sea visible sin tener que scrollear.
+- Archivos modificados: `src/app/ui/sales-list.tsx`.
+- Migraciones corridas (si aplica): no.
+- Algo ya estaba implementado de otra forma / algo quedó pendiente: nada pendiente. No se tocó el contenido de las columnas ni el orden de las filas; el ajuste de contenedor se limitó a envolver cada `<table>`, sin modificar el layout general de la pantalla.
+- typecheck: OK (lint también OK). No hay test file dedicado para `sales-list.tsx`.
+
 ### TAREA 116 — estado: ✅ Completada
 - Qué se hizo: Agregué `escapeCsvValue` y `exportExpensesToCsv` a `expenses-list.tsx`, siguiendo exactamente el mismo patrón ya usado en `sales-list.tsx`/`cash-movements-list.tsx` (construcción manual del CSV con `\r\n`, `Blob`, `URL.createObjectURL`, `<a>` con click programático y `URL.revokeObjectURL`, sin librerías nuevas). Columnas: Fecha (`formatDate`), Categoría, Descripción, Monto (`formatMoney`). El botón `QuickActionButton Icon={Download} label="Exportar"` de la barra de acciones rápidas (línea ~411) ahora llama a `exportExpensesToCsv(filteredExpenses)` — el mismo array ya filtrado (búsqueda + categoría, incluido el filtro que ahora también puede setear el donut de la Tarea 115) que se renderiza en la tabla, no `allExpenses` sin filtrar. Nombre de archivo: `gastos-YYYYMMDD.csv`, mismo formato de fecha que ya usa `src/app/api/reports/export/route.ts` (`toISOString().slice(0,10).replace(/-/g,"")`).
 - Archivos modificados: `src/app/ui/expenses-list.tsx`.
