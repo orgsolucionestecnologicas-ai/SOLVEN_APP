@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  Download,
   DollarSign,
   Eye,
   Filter,
@@ -26,6 +27,9 @@ type CustomerRecord = {
   id: string;
   name: string;
   customerCode?: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
   birthDate?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -181,6 +185,39 @@ function isBirthdaySoon(birthDate?: string | null): boolean {
 
   const diffDays = Math.round((nextBirthday.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
   return diffDays >= 0 && diffDays <= 7;
+}
+
+function escapeCsvValue(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function exportCustomersToCsv(customers: CustomerRecord[], metrics: Record<string, CustomerMetrics>) {
+  const header = ["Nombre", "Teléfono", "Email", "Código", "Segmento", "Dirección", "Fecha de cumpleaños"];
+  const rows = customers.map((c) => [
+    c.name,
+    c.phone ?? "",
+    c.email ?? "",
+    c.customerCode ?? "",
+    metrics[c.id]?.segment ?? "Inactivo",
+    c.address ?? "",
+    c.birthDate ? formatDate(c.birthDate) : ""
+  ]);
+  const csvContent = [header, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `clientes-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 export function CustomersList() {
@@ -533,6 +570,15 @@ export function CustomersList() {
                   Limpiar filtros
                 </button>
               ) : null}
+              <button
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={filteredCustomers.length === 0}
+                onClick={() => exportCustomersToCsv(filteredCustomers, customerMetrics)}
+                type="button"
+              >
+                <Download size={13} />
+                Exportar
+              </button>
             </div>
             {showFilters ? (
               <div className="flex flex-wrap items-center gap-2">
