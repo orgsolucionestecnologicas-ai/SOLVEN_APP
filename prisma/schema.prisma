@@ -496,6 +496,8 @@ model StoreSettings {
   receiptThankYouMessage String @default("¡Gracias por su compra!")
   initialReceiptNumber Int      @default(0)
   defaultIvaRate       Float    @default(0.21)
+  businessType         String   @default("")
+  preferredPaymentMethod String @default("efectivo")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }

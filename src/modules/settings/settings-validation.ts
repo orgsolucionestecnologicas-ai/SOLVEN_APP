@@ -21,6 +21,8 @@ export type UpsertSettingsInput = {
   receiptThankYouMessage?: string;
   initialReceiptNumber?: number;
   defaultIvaRate?: number;
+  businessType?: string;
+  preferredPaymentMethod?: string;
 };
 
 export type ValidatedSettingsInput = {
@@ -44,6 +46,8 @@ export type ValidatedSettingsInput = {
   receiptThankYouMessage: string;
   initialReceiptNumber: number;
   defaultIvaRate: number;
+  businessType: string;
+  preferredPaymentMethod: string;
 };
 
 export class SettingsValidationError extends Error {
@@ -88,5 +92,10 @@ export function validateUpsertSettingsInput(input: UpsertSettingsInput): Validat
       typeof input.defaultIvaRate === "number" && IVA_RATES.includes(input.defaultIvaRate as IvaRate)
         ? input.defaultIvaRate
         : 0.21,
+    businessType: typeof input.businessType === "string" ? input.businessType.trim() : "",
+    preferredPaymentMethod:
+      typeof input.preferredPaymentMethod === "string" && input.preferredPaymentMethod.trim()
+        ? input.preferredPaymentMethod.trim()
+        : "efectivo",
   };
 }
