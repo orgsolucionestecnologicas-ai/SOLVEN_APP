@@ -254,6 +254,7 @@ model Customer {
   address      String?
   internalNotes String?
   birthDate    DateTime?
+  taxId        String?
   customerCode String?  @unique
   segment      CustomerSegment @default(NINGUNO)
   debts        Debt[]

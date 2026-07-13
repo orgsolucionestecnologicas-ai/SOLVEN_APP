@@ -2,6 +2,7 @@
 
 import {
   ArrowLeft,
+  IdCard,
   Mail,
   MapPin,
   Phone,
@@ -28,6 +29,7 @@ export function CustomerNewForm() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
+  const [taxId, setTaxId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -47,7 +49,8 @@ export function CustomerNewForm() {
           name: trimmed,
           ...(phone.trim() ? { phone: phone.trim() } : {}),
           ...(email.trim() ? { email: email.trim() } : {}),
-          ...(address.trim() ? { address: address.trim() } : {})
+          ...(address.trim() ? { address: address.trim() } : {}),
+          ...(taxId.trim() ? { taxId: taxId.trim() } : {})
         })
       });
       const body = (await res.json()) as ApiResponse<CustomerRecord>;
@@ -194,6 +197,25 @@ export function CustomerNewForm() {
                       placeholder="Ej. Av. Siempre Viva 742, CABA"
                       type="text"
                       value={address}
+                    />
+                  </div>
+                </div>
+                {/* Tax ID */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="customer-tax-id">
+                    CUIT / DNI
+                    <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+                  </label>
+                  <div className="relative">
+                    <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                    <input
+                      className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                      disabled={isSubmitting}
+                      id="customer-tax-id"
+                      onChange={(e) => setTaxId(e.target.value)}
+                      placeholder="Ej. 20-12345678-9"
+                      type="text"
+                      value={taxId}
                     />
                   </div>
                 </div>

@@ -7,6 +7,7 @@ export type CreateCustomerInput = {
   phone?: string;
   email?: string;
   address?: string;
+  taxId?: string;
 };
 
 export type ValidatedCustomerInput = {
@@ -14,6 +15,7 @@ export type ValidatedCustomerInput = {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  taxId?: string | null;
 };
 
 export class CustomerValidationError extends Error {
@@ -30,6 +32,7 @@ export type UpdateCustomerInput = {
   address?: string;
   internalNotes?: string;
   birthDate?: string | null;
+  taxId?: string;
   segment?: string;
 };
 
@@ -60,20 +63,25 @@ export function validateCreateCustomerInput(
     typeof customerInput.address === "string"
       ? customerInput.address.trim() || null
       : undefined;
+  const taxId =
+    typeof customerInput.taxId === "string"
+      ? customerInput.taxId.trim() || null
+      : undefined;
 
   return {
     name,
     ...(phone !== undefined ? { phone } : {}),
     ...(email !== undefined ? { email } : {}),
-    ...(address !== undefined ? { address } : {})
+    ...(address !== undefined ? { address } : {}),
+    ...(taxId !== undefined ? { taxId } : {})
   };
 }
 
 export function validateUpdateCustomerInput(
   input: UpdateCustomerInput
-): { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; birthDate?: Date | null; segment?: CustomerSegment } {
+): { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; birthDate?: Date | null; taxId?: string | null; segment?: CustomerSegment } {
   const validationErrors: string[] = [];
-  const result: { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; birthDate?: Date | null; segment?: CustomerSegment } = {};
+  const result: { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; birthDate?: Date | null; taxId?: string | null; segment?: CustomerSegment } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -98,6 +106,10 @@ export function validateUpdateCustomerInput(
 
   if (input.internalNotes !== undefined) {
     result.internalNotes = typeof input.internalNotes === "string" ? input.internalNotes.trim() || null : null;
+  }
+
+  if (input.taxId !== undefined) {
+    result.taxId = typeof input.taxId === "string" ? input.taxId.trim() || null : null;
   }
 
   if (input.birthDate !== undefined) {

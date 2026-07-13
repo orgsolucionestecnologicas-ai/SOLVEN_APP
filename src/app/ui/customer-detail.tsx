@@ -7,6 +7,7 @@ import {
   CreditCard,
   DollarSign,
   FileText,
+  IdCard,
   Lock,
   Mail,
   MapPin,
@@ -32,6 +33,7 @@ type CustomerRecord = {
   address?: string | null;
   internalNotes?: string | null;
   birthDate?: string | null;
+  taxId?: string | null;
   customerCode?: string;
   segment?: CustomerSegment;
   createdAt: string;
@@ -548,7 +550,7 @@ export function CustomerDetail() {
           </div>
 
           {/* Panel 3: Contacto */}
-          {(customer.phone ?? customer.email ?? customer.address) ? (
+          {(customer.phone ?? customer.email ?? customer.address ?? customer.taxId) ? (
             <div className="rounded-xl border border-slate-200 bg-white p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Contacto</h3>
               <div className="space-y-2">
@@ -568,6 +570,12 @@ export function CustomerDetail() {
                   <div className="flex items-start gap-2">
                     <MapPin size={13} className="mt-0.5 flex-shrink-0 text-slate-400" />
                     <span className="text-xs text-slate-700">{customer.address}</span>
+                  </div>
+                ) : null}
+                {customer.taxId ? (
+                  <div className="flex items-center gap-2">
+                    <IdCard size={13} className="flex-shrink-0 text-slate-400" />
+                    <span className="text-xs text-slate-700">{customer.taxId}</span>
                   </div>
                 ) : null}
               </div>
@@ -1057,6 +1065,7 @@ function EditCustomerModal({
   const [phone, setPhone] = useState(customer.phone ?? "");
   const [email, setEmail] = useState(customer.email ?? "");
   const [address, setAddress] = useState(customer.address ?? "");
+  const [taxId, setTaxId] = useState(customer.taxId ?? "");
   const [internalNotes, setInternalNotes] = useState(customer.internalNotes ?? "");
   const [birthDate, setBirthDate] = useState(customer.birthDate ? customer.birthDate.slice(0, 10) : "");
   const [segment, setSegment] = useState<CustomerSegment>(customer.segment ?? "NINGUNO");
@@ -1076,6 +1085,7 @@ function EditCustomerModal({
           phone: phone.trim() || null,
           email: email.trim() || null,
           address: address.trim() || null,
+          taxId: taxId.trim() || null,
           internalNotes: internalNotes.trim() || null,
           birthDate: birthDate.trim() || null,
           segment,
@@ -1171,6 +1181,25 @@ function EditCustomerModal({
                 placeholder="Ej. Av. Siempre Viva 742, CABA"
                 type="text"
                 value={address}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-tax-id">
+              CUIT / DNI
+              <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+            </label>
+            <div className="relative">
+              <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+              <input
+                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                disabled={isSubmitting}
+                id="edit-tax-id"
+                onChange={(e) => setTaxId(e.target.value)}
+                placeholder="Ej. 20-12345678-9"
+                type="text"
+                value={taxId}
               />
             </div>
           </div>

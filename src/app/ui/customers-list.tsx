@@ -30,6 +30,7 @@ type CustomerRecord = {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  taxId?: string | null;
   birthDate?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -397,7 +398,8 @@ export function CustomersList() {
       const q = searchQuery.toLowerCase();
       result = result.filter((c) => {
         const phone = getCustomerPhone(c.id).toLowerCase();
-        return c.name.toLowerCase().includes(q) || phone.includes(q);
+        const taxId = c.taxId?.toLowerCase() ?? "";
+        return c.name.toLowerCase().includes(q) || phone.includes(q) || taxId.includes(q);
       });
     }
 
