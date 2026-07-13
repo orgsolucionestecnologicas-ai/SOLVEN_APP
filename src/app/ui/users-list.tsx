@@ -2,6 +2,7 @@
 
 import { Plus, Power, Shield, Trash2, X } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
+import { UserAvatar } from "./user-avatar";
 
 type UserRecord = {
   id: string;
@@ -12,7 +13,10 @@ type UserRecord = {
   active: boolean;
   createdAt: string;
   lastLoginAt: string | null;
+  avatarUrl: string | null;
 };
+
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
 type ApiResponse<T> = { data?: T; error?: { message: string; details?: string[] } };
 
@@ -144,6 +148,35 @@ export function UsersList() {
     }
   }
 
+  async function handleAvatarChange(user: UserRecord, file: File) {
+    if (file.size > MAX_AVATAR_BYTES) {
+      setError("La imagen de perfil no puede superar los 2 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      const previousUsers = users;
+      setUsers((list) => list.map((item) => (item.id === user.id ? { ...item, avatarUrl: dataUrl } : item)));
+      try {
+        const res = await fetch(`/api/users/${user.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ avatarUrl: dataUrl })
+        });
+        const body = (await res.json()) as ApiResponse<UserRecord>;
+        if (!res.ok || !body.data) {
+          setUsers(previousUsers);
+          setError(body.error?.details?.[0] ?? body.error?.message ?? "No se pudo actualizar la foto.");
+        }
+      } catch {
+        setUsers(previousUsers);
+        setError("No se pudo actualizar la foto.");
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
   async function handleDelete(confirm: boolean) {
     if (!deleteTarget) return;
     try {
@@ -211,6 +244,7 @@ export function UsersList() {
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
+              <th className="px-4 py-3 font-medium">Foto</th>
               <th className="px-4 py-3 font-medium">Nombre</th>
               <th className="px-4 py-3 font-medium">Código</th>
               <th className="px-4 py-3 font-medium">Email</th>
@@ -224,15 +258,31 @@ export function UsersList() {
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-400" colSpan={8}>Cargando…</td>
+                <td className="px-4 py-6 text-center text-slate-400" colSpan={9}>Cargando…</td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-400" colSpan={8}>No hay usuarios para mostrar.</td>
+                <td className="px-4 py-6 text-center text-slate-400" colSpan={9}>No hay usuarios para mostrar.</td>
               </tr>
             ) : (
               users.map((user) => (
                 <tr key={user.id}>
+                  <td className="px-4 py-3">
+                    <label className="cursor-pointer" htmlFor={`avatar-${user.id}`} title="Cambiar foto de perfil">
+                      <UserAvatar avatarUrl={user.avatarUrl} name={user.name || user.email} size={32} />
+                    </label>
+                    <input
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      id={`avatar-${user.id}`}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleAvatarChange(user, file);
+                        e.target.value = "";
+                      }}
+                      type="file"
+                    />
+                  </td>
                   <td className="px-4 py-3 font-medium text-slate-800">{user.name || "—"}</td>
                   <td className="px-4 py-3">
                     <span className="rounded-md bg-violet-100 px-2 py-1 font-mono text-xs font-semibold text-violet-700">

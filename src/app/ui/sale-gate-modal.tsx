@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { FileText, Shield } from "lucide-react";
+import { UserAvatar } from "./user-avatar";
 
 type GateUserRecord = {
   id: string;
   name: string;
   userCode: string | null;
+  avatarUrl: string | null;
 };
 
 export type SaleGateResult = {
@@ -80,7 +82,7 @@ export function SaleGateModal({ open, arcaEnabled, onConfirm, onCancel }: SaleGa
               {users.map((user) => (
                 <button
                   key={user.id}
-                  className={`rounded-lg border px-3 py-2 text-left transition ${
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition ${
                     selectedSeller?.id === user.id
                       ? "border-violet-500 bg-violet-50"
                       : "border-slate-200 hover:border-violet-300"
@@ -88,10 +90,13 @@ export function SaleGateModal({ open, arcaEnabled, onConfirm, onCancel }: SaleGa
                   onClick={() => setSelectedSeller(user)}
                   type="button"
                 >
-                  <p className="font-mono text-sm font-bold text-violet-700">
-                    {user.userCode ?? "—"}
-                  </p>
-                  <p className="truncate text-xs text-slate-500">{user.name}</p>
+                  <UserAvatar avatarUrl={user.avatarUrl} name={user.name} size={28} />
+                  <span className="min-w-0">
+                    <p className="font-mono text-sm font-bold text-violet-700">
+                      {user.userCode ?? "—"}
+                    </p>
+                    <p className="truncate text-xs text-slate-500">{user.name}</p>
+                  </span>
                 </button>
               ))}
             </div>

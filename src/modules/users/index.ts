@@ -3,6 +3,7 @@ export {
   deleteUser,
   listUsers,
   setUserActive,
+  updateUserAvatar,
   updateUserRole,
   type UserSummary
 } from "./user-data-access";

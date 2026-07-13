@@ -122,6 +122,7 @@ model User {
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
   createdAt DateTime @default(now())
   lastLoginAt DateTime?
+  avatarUrl String?
 
   auditLogs AuditLog[]
 

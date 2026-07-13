@@ -21,6 +21,7 @@ export type UserSummary = {
   active: boolean;
   createdAt: Date;
   lastLoginAt: Date | null;
+  avatarUrl: string | null;
 };
 
 const userSummarySelect = {
@@ -31,7 +32,8 @@ const userSummarySelect = {
   userCode: true,
   active: true,
   createdAt: true,
-  lastLoginAt: true
+  lastLoginAt: true,
+  avatarUrl: true
 } satisfies Prisma.UserSelect;
 
 export async function listUsers(tenantId: string): Promise<UserSummary[]> {
@@ -119,6 +121,27 @@ export async function setUserActive(
   return prisma.user.update({
     where: { id, tenantId },
     data: { active },
+    select: userSummarySelect
+  });
+}
+
+export async function updateUserAvatar(
+  id: string,
+  avatarUrl: string | null,
+  tenantId: string
+): Promise<UserSummary> {
+  if (avatarUrl !== null) {
+    if (typeof avatarUrl !== "string" || !avatarUrl.startsWith("data:image/")) {
+      throw new UserValidationError(["La imagen de perfil no es válida."]);
+    }
+    if (avatarUrl.length > 3_000_000) {
+      throw new UserValidationError(["La imagen de perfil no puede superar los 2 MB."]);
+    }
+  }
+
+  return prisma.user.update({
+    where: { id, tenantId },
+    data: { avatarUrl },
     select: userSummarySelect
   });
 }
