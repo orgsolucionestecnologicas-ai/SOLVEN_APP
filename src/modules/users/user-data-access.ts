@@ -20,6 +20,7 @@ export type UserSummary = {
   userCode: string | null;
   active: boolean;
   createdAt: Date;
+  lastLoginAt: Date | null;
 };
 
 const userSummarySelect = {
@@ -29,7 +30,8 @@ const userSummarySelect = {
   role: true,
   userCode: true,
   active: true,
-  createdAt: true
+  createdAt: true,
+  lastLoginAt: true
 } satisfies Prisma.UserSelect;
 
 export async function listUsers(tenantId: string): Promise<UserSummary[]> {

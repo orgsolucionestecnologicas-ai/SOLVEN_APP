@@ -11,6 +11,7 @@ type UserRecord = {
   userCode: string | null;
   active: boolean;
   createdAt: string;
+  lastLoginAt: string | null;
 };
 
 type ApiResponse<T> = { data?: T; error?: { message: string; details?: string[] } };
@@ -214,17 +215,18 @@ export function UsersList() {
               <th className="px-4 py-3 font-medium">Rol</th>
               <th className="px-4 py-3 font-medium">Estado</th>
               <th className="px-4 py-3 font-medium">Creado</th>
+              <th className="px-4 py-3 font-medium">Último acceso</th>
               <th className="px-4 py-3 text-right font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-400" colSpan={7}>Cargando…</td>
+                <td className="px-4 py-6 text-center text-slate-400" colSpan={8}>Cargando…</td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-400" colSpan={7}>No hay usuarios para mostrar.</td>
+                <td className="px-4 py-6 text-center text-slate-400" colSpan={8}>No hay usuarios para mostrar.</td>
               </tr>
             ) : (
               users.map((user) => (
@@ -264,6 +266,9 @@ export function UsersList() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-slate-500">{formatDate(user.createdAt)}</td>
+                  <td className="px-4 py-3 text-slate-500">
+                    {user.lastLoginAt ? formatDate(user.lastLoginAt) : "Nunca"}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
