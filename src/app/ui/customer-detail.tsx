@@ -387,6 +387,11 @@ export function CustomerDetail() {
                   Activo
                 </span>
               </div>
+              {totalDebt > 0 ? (
+                <p className="mt-1 text-3xl font-bold text-rose-700">
+                  Deuda pendiente: {fmtMoney(totalDebt)}
+                </p>
+              ) : null}
               <p className="text-xs text-slate-400">
                 {customer.customerCode ? <span className="font-mono font-medium text-slate-600">{customer.customerCode}</span> : null}
                 {customer.customerCode ? " · " : null}
