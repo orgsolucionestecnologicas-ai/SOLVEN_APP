@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### TAREA 126 — ✅ Completada
+- Qué se hizo: se agregó `Customer.address` (nullable, texto libre, aditivo). Se sumó el campo a `customer-validation.ts` (create y update), al formulario de nuevo cliente (`customer-new-form.tsx`) y al modal de edición en `customer-detail.tsx`, ambos con input de texto simple con ícono `MapPin`. En el detalle del cliente, la dirección se muestra en el panel "Contacto" del sidebar (junto a teléfono y email) solo si está cargada. En el PDF de cotización (`quote-pdf.tsx`) se agregó una línea opcional "Dirección" debajo de los datos del cliente, visible solo si `quote.customer.address` existe — se incluyó `customer: true` en el `include` del endpoint `GET /api/quotes/[id]/pdf` para poder leerlo.
+- Archivos modificados: `prisma/schema.prisma` (+ migración), `src/modules/customers/customer-validation.ts`, `src/app/ui/customer-new-form.tsx`, `src/app/ui/customer-detail.tsx`, `src/app/ui/quote-pdf.tsx`, `src/app/api/quotes/[id]/pdf/route.tsx`, `src/app/api/customers/route.test.ts` (fixture de test actualizado con el campo nuevo).
+- Migraciones corridas (si aplica): `20260713211559_add_customer_address` (nullable, sin backfill) — Diego debe correr `npx prisma migrate deploy` en producción.
+- Algo ya estaba implementado de otra forma / algo quedó pendiente: se mantuvo el modelo de dirección como texto libre (sin separar calle/ciudad/CP), tal como pide la restricción de la tarea. No se tocó `customer.ts` en API routes (`POST`/`PUT`) porque ya pasan el body completo al módulo, así que `address` fluye sin cambios adicionales. Existe código muerto preexistente en `customer-detail.tsx` (`CustomerExtra`/`readCustomerExtra`/`saveCustomerExtra`, un intento anterior de guardar dirección en `localStorage` que nunca se conectó a ningún componente) — no se tocó por estar fuera del alcance de esta tarea ("no modifiques... archivos fuera de los indicados"). Se corrió el suite completo (`npm test`) antes de commitear: 1 falla preexistente y no relacionada (`sales/route.integration.test.ts > creates a credit sale with debt through the API flow`), ya documentada en el reporte de la Tarea 148.
+- typecheck: OK
+
 ### TAREA 125 — ✅ Completada
 - Qué se hizo: en el encabezado del perfil de cliente (`customer-detail.tsx`) se agregó un bloque destacado "Deuda pendiente: $X" en texto grande y rojo (`text-3xl font-bold text-rose-700`), ubicado justo debajo del nombre del cliente y antes del `customerCode`/"Cliente desde". Solo se muestra cuando `totalDebt > 0`; si el cliente no tiene deuda no se renderiza nada (no aparece "$0").
 - Archivos modificados: `src/app/ui/customer-detail.tsx`.
