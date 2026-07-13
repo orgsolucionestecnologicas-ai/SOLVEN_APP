@@ -389,7 +389,12 @@ export function ExpensesList() {
           <div className="space-y-6">
             <div>
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Gastos por categoría</h3>
-              <CategoryDonutChart stats={categoryStats} total={totalExpenses} />
+              <CategoryDonutChart
+                onSelectCategory={(cat) => { setFilterCategory(cat); setCurrentPage(1); }}
+                selectedCategory={filterCategory}
+                stats={categoryStats}
+                total={totalExpenses}
+              />
             </div>
             <div className="border-t border-slate-100 pt-5">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Últimos movimientos</h3>
@@ -449,7 +454,17 @@ function MetricCard({ Icon, iconClass, title, value, valueText, isMoney, subtitl
   );
 }
 
-function CategoryDonutChart({ stats, total }: { stats: { cat: string; amt: number }[]; total: number }) {
+function CategoryDonutChart({
+  stats,
+  total,
+  selectedCategory,
+  onSelectCategory
+}: {
+  stats: { cat: string; amt: number }[];
+  total: number;
+  selectedCategory: string;
+  onSelectCategory: (cat: string) => void;
+}) {
   if (total === 0 || stats.length === 0) {
     return <div className="flex h-24 items-center justify-center"><p className="text-sm text-slate-400">Sin datos</p></div>;
   }
@@ -462,12 +477,29 @@ function CategoryDonutChart({ stats, total }: { stats: { cat: string; amt: numbe
     angle += sweep;
     return { cat, amt, start, end, color: categoryColor(cat) };
   });
+
+  function toggleCategory(cat: string) {
+    onSelectCategory(selectedCategory === cat ? "" : cat);
+  }
+
   return (
     <div>
       <svg className="mx-auto block" height={144} viewBox="0 0 144 144" width={144}>
         <circle cx={cx} cy={cy} fill="none" r={r} stroke="#f1f5f9" strokeWidth={sw} />
         {slices.map((s) => (
-          <path d={arcPath(cx, cy, r, s.start, s.end)} fill="none" key={s.cat} stroke={s.color} strokeLinecap="butt" strokeWidth={sw} />
+          <path
+            className="cursor-pointer"
+            d={arcPath(cx, cy, r, s.start, s.end)}
+            fill="none"
+            key={s.cat}
+            onClick={() => toggleCategory(s.cat)}
+            opacity={selectedCategory && selectedCategory !== s.cat ? 0.3 : 1}
+            stroke={s.color}
+            strokeLinecap="butt"
+            strokeWidth={selectedCategory === s.cat ? sw + 4 : sw}
+          >
+            <title>{s.cat}</title>
+          </path>
         ))}
         <text dominantBaseline="middle" fill="#0f172a" fontSize="11" fontWeight="bold" textAnchor="middle" x={cx} y={cy - 7}>
           {formatMoney(total)}
@@ -476,9 +508,26 @@ function CategoryDonutChart({ stats, total }: { stats: { cat: string; amt: numbe
           total
         </text>
       </svg>
+      {selectedCategory ? (
+        <button
+          className="mx-auto mt-2 flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-800"
+          onClick={() => onSelectCategory("")}
+          type="button"
+        >
+          <RotateCcw size={11} />
+          Quitar filtro
+        </button>
+      ) : null}
       <div className="mt-3 space-y-1.5">
         {slices.slice(0, 6).map(({ cat, amt, color }) => (
-          <div className="flex items-center justify-between" key={cat}>
+          <button
+            className={`flex w-full items-center justify-between rounded-md px-1.5 py-1 text-left transition-colors ${
+              selectedCategory === cat ? "bg-violet-50 ring-1 ring-violet-400" : "hover:bg-slate-50"
+            }`}
+            key={cat}
+            onClick={() => toggleCategory(cat)}
+            type="button"
+          >
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
               <span className="max-w-[100px] truncate text-xs text-slate-700">{cat}</span>
@@ -487,7 +536,7 @@ function CategoryDonutChart({ stats, total }: { stats: { cat: string; amt: numbe
               <span className="text-xs font-semibold text-slate-950">{formatMoney(amt)}</span>
               <span className="ml-1 text-[10px] text-slate-400">{Math.round((amt / total) * 100)}%</span>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </div>
