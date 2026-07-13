@@ -6,12 +6,14 @@ export type CreateCustomerInput = {
   name: string;
   phone?: string;
   email?: string;
+  address?: string;
 };
 
 export type ValidatedCustomerInput = {
   name: string;
   phone?: string | null;
   email?: string | null;
+  address?: string | null;
 };
 
 export class CustomerValidationError extends Error {
@@ -25,6 +27,7 @@ export type UpdateCustomerInput = {
   name?: string;
   phone?: string;
   email?: string;
+  address?: string;
   segment?: string;
 };
 
@@ -51,19 +54,24 @@ export function validateCreateCustomerInput(
     typeof customerInput.email === "string"
       ? customerInput.email.trim() || null
       : undefined;
+  const address =
+    typeof customerInput.address === "string"
+      ? customerInput.address.trim() || null
+      : undefined;
 
   return {
     name,
     ...(phone !== undefined ? { phone } : {}),
-    ...(email !== undefined ? { email } : {})
+    ...(email !== undefined ? { email } : {}),
+    ...(address !== undefined ? { address } : {})
   };
 }
 
 export function validateUpdateCustomerInput(
   input: UpdateCustomerInput
-): { name?: string; phone?: string | null; email?: string | null; segment?: CustomerSegment } {
+): { name?: string; phone?: string | null; email?: string | null; address?: string | null; segment?: CustomerSegment } {
   const validationErrors: string[] = [];
-  const result: { name?: string; phone?: string | null; email?: string | null; segment?: CustomerSegment } = {};
+  const result: { name?: string; phone?: string | null; email?: string | null; address?: string | null; segment?: CustomerSegment } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -80,6 +88,10 @@ export function validateUpdateCustomerInput(
 
   if (input.email !== undefined) {
     result.email = typeof input.email === "string" ? input.email.trim() || null : null;
+  }
+
+  if (input.address !== undefined) {
+    result.address = typeof input.address === "string" ? input.address.trim() || null : null;
   }
 
   if (input.segment !== undefined) {

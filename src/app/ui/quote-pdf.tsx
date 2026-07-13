@@ -1,8 +1,8 @@
 "use client";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
-import type { Quote, QuoteItem } from "@prisma/client";
+import type { Customer, Quote, QuoteItem } from "@prisma/client";
 
-type QuoteWithItems = Quote & { items: QuoteItem[] };
+type QuoteWithItems = Quote & { items: QuoteItem[]; customer?: Customer | null };
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: "Helvetica", fontSize: 10, color: "#1e293b" },
@@ -59,6 +59,7 @@ export function QuotePDFDocument({
           <View style={styles.row}><Text style={styles.label}>Cliente:</Text><Text style={styles.value}>{quote.customerName || "—"}</Text></View>
           {quote.customerEmail ? <View style={styles.row}><Text style={styles.label}>Email:</Text><Text style={styles.value}>{quote.customerEmail}</Text></View> : null}
           {quote.customerPhone ? <View style={styles.row}><Text style={styles.label}>Teléfono:</Text><Text style={styles.value}>{quote.customerPhone}</Text></View> : null}
+          {quote.customer?.address ? <View style={styles.row}><Text style={styles.label}>Dirección:</Text><Text style={styles.value}>{quote.customer.address}</Text></View> : null}
         </View>
 
         {/* Info cotización */}

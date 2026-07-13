@@ -3,6 +3,7 @@
 import {
   ArrowLeft,
   Mail,
+  MapPin,
   Phone,
   Save,
   User
@@ -26,6 +27,7 @@ export function CustomerNewForm() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -44,7 +46,8 @@ export function CustomerNewForm() {
         body: JSON.stringify({
           name: trimmed,
           ...(phone.trim() ? { phone: phone.trim() } : {}),
-          ...(email.trim() ? { email: email.trim() } : {})
+          ...(email.trim() ? { email: email.trim() } : {}),
+          ...(address.trim() ? { address: address.trim() } : {})
         })
       });
       const body = (await res.json()) as ApiResponse<CustomerRecord>;
@@ -171,6 +174,26 @@ export function CustomerNewForm() {
                       placeholder="cliente@email.com"
                       type="email"
                       value={email}
+                    />
+                  </div>
+                </div>
+
+                {/* Address */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="customer-address">
+                    Dirección
+                    <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                    <input
+                      className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                      disabled={isSubmitting}
+                      id="customer-address"
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Ej. Av. Siempre Viva 742, CABA"
+                      type="text"
+                      value={address}
                     />
                   </div>
                 </div>

@@ -25,7 +25,7 @@ export async function GET(
   const [quote, settings] = await Promise.all([
     prisma.quote.findFirst({
       where: { id, tenantId },
-      include: { items: true }
+      include: { items: true, customer: true }
     }),
     prisma.storeSettings.findUnique({ where: { tenantId } })
   ]);
