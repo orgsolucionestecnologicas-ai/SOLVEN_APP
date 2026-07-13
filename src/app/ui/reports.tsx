@@ -2201,6 +2201,31 @@ function RentabilidadTab({
       .sort((a, b) => b.profit - a.profit);
   }, [sales, currStart, currEnd]);
 
+  const [sortColumn, setSortColumn] = useState<"qty" | "revenue" | "cost" | "profit" | "margin">("profit");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  function toggleSort(column: typeof sortColumn) {
+    if (column === sortColumn) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("desc");
+    }
+  }
+
+  const sortedProductProfitability = useMemo(() => {
+    const factor = sortDirection === "asc" ? 1 : -1;
+    return [...productProfitability].sort((a, b) => factor * (a[sortColumn] - b[sortColumn]));
+  }, [productProfitability, sortColumn, sortDirection]);
+
+  const profitabilityColumns: { key: typeof sortColumn; label: string }[] = [
+    { key: "qty", label: "Unidades" },
+    { key: "revenue", label: "Ingresos" },
+    { key: "cost", label: "Costo" },
+    { key: "profit", label: "Ganancia" },
+    { key: "margin", label: "Margen %" },
+  ];
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-4">
@@ -2372,15 +2397,22 @@ function RentabilidadTab({
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Producto</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Unidades</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Ingresos</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Costo</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Ganancia</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Margen %</th>
+                  {profitabilityColumns.map((col) => (
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500" key={col.key}>
+                      <button
+                        className="inline-flex items-center gap-1 hover:text-slate-800"
+                        onClick={() => toggleSort(col.key)}
+                        type="button"
+                      >
+                        {col.label}
+                        {sortColumn === col.key && <span>{sortDirection === "asc" ? "▲" : "▼"}</span>}
+                      </button>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {productProfitability.map((p) => (
+                {sortedProductProfitability.map((p) => (
                   <tr className="border-b border-slate-50 hover:bg-slate-50" key={p.name}>
                     <td className="px-4 py-2.5 text-xs font-medium text-slate-800">{p.name}</td>
                     <td className="px-4 py-2.5 text-right text-xs text-slate-600">{p.qty}</td>
