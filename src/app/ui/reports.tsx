@@ -2552,6 +2552,7 @@ function ReporteMensualTab({
   customers: CustomerRecord[];
 }) {
   const { start: monthStart } = getMonthRange(0);
+  const [showComparison, setShowComparison] = useState(false);
 
   const totalAmount = useMemo(() => currentSales.reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
   const cashAmount = useMemo(() => currentSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
@@ -2661,6 +2662,16 @@ function ReporteMensualTab({
     { Icon: DollarSign, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", label: "Ganancia neta", value: formatMoney(grossProfit), pct: pctChange(grossProfit, prevGrossProfit), sub: `Margen: ${grossMargin.toFixed(1)}%` },
   ];
 
+  type ComparisonRow = { label: string; curr: number; prev: number; pct: number };
+  const comparisonRows: ComparisonRow[] = [
+    { label: "Ventas totales", curr: totalAmount, prev: prevTotal, pct: pctChange(totalAmount, prevTotal) },
+    { label: "Ventas al contado", curr: cashAmount, prev: prevCash, pct: pctChange(cashAmount, prevCash) },
+    { label: "Ventas a crédito", curr: creditAmount, prev: prevCredit, pct: pctChange(creditAmount, prevCredit) },
+    { label: "Ganancia bruta", curr: grossProfit, prev: prevGrossProfit, pct: pctChange(grossProfit, prevGrossProfit) },
+    { label: "Gastos y retiros", curr: expensesTotal, prev: prevExpensesTotal, pct: pctChange(expensesTotal, prevExpensesTotal) },
+    { label: "Ganancia neta", curr: grossProfit, prev: prevGrossProfit, pct: pctChange(grossProfit, prevGrossProfit) },
+  ];
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -2669,7 +2680,11 @@ function ReporteMensualTab({
           {formatMonthLabel(0)}
           <ChevronDown className="text-slate-400" size={13} />
         </button>
-        <button className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 hover:bg-slate-50" type="button">
+        <button
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 hover:bg-slate-50"
+          onClick={() => setShowComparison((v) => !v)}
+          type="button"
+        >
           <BarChart2 className="text-slate-400" size={14} />
           Comparar con período anterior
         </button>
@@ -2694,6 +2709,38 @@ function ReporteMensualTab({
           </div>
         ))}
       </div>
+
+      {showComparison && (
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h3 className="text-sm font-semibold text-slate-950">Comparación con {prevMonthShort}</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Métrica</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">{formatMonthLabel(0)}</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">{prevMonthShort}</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Variación</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row) => (
+                  <tr className="border-b border-slate-50 hover:bg-slate-50" key={row.label}>
+                    <td className="px-4 py-2.5 text-xs font-medium text-slate-800">{row.label}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-slate-700">{formatMoney(row.curr)}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-slate-500">{formatMoney(row.prev)}</td>
+                    <td className={`px-4 py-2.5 text-right text-xs font-medium ${row.pct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                      {formatPct(row.pct)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-4">
         <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
