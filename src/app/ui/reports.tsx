@@ -561,7 +561,7 @@ export function Reports() {
         ) : activeTab === "Vendedores" ? (
           <VendedoresTab sales={currentSales} />
         ) : activeTab === "Clientes" ? (
-          <ClientesTab customers={customers} sales={currentSales} />
+          <ClientesTab customers={customers} periodEnd={currentMonth.end} periodStart={currentMonth.start} sales={currentSales} />
         ) : activeTab === "Inventario" ? (
           <InventarioTab products={products} />
         ) : activeTab === "Crecimiento" ? (
@@ -1870,7 +1870,17 @@ function VendedoresTab({ sales }: { sales: SaleRecord[] }) {
 
 // ─── ClientesTab ──────────────────────────────────────────────────────────────
 
-function ClientesTab({ sales, customers }: { sales: SaleRecord[]; customers: CustomerRecord[] }) {
+function ClientesTab({
+  sales,
+  customers,
+  periodStart,
+  periodEnd,
+}: {
+  sales: SaleRecord[];
+  customers: CustomerRecord[];
+  periodStart: Date;
+  periodEnd: Date;
+}) {
   const customerStats = useMemo(() => {
     const byId = new Map<string, { name: string; purchases: number; total: number; lastDate: Date }>();
     for (const sale of sales) {
@@ -1902,8 +1912,48 @@ function ClientesTab({ sales, customers }: { sales: SaleRecord[]; customers: Cus
   const totalSpent = customerStats.reduce((s, c) => s + c.total, 0);
   const totalPurchases = customerStats.reduce((s, c) => s + c.purchases, 0);
 
+  const newCustomersCount = useMemo(
+    () => customers.filter((c) => { const d = new Date(c.createdAt); return d >= periodStart && d <= periodEnd; }).length,
+    [customers, periodStart, periodEnd]
+  );
+  const recurringCustomersCount = useMemo(
+    () => customerStats.filter((c) => c.purchases >= 2).length,
+    [customerStats]
+  );
+  const newVsRecurringMax = Math.max(newCustomersCount, recurringCustomersCount, 1);
+
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Clientes nuevos</p>
+          <p className="mt-1 text-2xl font-bold text-slate-950">{newCustomersCount}</p>
+          <p className="mt-0.5 text-xs text-slate-400">Primera compra en el período</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Clientes recurrentes</p>
+          <p className="mt-1 text-2xl font-bold text-slate-950">{recurringCustomersCount}</p>
+          <p className="mt-0.5 text-xs text-slate-400">2 o más compras en el período</p>
+        </div>
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="w-24 shrink-0 text-xs font-medium text-slate-500">Nuevos</span>
+            <div className="h-3 flex-1 rounded-full bg-slate-100">
+              <div className="h-3 rounded-full bg-orange-500" style={{ width: `${(newCustomersCount / newVsRecurringMax) * 100}%` }} />
+            </div>
+            <span className="w-8 shrink-0 text-right text-xs font-semibold text-slate-700">{newCustomersCount}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-24 shrink-0 text-xs font-medium text-slate-500">Recurrentes</span>
+            <div className="h-3 flex-1 rounded-full bg-slate-100">
+              <div className="h-3 rounded-full bg-violet-600" style={{ width: `${(recurringCustomersCount / newVsRecurringMax) * 100}%` }} />
+            </div>
+            <span className="w-8 shrink-0 text-right text-xs font-semibold text-slate-700">{recurringCustomersCount}</span>
+          </div>
+        </div>
+      </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Clientes registrados</p>
