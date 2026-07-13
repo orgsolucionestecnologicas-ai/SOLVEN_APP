@@ -261,6 +261,13 @@ function downloadReportCsv(type: string, from?: string, to?: string) {
   window.location.href = `/api/reports/export?${params.toString()}`;
 }
 
+function downloadReportPdf(type: string, from?: string, to?: string) {
+  const params = new URLSearchParams({ type });
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  window.location.href = `/api/reports/export-pdf?${params.toString()}`;
+}
+
 export function Reports() {
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
@@ -1462,14 +1469,24 @@ function VentasTab({ sales }: { sales: SaleRecord[] }) {
         <p className="text-sm text-slate-600">
           <span className="font-semibold text-slate-900">{sales.length}</span> ventas en el período
         </p>
-        <button
-          className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700"
-          onClick={() => downloadReportCsv("ventas")}
-          type="button"
-        >
-          <Download size={14} />
-          Exportar CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700"
+            onClick={() => downloadReportCsv("ventas")}
+            type="button"
+          >
+            <Download size={14} />
+            Exportar CSV
+          </button>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            onClick={() => downloadReportPdf("ventas")}
+            type="button"
+          >
+            <Download size={14} />
+            Exportar PDF
+          </button>
+        </div>
       </div>
       <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
         Los servicios vendidos se registran junto a las ventas de productos.
@@ -1629,14 +1646,24 @@ function ProductosTab({ sales, products }: { sales: SaleRecord[]; products: Prod
         <p className="text-sm text-slate-600">
           <span className="font-semibold text-slate-900">{products.length}</span> productos
         </p>
-        <button
-          className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700"
-          onClick={() => downloadReportCsv("productos")}
-          type="button"
-        >
-          <Download size={14} />
-          Exportar CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700"
+            onClick={() => downloadReportCsv("productos")}
+            type="button"
+          >
+            <Download size={14} />
+            Exportar CSV
+          </button>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            onClick={() => downloadReportPdf("productos")}
+            type="button"
+          >
+            <Download size={14} />
+            Exportar PDF
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
