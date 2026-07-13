@@ -22,9 +22,10 @@ export async function GET(request: Request) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10)));
   const action = searchParams.get("action") ?? undefined;
+  const userId = searchParams.get("userId") ?? undefined;
 
   try {
-    const result = await listAuditLogs(tenantId, { page, limit, action });
+    const result = await listAuditLogs(tenantId, { page, limit, action, userId });
     return paginatedResponse(result.data, page, limit, result.total);
   } catch {
     return errorResponse("No se pudieron cargar los registros de auditoría.");

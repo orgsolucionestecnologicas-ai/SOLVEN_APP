@@ -12,6 +12,7 @@ import {
   Crown,
   Download,
   FileText,
+  History,
   Layers,
   Lock,
   Percent,
@@ -115,7 +116,8 @@ const CATEGORIES: Category[] = [
   { id: "notificaciones", label: "Notificaciones", icon: Bell, group: "sistema" },
   { id: "integraciones", label: "Integraciones", icon: Plug, group: "sistema" },
   { id: "sistema", label: "Sistema", icon: SettingsIcon, group: "sistema" },
-  { id: "seguridad", label: "Seguridad", icon: Shield, group: "sistema" }
+  { id: "seguridad", label: "Seguridad", icon: Shield, group: "sistema" },
+  { id: "auditoria", label: "Auditoría", icon: History, group: "sistema" }
 ];
 
 const SECTION_GROUPS: { id: SectionGroupId; label: string }[] = [
@@ -919,6 +921,182 @@ function SistemaSection() {
   );
 }
 
+// ─── Auditoría Section ────────────────────────────────────────────────────────
+
+type AuditLogRow = {
+  id: string;
+  userId: string;
+  userCode: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  createdAt: string;
+  user: { name: string };
+};
+
+type AuditUserOption = { id: string; userCode: string | null; name: string };
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  SALE_CREATED: "Venta registrada",
+  CASH_REGISTER_OPENED: "Apertura de caja",
+  CASH_REGISTER_CLOSED: "Cierre de caja",
+  PRODUCT_CREATED: "Producto creado",
+  PRODUCT_UPDATED: "Producto actualizado",
+  PRODUCT_DELETED: "Producto eliminado",
+  PRODUCT_PRICE_CHANGE: "Cambio de precio",
+  INVENTORY_ADJUSTED: "Ajuste de inventario",
+  USER_CREATED: "Usuario creado",
+  USER_ROLE_CHANGED: "Cambio de rol",
+  USER_DELETED: "Usuario eliminado"
+};
+
+function auditActionLabel(action: string): string {
+  return AUDIT_ACTION_LABELS[action] ?? action;
+}
+
+const auditDateFormatter = new Intl.DateTimeFormat("es-419", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit"
+});
+
+function AuditLogSection() {
+  const [logs, setLogs] = useState<AuditLogRow[]>([]);
+  const [users, setUsers] = useState<AuditUserOption[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [actionFilter, setActionFilter] = useState("");
+  const [userFilter, setUserFilter] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/users", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: AuditUserOption[] }) => {
+        if (body.data) setUsers(body.data);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+    setLoading(true);
+    setError(null);
+    const params = new URLSearchParams({ page: String(page), limit: "20" });
+    if (actionFilter) params.set("action", actionFilter);
+    if (userFilter) params.set("userId", userFilter);
+    fetch(`/api/audit-logs?${params.toString()}`, { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: AuditLogRow[]; pagination?: { totalPages: number } }) => {
+        if (!isActive) return;
+        setLogs(body.data ?? []);
+        setTotalPages(body.pagination?.totalPages ?? 1);
+      })
+      .catch(() => {
+        if (isActive) setError("No se pudieron cargar los registros de auditoría.");
+      })
+      .finally(() => {
+        if (isActive) setLoading(false);
+      });
+    return () => { isActive = false; };
+  }, [page, actionFilter, userFilter]);
+
+  const selectCls =
+    "rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100";
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h3 className="text-sm font-semibold text-slate-900">Registro de actividad</h3>
+        <p className="mt-0.5 text-xs text-slate-500">Historial de acciones realizadas por los usuarios del negocio.</p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4">
+        <select
+          className={selectCls}
+          onChange={(e) => { setPage(1); setUserFilter(e.target.value); }}
+          value={userFilter}
+        >
+          <option value="">Todos los usuarios</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>{u.userCode ? `${u.userCode} — ${u.name}` : u.name}</option>
+          ))}
+        </select>
+        <select
+          className={selectCls}
+          onChange={(e) => { setPage(1); setActionFilter(e.target.value); }}
+          value={actionFilter}
+        >
+          <option value="">Todas las acciones</option>
+          {Object.entries(AUDIT_ACTION_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </div>
+
+      {error ? (
+        <div className="px-6 py-4">
+          <p className="text-sm text-rose-600">{error}</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-6 py-2.5 font-medium">Fecha</th>
+                <th className="px-6 py-2.5 font-medium">Usuario</th>
+                <th className="px-6 py-2.5 font-medium">Acción</th>
+                <th className="px-6 py-2.5 font-medium">Entidad</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr><td className="px-6 py-6 text-center text-slate-400" colSpan={4}>Cargando…</td></tr>
+              ) : logs.length === 0 ? (
+                <tr><td className="px-6 py-6 text-center text-slate-400" colSpan={4}>Sin registros para los filtros seleccionados.</td></tr>
+              ) : (
+                logs.map((log) => (
+                  <tr key={log.id}>
+                    <td className="px-6 py-3 text-slate-600">{auditDateFormatter.format(new Date(log.createdAt))}</td>
+                    <td className="px-6 py-3 font-medium text-slate-900">{log.userCode ?? log.user.name}</td>
+                    <td className="px-6 py-3 text-slate-600">{auditActionLabel(log.action)}</td>
+                    <td className="px-6 py-3 text-slate-500">{log.entityType}{log.entityId ? ` · ${log.entityId.slice(0, 8)}` : ""}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between px-6 py-4">
+        <span className="text-xs text-slate-400">Página {page} de {totalPages}</span>
+        <div className="flex gap-2">
+          <button
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            type="button"
+          >
+            Anterior
+          </button>
+          <button
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            type="button"
+          >
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Notificaciones Section ───────────────────────────────────────────────────
 
 type EmailAlertsConfig = {
@@ -1375,6 +1553,7 @@ function FacturacionARCASection() {
 export function Settings() {
   const [activeCategory, setActiveCategory] = useState("general");
   const [businessName, setBusinessName] = useState("");
+  const [role, setRole] = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<SectionGroupId, boolean>>({
     negocio: true,
     fiscal: false,
@@ -1382,11 +1561,24 @@ export function Settings() {
   });
 
   useEffect(() => {
-    const activeGroup = CATEGORIES.find((c) => c.id === activeCategory)?.group;
+    let isActive = true;
+    fetch("/api/me", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: { role?: string } }) => {
+        if (isActive && body.data?.role) setRole(body.data.role);
+      })
+      .catch(() => {});
+    return () => { isActive = false; };
+  }, []);
+
+  const visibleCategories = CATEGORIES.filter((cat) => cat.id !== "auditoria" || role === "OWNER");
+
+  useEffect(() => {
+    const activeGroup = visibleCategories.find((c) => c.id === activeCategory)?.group;
     if (activeGroup) {
       setExpandedGroups((prev) => (prev[activeGroup] ? prev : { ...prev, [activeGroup]: true }));
     }
-  }, [activeCategory]);
+  }, [activeCategory, visibleCategories]);
 
   function renderContent() {
     switch (activeCategory) {
@@ -1402,14 +1594,16 @@ export function Settings() {
         return <SistemaSection />;
       case "notificaciones":
         return <NotificacionesSection />;
+      case "auditoria":
+        return role === "OWNER" ? <AuditLogSection /> : <ComingSoonSection label="Auditoría" />;
       default: {
-        const cat = CATEGORIES.find((c) => c.id === activeCategory);
+        const cat = visibleCategories.find((c) => c.id === activeCategory);
         return <ComingSoonSection label={cat?.label ?? "Esta sección"} />;
       }
     }
   }
 
-  const activeLabel = CATEGORIES.find((c) => c.id === activeCategory)?.label ?? "";
+  const activeLabel = visibleCategories.find((c) => c.id === activeCategory)?.label ?? "";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -1437,7 +1631,7 @@ export function Settings() {
             <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
               {SECTION_GROUPS.map((group) => {
                 const isExpanded = expandedGroups[group.id];
-                const categoriesInGroup = CATEGORIES.filter((cat) => cat.group === group.id);
+                const categoriesInGroup = visibleCategories.filter((cat) => cat.group === group.id);
                 return (
                   <div key={group.id} className="border-b border-slate-100 last:border-b-0">
                     <button
@@ -1489,7 +1683,7 @@ export function Settings() {
               value={activeCategory}
               onChange={(e) => setActiveCategory(e.target.value)}
             >
-              {CATEGORIES.map((cat) => (
+              {visibleCategories.map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.label}</option>
               ))}
             </select>

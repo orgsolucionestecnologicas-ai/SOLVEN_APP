@@ -53,13 +53,14 @@ export type AuditLogEntry = {
 
 export async function listAuditLogs(
   tenantId: string,
-  options: { page?: number; limit?: number; action?: string } = {}
+  options: { page?: number; limit?: number; action?: string; userId?: string } = {}
 ): Promise<{ data: AuditLogEntry[]; total: number }> {
   const page = options.page ?? 1;
   const limit = options.limit ?? 50;
   const where = {
     tenantId,
-    ...(options.action ? { action: options.action } : {})
+    ...(options.action ? { action: options.action } : {}),
+    ...(options.userId ? { userId: options.userId } : {})
   };
   const [data, total] = await prisma.$transaction([
     prisma.auditLog.findMany({
