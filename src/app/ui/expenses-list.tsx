@@ -413,7 +413,7 @@ export function ExpensesList() {
         <div className="flex flex-wrap items-center gap-2">
           <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Acciones rápidas</span>
           <QuickActionButton Icon={Plus} label="Nuevo gasto" onClick={() => setIsCreateModalOpen(true)} />
-          <QuickActionButton Icon={Download} label="Exportar" onClick={() => window.print()} />
+          <QuickActionButton Icon={Download} label="Exportar" onClick={() => exportExpensesToCsv(filteredExpenses)} />
         </div>
       </div>
 
@@ -586,6 +586,36 @@ function QuickActionButton({ Icon, label, onClick }: { Icon: LucideIcon; label: 
       {label}
     </button>
   );
+}
+
+function escapeCsvValue(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function exportExpensesToCsv(expenses: ExpenseRecord[]) {
+  const header = ["Fecha", "Categoría", "Descripción", "Monto"];
+  const rows = expenses.map((e) => [
+    formatDate(e.expenseDate),
+    e.category,
+    e.description,
+    formatMoney(Number(e.amount))
+  ]);
+  const csvContent = [header, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `gastos-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 // ─── Modals ────────────────────────────────────────────────────────────────────
