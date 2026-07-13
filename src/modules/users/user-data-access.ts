@@ -124,11 +124,23 @@ export async function setUserActive(
 export async function deleteUser(
   id: string,
   tenantId: string,
-  currentUserId: string
-): Promise<void> {
+  currentUserId: string,
+  confirmed: boolean = false
+): Promise<{ deleted: boolean; salesCount: number }> {
   if (id === currentUserId) {
     throw new UserValidationError(["No podés eliminarte a vos mismo."]);
   }
 
+  const user = await prisma.user.findFirstOrThrow({ where: { id, tenantId } });
+
+  const salesCount = user.userCode
+    ? await prisma.sale.count({ where: { tenantId, sellerCode: user.userCode } })
+    : 0;
+
+  if (salesCount > 0 && !confirmed) {
+    return { deleted: false, salesCount };
+  }
+
   await prisma.user.delete({ where: { id, tenantId } });
+  return { deleted: true, salesCount };
 }

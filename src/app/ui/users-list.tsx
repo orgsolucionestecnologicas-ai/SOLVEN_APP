@@ -52,6 +52,7 @@ export function UsersList() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null);
+  const [deleteSalesCount, setDeleteSalesCount] = useState<number | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<UserRecord | null>(null);
 
   useEffect(() => {
@@ -140,16 +141,22 @@ export function UsersList() {
     }
   }
 
-  async function handleDelete() {
+  async function handleDelete(confirm: boolean) {
     if (!deleteTarget) return;
     try {
-      const res = await fetch(`/api/users/${deleteTarget.id}`, { method: "DELETE" });
-      const body = (await res.json()) as ApiResponse<{ deleted: boolean }>;
+      const url = `/api/users/${deleteTarget.id}${confirm ? "?confirm=true" : ""}`;
+      const res = await fetch(url, { method: "DELETE" });
+      const body = (await res.json()) as ApiResponse<{ deleted: boolean; salesCount: number }>;
       if (!res.ok) {
         setError(body.error?.details?.[0] ?? body.error?.message ?? "No se pudo eliminar el usuario.");
         return;
       }
+      if (body.data && !body.data.deleted) {
+        setDeleteSalesCount(body.data.salesCount);
+        return;
+      }
       setDeleteTarget(null);
+      setDeleteSalesCount(null);
       setRefreshKey((key) => key + 1);
     } catch {
       setError("No se pudo eliminar el usuario.");
@@ -271,7 +278,10 @@ export function UsersList() {
                       </button>
                       <button
                         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
-                        onClick={() => setDeleteTarget(user)}
+                        onClick={() => {
+                          setDeleteTarget(user);
+                          setDeleteSalesCount(null);
+                        }}
                         type="button"
                       >
                         <Trash2 size={13} />
@@ -304,21 +314,30 @@ export function UsersList() {
               <p className="mt-1.5 text-sm text-slate-500">
                 Se eliminará a <strong>{deleteTarget.name || deleteTarget.email}</strong> del negocio. Esta acción no se puede deshacer.
               </p>
+              {deleteSalesCount !== null && deleteSalesCount > 0 ? (
+                <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  Este usuario tiene {deleteSalesCount} venta{deleteSalesCount === 1 ? "" : "s"} asociada
+                  {deleteSalesCount === 1 ? "" : "s"}. Eliminarlo no afecta las ventas ya registradas.
+                </p>
+              ) : null}
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-3">
               <button
                 className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                onClick={() => setDeleteTarget(null)}
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setDeleteSalesCount(null);
+                }}
                 type="button"
               >
                 Cancelar
               </button>
               <button
                 className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
-                onClick={handleDelete}
+                onClick={() => handleDelete(deleteSalesCount !== null && deleteSalesCount > 0)}
                 type="button"
               >
-                Eliminar
+                {deleteSalesCount !== null && deleteSalesCount > 0 ? "Sí, eliminar de todas formas" : "Eliminar"}
               </button>
             </div>
           </div>

@@ -60,7 +60,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   let id: string, tenantId: string, userId: string;
@@ -74,9 +74,11 @@ export async function DELETE(
     throw e;
   }
 
+  const confirmed = new URL(request.url).searchParams.get("confirm") === "true";
+
   try {
-    await deleteUser(id, tenantId, userId);
-    return successResponse({ deleted: true });
+    const result = await deleteUser(id, tenantId, userId, confirmed);
+    return successResponse(result);
   } catch (error) {
     if (error instanceof UserValidationError) {
       return errorResponse(error.reasons[0] ?? "No se pudo eliminar el usuario.", 400, error.reasons);
