@@ -14,6 +14,7 @@ type UserRecord = {
   createdAt: string;
   lastLoginAt: string | null;
   avatarUrl: string | null;
+  hasPin: boolean;
 };
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
@@ -61,6 +62,7 @@ export function UsersList() {
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null);
   const [deleteSalesCount, setDeleteSalesCount] = useState<number | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<UserRecord | null>(null);
+  const [pinDrafts, setPinDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let isActive = true;
@@ -177,6 +179,28 @@ export function UsersList() {
     reader.readAsDataURL(file);
   }
 
+  async function handlePinChange(user: UserRecord, pin: string) {
+    const previousUsers = users;
+    setUsers((list) => list.map((item) => (item.id === user.id ? { ...item, hasPin: true } : item)));
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin })
+      });
+      const body = (await res.json()) as ApiResponse<UserRecord>;
+      if (!res.ok || !body.data) {
+        setUsers(previousUsers);
+        setError(body.error?.details?.[0] ?? body.error?.message ?? "No se pudo actualizar el PIN.");
+        return;
+      }
+      setPinDrafts((drafts) => ({ ...drafts, [user.id]: "" }));
+    } catch {
+      setUsers(previousUsers);
+      setError("No se pudo actualizar el PIN.");
+    }
+  }
+
   async function handleDelete(confirm: boolean) {
     if (!deleteTarget) return;
     try {
@@ -249,6 +273,7 @@ export function UsersList() {
               <th className="px-4 py-3 font-medium">Código</th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Rol</th>
+              <th className="px-4 py-3 font-medium">PIN</th>
               <th className="px-4 py-3 font-medium">Estado</th>
               <th className="px-4 py-3 font-medium">Creado</th>
               <th className="px-4 py-3 font-medium">Último acceso</th>
@@ -258,11 +283,11 @@ export function UsersList() {
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-400" colSpan={9}>Cargando…</td>
+                <td className="px-4 py-6 text-center text-slate-400" colSpan={10}>Cargando…</td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-400" colSpan={9}>No hay usuarios para mostrar.</td>
+                <td className="px-4 py-6 text-center text-slate-400" colSpan={10}>No hay usuarios para mostrar.</td>
               </tr>
             ) : (
               users.map((user) => (
@@ -306,6 +331,37 @@ export function UsersList() {
                           <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                       </select>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-medium ${
+                          user.hasPin ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        {user.hasPin ? "Configurado" : "Sin PIN"}
+                      </span>
+                      <input
+                        className="w-14 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-violet-500 focus:outline-none"
+                        inputMode="numeric"
+                        maxLength={4}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
+                          setPinDrafts((drafts) => ({ ...drafts, [user.id]: digits }));
+                        }}
+                        placeholder="0000"
+                        type="text"
+                        value={pinDrafts[user.id] ?? ""}
+                      />
+                      <button
+                        className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        disabled={(pinDrafts[user.id] ?? "").length !== 4}
+                        onClick={() => handlePinChange(user, pinDrafts[user.id] ?? "")}
+                        type="button"
+                      >
+                        Guardar
+                      </button>
                     </div>
                   </td>
                   <td className="px-4 py-3">

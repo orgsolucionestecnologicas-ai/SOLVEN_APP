@@ -4,7 +4,9 @@ export {
   listUsers,
   setUserActive,
   updateUserAvatar,
+  updateUserPin,
   updateUserRole,
+  verifyUserPin,
   type UserSummary
 } from "./user-data-access";
 export {

@@ -33,6 +33,7 @@ export type SessionPayload = {
   subscriptionStatus: string;
   trialEndsAt: string | null;
   role: string;
+  activeCashierId?: string | null;
 };
 
 export async function createSession(
@@ -40,11 +41,12 @@ export async function createSession(
   tenantId: string,
   subscriptionStatus = "TRIAL",
   trialEndsAt: string | null = null,
-  role = "OWNER"
+  role = "OWNER",
+  activeCashierId: string | null = null
 ): Promise<string> {
   const key = await getHmacKey();
   const payload = btoa(
-    JSON.stringify({ userId, tenantId, subscriptionStatus, trialEndsAt, role } satisfies SessionPayload)
+    JSON.stringify({ userId, tenantId, subscriptionStatus, trialEndsAt, role, activeCashierId } satisfies SessionPayload)
   );
   const signature = await crypto.subtle.sign(
     "HMAC",

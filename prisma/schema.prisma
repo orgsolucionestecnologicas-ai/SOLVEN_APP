@@ -124,6 +124,7 @@ model User {
   createdAt DateTime @default(now())
   lastLoginAt DateTime?
   avatarUrl String?
+  pin       String?
 
   auditLogs AuditLog[]
 

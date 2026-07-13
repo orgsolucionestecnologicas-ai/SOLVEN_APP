@@ -23,6 +23,7 @@ import {
   Moon,
   Sun,
   Trash2,
+  UserCog,
   UserPlus,
   Users,
   Volume2,
@@ -35,6 +36,7 @@ import QRCode from "qrcode";
 import Link from "next/link";
 import { SalesList } from "./sales-list";
 import { SaleGateModal, type SaleGateResult } from "./sale-gate-modal";
+import { SwitchCashierModal, type SwitchCashierResult } from "./switch-cashier-modal";
 
 // ── Tipos de pago ──────────────────────────────────────────────────────────
 type PaymentMethodKey =
@@ -429,6 +431,8 @@ export function Pos() {
   const [optionalCustomerOpen, setOptionalCustomerOpen] = useState(false);
   const [saleGateOpen, setSaleGateOpen] = useState(false);
   const [saleGateResult, setSaleGateResult] = useState<SaleGateResult | null>(null);
+  const [switchCashierOpen, setSwitchCashierOpen] = useState(false);
+  const [activeCashier, setActiveCashier] = useState<SwitchCashierResult | null>(null);
   const [arcaEnabled, setArcaEnabled] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [flashItemId, setFlashItemId] = useState<string | null>(null);
@@ -468,7 +472,7 @@ export function Pos() {
   useEffect(() => {
     if (
       noteModalOpen || cotizacionOpen || promosPanelOpen ||
-      showPaymentModal || showPrintModal || showInvoiceModal || saleGateOpen
+      showPaymentModal || showPrintModal || showInvoiceModal || saleGateOpen || switchCashierOpen
     ) {
       return;
     }
@@ -478,7 +482,7 @@ export function Pos() {
       active !== searchInputRef.current &&
       (active.tagName === "INPUT" || active.tagName === "TEXTAREA");
     if (!isTypingElsewhere) searchInputRef.current?.focus();
-  }, [noteModalOpen, cotizacionOpen, promosPanelOpen, showPaymentModal, showPrintModal, showInvoiceModal, saleGateOpen]);
+  }, [noteModalOpen, cotizacionOpen, promosPanelOpen, showPaymentModal, showPrintModal, showInvoiceModal, saleGateOpen, switchCashierOpen]);
 
   useEffect(() => {
     async function loadSettings() {
@@ -892,6 +896,10 @@ export function Pos() {
           setSaleGateOpen(false);
           return;
         }
+        if (switchCashierOpen) {
+          setSwitchCashierOpen(false);
+          return;
+        }
         if (showInvoiceModal) {
           setShowInvoiceModal(false);
           return;
@@ -930,6 +938,7 @@ export function Pos() {
     customerSearchOpen,
     optionalCustomerOpen,
     saleGateOpen,
+    switchCashierOpen,
     showInvoiceModal,
     showPrintModal,
     filteredProducts,
@@ -1532,6 +1541,14 @@ export function Pos() {
                   type="button"
                 >
                   {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+                </button>
+                <button
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 text-slate-400 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
+                  onClick={() => setSwitchCashierOpen(true)}
+                  title={activeCashier ? `Cajero activo: ${activeCashier.name}` : "Cambiar de cajero"}
+                  type="button"
+                >
+                  <UserCog size={15} />
                 </button>
                 <button
                   className="hidden h-8 w-8 items-center justify-center rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 text-slate-400 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
@@ -3049,6 +3066,15 @@ export function Pos() {
         arcaEnabled={arcaEnabled}
         onConfirm={handleSaleGateConfirm}
         onCancel={() => setSaleGateOpen(false)}
+      />
+
+      <SwitchCashierModal
+        open={switchCashierOpen}
+        onConfirm={(result) => {
+          setActiveCashier(result);
+          setSwitchCashierOpen(false);
+        }}
+        onCancel={() => setSwitchCashierOpen(false)}
       />
 
       {/* ══════════════════════════════════════════════

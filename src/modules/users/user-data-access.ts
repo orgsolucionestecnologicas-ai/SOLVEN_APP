@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 
-import { hashPassword } from "@/lib/auth";
+import { hashPassword, verifyPassword } from "@/lib/auth";
 import { generateUserCode } from "@/lib/generate-user-code";
 import { prisma } from "@/lib/prisma";
 
@@ -22,6 +22,7 @@ export type UserSummary = {
   createdAt: Date;
   lastLoginAt: Date | null;
   avatarUrl: string | null;
+  hasPin: boolean;
 };
 
 const userSummarySelect = {
@@ -33,15 +34,23 @@ const userSummarySelect = {
   active: true,
   createdAt: true,
   lastLoginAt: true,
-  avatarUrl: true
+  avatarUrl: true,
+  pin: true
 } satisfies Prisma.UserSelect;
 
+type UserRow = Prisma.UserGetPayload<{ select: typeof userSummarySelect }>;
+
+function toUserSummary({ pin, ...row }: UserRow): UserSummary {
+  return { ...row, hasPin: pin !== null };
+}
+
 export async function listUsers(tenantId: string): Promise<UserSummary[]> {
-  return prisma.user.findMany({
+  const rows = await prisma.user.findMany({
     where: { tenantId },
     orderBy: { createdAt: "asc" },
     select: userSummarySelect
   });
+  return rows.map(toUserSummary);
 }
 
 export async function createUser(
@@ -77,7 +86,7 @@ export async function createUser(
     throw new UserValidationError(["No se pudo generar un código de usuario único. Intentá de nuevo."]);
   }
 
-  return prisma.user.create({
+  const row = await prisma.user.create({
     data: {
       tenantId,
       name: validatedUser.name,
@@ -88,6 +97,7 @@ export async function createUser(
     },
     select: userSummarySelect
   });
+  return toUserSummary(row);
 }
 
 export async function updateUserRole(
@@ -101,11 +111,12 @@ export async function updateUserRole(
   }
   const role = validateUpdateUserRoleInput(input);
 
-  return prisma.user.update({
+  const row = await prisma.user.update({
     where: { id, tenantId },
     data: { role },
     select: userSummarySelect
   });
+  return toUserSummary(row);
 }
 
 export async function setUserActive(
@@ -118,11 +129,12 @@ export async function setUserActive(
     throw new UserValidationError(["No podés desactivarte a vos mismo."]);
   }
 
-  return prisma.user.update({
+  const row = await prisma.user.update({
     where: { id, tenantId },
     data: { active },
     select: userSummarySelect
   });
+  return toUserSummary(row);
 }
 
 export async function updateUserAvatar(
@@ -139,11 +151,48 @@ export async function updateUserAvatar(
     }
   }
 
-  return prisma.user.update({
+  const row = await prisma.user.update({
     where: { id, tenantId },
     data: { avatarUrl },
     select: userSummarySelect
   });
+  return toUserSummary(row);
+}
+
+export async function updateUserPin(
+  id: string,
+  pin: string | null,
+  tenantId: string
+): Promise<UserSummary> {
+  if (pin !== null && !/^\d{4}$/.test(pin)) {
+    throw new UserValidationError(["El PIN debe tener exactamente 4 dígitos."]);
+  }
+
+  const hashedPin = pin !== null ? await hashPassword(pin) : null;
+
+  const row = await prisma.user.update({
+    where: { id, tenantId },
+    data: { pin: hashedPin },
+    select: userSummarySelect
+  });
+  return toUserSummary(row);
+}
+
+export async function verifyUserPin(
+  id: string,
+  pin: string,
+  tenantId: string
+): Promise<UserSummary | null> {
+  const row = await prisma.user.findFirst({
+    where: { id, tenantId },
+    select: userSummarySelect
+  });
+  if (!row || !row.active || !row.pin) return null;
+
+  const valid = await verifyPassword(pin, row.pin);
+  if (!valid) return null;
+
+  return toUserSummary(row);
 }
 
 export async function deleteUser(
