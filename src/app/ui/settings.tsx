@@ -919,6 +919,80 @@ function SistemaSection() {
   );
 }
 
+// ─── Notificaciones Section ───────────────────────────────────────────────────
+
+type EmailAlertsConfig = {
+  lowStockEmailAlerts: boolean;
+  cashDifferenceEmailAlerts: boolean;
+};
+
+const DEFAULT_EMAIL_ALERTS: EmailAlertsConfig = {
+  lowStockEmailAlerts: false,
+  cashDifferenceEmailAlerts: false
+};
+
+function NotificacionesSection() {
+  const [alerts, setAlerts] = useState<EmailAlertsConfig>(DEFAULT_EMAIL_ALERTS);
+  const [fullSettings, setFullSettings] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((body: { data?: Record<string, unknown> }) => {
+        if (body.data) {
+          setFullSettings(body.data);
+          setAlerts({
+            lowStockEmailAlerts: Boolean(body.data.lowStockEmailAlerts),
+            cashDifferenceEmailAlerts: Boolean(body.data.cashDifferenceEmailAlerts)
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleToggle(field: keyof EmailAlertsConfig, value: boolean) {
+    const next = { ...alerts, [field]: value };
+    setAlerts(next);
+    try {
+      await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...fullSettings, ...next })
+      });
+    } catch {
+      setAlerts(alerts);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h3 className="text-sm font-semibold text-slate-900">Alertas por email</h3>
+        <p className="mt-0.5 text-xs text-slate-500">Se envían al email del propietario de la cuenta.</p>
+      </div>
+      <div className="divide-y divide-slate-50">
+        {[
+          { key: "lowStockEmailAlerts" as const, label: "Stock crítico", sub: "Avisa cuando una venta deja un producto en stock mínimo o agotado" },
+          { key: "cashDifferenceEmailAlerts" as const, label: "Diferencia de caja", sub: "Avisa cuando un cierre de caja tiene una diferencia con el monto esperado" }
+        ].map((item) => (
+          <div key={item.key} className="flex items-center justify-between px-6 py-4">
+            <div>
+              <p className="text-sm font-medium text-slate-800">{item.label}</p>
+              <p className="mt-0.5 text-xs text-slate-500">{item.sub}</p>
+            </div>
+            <ToggleSwitch
+              checked={alerts[item.key]}
+              onChange={(v) => { if (!loading) handleToggle(item.key, v); }}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Próximamente placeholder ─────────────────────────────────────────────────
 
 function ComingSoonSection({ label }: { label: string }) {
@@ -1326,6 +1400,8 @@ export function Settings() {
         return <SeguridadSection />;
       case "sistema":
         return <SistemaSection />;
+      case "notificaciones":
+        return <NotificacionesSection />;
       default: {
         const cat = CATEGORIES.find((c) => c.id === activeCategory);
         return <ComingSoonSection label={cat?.label ?? "Esta sección"} />;

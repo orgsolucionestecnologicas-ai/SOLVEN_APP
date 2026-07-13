@@ -498,6 +498,8 @@ model StoreSettings {
   defaultIvaRate       Float    @default(0.21)
   businessType         String   @default("")
   preferredPaymentMethod String @default("efectivo")
+  lowStockEmailAlerts  Boolean  @default(false)
+  cashDifferenceEmailAlerts Boolean @default(false)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }

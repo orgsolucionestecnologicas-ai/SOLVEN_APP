@@ -1,6 +1,7 @@
 import { Prisma, type Product, type Sale, type SaleItem, type Service } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { notifyLowStockIfEnabled } from "@/lib/email-alerts";
 
 import {
   type CreateSaleInput,
@@ -85,7 +86,9 @@ export async function createSale(
       ? new Prisma.Decimal(saleInput.discountAmount)
       : new Prisma.Decimal(0);
 
-  return prisma.$transaction(async (transaction) => {
+  const lowStockProducts: { name: string; stock: number }[] = [];
+
+  const sale = await prisma.$transaction(async (transaction) => {
     const productItemInputs = validatedSale.items.filter(isProductItem);
     const serviceItemInputs = validatedSale.items.filter(isServiceItem);
 
@@ -177,10 +180,12 @@ export async function createSale(
         throw new SaleProductNotFoundError(productId);
       }
 
-      stockReductionsByProductId.set(
-        productId,
-        await reduceProductStock(transaction, product, quantity)
-      );
+      const reduction = await reduceProductStock(transaction, product, quantity);
+      stockReductionsByProductId.set(productId, reduction);
+
+      if (reduction.newStock <= product.minStock) {
+        lowStockProducts.push({ name: product.name, stock: reduction.newStock });
+      }
     }
 
     if (productSaleItems.length > 0) {
@@ -226,6 +231,12 @@ export async function createSale(
       include: { items: true }
     });
   }, { timeout: 30000 });
+
+  if (lowStockProducts.length > 0) {
+    void notifyLowStockIfEnabled(tenantId, lowStockProducts);
+  }
+
+  return sale;
 }
 
 export type PaginationParams = {

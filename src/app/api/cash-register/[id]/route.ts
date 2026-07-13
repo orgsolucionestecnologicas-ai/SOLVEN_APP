@@ -9,6 +9,7 @@ import {
 import { errorResponse, forbiddenResponse, successResponse, unauthorizedResponse } from "../../_shared/responses";
 import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
 import { logAudit } from "@/modules/audit";
+import { notifyCashDifferenceIfEnabled } from "@/lib/email-alerts";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   let id: string, tenantId: string;
@@ -51,6 +52,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       entityId: session.id,
       metadata: { closingAmount: session.closingAmount?.toString() ?? null }
     });
+    if (session.difference !== null) {
+      void notifyCashDifferenceIfEnabled(tenantId, Number(session.difference));
+    }
     return successResponse(session);
   } catch (err) {
     if (err instanceof CashRegisterValidationError) {

@@ -210,3 +210,65 @@ export async function sendQuoteExpiringReminderEmail(
     `),
   });
 }
+
+export async function sendLowStockAlertEmail(
+  to: string,
+  businessName: string,
+  products: { name: string; stock: number }[]
+): Promise<void> {
+  const resend = getResend();
+  if (!resend) return;
+
+  const rows = products
+    .map(
+      (p) =>
+        `<tr>
+          <td style="padding:8px;border-bottom:1px solid #e2e8f0">${p.name}</td>
+          <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right;color:${p.stock <= 0 ? "#dc2626" : "#334155"}">${p.stock}</td>
+        </tr>`
+    )
+    .join("");
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Stock crítico en ${businessName}`,
+    html: wrap(`
+      <h2 style="color:#dc2626">Alerta de stock crítico</h2>
+      <p style="color:#334155">Hola <strong>${businessName}</strong>,</p>
+      <p style="color:#334155">Los siguientes productos están en stock crítico o agotados:</p>
+      <table style="width:100%;border-collapse:collapse;margin-top:16px">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:8px;text-align:left;color:#64748b;font-size:12px">Producto</th>
+            <th style="padding:8px;text-align:right;color:#64748b;font-size:12px">Stock</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `)
+  });
+}
+
+export async function sendCashRegisterDifferenceAlertEmail(
+  to: string,
+  businessName: string,
+  difference: number
+): Promise<void> {
+  const resend = getResend();
+  if (!resend) return;
+
+  const isMissing = difference < 0;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Diferencia en cierre de caja — ${businessName}`,
+    html: wrap(`
+      <h2 style="color:#dc2626">Diferencia en cierre de caja</h2>
+      <p style="color:#334155">Hola <strong>${businessName}</strong>,</p>
+      <p style="color:#334155">Un cierre de caja registró una diferencia de <strong style="color:#dc2626">${formatARS(difference)}</strong> (${isMissing ? "faltante" : "sobrante"}) respecto al monto esperado.</p>
+      <p style="color:#334155">Te recomendamos revisar el detalle del cierre en SOLVEN.</p>
+    `)
+  });
+}

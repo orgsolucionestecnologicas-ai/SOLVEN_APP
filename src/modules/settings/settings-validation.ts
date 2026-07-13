@@ -23,6 +23,8 @@ export type UpsertSettingsInput = {
   defaultIvaRate?: number;
   businessType?: string;
   preferredPaymentMethod?: string;
+  lowStockEmailAlerts?: boolean;
+  cashDifferenceEmailAlerts?: boolean;
 };
 
 export type ValidatedSettingsInput = {
@@ -48,6 +50,8 @@ export type ValidatedSettingsInput = {
   defaultIvaRate: number;
   businessType: string;
   preferredPaymentMethod: string;
+  lowStockEmailAlerts: boolean;
+  cashDifferenceEmailAlerts: boolean;
 };
 
 export class SettingsValidationError extends Error {
@@ -97,5 +101,7 @@ export function validateUpsertSettingsInput(input: UpsertSettingsInput): Validat
       typeof input.preferredPaymentMethod === "string" && input.preferredPaymentMethod.trim()
         ? input.preferredPaymentMethod.trim()
         : "efectivo",
+    lowStockEmailAlerts: Boolean(input.lowStockEmailAlerts),
+    cashDifferenceEmailAlerts: Boolean(input.cashDifferenceEmailAlerts),
   };
 }
