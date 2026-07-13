@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### TAREA 109 — estado: ✅ Completada
+- Qué se hizo: Agregué un botón de pantalla completa en el header de Reportes (junto al botón "Exportar"), con ícono `Maximize2`/`Minimize2` de lucide-react. Agregué `rootRef` (useRef<HTMLDivElement>) sobre el contenedor raíz del componente `Reports()` y una función `toggleFullscreen()` que llama a `rootRef.current.requestFullscreen()` o `document.exitFullscreen()` según corresponda. Agregué estado `isFullscreen` sincronizado mediante un listener del evento `fullscreenchange` en `document` (con cleanup en el `useEffect`), que además controla qué ícono se muestra. Cuando `isFullscreen` es true, el contenedor raíz agrega `overflow-y-auto bg-white` para que el contenido scrollee correctamente dentro de la pantalla completa sin overflow raro — no oculté tabs ni controles de período (la tarea lo marcaba como opcional y el layout ya se ve bien a pantalla completa sin tocar nada más).
+- Archivos modificados: `src/app/ui/reports.tsx` (imports `Maximize2`/`Minimize2`, estado `isFullscreen` + `rootRef`, función `toggleFullscreen`, botón nuevo en el header, `ref` en el contenedor raíz).
+- Migraciones corridas (si aplica): no.
+- Algo ya estaba implementado de otra forma / algo quedó pendiente: nada pendiente. No oculté controles en modo pantalla completa (paso opcional del prompt) para mantener el cambio mínimo y no arriesgar el layout normal.
+- typecheck: OK (lint también OK). No hay test file dedicado para `reports.tsx`.
+
 ### TAREA 108 — estado: ✅ Completada
 - Qué se hizo: Agregué una función reutilizable `downloadSvgAsPng(svgElement, filename)` en `reports.tsx`: clona el nodo SVG, le fija `width`/`height` explícitos (tomados de `viewBox.baseVal`, ya que el SVG original solo tiene `viewBox` + CSS `width: 100%`, sin atributos explícitos — necesario para que la rasterización sea consistente), lo serializa con `XMLSerializer`, arma una data URL `data:image/svg+xml` (no Blob URL, para evitar taint del canvas), la carga en un `Image`, la dibuja sobre un `<canvas>` (con fondo blanco y escala 2x para mayor nitidez) y descarga el resultado como PNG con el mismo patrón de Blob+`createObjectURL`+click ya usado en `sales-list.tsx`. Agregué un botón "Descargar PNG" (ícono `Download`) en `SalesEvolutionPanel` (junto al botón "Por día" existente) y en `CategoryDonutPanel` (nuevo encabezado en fila con el título "Ventas por categoría"), cada uno con su propio `useRef<SVGSVGElement>` apuntando al `<svg>` correspondiente.
 - Archivos modificados: `src/app/ui/reports.tsx` (import `useRef`, función `downloadSvgAsPng`, `SalesEvolutionPanel`, `CategoryDonutPanel`).

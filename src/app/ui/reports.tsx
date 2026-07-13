@@ -14,6 +14,8 @@ import {
   FileText,
   Filter,
   Lightbulb,
+  Maximize2,
+  Minimize2,
   Package,
   PieChart,
   ShoppingBag,
@@ -315,6 +317,22 @@ export function Reports() {
   const [selectedPeriod, setSelectedPeriod] = useState<Period>("month");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else if (rootRef.current) {
+      void rootRef.current.requestFullscreen();
+    }
+  }
 
   useEffect(() => {
     let isActive = true;
@@ -446,7 +464,7 @@ export function Reports() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className={isFullscreen ? "flex min-h-0 flex-1 flex-col overflow-y-auto bg-white" : "flex min-h-0 flex-1 flex-col"} ref={rootRef}>
       {/* Header */}
       <div className="border-b border-slate-200 px-5 py-5 sm:px-8">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -503,6 +521,14 @@ export function Reports() {
             >
               <Download size={14} />
               Exportar
+            </button>
+            <button
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+              type="button"
+            >
+              {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
             </button>
           </div>
         </div>
