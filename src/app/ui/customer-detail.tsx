@@ -31,6 +31,7 @@ type CustomerRecord = {
   email?: string | null;
   address?: string | null;
   internalNotes?: string | null;
+  birthDate?: string | null;
   customerCode?: string;
   segment?: CustomerSegment;
   createdAt: string;
@@ -1057,6 +1058,7 @@ function EditCustomerModal({
   const [email, setEmail] = useState(customer.email ?? "");
   const [address, setAddress] = useState(customer.address ?? "");
   const [internalNotes, setInternalNotes] = useState(customer.internalNotes ?? "");
+  const [birthDate, setBirthDate] = useState(customer.birthDate ? customer.birthDate.slice(0, 10) : "");
   const [segment, setSegment] = useState<CustomerSegment>(customer.segment ?? "NINGUNO");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -1075,6 +1077,7 @@ function EditCustomerModal({
           email: email.trim() || null,
           address: address.trim() || null,
           internalNotes: internalNotes.trim() || null,
+          birthDate: birthDate.trim() || null,
           segment,
         })
       });
@@ -1189,6 +1192,21 @@ function EditCustomerModal({
             <p className="mt-1 text-xs text-slate-400">
               Solo visible para el equipo — nunca se muestra al cliente en tickets, PDFs ni emails.
             </p>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="edit-birth-date">
+              Fecha de cumpleaños
+              <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
+            </label>
+            <input
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="edit-birth-date"
+              onChange={(e) => setBirthDate(e.target.value)}
+              type="date"
+              value={birthDate}
+            />
           </div>
 
           <div>

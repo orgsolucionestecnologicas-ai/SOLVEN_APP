@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Cake,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -25,6 +26,7 @@ type CustomerRecord = {
   id: string;
   name: string;
   customerCode?: string;
+  birthDate?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -161,6 +163,24 @@ const numberFormatter = new Intl.NumberFormat("es-419", { maximumFractionDigits:
 
 function formatDate(value: string): string {
   return dateFormatter.format(new Date(value));
+}
+
+function isBirthdaySoon(birthDate?: string | null): boolean {
+  if (!birthDate) return false;
+  const birth = new Date(birthDate);
+  if (Number.isNaN(birth.getTime())) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let nextBirthday = new Date(today.getFullYear(), birth.getMonth(), birth.getDate());
+  nextBirthday.setHours(0, 0, 0, 0);
+  if (nextBirthday.getTime() < today.getTime()) {
+    nextBirthday = new Date(today.getFullYear() + 1, birth.getMonth(), birth.getDate());
+  }
+
+  const diffDays = Math.round((nextBirthday.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  return diffDays >= 0 && diffDays <= 7;
 }
 
 export function CustomersList() {
@@ -872,8 +892,13 @@ function CustomerRow({
         <div className="flex items-center gap-3">
           <CustomerAvatar name={customer.name} />
           <div className="min-w-0">
-            <p className="max-w-[160px] truncate text-sm font-semibold text-slate-950">
-              {customer.name}
+            <p className="flex max-w-[160px] items-center gap-1 truncate text-sm font-semibold text-slate-950">
+              <span className="truncate">{customer.name}</span>
+              {isBirthdaySoon(customer.birthDate) ? (
+                <span className="shrink-0" title="Cumpleaños próximo">
+                  <Cake className="text-violet-500" size={13} />
+                </span>
+              ) : null}
             </p>
             <p className="text-xs text-slate-400">{getCustomerPhone(customer.id)}</p>
           </div>

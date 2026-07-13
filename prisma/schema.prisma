@@ -253,6 +253,7 @@ model Customer {
   email        String?
   address      String?
   internalNotes String?
+  birthDate    DateTime?
   customerCode String?  @unique
   segment      CustomerSegment @default(NINGUNO)
   debts        Debt[]

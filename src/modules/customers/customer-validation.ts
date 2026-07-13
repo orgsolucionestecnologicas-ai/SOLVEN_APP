@@ -29,6 +29,7 @@ export type UpdateCustomerInput = {
   email?: string;
   address?: string;
   internalNotes?: string;
+  birthDate?: string | null;
   segment?: string;
 };
 
@@ -70,9 +71,9 @@ export function validateCreateCustomerInput(
 
 export function validateUpdateCustomerInput(
   input: UpdateCustomerInput
-): { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; segment?: CustomerSegment } {
+): { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; birthDate?: Date | null; segment?: CustomerSegment } {
   const validationErrors: string[] = [];
-  const result: { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; segment?: CustomerSegment } = {};
+  const result: { name?: string; phone?: string | null; email?: string | null; address?: string | null; internalNotes?: string | null; birthDate?: Date | null; segment?: CustomerSegment } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -97,6 +98,19 @@ export function validateUpdateCustomerInput(
 
   if (input.internalNotes !== undefined) {
     result.internalNotes = typeof input.internalNotes === "string" ? input.internalNotes.trim() || null : null;
+  }
+
+  if (input.birthDate !== undefined) {
+    if (input.birthDate === null || input.birthDate.trim() === "") {
+      result.birthDate = null;
+    } else {
+      const parsed = new Date(input.birthDate);
+      if (Number.isNaN(parsed.getTime())) {
+        validationErrors.push("La fecha de cumpleaños es inválida.");
+      } else {
+        result.birthDate = parsed;
+      }
+    }
   }
 
   if (input.segment !== undefined) {
