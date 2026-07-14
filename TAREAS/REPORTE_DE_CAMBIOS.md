@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### TAREA 134 — ✅ Completada (sin cambios de código)
+- Qué se hizo: la tarea pedía verificar que la tarjeta "Gastos del mes" esté arriba de todo (sin scroll) y que el cálculo sea el mes calendario en curso, no un período configurable. Se verificó `expenses-list.tsx`: la `MetricCard` "Gastos del mes" (grid de métricas) se renderiza inmediatamente después del encabezado "Gastos" y del mensaje de éxito, antes de cualquier filtro o de la tabla — no requiere scroll. El memo `monthExpenses` filtra `allExpenses` por `d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()`, es decir el mes calendario actual, sin ningún período configurable. Ambas condiciones ya se cumplían.
+- Archivos modificados: ninguno.
+- Migraciones corridas (si aplica): ninguna.
+- Algo ya estaba implementado de otra forma / algo quedó pendiente: nada — la tarea ya estaba resuelta tal cual pedía la restricción explícita de no hacer cambios "solo para justificar la tarea".
+- typecheck: no aplica (sin cambios de código).
+
 ### TAREA 133 — ✅ Completada
 - Qué se hizo: categorías de gasto con ícono visual además del color existente (`CATEGORY_COLORS`/`categoryColor`/`categoryBadge`, que siguen intactos). Como las categorías son texto libre (Tarea 131) y no hay una lista fija ni datos de seed con categorías reales para inspeccionar, se armó un mapeo por palabras clave (no por nombre exacto) usando los ejemplos de comercio minorista dados en la tarea: "alquiler" → `Home`, "servicio"/"luz"/"agua"/"gas"/"electricidad" → `Zap`, "sueldo"/"salario"/"nomina"/"personal" → `Users`, "insumo"/"mercaderia"/"mercanc" → `Package`, "transporte"/"flete"/"envio" → `Truck`, "marketing"/"publicidad" → `Megaphone`, "impuesto"/"tasa"/"afip"/"arca" → `Receipt`, con `Tag` como ícono genérico de fallback para cualquier categoría no mapeada (cubre las categorías personalizadas del usuario). Nueva función `categoryIcon(cat)` (case-insensitive, `includes()` sobre palabras clave) y componente `CategoryIcon`. El ícono se muestra junto al badge de categoría en la tabla de gastos y junto al nombre de categoría en la leyenda del gráfico "Gastos por categoría" (`CategoryDonutChart`).
 - Archivos modificados: `src/app/ui/expenses-list.tsx`.
