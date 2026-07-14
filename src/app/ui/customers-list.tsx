@@ -33,6 +33,7 @@ type CustomerRecord = {
   address?: string | null;
   taxId?: string | null;
   birthDate?: string | null;
+  segment?: "NINGUNO" | "NUEVO" | "RECURRENTE" | "VIP";
   createdAt: string;
   updatedAt: string;
 };
@@ -133,7 +134,14 @@ function getCustomerPhone(id: string): string {
   return `555-${String(n1).padStart(3, "0")}-${String(n2).padStart(4, "0")}`;
 }
 
-function computeSegment(totalPurchases: number, hasSales: boolean): CustomerSegment {
+function computeSegment(
+  totalPurchases: number,
+  hasSales: boolean,
+  dbSegment?: "NINGUNO" | "NUEVO" | "RECURRENTE" | "VIP"
+): CustomerSegment {
+  if (dbSegment === "VIP") return "VIP";
+  if (dbSegment === "RECURRENTE") return "Regular";
+  if (dbSegment === "NUEVO") return "Nuevo";
   if (!hasSales) return "Inactivo";
   if (totalPurchases > 500) return "VIP";
   if (totalPurchases >= 100) return "Regular";
@@ -313,7 +321,7 @@ export function CustomersList() {
         currentDebt,
         lastSaleDate,
         hasSales,
-        segment: computeSegment(totalPurchases, hasSales)
+        segment: computeSegment(totalPurchases, hasSales, customer.segment)
       };
     }
     return map;
