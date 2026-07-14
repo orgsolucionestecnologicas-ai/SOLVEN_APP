@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### TAREA 151 — ✅ Completada
+- Qué se hizo: `SegmentBadge`/`computeSegment` en `customers-list.tsx` ya calculaban el segmento (VIP/Regular/Nuevo/Inactivo) solo a partir de `totalPurchases`, ignorando el campo `Customer.segment` de la BD (editable manualmente desde `customer-detail.tsx`). Se modificó `computeSegment` para recibir el `segment` de BD del cliente y priorizarlo cuando es distinto de `NINGUNO`: `VIP` → "VIP", `RECURRENTE` → "Regular", `NUEVO` → "Nuevo". Si el campo de BD es `NINGUNO` (o no está cargado), se sigue usando el cálculo automático por `totalPurchases` exactamente como antes. Se agregó `segment` al tipo `CustomerRecord` de este archivo (no existía) para poder leerlo. No se tocaron colores, textos ni el diseño visual del badge.
+- Archivos modificados: `src/app/ui/customers-list.tsx`.
+- Migraciones corridas (si aplica): ninguna (el campo `Customer.segment` ya existía en el schema).
+- Algo ya estaba implementado de otra forma / algo quedó pendiente: nada pendiente — se resolvió la inconsistencia documentada en la tarea entre el segmento manual (BD) y el calculado (cliente), sin eliminar ninguno de los dos sistemas. Se corrió el suite completo (`npm test`) antes de commitear: 204 tests OK, 1 falla preexistente y no relacionada (`sales/route.integration.test.ts > creates a credit sale with debt through the API flow`, ya documentada en el reporte de la Tarea 148) + 1 falla intermitente por timing de concurrencia en Neon (`debt-payment-data-access.integration.test.ts > prevents concurrent payments from overpaying a debt`, no relacionada con esta tarea — mismo patrón intermitente ya visto en la Tarea 142).
+- typecheck: OK
+
 ### TAREA 143 — ✅ Completada
 - Qué se hizo: en `customers-list.tsx`, cada fila de la tabla ya tenía "Registrar pago" dentro del menú "..." (kebab); se agregó un botón directo visible en la fila (ícono `DollarSign`, ya importado en el archivo), ubicado entre "Editar" y el botón "...", que llama al mismo `onPayment` que ya usaba la opción del menú — mismo estado/modal, sin duplicar lógica. La opción "Registrar pago" del menú "..." se dejó intacta, tal como restringe la tarea.
 - Archivos modificados: `src/app/ui/customers-list.tsx`.
