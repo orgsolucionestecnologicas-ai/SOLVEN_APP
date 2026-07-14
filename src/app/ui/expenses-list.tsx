@@ -367,7 +367,7 @@ export function ExpensesList() {
       {/* Metric cards */}
       <div className="grid grid-cols-2 gap-4 px-6 py-5 lg:grid-cols-4">
         <MetricCard Icon={TrendingDown} iconClass="bg-rose-100 text-rose-600" title="Total gastos" value={totalExpenses} isMoney subtitle={`${expenses.length} registros`} subtitleClass="text-slate-500" />
-        <MetricCard Icon={Calendar} iconClass="bg-orange-100 text-orange-600" title="Gastos del mes" value={monthExpenses} isMoney subtitle="Mes actual" subtitleClass="text-slate-500" />
+        <MetricCard Icon={Calendar} iconClass="bg-orange-100 text-orange-600" title="Gastos del mes" value={monthExpenses} isMoney subtitle="Mes actual" subtitleClass="text-slate-500" valueSizeClass="text-3xl" />
         <MetricCard Icon={BarChart2} iconClass="bg-blue-100 text-blue-600" title="Gasto promedio" value={avgExpense} isMoney subtitle="Por gasto" subtitleClass="text-slate-500" />
         <MetricCard Icon={Tag} iconClass="bg-violet-100 text-violet-600" title="Mayor categoría" valueText={topCategory} subtitle="Mayor gasto acumulado" subtitleClass="text-slate-500" />
       </div>
@@ -601,16 +601,17 @@ type MetricCardProps = {
   isMoney?: boolean;
   subtitle: string;
   subtitleClass: string;
+  valueSizeClass?: string;
 };
 
-function MetricCard({ Icon, iconClass, title, value, valueText, isMoney, subtitle, subtitleClass }: MetricCardProps) {
+function MetricCard({ Icon, iconClass, title, value, valueText, isMoney, subtitle, subtitleClass, valueSizeClass }: MetricCardProps) {
   const display = valueText ?? (isMoney ? formatMoney(value ?? 0) : String(value ?? 0));
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1 pr-2">
           <p className="text-xs font-medium text-slate-500">{title}</p>
-          <p className="mt-1 truncate text-xl font-bold text-slate-950">{display}</p>
+          <p className={`mt-1 truncate font-bold text-slate-950 ${valueSizeClass ?? "text-xl"}`}>{display}</p>
         </div>
         <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconClass}`}>
           <Icon size={18} />
