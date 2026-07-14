@@ -119,6 +119,13 @@ function isExpiringSoon(validUntil: string): boolean {
   return diff > 0 && diff < 24 * 60 * 60 * 1000;
 }
 
+function daysRemainingLabel(validUntil: string): string {
+  const diff = new Date(validUntil).getTime() - Date.now();
+  if (diff <= 0) return "Vencida";
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+  return days === 1 ? "1 día" : `${days} días`;
+}
+
 type NewItem = {
   productId?: string;
   serviceId?: string;
@@ -605,7 +612,7 @@ function QuoteDetailModal({
           <div>
             <span className="text-slate-500">Válido hasta</span>
             <p className={`font-medium ${isExpiringSoon(quote.validUntil) ? "text-red-600" : "text-slate-900"}`}>
-              {formatDate(quote.validUntil)}
+              {formatDate(quote.validUntil)} ({daysRemainingLabel(quote.validUntil)})
             </p>
           </div>
           {quote.confirmedAt && (
@@ -928,7 +935,7 @@ export function QuotesList() {
                       <StatusBadge status={quote.status} />
                     </td>
                     <td className={`px-4 py-3 ${expiring ? "font-medium text-red-600" : "text-slate-700"}`}>
-                      {formatDate(quote.validUntil)}
+                      {formatDate(quote.validUntil)} ({daysRemainingLabel(quote.validUntil)})
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
