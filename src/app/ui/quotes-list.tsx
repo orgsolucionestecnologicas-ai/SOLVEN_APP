@@ -9,6 +9,7 @@ import {
   Eye,
   FileText,
   Mail,
+  MessageCircle,
   Minus,
   Plus,
   Search,
@@ -84,6 +85,24 @@ function StatusBadge({ status }: { status: QuoteStatus }) {
       {STATUS_LABELS[status]}
     </span>
   );
+}
+
+function shareQuoteWhatsApp(quote: Quote) {
+  const lines = [
+    `Cotización ${quote.quoteNumber}`,
+    `Cliente: ${(quote.customer?.name ?? quote.customerName) || "—"}`,
+    "",
+    ...quote.items.map((item) => `${item.quantity} × ${item.name}`),
+    "",
+    `Total: ${formatARS(Number(quote.totalAmount))}`,
+    `Válido hasta: ${formatDate(quote.validUntil)}`,
+  ];
+  const text = lines.join("\n");
+  const phoneDigits = quote.customerPhone?.replace(/\D/g, "") ?? "";
+  const url = phoneDigits
+    ? `https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`
+    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
 }
 
 function formatDate(dateStr: string): string {
@@ -649,6 +668,14 @@ function QuoteDetailModal({
           >
             <Copy size={16} />
             {duplicating ? "Duplicando…" : "Duplicar"}
+          </button>
+          <button
+            className="flex w-fit items-center gap-2 rounded-lg border border-emerald-600 px-3 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50"
+            onClick={() => shareQuoteWhatsApp(quote)}
+            type="button"
+          >
+            <MessageCircle size={16} />
+            Enviar por WhatsApp
           </button>
         </div>
 
