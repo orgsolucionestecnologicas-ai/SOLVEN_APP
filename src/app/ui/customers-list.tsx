@@ -1017,6 +1017,14 @@ function CustomerRow({
           >
             <Pencil size={13} />
           </button>
+          <button
+            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            onClick={onPayment}
+            title="Registrar pago"
+            type="button"
+          >
+            <DollarSign size={13} />
+          </button>
           <div className="relative">
             <button
               className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
