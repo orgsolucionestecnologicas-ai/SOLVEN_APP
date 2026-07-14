@@ -519,6 +519,14 @@ function QuoteDetailModal({
   const [cancelling, setCancelling] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+
+  useEffect(() => {
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   const discountAmount = Number(quote.discountAmount);
   const totalAmount = Number(quote.totalAmount);
@@ -586,6 +594,21 @@ function QuoteDetailModal({
       setActionError(e instanceof Error ? e.message : "Error al duplicar");
     } finally {
       setDuplicating(false);
+    }
+  }
+
+  async function handlePreview() {
+    setPreviewLoading(true);
+    setPreviewError("");
+    try {
+      const res = await fetch(`/api/quotes/${quote.id}/pdf`);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      setPreviewUrl(URL.createObjectURL(blob));
+    } catch {
+      setPreviewError("No se pudo cargar la vista previa.");
+    } finally {
+      setPreviewLoading(false);
     }
   }
 
@@ -696,6 +719,15 @@ function QuoteDetailModal({
             Descargar PDF
           </a>
           <button
+            className="flex w-fit items-center gap-2 rounded-lg border border-violet-300 px-3 py-2 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-50 disabled:opacity-50"
+            disabled={previewLoading}
+            onClick={handlePreview}
+            type="button"
+          >
+            <Eye size={16} />
+            {previewLoading ? "Cargando…" : "Vista previa"}
+          </button>
+          <button
             className="flex w-fit items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
             disabled={duplicating}
             onClick={handleDuplicate}
@@ -714,6 +746,7 @@ function QuoteDetailModal({
         </div>
 
         {actionError && <p className="mb-3 text-sm text-red-600">{actionError}</p>}
+        {previewError && <p className="mb-3 text-sm text-red-600">{previewError}</p>}
 
         {isActive && (
           <div className="space-y-3">
@@ -752,6 +785,34 @@ function QuoteDetailModal({
           </div>
         )}
       </div>
+
+      {previewUrl && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+          <div className="flex h-full max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <h3 className="text-sm font-semibold text-slate-900">
+                Vista previa — Cotización {quote.quoteNumber}
+              </h3>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/api/quotes/${quote.id}/pdf`}
+                  className="rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700"
+                >
+                  Descargar
+                </a>
+                <button
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  onClick={() => setPreviewUrl(null)}
+                  type="button"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+            <iframe className="w-full flex-1 rounded-b-2xl" src={previewUrl} title="Vista previa de la cotización" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
