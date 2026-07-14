@@ -256,6 +256,48 @@ function getPeriodRange(period: Period, customStart: string, customEnd: string):
   return getMonthRange(0);
 }
 
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function toDateInputValue(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+type QuickRangeKey = "yesterday" | "thisWeek" | "lastMonth" | "thisQuarter" | "thisYear";
+
+const QUICK_RANGES: { key: QuickRangeKey; label: string }[] = [
+  { key: "yesterday", label: "Ayer" },
+  { key: "thisWeek", label: "Esta semana" },
+  { key: "lastMonth", label: "Mes pasado" },
+  { key: "thisQuarter", label: "Este trimestre" },
+  { key: "thisYear", label: "Este año" },
+];
+
+function getQuickRange(key: QuickRangeKey): { start: Date; end: Date } {
+  const now = new Date();
+  if (key === "yesterday") {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    return { start: d, end: d };
+  }
+  if (key === "thisWeek") {
+    const day = now.getDay();
+    const diffToMonday = day === 0 ? 6 : day - 1;
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday);
+    return { start, end: now };
+  }
+  if (key === "lastMonth") {
+    return getMonthRange(-1);
+  }
+  if (key === "thisQuarter") {
+    const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+    const start = new Date(now.getFullYear(), quarterStartMonth, 1);
+    return { start, end: now };
+  }
+  const start = new Date(now.getFullYear(), 0, 1);
+  return { start, end: now };
+}
+
 function getPreviousPeriodRange(period: Period, currentMonth: { start: Date; end: Date }): { start: Date; end: Date } {
   if (period === "month") {
     return getMonthRange(-1);
@@ -342,6 +384,12 @@ export function Reports() {
     } else if (rootRef.current) {
       void rootRef.current.requestFullscreen();
     }
+  }
+
+  function applyQuickRange(key: QuickRangeKey) {
+    const { start, end } = getQuickRange(key);
+    setCustomStart(toDateInputValue(start));
+    setCustomEnd(toDateInputValue(end));
   }
 
   useEffect(() => {
@@ -511,7 +559,17 @@ export function Reports() {
               </button>
             ))}
             {selectedPeriod === "custom" ? (
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1">
+                {QUICK_RANGES.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                    onClick={() => applyQuickRange(key)}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
                 <input
                   className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:border-violet-500 focus:outline-none"
                   onChange={(e) => setCustomStart(e.target.value)}
