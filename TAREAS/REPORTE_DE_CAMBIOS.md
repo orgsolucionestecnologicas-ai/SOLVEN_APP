@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### TAREA 144 — ✅ Completada
+- Qué se hizo: la tarea es casi idéntica a la Tarea 134 (ya verificada) — para diferenciar su aporte específico, se agrandó el tamaño de fuente del valor de la `MetricCard` "Gastos del mes" en particular, de `text-xl` (mismo tamaño que las otras 3 tarjetas de la fila) a `text-3xl`, para que sea claramente el número más grande de la pantalla al entrar a Gastos. Se agregó una prop opcional `valueSizeClass` a `MetricCard` (default `text-xl`, sin cambiar las demás tarjetas) en vez de duplicar el componente o la tarjeta.
+- Archivos modificados: `src/app/ui/expenses-list.tsx`.
+- Migraciones corridas (si aplica): ninguna.
+- Algo ya estaba implementado de otra forma / algo quedó pendiente: no se duplicó la tarjeta "Gastos del mes" ni se creó un componente nuevo — se reusó `MetricCard` con una prop opcional, manteniendo la misma altura/estructura/alineación que las otras 3 tarjetas de la fila (solo cambia el tamaño de fuente del número). Se corrió el suite completo (`npm test`) antes de commitear: 208 tests OK, 1 falla preexistente y no relacionada (`sales/route.integration.test.ts > creates a credit sale with debt through the API flow`, documentada desde la Tarea 148).
+- typecheck: OK
+
 ### TAREA 134 — ✅ Completada (sin cambios de código)
 - Qué se hizo: la tarea pedía verificar que la tarjeta "Gastos del mes" esté arriba de todo (sin scroll) y que el cálculo sea el mes calendario en curso, no un período configurable. Se verificó `expenses-list.tsx`: la `MetricCard` "Gastos del mes" (grid de métricas) se renderiza inmediatamente después del encabezado "Gastos" y del mensaje de éxito, antes de cualquier filtro o de la tabla — no requiere scroll. El memo `monthExpenses` filtra `allExpenses` por `d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()`, es decir el mes calendario actual, sin ningún período configurable. Ambas condiciones ya se cumplían.
 - Archivos modificados: ninguno.
