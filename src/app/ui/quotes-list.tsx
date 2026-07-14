@@ -116,7 +116,15 @@ function formatDate(dateStr: string): string {
 
 function isExpiringSoon(validUntil: string): boolean {
   const diff = new Date(validUntil).getTime() - Date.now();
-  return diff > 0 && diff < 24 * 60 * 60 * 1000;
+  return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000;
+}
+
+function ExpiringBadge() {
+  return (
+    <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
+      ¡Por vencer!
+    </span>
+  );
 }
 
 function daysRemainingLabel(validUntil: string): string {
@@ -611,8 +619,9 @@ function QuoteDetailModal({
           </div>
           <div>
             <span className="text-slate-500">Válido hasta</span>
-            <p className={`font-medium ${isExpiringSoon(quote.validUntil) ? "text-red-600" : "text-slate-900"}`}>
+            <p className={`flex items-center gap-2 font-medium ${isExpiringSoon(quote.validUntil) ? "text-red-600" : "text-slate-900"}`}>
               {formatDate(quote.validUntil)} ({daysRemainingLabel(quote.validUntil)})
+              {isExpiringSoon(quote.validUntil) && <ExpiringBadge />}
             </p>
           </div>
           {quote.confirmedAt && (
@@ -935,7 +944,12 @@ export function QuotesList() {
                       <StatusBadge status={quote.status} />
                     </td>
                     <td className={`px-4 py-3 ${expiring ? "font-medium text-red-600" : "text-slate-700"}`}>
-                      {formatDate(quote.validUntil)} ({daysRemainingLabel(quote.validUntil)})
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {formatDate(quote.validUntil)} ({daysRemainingLabel(quote.validUntil)})
+                        </span>
+                        {expiring && <ExpiringBadge />}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
