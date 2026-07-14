@@ -7,15 +7,22 @@ import {
   ChevronRight,
   Download,
   Eye,
+  Home,
+  Megaphone,
   MoreHorizontal,
+  Package,
   Paperclip,
   Plus,
+  Receipt,
   RotateCcw,
   Search,
   Settings2,
   Tag,
   Trash2,
   TrendingDown,
+  Truck,
+  Users,
+  Zap,
   type LucideIcon
 } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
@@ -86,6 +93,29 @@ function categoryIndex(cat: string): number {
 
 function categoryColor(cat: string): string { return CATEGORY_COLORS[categoryIndex(cat)]; }
 function categoryBadge(cat: string): string { return CATEGORY_BADGE_CLASSES[categoryIndex(cat)]; }
+
+const CATEGORY_ICON_RULES: Array<{ keywords: string[]; icon: LucideIcon }> = [
+  { keywords: ["alquiler"], icon: Home },
+  { keywords: ["servicio", "luz", "agua", "gas", "electricidad"], icon: Zap },
+  { keywords: ["sueldo", "salario", "nomina", "nómina", "personal"], icon: Users },
+  { keywords: ["insumo", "mercaderia", "mercadería", "mercanc"], icon: Package },
+  { keywords: ["transporte", "flete", "envio", "envío"], icon: Truck },
+  { keywords: ["marketing", "publicidad"], icon: Megaphone },
+  { keywords: ["impuesto", "tasa", "afip", "arca"], icon: Receipt }
+];
+
+function categoryIcon(cat: string): LucideIcon {
+  const normalized = cat.toLowerCase();
+  for (const rule of CATEGORY_ICON_RULES) {
+    if (rule.keywords.some((k) => normalized.includes(k))) return rule.icon;
+  }
+  return Tag;
+}
+
+function CategoryIcon({ category, size }: { category: string; size: number }) {
+  const Icon = categoryIcon(category);
+  return <Icon size={size} />;
+}
 
 function polarToCartesian(cx: number, cy: number, r: number, deg: number) {
   const rad = ((deg - 90) * Math.PI) / 180;
@@ -418,7 +448,8 @@ export function ExpensesList() {
                       <tr key={expense.id} className="hover:bg-slate-50/50">
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-500">{formatDate(expense.expenseDate)}</td>
                         <td className="whitespace-nowrap px-4 py-3">
-                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryBadge(expense.category)}`}>
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryBadge(expense.category)}`}>
+                            <CategoryIcon category={expense.category} size={11} />
                             {expense.category}
                           </span>
                         </td>
@@ -674,6 +705,7 @@ function CategoryDonutChart({
             >
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                <CategoryIcon category={cat} size={12} />
                 <span className="max-w-[100px] truncate text-xs text-slate-700">{cat}</span>
                 {status ? (
                   <span
