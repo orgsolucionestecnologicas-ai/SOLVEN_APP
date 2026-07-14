@@ -792,6 +792,7 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
   const [expenseDate, setExpenseDate] = useState(todayAsInputValue());
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [receiptFileName, setReceiptFileName] = useState<string | null>(null);
+  const [isRecurring, setIsRecurring] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -833,6 +834,18 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
         setSubmitError(body.error?.details?.[0] ?? body.error?.message ?? "No se pudo registrar el gasto.");
         return;
       }
+      if (isRecurring) {
+        await fetch("/api/recurring-expenses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category: category.trim(),
+            amount: Number(amount),
+            description: description.trim(),
+            dayOfMonth: new Date().getDate()
+          })
+        });
+      }
       onSuccess();
     } catch {
       setSubmitError("No se pudo registrar el gasto.");
@@ -872,6 +885,17 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
             <input accept="image/*,.pdf" className={inputCls} disabled={isSubmitting} id="expense-receipt" onChange={handleReceiptChange} type="file" />
             {receiptFileName ? <p className="mt-1 text-xs text-slate-500">Adjunto: {receiptFileName}</p> : null}
           </div>
+          <label className="flex items-center gap-2 text-sm text-slate-700" htmlFor="expense-recurring">
+            <input
+              checked={isRecurring}
+              className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+              disabled={isSubmitting}
+              id="expense-recurring"
+              onChange={(e) => setIsRecurring(e.target.checked)}
+              type="checkbox"
+            />
+            Repetir automáticamente cada mes
+          </label>
           {submitError ? (
             <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
               <p className="text-sm font-medium text-rose-900">{submitError}</p>
