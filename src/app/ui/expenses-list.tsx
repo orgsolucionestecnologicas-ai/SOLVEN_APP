@@ -11,6 +11,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Settings2,
   Tag,
   Trash2,
   TrendingDown,
@@ -30,8 +31,25 @@ type ExpenseRecord = {
   updatedAt: string;
 };
 
+type ExpenseBudgetRecord = { id: string; category: string; monthlyLimit: string };
+
 type PaginationMeta = { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
 type ApiResponse<T> = { data?: T; pagination?: PaginationMeta; error?: { message: string; details?: string[] } };
+
+type BudgetStatus = "green" | "yellow" | "red";
+
+const BUDGET_STATUS_CLASSES: Record<BudgetStatus, string> = {
+  green: "bg-emerald-500",
+  yellow: "bg-amber-500",
+  red: "bg-rose-500"
+};
+
+function budgetStatus(spent: number, limit: number): BudgetStatus {
+  const pct = (spent / limit) * 100;
+  if (pct > 100) return "red";
+  if (pct >= 70) return "yellow";
+  return "green";
+}
 
 const PAGE_SIZE = 10;
 
@@ -102,6 +120,39 @@ export function ExpensesList() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [detailExpense, setDetailExpense] = useState<ExpenseRecord | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [budgets, setBudgets] = useState<ExpenseBudgetRecord[]>([]);
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+    fetch("/api/me", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: { role?: string } }) => {
+        if (isActive && body.data?.role) setRole(body.data.role);
+      })
+      .catch(() => {});
+    return () => { isActive = false; };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadBudgets() {
+      try {
+        const res = await fetch("/api/expense-budgets", { headers: { Accept: "application/json" } });
+        const body = (await res.json()) as ApiResponse<ExpenseBudgetRecord[]>;
+        if (!isActive) return;
+        if (res.ok && body.data) setBudgets(body.data);
+      } catch {
+        if (isActive) setBudgets([]);
+      }
+    }
+
+    void loadBudgets();
+    return () => { isActive = false; };
+  }, [refreshKey]);
 
   useEffect(() => {
     let isActive = true;
@@ -175,6 +226,24 @@ export function ExpensesList() {
     const totals: Record<string, number> = {};
     for (const e of allExpenses) totals[e.category] = (totals[e.category] ?? 0) + Number(e.amount);
     return Object.entries(totals).map(([cat, amt]) => ({ cat, amt })).sort((a, b) => b.amt - a.amt);
+  }, [allExpenses]);
+
+  const budgetByCategory = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const b of budgets) map[b.category] = Number(b.monthlyLimit);
+    return map;
+  }, [budgets]);
+
+  const monthCategoryTotals = useMemo(() => {
+    const now = new Date();
+    const totals: Record<string, number> = {};
+    for (const e of allExpenses) {
+      const d = new Date(e.expenseDate);
+      if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+        totals[e.category] = (totals[e.category] ?? 0) + Number(e.amount);
+      }
+    }
+    return totals;
   }, [allExpenses]);
 
   const filteredExpenses = useMemo(() => {
@@ -388,8 +457,22 @@ export function ExpensesList() {
         <aside className="w-72 shrink-0 border-l border-slate-200 px-4 py-5">
           <div className="space-y-6">
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-slate-950">Gastos por categoría</h3>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-950">Gastos por categoría</h3>
+                {role === "OWNER" ? (
+                  <button
+                    className="text-slate-400 hover:text-violet-600"
+                    onClick={() => setIsBudgetModalOpen(true)}
+                    title="Configurar presupuestos"
+                    type="button"
+                  >
+                    <Settings2 size={14} />
+                  </button>
+                ) : null}
+              </div>
               <CategoryDonutChart
+                budgetByCategory={budgetByCategory}
+                monthSpendByCategory={monthCategoryTotals}
                 onSelectCategory={(cat) => { setFilterCategory(cat); setCurrentPage(1); }}
                 selectedCategory={filterCategory}
                 stats={categoryStats}
@@ -419,6 +502,14 @@ export function ExpensesList() {
 
       {isCreateModalOpen ? <CreateExpenseModal onClose={() => setIsCreateModalOpen(false)} onSuccess={handleExpenseCreated} /> : null}
       {detailExpense ? <ExpenseDetailModal expense={detailExpense} onClose={() => setDetailExpense(null)} /> : null}
+      {isBudgetModalOpen ? (
+        <BudgetConfigModal
+          budgetByCategory={budgetByCategory}
+          categories={uniqueCategories}
+          onClose={() => setIsBudgetModalOpen(false)}
+          onSaved={() => setRefreshKey((k) => k + 1)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -458,12 +549,16 @@ function CategoryDonutChart({
   stats,
   total,
   selectedCategory,
-  onSelectCategory
+  onSelectCategory,
+  budgetByCategory,
+  monthSpendByCategory
 }: {
   stats: { cat: string; amt: number }[];
   total: number;
   selectedCategory: string;
   onSelectCategory: (cat: string) => void;
+  budgetByCategory: Record<string, number>;
+  monthSpendByCategory: Record<string, number>;
 }) {
   if (total === 0 || stats.length === 0) {
     return <div className="flex h-24 items-center justify-center"><p className="text-sm text-slate-400">Sin datos</p></div>;
@@ -519,25 +614,36 @@ function CategoryDonutChart({
         </button>
       ) : null}
       <div className="mt-3 space-y-1.5">
-        {slices.slice(0, 6).map(({ cat, amt, color }) => (
-          <button
-            className={`flex w-full items-center justify-between rounded-md px-1.5 py-1 text-left transition-colors ${
-              selectedCategory === cat ? "bg-violet-50 ring-1 ring-violet-400" : "hover:bg-slate-50"
-            }`}
-            key={cat}
-            onClick={() => toggleCategory(cat)}
-            type="button"
-          >
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-              <span className="max-w-[100px] truncate text-xs text-slate-700">{cat}</span>
-            </div>
-            <div className="text-right">
-              <span className="text-xs font-semibold text-slate-950">{formatMoney(amt)}</span>
-              <span className="ml-1 text-[10px] text-slate-400">{Math.round((amt / total) * 100)}%</span>
-            </div>
-          </button>
-        ))}
+        {slices.slice(0, 6).map(({ cat, amt, color }) => {
+          const limit = budgetByCategory[cat];
+          const spent = monthSpendByCategory[cat] ?? 0;
+          const status = limit ? budgetStatus(spent, limit) : null;
+          return (
+            <button
+              className={`flex w-full items-center justify-between rounded-md px-1.5 py-1 text-left transition-colors ${
+                selectedCategory === cat ? "bg-violet-50 ring-1 ring-violet-400" : "hover:bg-slate-50"
+              }`}
+              key={cat}
+              onClick={() => toggleCategory(cat)}
+              type="button"
+            >
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                <span className="max-w-[100px] truncate text-xs text-slate-700">{cat}</span>
+                {status ? (
+                  <span
+                    className={`h-2 w-2 shrink-0 rounded-full ${BUDGET_STATUS_CLASSES[status]}`}
+                    title={`Presupuesto mensual: ${formatMoney(limit)} · Gastado este mes: ${formatMoney(spent)} (${Math.round((spent / limit) * 100)}%)`}
+                  />
+                ) : null}
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-semibold text-slate-950">{formatMoney(amt)}</span>
+                <span className="ml-1 text-[10px] text-slate-400">{Math.round((amt / total) * 100)}%</span>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -722,6 +828,99 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function BudgetConfigModal({
+  categories,
+  budgetByCategory,
+  onClose,
+  onSaved
+}: {
+  categories: string[];
+  budgetByCategory: Record<string, number>;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [limits, setLimits] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    for (const cat of categories) initial[cat] = budgetByCategory[cat] ? String(budgetByCategory[cat]) : "";
+    return initial;
+  });
+  const [savingCategory, setSavingCategory] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave(cat: string) {
+    const value = Number(limits[cat]);
+    if (!Number.isFinite(value) || value <= 0) {
+      setError("El límite debe ser un número mayor a cero.");
+      return;
+    }
+    setSavingCategory(cat);
+    setError(null);
+    try {
+      const response = await fetch("/api/expense-budgets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: cat, monthlyLimit: value })
+      });
+      if (!response.ok) {
+        setError("No se pudo guardar el presupuesto.");
+        return;
+      }
+      onSaved();
+    } catch {
+      setError("No se pudo guardar el presupuesto.");
+    } finally {
+      setSavingCategory(null);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-950">Configurar presupuestos mensuales</h2>
+          <button className="text-slate-400 hover:text-slate-700" onClick={onClose} type="button">✕</button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto px-6 py-4">
+          {categories.length === 0 ? (
+            <p className="text-sm text-slate-400">No hay categorías registradas todavía.</p>
+          ) : (
+            <div className="space-y-3">
+              {categories.map((cat) => (
+                <div className="flex items-center gap-2" key={cat}>
+                  <span className="w-28 shrink-0 truncate text-sm text-slate-700" title={cat}>{cat}</span>
+                  <input
+                    className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-950 focus:border-violet-500 focus:outline-none"
+                    min="0"
+                    onChange={(e) => setLimits((prev) => ({ ...prev, [cat]: e.target.value }))}
+                    placeholder="Sin límite"
+                    step="0.01"
+                    type="number"
+                    value={limits[cat] ?? ""}
+                  />
+                  <button
+                    className="shrink-0 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                    disabled={savingCategory === cat}
+                    onClick={() => handleSave(cat)}
+                    type="button"
+                  >
+                    {savingCategory === cat ? "..." : "Guardar"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {error ? <p className="mt-3 text-xs text-rose-600">{error}</p> : null}
+        </div>
+        <div className="border-t border-slate-200 px-6 py-4">
+          <button className="w-full rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={onClose} type="button">
+            Cerrar
+          </button>
+        </div>
       </div>
     </div>
   );
