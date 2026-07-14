@@ -17,7 +17,8 @@ describe("validateCreateExpenseInput", () => {
       amount: 25.5,
       category: "Supplies",
       description: "Printer paper",
-      receiptUrl: null
+      receiptUrl: null,
+      supplierId: null
     });
   });
 
@@ -44,7 +45,42 @@ describe("validateCreateExpenseInput", () => {
       amount: 25.5,
       category: "Supplies",
       description: "Printer paper",
-      receiptUrl: "data:image/png;base64,aGVsbG8="
+      receiptUrl: "data:image/png;base64,aGVsbG8=",
+      supplierId: null
+    });
+  });
+
+  it("accepts a supplierId and trims it", () => {
+    expect(
+      validateCreateExpenseInput({
+        amount: 25.5,
+        category: "Supplies",
+        description: "Printer paper",
+        supplierId: " supplier_123 "
+      })
+    ).toEqual({
+      amount: 25.5,
+      category: "Supplies",
+      description: "Printer paper",
+      receiptUrl: null,
+      supplierId: "supplier_123"
+    });
+  });
+
+  it("treats an empty supplierId as null", () => {
+    expect(
+      validateCreateExpenseInput({
+        amount: 25.5,
+        category: "Supplies",
+        description: "Printer paper",
+        supplierId: ""
+      })
+    ).toEqual({
+      amount: 25.5,
+      category: "Supplies",
+      description: "Printer paper",
+      receiptUrl: null,
+      supplierId: null
     });
   });
 

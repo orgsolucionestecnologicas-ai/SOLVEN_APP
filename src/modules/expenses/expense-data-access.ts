@@ -15,6 +15,13 @@ export async function createExpense(
   const validatedExpense = validateCreateExpenseInput(expenseInput);
 
   return prisma.$transaction(async (transaction) => {
+    if (validatedExpense.supplierId) {
+      const supplier = await transaction.supplier.findFirst({
+        where: { id: validatedExpense.supplierId, tenantId }
+      });
+      if (!supplier) throw new Error("Proveedor no encontrado.");
+    }
+
     const expense = await transaction.expense.create({
       data: { ...validatedExpense, tenantId }
     });
@@ -35,16 +42,24 @@ export async function createExpense(
 
 export type PaginationParams = { page?: number; limit?: number; from?: Date; to?: Date };
 
+export type ExpenseWithSupplier = Expense & { supplier: { name: string } | null };
+
 export async function listExpenses(
   tenantId: string,
   { page = 1, limit = 20, from, to }: PaginationParams = {}
-): Promise<{ data: Expense[]; total: number }> {
+): Promise<{ data: ExpenseWithSupplier[]; total: number }> {
   const where = {
     tenantId,
     ...(from ? { expenseDate: { gte: from, ...(to ? { lte: to } : {}) } } : {})
   };
   const [data, total] = await prisma.$transaction([
-    prisma.expense.findMany({ where, orderBy: { expenseDate: "desc" }, take: limit, skip: (page - 1) * limit }),
+    prisma.expense.findMany({
+      where,
+      orderBy: { expenseDate: "desc" },
+      take: limit,
+      skip: (page - 1) * limit,
+      include: { supplier: { select: { name: true } } }
+    }),
     prisma.expense.count({ where }),
   ]);
   return { data, total };

@@ -241,10 +241,13 @@ model Expense {
   category    String
   description String?
   receiptUrl  String?
+  supplierId  String?
+  supplier    Supplier? @relation(fields: [supplierId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([tenantId])
+  @@index([supplierId])
 }
 
 model ExpenseBudget {
@@ -472,6 +475,7 @@ model Supplier {
   phone     String?
   email     String?
   products  Product[]
+  expenses  Expense[]
   createdAt DateTime  @default(now())
 
   @@unique([name, tenantId])

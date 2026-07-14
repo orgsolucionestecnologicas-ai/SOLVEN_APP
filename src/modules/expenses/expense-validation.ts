@@ -5,6 +5,7 @@ export type CreateExpenseInput = {
   category: string;
   description: string;
   receiptUrl?: string | null;
+  supplierId?: string | null;
 };
 
 export type ValidatedExpenseInput = {
@@ -12,6 +13,7 @@ export type ValidatedExpenseInput = {
   category: string;
   description: string;
   receiptUrl: string | null;
+  supplierId: string | null;
 };
 
 export class ExpenseValidationError extends Error {
@@ -60,6 +62,11 @@ export function validateCreateExpenseInput(
     }
   }
 
+  const supplierId =
+    typeof expenseInput.supplierId === "string" && expenseInput.supplierId.trim().length > 0
+      ? expenseInput.supplierId.trim()
+      : null;
+
   if (validationErrors.length > 0) {
     throw new ExpenseValidationError(validationErrors);
   }
@@ -68,7 +75,8 @@ export function validateCreateExpenseInput(
     amount: expenseInput.amount,
     category,
     description,
-    receiptUrl
+    receiptUrl,
+    supplierId
   };
 }
 

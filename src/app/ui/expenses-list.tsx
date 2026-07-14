@@ -29,9 +29,13 @@ type ExpenseRecord = {
   description: string;
   expenseDate: string;
   receiptUrl?: string | null;
+  supplierId?: string | null;
+  supplier?: { name: string } | null;
   createdAt: string;
   updatedAt: string;
 };
+
+type SupplierRecord = { id: string; name: string };
 
 const MAX_RECEIPT_SIZE_BYTES = 2 * 1024 * 1024;
 
@@ -118,8 +122,10 @@ export function ExpensesList() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+  const [filterSupplierId, setFilterSupplierId] = useState("");
   const [filterDate, setFilterDate] = useState<"todo" | "hoy" | "semana" | "mes">("todo");
   const [currentPage, setCurrentPage] = useState(1);
+  const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [detailExpense, setDetailExpense] = useState<ExpenseRecord | null>(null);
@@ -135,6 +141,17 @@ export function ExpensesList() {
       .then((r) => r.json())
       .then((body: { data?: { role?: string } }) => {
         if (isActive && body.data?.role) setRole(body.data.role);
+      })
+      .catch(() => {});
+    return () => { isActive = false; };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+    fetch("/api/suppliers", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: ApiResponse<SupplierRecord[]>) => {
+        if (isActive && body.data) setSuppliers(body.data);
       })
       .catch(() => {});
     return () => { isActive = false; };
@@ -253,21 +270,22 @@ export function ExpensesList() {
   const filteredExpenses = useMemo(() => {
     let result = [...expenses];
     if (filterCategory) result = result.filter((e) => e.category === filterCategory);
+    if (filterSupplierId) result = result.filter((e) => e.supplierId === filterSupplierId);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((e) => e.description.toLowerCase().includes(q) || e.category.toLowerCase().includes(q));
     }
     return result;
-  }, [expenses, filterCategory, searchQuery]);
+  }, [expenses, filterCategory, filterSupplierId, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const paginatedExpenses = filteredExpenses.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   function changePage(p: number) { setCurrentPage(Math.max(1, Math.min(p, totalPages))); }
-  function clearFilters() { setSearchQuery(""); setFilterCategory(""); setFilterDate("todo"); setCurrentPage(1); }
+  function clearFilters() { setSearchQuery(""); setFilterCategory(""); setFilterSupplierId(""); setFilterDate("todo"); setCurrentPage(1); }
 
-  const hasFilters = Boolean(searchQuery || filterCategory || filterDate !== "todo");
+  const hasFilters = Boolean(searchQuery || filterCategory || filterSupplierId || filterDate !== "todo");
 
   function handleExpenseCreated() {
     setIsCreateModalOpen(false);
@@ -348,6 +366,16 @@ export function ExpensesList() {
               <option value="">Categoría</option>
               {uniqueCategories.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
+            {suppliers.length > 0 ? (
+              <select
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+                onChange={(e) => { setFilterSupplierId(e.target.value); setCurrentPage(1); }}
+                value={filterSupplierId}
+              >
+                <option value="">Proveedor</option>
+                {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            ) : null}
             <select
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
               onChange={(e) => { setFilterDate(e.target.value as "todo" | "hoy" | "semana" | "mes"); setCurrentPage(1); }}
@@ -396,6 +424,9 @@ export function ExpensesList() {
                         </td>
                         <td className="max-w-xs px-4 py-3 text-sm text-slate-700">
                           <span className="line-clamp-1">{expense.description}</span>
+                          {expense.supplier ? (
+                            <span className="block text-xs text-slate-400">Proveedor: {expense.supplier.name}</span>
+                          ) : null}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-rose-600">
                           -{formatMoney(Number(expense.amount))}
@@ -793,8 +824,21 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [receiptFileName, setReceiptFileName] = useState<string | null>(null);
   const [isRecurring, setIsRecurring] = useState(false);
+  const [supplierId, setSupplierId] = useState("");
+  const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+    fetch("/api/suppliers", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: ApiResponse<SupplierRecord[]>) => {
+        if (isActive && body.data) setSuppliers(body.data);
+      })
+      .catch(() => {});
+    return () => { isActive = false; };
+  }, []);
 
   function handleReceiptChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -827,7 +871,7 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
       const response = await fetch("/api/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(amount), category: category.trim(), description: description.trim(), receiptUrl })
+        body: JSON.stringify({ amount: Number(amount), category: category.trim(), description: description.trim(), receiptUrl, supplierId: supplierId || null })
       });
       const body = (await response.json()) as ApiResponse<ExpenseRecord>;
       if (!response.ok || !body.data) {
@@ -884,6 +928,13 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
             <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="expense-receipt">Comprobante (opcional, máx. 2MB)</label>
             <input accept="image/*,.pdf" className={inputCls} disabled={isSubmitting} id="expense-receipt" onChange={handleReceiptChange} type="file" />
             {receiptFileName ? <p className="mt-1 text-xs text-slate-500">Adjunto: {receiptFileName}</p> : null}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="expense-supplier">Proveedor (opcional)</label>
+            <select className={inputCls} disabled={isSubmitting} id="expense-supplier" onChange={(e) => setSupplierId(e.target.value)} value={supplierId}>
+              <option value="">Sin proveedor</option>
+              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-700" htmlFor="expense-recurring">
             <input
