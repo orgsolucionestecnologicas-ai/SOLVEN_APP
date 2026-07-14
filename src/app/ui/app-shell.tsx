@@ -344,6 +344,64 @@ function SidebarUser() {
   );
 }
 
+type CashRegisterSessionSummary = {
+  status: "OPEN" | "CLOSED";
+  openedAt: string;
+  openingAmount: string;
+};
+
+type CashMovementSummary = {
+  type: "IN" | "OUT";
+  amount: string;
+  createdAt: string;
+};
+
+function CashRegisterIndicator() {
+  const [session, setSession] = useState<CashRegisterSessionSummary | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/cash-register", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then(async (body: { data?: CashRegisterSessionSummary | null }) => {
+        const current = body.data ?? null;
+        setSession(current);
+        if (!current || current.status !== "OPEN") return;
+        const movementsRes = await fetch("/api/cash-movements", { headers: { Accept: "application/json" } });
+        const movementsBody = (await movementsRes.json()) as { data?: CashMovementSummary[] };
+        const openedAtDate = new Date(current.openedAt);
+        const movements = (movementsBody.data ?? []).filter((m) => new Date(m.createdAt) >= openedAtDate);
+        const totalCashIn = movements.filter((m) => m.type === "IN").reduce((s, m) => s + Number(m.amount), 0);
+        const totalCashOut = movements.filter((m) => m.type === "OUT").reduce((s, m) => s + Number(m.amount), 0);
+        setBalance(Number(current.openingAmount) + totalCashIn - totalCashOut);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  if (isLoading) return null;
+
+  const isOpen = session?.status === "OPEN";
+
+  return (
+    <Link
+      href="/cash-movements"
+      className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs hover:bg-slate-800"
+    >
+      <span
+        className={`h-2 w-2 flex-shrink-0 rounded-full ${isOpen ? "bg-emerald-500" : "bg-slate-500"}`}
+      />
+      <span className="min-w-0 flex-1 truncate text-slate-300">
+        {isOpen ? "Caja abierta" : "Caja cerrada"}
+        {isOpen && balance !== null && (
+          <span className="ml-1 text-slate-400">· {formatARS(balance)}</span>
+        )}
+      </span>
+    </Link>
+  );
+}
+
 export function AppShell({ activeSection, eyebrow, title, children }: AppShellProps) {
   const [role, setRole] = useState<string | null>(null);
   const [rolePermissions, setRolePermissions] = useState<Record<string, boolean> | null>(null);
@@ -429,6 +487,7 @@ export function AppShell({ activeSection, eyebrow, title, children }: AppShellPr
 
         {/* Bottom — desktop only */}
         <div className="mt-auto hidden border-t border-slate-800 pt-3 lg:block">
+          <CashRegisterIndicator />
           <SidebarUser />
           <LogoutButton />
         </div>
