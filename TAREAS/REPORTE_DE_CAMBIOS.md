@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### TAREA 156 — ✅ Completada
+- Qué se hizo: umbral de "por vencer" en cotizaciones ampliado de 24hs a 3 días, más un indicador visual más notorio. Se cambió la constante en `isExpiringSoon` de `24 * 60 * 60 * 1000` a `3 * 24 * 60 * 60 * 1000` — se verificaron ambos call sites existentes de la función (la variable `expiring` en la fila de la tabla y el condicional inline del modal de detalle, ambos ya identificados desde la Tarea 145) y no se encontró ningún otro uso que se rompiera con el cambio de umbral. Se agregó un componente `ExpiringBadge` ("¡Por vencer!", clases `inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800`), calcado del badge "Vencida" ya existente en `debts-list.tsx:516`, mostrado junto a la fecha (sin reemplazarla) tanto en la fila de la tabla como en el modal de detalle, condicionado exactamente a `isExpiringSoon`/`expiring` — no se duplicó el umbral en ningún lugar nuevo.
+- Archivos modificados: `src/app/ui/quotes-list.tsx`.
+- Migraciones corridas (si aplica): ninguna.
+- Algo ya estaba implementado de otra forma o quedó pendiente: nada pendiente — el coloreado rojo del texto (Tarea 145) y el nuevo badge comparten la misma función `isExpiringSoon`, sin cálculos duplicados. Se corrió el suite completo (`npm test`) antes de commitear: 208 tests OK, 1 falla preexistente y no relacionada (`sales/route.integration.test.ts > creates a credit sale with debt through the API flow`, documentada desde la Tarea 148).
+- typecheck: OK
+
 ### TAREA 145 — ✅ Completada
 - Qué se hizo: columna "Días restantes" en la lista de cotizaciones, mostrada junto a la fecha (no en reemplazo). Se agregó `daysRemainingLabel(validUntil)` en `quotes-list.tsx`, calculado igual que pedía la tarea (`Math.ceil((validUntil - now) / (1000*60*60*24))`), que devuelve "Vencida" si ya pasó el vencimiento o "N días"/"1 día" en caso contrario. Se muestra entre paréntesis junto a la fecha ya formateada (ej. "15/07/2026 (3 días)") tanto en la columna de la tabla principal como en el modal de detalle de la cotización — se mantuvo la fecha completa en ambos lugares, no se reemplazó por solo el conteo de días. El color rojo del texto (cuando la cotización está por vencer) sigue usando la función existente `isExpiringSoon` sin duplicar el umbral en un cálculo aparte, tal como pedía la restricción.
 - Archivos modificados: `src/app/ui/quotes-list.tsx`.
