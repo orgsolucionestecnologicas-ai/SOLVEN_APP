@@ -8,6 +8,7 @@ import {
   Download,
   Eye,
   MoreHorizontal,
+  Paperclip,
   Plus,
   RotateCcw,
   Search,
@@ -17,7 +18,7 @@ import {
   TrendingDown,
   type LucideIcon
 } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import { getDateRangeParams } from "@/lib/date-filter";
 import { formatARS as formatMoney } from "@/lib/format-currency";
 
@@ -27,9 +28,12 @@ type ExpenseRecord = {
   category: string;
   description: string;
   expenseDate: string;
+  receiptUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 };
+
+const MAX_RECEIPT_SIZE_BYTES = 2 * 1024 * 1024;
 
 type ExpenseBudgetRecord = { id: string; category: string; monthlyLimit: string };
 
@@ -398,6 +402,16 @@ export function ExpensesList() {
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
                           <div className="flex items-center justify-end gap-1">
+                            {expense.receiptUrl ? (
+                              <button
+                                className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-violet-600"
+                                onClick={() => window.open(expense.receiptUrl ?? undefined, "_blank", "noopener,noreferrer")}
+                                title="Ver comprobante"
+                                type="button"
+                              >
+                                <Paperclip size={13} />
+                              </button>
+                            ) : null}
                             <button
                               className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                               onClick={() => setDetailExpense(expense)}
@@ -749,6 +763,18 @@ function ExpenseDetailModal({ expense, onClose }: { expense: ExpenseRecord; onCl
             </div>
           ))}
         </dl>
+        {expense.receiptUrl ? (
+          <div className="px-6 pb-2">
+            <button
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-violet-200 py-2 text-sm font-medium text-violet-700 hover:bg-violet-50"
+              onClick={() => window.open(expense.receiptUrl ?? undefined, "_blank", "noopener,noreferrer")}
+              type="button"
+            >
+              <Paperclip size={13} />
+              Ver comprobante
+            </button>
+          </div>
+        ) : null}
         <div className="border-t border-slate-200 px-6 py-4">
           <button className="w-full rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={onClose} type="button">
             Cerrar
@@ -764,8 +790,33 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [expenseDate, setExpenseDate] = useState(todayAsInputValue());
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [receiptFileName, setReceiptFileName] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  function handleReceiptChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setReceiptUrl(null);
+      setReceiptFileName(null);
+      return;
+    }
+    if (file.size > MAX_RECEIPT_SIZE_BYTES) {
+      setSubmitError("El comprobante debe pesar menos de 2MB.");
+      event.target.value = "";
+      setReceiptUrl(null);
+      setReceiptFileName(null);
+      return;
+    }
+    setSubmitError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setReceiptUrl(typeof reader.result === "string" ? reader.result : null);
+      setReceiptFileName(file.name);
+    };
+    reader.readAsDataURL(file);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -775,7 +826,7 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
       const response = await fetch("/api/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(amount), category: category.trim(), description: description.trim() })
+        body: JSON.stringify({ amount: Number(amount), category: category.trim(), description: description.trim(), receiptUrl })
       });
       const body = (await response.json()) as ApiResponse<ExpenseRecord>;
       if (!response.ok || !body.data) {
@@ -815,6 +866,11 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="expense-date">Fecha</label>
             <input className={inputCls} disabled={isSubmitting} id="expense-date" onChange={(e) => setExpenseDate(e.target.value)} required type="date" value={expenseDate} />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="expense-receipt">Comprobante (opcional, máx. 2MB)</label>
+            <input accept="image/*,.pdf" className={inputCls} disabled={isSubmitting} id="expense-receipt" onChange={handleReceiptChange} type="file" />
+            {receiptFileName ? <p className="mt-1 text-xs text-slate-500">Adjunto: {receiptFileName}</p> : null}
           </div>
           {submitError ? (
             <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">

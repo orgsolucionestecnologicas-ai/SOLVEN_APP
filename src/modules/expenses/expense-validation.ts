@@ -1,13 +1,17 @@
+const MAX_RECEIPT_BASE64_LENGTH = Math.ceil((2 * 1024 * 1024 * 4) / 3) + 100;
+
 export type CreateExpenseInput = {
   amount: number;
   category: string;
   description: string;
+  receiptUrl?: string | null;
 };
 
 export type ValidatedExpenseInput = {
   amount: number;
   category: string;
   description: string;
+  receiptUrl: string | null;
 };
 
 export class ExpenseValidationError extends Error {
@@ -42,6 +46,20 @@ export function validateCreateExpenseInput(
     validationErrors.push("Expense description is required.");
   }
 
+  const receiptUrl =
+    typeof expenseInput.receiptUrl === "string" && expenseInput.receiptUrl.length > 0
+      ? expenseInput.receiptUrl
+      : null;
+
+  if (receiptUrl !== null) {
+    const isDataUrl = /^data:(image\/[a-zA-Z+]+|application\/pdf);base64,/.test(receiptUrl);
+    if (!isDataUrl) {
+      validationErrors.push("Expense receipt must be a valid image or PDF data URL.");
+    } else if (receiptUrl.length > MAX_RECEIPT_BASE64_LENGTH) {
+      validationErrors.push("Expense receipt must be smaller than 2MB.");
+    }
+  }
+
   if (validationErrors.length > 0) {
     throw new ExpenseValidationError(validationErrors);
   }
@@ -49,7 +67,8 @@ export function validateCreateExpenseInput(
   return {
     amount: expenseInput.amount,
     category,
-    description
+    description,
+    receiptUrl
   };
 }
 

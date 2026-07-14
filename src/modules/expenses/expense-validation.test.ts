@@ -16,7 +16,35 @@ describe("validateCreateExpenseInput", () => {
     ).toEqual({
       amount: 25.5,
       category: "Supplies",
-      description: "Printer paper"
+      description: "Printer paper",
+      receiptUrl: null
+    });
+  });
+
+  it("rejects a receipt that is not a valid image or PDF data URL", () => {
+    expect(() =>
+      validateCreateExpenseInput({
+        amount: 25.5,
+        category: "Supplies",
+        description: "Printer paper",
+        receiptUrl: "not-a-data-url"
+      })
+    ).toThrow(ExpenseValidationError);
+  });
+
+  it("accepts a valid image receipt data URL", () => {
+    expect(
+      validateCreateExpenseInput({
+        amount: 25.5,
+        category: "Supplies",
+        description: "Printer paper",
+        receiptUrl: "data:image/png;base64,aGVsbG8="
+      })
+    ).toEqual({
+      amount: 25.5,
+      category: "Supplies",
+      description: "Printer paper",
+      receiptUrl: "data:image/png;base64,aGVsbG8="
     });
   });
 
