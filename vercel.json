@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/generate-recurring-expenses",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/remind-expiring-quotes",
+      "schedule": "0 9 * * *"
     }
   ]
 }
