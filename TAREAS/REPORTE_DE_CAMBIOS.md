@@ -7,6 +7,13 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### TAREA 143 — ✅ Completada
+- Qué se hizo: en `customers-list.tsx`, cada fila de la tabla ya tenía "Registrar pago" dentro del menú "..." (kebab); se agregó un botón directo visible en la fila (ícono `DollarSign`, ya importado en el archivo), ubicado entre "Editar" y el botón "...", que llama al mismo `onPayment` que ya usaba la opción del menú — mismo estado/modal, sin duplicar lógica. La opción "Registrar pago" del menú "..." se dejó intacta, tal como restringe la tarea.
+- Archivos modificados: `src/app/ui/customers-list.tsx`.
+- Migraciones corridas (si aplica): ninguna.
+- Algo ya estaba implementado de otra forma / algo quedó pendiente: nada — la tarea ya estaba resuelta en su mayor parte (modal y `onPayment` reusados sin cambios), solo faltaba el atajo visual descripto. Se corrió el suite completo (`npm test`) antes de commitear: 204 tests OK, 1 falla preexistente y no relacionada (`sales/route.integration.test.ts > creates a credit sale with debt through the API flow`, ya documentada en el reporte de la Tarea 148) + 2 fallas intermitentes por conectividad transitoria a Neon (`customers/route.integration.test.ts`, "Can't reach database server") no relacionadas con este cambio (el archivo modificado es un componente de UI sin acceso a base de datos) — se corrió ese archivo en aislamiento y pasó limpio los 2 tests.
+- typecheck: OK
+
 ### TAREA 142 — ✅ Completada
 - Qué se hizo: en `customers-list.tsx` (tabla) y `customer-detail.tsx` (panel "Contacto"), donde se muestra el teléfono del cliente, ahora es un link `https://wa.me/<solo-dígitos>` que abre WhatsApp en una pestaña nueva (`target="_blank" rel="noopener noreferrer"`), con ícono `MessageCircle` (lucide-react, sin agregar librerías nuevas) para indicar que es clickeable. La limpieza del número (`phone.replace(/\D/g, "")`) reutiliza el mismo criterio que `shareSaleWhatsApp` en `sales-list.tsx`. Si el cliente no tiene teléfono cargado, no se muestra ningún link (se mantiene el "Sin teléfono" existente en la tabla; en el detalle el bloque ya era condicional y sigue sin renderizar nada).
 - Archivos modificados: `src/app/ui/customers-list.tsx`, `src/app/ui/customer-detail.tsx`.
