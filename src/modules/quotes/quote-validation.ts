@@ -11,6 +11,7 @@ export type CreateQuoteInput = {
   customerPhone?: string;
   items: CreateQuoteItemInput[];
   notes?: string;
+  paymentTerms?: string;
   discountAmount?: number;
 };
 

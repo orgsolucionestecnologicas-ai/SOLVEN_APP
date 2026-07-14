@@ -109,6 +109,14 @@ export function QuotePDFDocument({
           </View>
         </View>
 
+        {/* Condiciones de pago */}
+        {quote.paymentTerms ? (
+          <View style={[styles.section, { marginTop: 20 }]}>
+            <Text style={styles.sectionTitle}>Condiciones de pago</Text>
+            <Text>{quote.paymentTerms}</Text>
+          </View>
+        ) : null}
+
         {/* Notas */}
         {quote.notes ? (
           <View style={[styles.section, { marginTop: 20 }]}>

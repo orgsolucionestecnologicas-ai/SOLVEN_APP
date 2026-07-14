@@ -41,6 +41,7 @@ type Quote = {
   totalAmount: string;
   discountAmount: string;
   notes: string | null;
+  paymentTerms: string | null;
   validUntil: string;
   confirmedAt: string | null;
   cancelledAt: string | null;
@@ -146,6 +147,7 @@ function NewQuoteModal({
   const [discountMode, setDiscountMode] = useState<"amount" | "percent">("amount");
   const [discountInput, setDiscountInput] = useState(0);
   const [notes, setNotes] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const debounceCustomer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -243,6 +245,7 @@ function NewQuoteModal({
         })),
         discountAmount: discountAmount || undefined,
         notes: notes || undefined,
+        paymentTerms: paymentTerms || undefined,
       };
 
       const res = await fetch("/api/quotes", {
@@ -428,6 +431,15 @@ function NewQuoteModal({
               placeholder="Observaciones…"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Condiciones de pago</label>
+            <input
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
+              placeholder="Ej: 50% al confirmar, 50% contra entrega"
+              value={paymentTerms}
+              onChange={(e) => setPaymentTerms(e.target.value)}
             />
           </div>
         </div>
@@ -642,6 +654,12 @@ function QuoteDetailModal({
             </tr>
           </tfoot>
         </table>
+
+        {quote.paymentTerms && (
+          <p className="mb-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+            <strong>Condiciones de pago:</strong> {quote.paymentTerms}
+          </p>
+        )}
 
         {quote.notes && (
           <p className="mb-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">

@@ -120,6 +120,7 @@ export async function createQuote(
         totalAmount: total,
         discountAmount,
         notes: input.notes ?? null,
+        paymentTerms: input.paymentTerms?.trim() || null,
         validUntil,
         items: {
           create: itemsData,
@@ -393,6 +394,7 @@ export async function duplicateQuote(
       quantity: item.quantity,
     })),
     notes: original.notes ?? undefined,
+    paymentTerms: original.paymentTerms ?? undefined,
     discountAmount: original.discountAmount.toNumber(),
   };
 
