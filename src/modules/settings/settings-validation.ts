@@ -25,6 +25,7 @@ export type UpsertSettingsInput = {
   preferredPaymentMethod?: string;
   lowStockEmailAlerts?: boolean;
   cashDifferenceEmailAlerts?: boolean;
+  highExpenseThreshold?: number | null;
 };
 
 export type ValidatedSettingsInput = {
@@ -52,6 +53,7 @@ export type ValidatedSettingsInput = {
   preferredPaymentMethod: string;
   lowStockEmailAlerts: boolean;
   cashDifferenceEmailAlerts: boolean;
+  highExpenseThreshold: number | null;
 };
 
 export class SettingsValidationError extends Error {
@@ -103,5 +105,11 @@ export function validateUpsertSettingsInput(input: UpsertSettingsInput): Validat
         : "efectivo",
     lowStockEmailAlerts: Boolean(input.lowStockEmailAlerts),
     cashDifferenceEmailAlerts: Boolean(input.cashDifferenceEmailAlerts),
+    highExpenseThreshold:
+      typeof input.highExpenseThreshold === "number" &&
+      Number.isFinite(input.highExpenseThreshold) &&
+      input.highExpenseThreshold > 0
+        ? input.highExpenseThreshold
+        : null,
   };
 }

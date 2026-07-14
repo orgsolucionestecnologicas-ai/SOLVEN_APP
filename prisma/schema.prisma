@@ -562,6 +562,7 @@ model StoreSettings {
   preferredPaymentMethod String @default("efectivo")
   lowStockEmailAlerts  Boolean  @default(false)
   cashDifferenceEmailAlerts Boolean @default(false)
+  highExpenseThreshold Decimal? @db.Decimal(12, 2)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }

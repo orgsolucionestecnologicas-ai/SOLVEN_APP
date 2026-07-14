@@ -1113,6 +1113,10 @@ function NotificacionesSection() {
   const [alerts, setAlerts] = useState<EmailAlertsConfig>(DEFAULT_EMAIL_ALERTS);
   const [fullSettings, setFullSettings] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [highExpenseThreshold, setHighExpenseThreshold] = useState("");
+  const [savingThreshold, setSavingThreshold] = useState(false);
+  const [thresholdSaved, setThresholdSaved] = useState(false);
+  const [thresholdError, setThresholdError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -1124,6 +1128,8 @@ function NotificacionesSection() {
             lowStockEmailAlerts: Boolean(body.data.lowStockEmailAlerts),
             cashDifferenceEmailAlerts: Boolean(body.data.cashDifferenceEmailAlerts)
           });
+          const threshold = body.data.highExpenseThreshold;
+          setHighExpenseThreshold(typeof threshold === "string" || typeof threshold === "number" ? String(threshold) : "");
         }
       })
       .catch(() => {})
@@ -1144,29 +1150,92 @@ function NotificacionesSection() {
     }
   }
 
+  async function handleSaveThreshold(e: FormEvent) {
+    e.preventDefault();
+    setSavingThreshold(true);
+    setThresholdError(null);
+    try {
+      const trimmed = highExpenseThreshold.trim();
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...fullSettings, ...alerts, highExpenseThreshold: trimmed === "" ? null : Number(trimmed) })
+      });
+      if (!res.ok) throw new Error();
+      setThresholdSaved(true);
+      setTimeout(() => setThresholdSaved(false), 2500);
+    } catch {
+      setThresholdError("Ocurrió un error. Intenta de nuevo.");
+    } finally {
+      setSavingThreshold(false);
+    }
+  }
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-6 py-4">
-        <h3 className="text-sm font-semibold text-slate-900">Alertas por email</h3>
-        <p className="mt-0.5 text-xs text-slate-500">Se envían al email del propietario de la cuenta.</p>
-      </div>
-      <div className="divide-y divide-slate-50">
-        {[
-          { key: "lowStockEmailAlerts" as const, label: "Stock crítico", sub: "Avisa cuando una venta deja un producto en stock mínimo o agotado" },
-          { key: "cashDifferenceEmailAlerts" as const, label: "Diferencia de caja", sub: "Avisa cuando un cierre de caja tiene una diferencia con el monto esperado" }
-        ].map((item) => (
-          <div key={item.key} className="flex items-center justify-between px-6 py-4">
-            <div>
-              <p className="text-sm font-medium text-slate-800">{item.label}</p>
-              <p className="mt-0.5 text-xs text-slate-500">{item.sub}</p>
+    <div className="space-y-5">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-6 py-4">
+          <h3 className="text-sm font-semibold text-slate-900">Alertas por email</h3>
+          <p className="mt-0.5 text-xs text-slate-500">Se envían al email del propietario de la cuenta.</p>
+        </div>
+        <div className="divide-y divide-slate-50">
+          {[
+            { key: "lowStockEmailAlerts" as const, label: "Stock crítico", sub: "Avisa cuando una venta deja un producto en stock mínimo o agotado" },
+            { key: "cashDifferenceEmailAlerts" as const, label: "Diferencia de caja", sub: "Avisa cuando un cierre de caja tiene una diferencia con el monto esperado" }
+          ].map((item) => (
+            <div key={item.key} className="flex items-center justify-between px-6 py-4">
+              <div>
+                <p className="text-sm font-medium text-slate-800">{item.label}</p>
+                <p className="mt-0.5 text-xs text-slate-500">{item.sub}</p>
+              </div>
+              <ToggleSwitch
+                checked={alerts[item.key]}
+                onChange={(v) => { if (!loading) handleToggle(item.key, v); }}
+              />
             </div>
-            <ToggleSwitch
-              checked={alerts[item.key]}
-              onChange={(v) => { if (!loading) handleToggle(item.key, v); }}
-            />
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+      <form onSubmit={handleSaveThreshold} className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-6 py-4">
+          <h3 className="text-sm font-semibold text-slate-900">Gastos de alto monto</h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Si configurás un umbral, se va a pedir una confirmación extra antes de guardar un gasto que lo supere. Dejalo vacío para no pedir confirmación adicional.
+          </p>
+        </div>
+        <div className="px-6 py-5">
+          <label className="mb-1.5 block text-xs font-medium text-slate-600">Umbral (ARS)</label>
+          <input
+            className="w-full max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 disabled:opacity-50"
+            disabled={loading}
+            min="0.01"
+            onChange={(e) => setHighExpenseThreshold(e.target.value)}
+            placeholder="Sin umbral configurado"
+            step="0.01"
+            type="number"
+            value={highExpenseThreshold}
+          />
+        </div>
+        <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
+          {thresholdError ? (
+            <span className="text-xs font-medium text-rose-600">{thresholdError}</span>
+          ) : thresholdSaved ? (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Cambios guardados
+            </span>
+          ) : (
+            <span />
+          )}
+          <button
+            type="submit"
+            disabled={loading || savingThreshold}
+            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50 focus:outline-none"
+          >
+            Guardar cambios
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
