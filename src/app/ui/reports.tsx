@@ -975,6 +975,7 @@ function PeriodComparisonPanel({
 
 function SalesEvolutionPanel({ sales }: { sales: SaleRecord[] }) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const last21 = useMemo(() => getLastNDays(21), []);
   const prev21 = useMemo(() => getLastNDays(42).slice(0, 21), []);
 
@@ -1084,6 +1085,44 @@ function SalesEvolutionPanel({ sales }: { sales: SaleRecord[] }) {
               </text>
             );
           })}
+        {last21.map((_, i) => {
+          const colW = cW / 20;
+          return (
+            <rect
+              fill="transparent"
+              height={cH}
+              key={`hit-${i}`}
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              width={colW}
+              x={xOf(i) - colW / 2}
+              y={pTop}
+            />
+          );
+        })}
+        {hoveredIndex !== null
+          ? (() => {
+              const x = xOf(hoveredIndex);
+              const y = yOf(currentValues[hoveredIndex]);
+              const tw = 92;
+              const th = 34;
+              const boxX = Math.min(Math.max(x - tw / 2, pLeft), pLeft + cW - tw);
+              const boxY = Math.max(y - th - 8, 2);
+              return (
+                <g pointerEvents="none">
+                  <line stroke="#cbd5e1" strokeDasharray="2 2" strokeWidth="1" x1={x} x2={x} y1={pTop} y2={pTop + cH} />
+                  <circle cx={x} cy={y} fill="#7c3aed" r={3} />
+                  <rect fill="#0f172a" height={th} opacity={0.92} rx={4} width={tw} x={boxX} y={boxY} />
+                  <text fill="#fff" fontSize="9" fontWeight="600" textAnchor="middle" x={boxX + tw / 2} y={boxY + 13}>
+                    {formatDateAbbrev(last21[hoveredIndex])}
+                  </text>
+                  <text fill="#fff" fontSize="9" textAnchor="middle" x={boxX + tw / 2} y={boxY + 25}>
+                    {formatMoney(currentValues[hoveredIndex])}
+                  </text>
+                </g>
+              );
+            })()
+          : null}
       </svg>
     </div>
   );
@@ -1108,6 +1147,7 @@ function buildDonutSegments(data: { value: number; color: string; label: string 
 
 function CategoryDonutPanel({ sales }: { sales: SaleRecord[] }) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [hoveredSegment, setHoveredSegment] = useState<number | null>(null);
   const categoryTotals = useMemo(() => {
     const totals: Record<string, number> = {};
     for (const sale of sales) {
@@ -1171,6 +1211,46 @@ function CategoryDonutPanel({ sales }: { sales: SaleRecord[] }) {
               <text dominantBaseline="middle" fill="#0f172a" fontSize="9" fontWeight="bold" textAnchor="middle" x={50} y={56}>
                 {formatShortMoney(total)}
               </text>
+              {segments.map((seg, i) => (
+                <circle
+                  cx={50}
+                  cy={50}
+                  fill="none"
+                  key={`hit-${i}`}
+                  onMouseEnter={() => setHoveredSegment(i)}
+                  onMouseLeave={() => setHoveredSegment(null)}
+                  r={seg.r}
+                  stroke="transparent"
+                  strokeDasharray={`${seg.pct * seg.circ} ${seg.circ}`}
+                  strokeDashoffset={`${-(seg.offset * seg.circ)}`}
+                  strokeWidth={22}
+                  transform="rotate(-90 50 50)"
+                />
+              ))}
+              {hoveredSegment !== null
+                ? (() => {
+                    const seg = segments[hoveredSegment];
+                    const midFraction = seg.offset + seg.pct / 2;
+                    const angle = (-90 + midFraction * 360) * (Math.PI / 180);
+                    const px = 50 + (seg.r + 14) * Math.cos(angle);
+                    const py = 50 + (seg.r + 14) * Math.sin(angle);
+                    const tw = 50;
+                    const th = 18;
+                    const boxX = Math.min(Math.max(px - tw / 2, 1), 100 - tw - 1);
+                    const boxY = Math.min(Math.max(py - th / 2, 1), 100 - th - 1);
+                    return (
+                      <g pointerEvents="none">
+                        <rect fill="#0f172a" height={th} opacity={0.92} rx={3} width={tw} x={boxX} y={boxY} />
+                        <text fill="#fff" fontSize="6" fontWeight="600" textAnchor="middle" x={boxX + tw / 2} y={boxY + 7}>
+                          {seg.label}
+                        </text>
+                        <text fill="#fff" fontSize="6" textAnchor="middle" x={boxX + tw / 2} y={boxY + 14}>
+                          {formatShortMoney(seg.value)} ({(seg.pct * 100).toFixed(0)}%)
+                        </text>
+                      </g>
+                    );
+                  })()
+                : null}
             </svg>
           </div>
           <div className="min-w-0 flex-1 space-y-1">
