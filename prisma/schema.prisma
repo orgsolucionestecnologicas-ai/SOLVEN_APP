@@ -163,6 +163,7 @@ model Product {
   minStock           Int                 @default(0)
   maxStock           Int?
   active             Boolean             @default(true)
+  imageUrl           String?
   categoryId         String?
   subcategoryId      String?
   supplierId         String?

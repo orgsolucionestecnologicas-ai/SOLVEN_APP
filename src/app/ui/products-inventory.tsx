@@ -34,9 +34,12 @@ type ProductRecord = {
   stock: number;
   unit: string;
   active: boolean;
+  imageUrl: string | null;
   createdAt: string;
   updatedAt: string;
 };
+
+const MAX_PRODUCT_IMAGE_BYTES = 2 * 1024 * 1024;
 
 type ProductsResponse = {
   data?: ProductRecord[];
@@ -1333,7 +1336,18 @@ function ProductRow({
 
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 shrink-0 rounded-lg bg-slate-100" />
+          {product.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              alt={product.name}
+              className="h-9 w-9 shrink-0 rounded-lg object-cover"
+              src={product.imageUrl}
+            />
+          ) : (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100">
+              <Package className="text-slate-400" size={16} />
+            </div>
+          )}
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
               <p className="truncate text-sm font-semibold text-slate-950">
@@ -1923,6 +1937,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
   const [salePrice, setSalePrice] = useState("");
   const [ivaRate, setIvaRate] = useState<number>(0.21);
   const [stock, setStock] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -1952,7 +1967,8 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
           costPrice: Number(costPrice),
           salePrice: Number(salePrice),
           ivaRate,
-          stock: Number(stock)
+          stock: Number(stock),
+          imageUrl
         })
       });
       const responseBody = (await response.json()) as CreateProductResponse;
@@ -2010,6 +2026,13 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
               value={name}
             />
           </FormField>
+
+          <ProductImageDropzone
+            disabled={isSubmitting}
+            id="product-image"
+            imageUrl={imageUrl}
+            onChange={setImageUrl}
+          />
 
           <FormField htmlFor="product-category" label="Categoría">
             <select
@@ -2153,6 +2176,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
   const [costPrice, setCostPrice] = useState(product.costPrice);
   const [salePrice, setSalePrice] = useState(product.salePrice);
   const [ivaRate, setIvaRate] = useState<number>(Number(product.ivaRate) ?? 0.21);
+  const [imageUrl, setImageUrl] = useState<string | null>(product.imageUrl);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -2170,7 +2194,8 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
           categoryName,
           costPrice: Number(costPrice),
           salePrice: Number(salePrice),
-          ivaRate
+          ivaRate,
+          imageUrl
         })
       });
       const responseBody = (await response.json()) as EditProductResponse;
@@ -2234,6 +2259,13 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
               value={name}
             />
           </FormField>
+
+          <ProductImageDropzone
+            disabled={isSubmitting}
+            id="edit-product-image"
+            imageUrl={imageUrl}
+            onChange={setImageUrl}
+          />
 
           <FormField htmlFor="edit-product-category" label="Categoría">
             <select
@@ -2838,6 +2870,88 @@ function FormField({ label, htmlFor, children }: FormFieldProps) {
       </label>
       {children}
     </div>
+  );
+}
+
+type ProductImageDropzoneProps = {
+  id: string;
+  imageUrl: string | null;
+  onChange: (dataUrl: string | null) => void;
+  disabled?: boolean;
+};
+
+function ProductImageDropzone({ id, imageUrl, onChange, disabled }: ProductImageDropzoneProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function processFile(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setError("El archivo debe ser una imagen.");
+      return;
+    }
+    if (file.size > MAX_PRODUCT_IMAGE_BYTES) {
+      setError("La imagen no puede superar los 2 MB.");
+      return;
+    }
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = () => onChange(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <FormField htmlFor={id} label="Foto del producto">
+      <div
+        className={`flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-4 text-center transition-colors ${
+          isDragging ? "border-violet-500 bg-violet-50" : "border-slate-300 bg-slate-50"
+        }`}
+        onDragLeave={() => setIsDragging(false)}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          const file = e.dataTransfer.files?.[0];
+          if (file) processFile(file);
+        }}
+      >
+        {imageUrl ? (
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img alt="Producto" className="h-20 w-20 rounded-md object-cover" src={imageUrl} />
+            <button
+              className="absolute -right-2 -top-2 rounded-full bg-white p-0.5 text-slate-500 shadow hover:text-rose-600"
+              disabled={disabled}
+              onClick={() => onChange(null)}
+              type="button"
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <Package className="text-slate-300" size={28} />
+        )}
+        <label className="cursor-pointer text-xs font-medium text-violet-600 hover:text-violet-700" htmlFor={id}>
+          {imageUrl ? "Cambiar imagen" : "Arrastrá una imagen o hacé click para subir"}
+        </label>
+        <input
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          disabled={disabled}
+          id={id}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) processFile(file);
+            e.target.value = "";
+          }}
+          type="file"
+        />
+      </div>
+      {error ? <p className="mt-1 text-xs text-rose-600">{error}</p> : null}
+    </FormField>
   );
 }
 

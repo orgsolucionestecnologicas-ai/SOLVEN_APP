@@ -74,6 +74,7 @@ type ProductRecord = {
   stock: number;
   ivaRate: number;
   unit: string;
+  imageUrl: string | null;
 };
 
 type ProductsResponse = {
@@ -1668,9 +1669,18 @@ export function Pos() {
                           onClick={() => addToCart(product)}
                           type="button"
                         >
-                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-slate-100 [.pos-dark_&]:bg-gray-700">
-                            <Package size={15} className="text-slate-400" />
-                          </div>
+                          {product.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              alt={product.name}
+                              className="h-9 w-9 flex-shrink-0 rounded object-cover"
+                              src={product.imageUrl}
+                            />
+                          ) : (
+                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-slate-100 [.pos-dark_&]:bg-gray-700">
+                              <Package size={15} className="text-slate-400" />
+                            </div>
+                          )}
                           <p className="line-clamp-2 text-center text-[11px] font-medium leading-tight text-slate-950 [.pos-dark_&]:text-slate-100">
                             {product.name}
                           </p>
@@ -1768,9 +1778,18 @@ export function Pos() {
                                 : "flex items-center gap-2.5 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 px-3 py-1 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600"
                           }
                         >
-                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-slate-100 [.pos-dark_&]:bg-gray-700">
-                            <Package size={13} className="text-slate-400" />
-                          </div>
+                          {product.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              alt={product.name}
+                              className="h-8 w-8 flex-shrink-0 rounded object-cover"
+                              src={product.imageUrl}
+                            />
+                          ) : (
+                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-slate-100 [.pos-dark_&]:bg-gray-700">
+                              <Package size={13} className="text-slate-400" />
+                            </div>
+                          )}
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium text-slate-950 [.pos-dark_&]:text-slate-100">{product.name}</p>
                             <p className="text-[10px] text-slate-400">{product.categoryName}</p>

@@ -40,6 +40,7 @@ export type CreateProductInput = {
   ivaRate?: number;
   supplierId?: string | null;
   unit?: string;
+  imageUrl?: string | null;
 };
 
 export type ValidatedProductInput = {
@@ -53,6 +54,7 @@ export type ValidatedProductInput = {
   ivaRate: number;
   supplierId?: string | null;
   unit: string;
+  imageUrl?: string | null;
 };
 
 export class ProductValidationError extends Error {
@@ -125,6 +127,21 @@ export function validateCreateProductInput(
       ? productInput.unit
       : "Unidad (ud)";
 
+  let imageUrl: string | null | undefined;
+  if (productInput.imageUrl !== undefined && productInput.imageUrl !== null) {
+    if (
+      typeof productInput.imageUrl !== "string" ||
+      !productInput.imageUrl.startsWith("data:image/") ||
+      productInput.imageUrl.length > 3_000_000
+    ) {
+      validationErrors.push("imageUrl inválido o supera el tamaño máximo permitido.");
+    } else {
+      imageUrl = productInput.imageUrl;
+    }
+  } else if (productInput.imageUrl === null) {
+    imageUrl = null;
+  }
+
   if (validationErrors.length > 0) {
     throw new ProductValidationError(validationErrors);
   }
@@ -139,7 +156,8 @@ export function validateCreateProductInput(
     maxStock,
     ivaRate,
     supplierId,
-    unit
+    unit,
+    imageUrl
   };
 }
 
@@ -158,13 +176,14 @@ export type UpdateProductInput = {
   supplierId?: string | null;
   unit?: string;
   active?: boolean;
+  imageUrl?: string | null;
 };
 
 export function validateUpdateProductInput(
   input: UpdateProductInput
-): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string; active?: boolean } {
+): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string; active?: boolean; imageUrl?: string | null } {
   const errors: string[] = [];
-  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string; active?: boolean } = {};
+  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string; active?: boolean; imageUrl?: string | null } = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -237,6 +256,20 @@ export function validateUpdateProductInput(
 
   if (input.active !== undefined) {
     result.active = Boolean(input.active);
+  }
+
+  if (input.imageUrl !== undefined) {
+    if (input.imageUrl === null) {
+      result.imageUrl = null;
+    } else if (
+      typeof input.imageUrl !== "string" ||
+      !input.imageUrl.startsWith("data:image/") ||
+      input.imageUrl.length > 3_000_000
+    ) {
+      errors.push("imageUrl inválido o supera el tamaño máximo permitido.");
+    } else {
+      result.imageUrl = input.imageUrl;
+    }
   }
 
   if (errors.length > 0) {
