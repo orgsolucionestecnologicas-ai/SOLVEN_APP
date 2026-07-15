@@ -186,6 +186,48 @@ function pctChange(curr: number, prev: number): number {
   return ((curr - prev) / prev) * 100;
 }
 
+function computeMetrics(
+  currSales: SaleRecord[],
+  prevSales: SaleRecord[],
+  currExpenses: ExpenseRecord[],
+  prevExpenses: ExpenseRecord[],
+  customers: CustomerRecord[],
+  currRange: { start: Date; end: Date },
+  prevRange: { start: Date; end: Date }
+): AllMetrics {
+  const currTotal = currSales.reduce((s, x) => s + Number(x.totalAmount), 0);
+  const prevTotal = prevSales.reduce((s, x) => s + Number(x.totalAmount), 0);
+  const currCount = currSales.length;
+  const prevCount = prevSales.length;
+  const currAvg = currCount > 0 ? currTotal / currCount : 0;
+  const prevAvg = prevCount > 0 ? prevTotal / prevCount : 0;
+  const currUnits = currSales.reduce((s, x) => s + x.items.reduce((si, it) => si + it.quantity, 0), 0);
+  const prevUnits = prevSales.reduce((s, x) => s + x.items.reduce((si, it) => si + it.quantity, 0), 0);
+  const currNewCust = customers.filter((c) => { const d = new Date(c.createdAt); return d >= currRange.start && d <= currRange.end; }).length;
+  const prevNewCust = customers.filter((c) => { const d = new Date(c.createdAt); return d >= prevRange.start && d <= prevRange.end; }).length;
+  const currExp = currExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const prevExp = prevExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  return {
+    totalSales: { curr: currTotal, prev: prevTotal, pct: pctChange(currTotal, prevTotal) },
+    transactions: { curr: currCount, prev: prevCount, pct: pctChange(currCount, prevCount) },
+    avgTicket: { curr: currAvg, prev: prevAvg, pct: pctChange(currAvg, prevAvg) },
+    unitsSold: { curr: currUnits, prev: prevUnits, pct: pctChange(currUnits, prevUnits) },
+    newCustomers: { curr: currNewCust, prev: prevNewCust, pct: pctChange(currNewCust, prevNewCust) },
+    currExpenses: currExp,
+    prevExpenses: prevExp,
+  };
+}
+
+function parseDateRangeInputs(startStr: string, endStr: string): { start: Date; end: Date } | null {
+  if (!startStr || !endStr) return null;
+  const [sy, sm, sd] = startStr.split("-").map(Number);
+  const [ey, em, ed] = endStr.split("-").map(Number);
+  return {
+    start: new Date(sy, (sm ?? 1) - 1, sd ?? 1, 0, 0, 0, 0),
+    end: new Date(ey, (em ?? 1) - 1, ed ?? 1, 23, 59, 59, 999),
+  };
+}
+
 function getMonthRange(offset: number): { start: Date; end: Date } {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
@@ -447,29 +489,28 @@ export function Reports() {
     [expenses, previousMonth]
   );
 
-  const metrics = useMemo<AllMetrics>(() => {
-    const currTotal = currentSales.reduce((s, x) => s + Number(x.totalAmount), 0);
-    const prevTotal = previousSales.reduce((s, x) => s + Number(x.totalAmount), 0);
-    const currCount = currentSales.length;
-    const prevCount = previousSales.length;
-    const currAvg = currCount > 0 ? currTotal / currCount : 0;
-    const prevAvg = prevCount > 0 ? prevTotal / prevCount : 0;
-    const currUnits = currentSales.reduce((s, x) => s + x.items.reduce((si, it) => si + it.quantity, 0), 0);
-    const prevUnits = previousSales.reduce((s, x) => s + x.items.reduce((si, it) => si + it.quantity, 0), 0);
-    const currNewCust = customers.filter((c) => { const d = new Date(c.createdAt); return d >= currentMonth.start && d <= currentMonth.end; }).length;
-    const prevNewCust = customers.filter((c) => { const d = new Date(c.createdAt); return d >= previousMonth.start && d <= previousMonth.end; }).length;
-    const currExp = currentExpenses.reduce((s, e) => s + Number(e.amount), 0);
-    const prevExp = previousExpenses.reduce((s, e) => s + Number(e.amount), 0);
-    return {
-      totalSales: { curr: currTotal, prev: prevTotal, pct: pctChange(currTotal, prevTotal) },
-      transactions: { curr: currCount, prev: prevCount, pct: pctChange(currCount, prevCount) },
-      avgTicket: { curr: currAvg, prev: prevAvg, pct: pctChange(currAvg, prevAvg) },
-      unitsSold: { curr: currUnits, prev: prevUnits, pct: pctChange(currUnits, prevUnits) },
-      newCustomers: { curr: currNewCust, prev: prevNewCust, pct: pctChange(currNewCust, prevNewCust) },
-      currExpenses: currExp,
-      prevExpenses: prevExp,
-    };
-  }, [currentSales, previousSales, currentExpenses, previousExpenses, customers, currentMonth, previousMonth]);
+  const metrics = useMemo<AllMetrics>(
+    () => computeMetrics(currentSales, previousSales, currentExpenses, previousExpenses, customers, currentMonth, previousMonth),
+    [currentSales, previousSales, currentExpenses, previousExpenses, customers, currentMonth, previousMonth]
+  );
+
+  const [compareMode, setCompareMode] = useState(false);
+  const [rangeAStart, setRangeAStart] = useState("");
+  const [rangeAEnd, setRangeAEnd] = useState("");
+  const [rangeBStart, setRangeBStart] = useState("");
+  const [rangeBEnd, setRangeBEnd] = useState("");
+
+  const rangeA = useMemo(() => parseDateRangeInputs(rangeAStart, rangeAEnd), [rangeAStart, rangeAEnd]);
+  const rangeB = useMemo(() => parseDateRangeInputs(rangeBStart, rangeBEnd), [rangeBStart, rangeBEnd]);
+
+  const comparisonMetrics = useMemo<AllMetrics | null>(() => {
+    if (!rangeA || !rangeB) return null;
+    const salesA = sales.filter((s) => { const d = new Date(s.saleDate); return d >= rangeA.start && d <= rangeA.end; });
+    const salesB = sales.filter((s) => { const d = new Date(s.saleDate); return d >= rangeB.start && d <= rangeB.end; });
+    const expensesA = expenses.filter((e) => { const d = new Date(e.expenseDate); return d >= rangeA.start && d <= rangeA.end; });
+    const expensesB = expenses.filter((e) => { const d = new Date(e.expenseDate); return d >= rangeB.start && d <= rangeB.end; });
+    return computeMetrics(salesA, salesB, expensesA, expensesB, customers, rangeA, rangeB);
+  }, [sales, expenses, customers, rangeA, rangeB]);
 
   const sparklines = useMemo(() => {
     const last7 = getLastNDays(7);
@@ -586,6 +627,53 @@ export function Reports() {
               </div>
             ) : null}
             <button
+              className={
+                compareMode
+                  ? "inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white"
+                  : "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              }
+              onClick={() => setCompareMode((v) => !v)}
+              type="button"
+            >
+              Comparar períodos
+            </button>
+            {compareMode ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-slate-500">A:</span>
+                  <input
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:border-violet-500 focus:outline-none"
+                    onChange={(e) => setRangeAStart(e.target.value)}
+                    type="date"
+                    value={rangeAStart}
+                  />
+                  <span className="text-xs text-slate-400">–</span>
+                  <input
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:border-violet-500 focus:outline-none"
+                    onChange={(e) => setRangeAEnd(e.target.value)}
+                    type="date"
+                    value={rangeAEnd}
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-slate-500">B:</span>
+                  <input
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:border-violet-500 focus:outline-none"
+                    onChange={(e) => setRangeBStart(e.target.value)}
+                    type="date"
+                    value={rangeBStart}
+                  />
+                  <span className="text-xs text-slate-400">–</span>
+                  <input
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:border-violet-500 focus:outline-none"
+                    onChange={(e) => setRangeBEnd(e.target.value)}
+                    type="date"
+                    value={rangeBEnd}
+                  />
+                </div>
+              </div>
+            ) : null}
+            <button
               className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700"
               onClick={() => window.print()}
               type="button"
@@ -685,10 +773,14 @@ export function Reports() {
       <div className="flex-1 px-5 py-5 sm:px-8">
         {activeTab === "Resumen general" ? (
           <ResumenGeneralTab
+            comparisonMetrics={comparisonMetrics}
+            compareMode={compareMode}
             customers={customers}
             currentSales={currentSales}
             metrics={metrics}
             previousSales={previousSales}
+            rangeA={rangeA}
+            rangeB={rangeB}
             sales={sales}
             services={services}
           />
@@ -803,6 +895,10 @@ function ResumenGeneralTab({
   customers,
   metrics,
   services,
+  compareMode,
+  comparisonMetrics,
+  rangeA,
+  rangeB,
 }: {
   sales: SaleRecord[];
   currentSales: SaleRecord[];
@@ -810,9 +906,16 @@ function ResumenGeneralTab({
   customers: CustomerRecord[];
   metrics: AllMetrics;
   services: ServiceRecord[];
+  compareMode: boolean;
+  comparisonMetrics: AllMetrics | null;
+  rangeA: { start: Date; end: Date } | null;
+  rangeB: { start: Date; end: Date } | null;
 }) {
   return (
     <div className="space-y-4">
+      {compareMode && comparisonMetrics && rangeA && rangeB ? (
+        <PeriodComparisonPanel metrics={comparisonMetrics} rangeA={rangeA} rangeB={rangeB} />
+      ) : null}
       {/* Row 1 */}
       <div className="grid grid-cols-4 gap-4">
         <div className="col-span-2">
@@ -836,6 +939,33 @@ function ResumenGeneralTab({
         </div>
         <MonthlyComparisonPanel sales={sales} />
         <KeyIndicatorsPanel sales={sales} />
+      </div>
+    </div>
+  );
+}
+
+// ─── PeriodComparisonPanel ─────────────────────────────────────────────────────
+
+function PeriodComparisonPanel({
+  metrics,
+  rangeA,
+  rangeB,
+}: {
+  metrics: AllMetrics;
+  rangeA: { start: Date; end: Date };
+  rangeB: { start: Date; end: Date };
+}) {
+  const fmt = new Intl.DateTimeFormat("es-419", { day: "numeric", month: "short", year: "numeric" });
+  return (
+    <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-4">
+      <h3 className="mb-1 text-sm font-semibold text-slate-950">Comparación de períodos</h3>
+      <p className="mb-3 text-xs text-slate-500">
+        <span className="font-medium text-slate-700">Período A:</span> {fmt.format(rangeA.start)} – {fmt.format(rangeA.end)}
+        <span className="mx-2">vs</span>
+        <span className="font-medium text-slate-700">Período B:</span> {fmt.format(rangeB.start)} – {fmt.format(rangeB.end)}
+      </p>
+      <div className="max-w-md">
+        <GrowthSummaryPanel metrics={metrics} />
       </div>
     </div>
   );
