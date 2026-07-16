@@ -8,6 +8,12 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Antes se usaba prisma.tenant.findFirst({ orderBy: { createdAt: "asc" } }),
+// pero en una base con tenants reales el más viejo no es necesariamente el
+// tenant de pruebas — esto podía borrar los datos de un cliente real.
+// Ahora apunta siempre al tenant demo conocido (mismo id que usa prisma/seed.ts).
+const SEED_TENANT_ID = process.env.SEED_TENANT_ID || "seed_tenant_demo";
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const cost = (sale) => Math.round(sale * 0.8);
 const p = (n) => n; // para legibilidad
@@ -115,9 +121,9 @@ async function main() {
   console.log("🔄 Iniciando seed Icase...\n");
 
   // 1. Tenant
-  const tenant = await prisma.tenant.findFirst({ orderBy: { createdAt: "asc" } });
+  const tenant = await prisma.tenant.findUnique({ where: { id: SEED_TENANT_ID } });
   if (!tenant) {
-    console.error("❌ No hay ningún tenant. Ejecuta npm run reset:users primero.");
+    console.error(`❌ No existe el tenant demo (${SEED_TENANT_ID}). Ejecuta npm run reset:users primero.`);
     process.exit(1);
   }
   const TID = tenant.id;

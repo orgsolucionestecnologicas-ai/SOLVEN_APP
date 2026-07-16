@@ -111,29 +111,6 @@ function getAvatarColorClass(name: string): string {
   return AVATAR_COLORS[sum % AVATAR_COLORS.length];
 }
 
-function getCustomerEmail(name: string): string {
-  const normalize = (w: string) =>
-    w
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .replace(/[^a-z]/g, "");
-  const parts = name
-    .toLowerCase()
-    .trim()
-    .split(/\s+/)
-    .map(normalize)
-    .filter(Boolean);
-  if (parts.length >= 2) return `${parts[0]}.${parts[1]}@email.com`;
-  return `${parts[0] ?? "cliente"}@email.com`;
-}
-
-function getCustomerPhone(id: string): string {
-  const hex = id.replace(/[^0-9a-f]/gi, "");
-  const n1 = parseInt(hex.slice(-6, -3) || "000", 16) % 1000;
-  const n2 = parseInt(hex.slice(-3) || "000", 16) % 10000;
-  return `555-${String(n1).padStart(3, "0")}-${String(n2).padStart(4, "0")}`;
-}
-
 function computeSegment(
   totalPurchases: number,
   hasSales: boolean,
@@ -406,9 +383,15 @@ export function CustomersList() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((c) => {
-        const phone = getCustomerPhone(c.id).toLowerCase();
+        const phone = c.phone?.toLowerCase() ?? "";
+        const email = c.email?.toLowerCase() ?? "";
         const taxId = c.taxId?.toLowerCase() ?? "";
-        return c.name.toLowerCase().includes(q) || phone.includes(q) || taxId.includes(q);
+        return (
+          c.name.toLowerCase().includes(q) ||
+          phone.includes(q) ||
+          email.includes(q) ||
+          taxId.includes(q)
+        );
       });
     }
 
@@ -981,7 +964,7 @@ function CustomerRow({
       </td>
       <td className="px-4 py-3">
         <span className="max-w-[160px] truncate text-xs text-slate-500">
-          {getCustomerEmail(customer.name)}
+          {customer.email ?? "Sin email"}
         </span>
       </td>
       <td className="px-4 py-3">

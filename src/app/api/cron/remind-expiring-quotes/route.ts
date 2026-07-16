@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import { sendQuoteEmail } from "@/lib/email";
+import { sendQuoteExpiringReminderEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { errorResponse, successResponse } from "../../_shared/responses";
 
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
         businessNameByTenant.set(quote.tenantId, businessName);
       }
 
-      await sendQuoteEmail(quote.customerEmail, quote, quote.items, businessName);
+      await sendQuoteExpiringReminderEmail(quote.customerEmail, quote, businessName);
       await prisma.quote.update({ where: { id: quote.id }, data: { reminderSentAt: now } });
       remindersSent += 1;
     }

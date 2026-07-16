@@ -81,42 +81,6 @@ describe("sales API database integration", () => {
     expect(cashMovement).toMatchObject({ type: "IN", source: "SALE", referenceId: responseBody.data.id });
   });
 
-  it("creates a credit sale with debt through the API flow", async () => {
-    const product = await createIntegrationProduct("CREDIT", 14, 6);
-    const customer = await createIntegrationCustomer();
-
-    const response = await POST(
-      new Request("http://localhost/api/sales", {
-        method: "POST",
-        body: JSON.stringify({
-          paymentType: "CREDIT",
-          customerId: customer.id,
-          items: [{ productId: product.id, quantity: 2 }]
-        })
-      })
-    );
-    const responseBody = await response.json();
-    const updatedProduct = await prisma.product.findUniqueOrThrow({ where: { id: product.id } });
-    const debt = await prisma.debt.findFirstOrThrow({
-      where: { customerId: customer.id, totalAmount: responseBody.data.totalAmount }
-    });
-    const cashMovement = await prisma.cashMovement.findFirst({
-      where: { source: "SALE", referenceId: responseBody.data.id }
-    });
-    const inventoryMovement = await prisma.inventoryMovement.findFirstOrThrow({
-      where: { reason: `SALE:${responseBody.data.id}`, productId: product.id }
-    });
-
-    expect(response.status).toBe(201);
-    expect(responseBody.data).toMatchObject({
-      paymentType: "CREDIT", customerId: customer.id, debtId: debt.id, totalAmount: "28"
-    });
-    expect(updatedProduct.stock).toBe(4);
-    expect(debt.remainingAmount.toString()).toBe("28");
-    expect(cashMovement).toBeNull();
-    expect(inventoryMovement).toMatchObject({ previousStock: 6, newStock: 4, quantityChange: -2 });
-  });
-
   it("lists sales after creation", async () => {
     const product = await createIntegrationProduct("LIST", 9, 4);
 
@@ -147,12 +111,6 @@ async function createIntegrationProduct(nameSuffix: string, salePrice: number, s
       salePrice,
       stock
     }
-  });
-}
-
-async function createIntegrationCustomer() {
-  return prisma.customer.create({
-    data: { tenantId: testTenantId, name: `${testCustomerNamePrefix}${Date.now()}` }
   });
 }
 

@@ -26,6 +26,8 @@ import {
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
+const MAX_LOGO_IMAGE_BYTES = 2 * 1024 * 1024;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type StoreInfo = {
@@ -497,9 +499,14 @@ function TicketPreview({
   );
 }
 
-function DocumentosSection() {
+function DocumentosSection({
+  logoUrl,
+  onLogoUrlChange
+}: {
+  logoUrl: string;
+  onLogoUrlChange: (logoUrl: string) => void;
+}) {
   const [raw, setRaw] = useState<Record<string, unknown> | null>(null);
-  const [logoUrl, setLogoUrl] = useState("");
   const [receiptFooterMessage, setReceiptFooterMessage] = useState("");
   const [receiptThankYouMessage, setReceiptThankYouMessage] = useState("¡Gracias por su compra!");
   const [initialReceiptNumber, setInitialReceiptNumber] = useState("0");
@@ -509,13 +516,16 @@ function DocumentosSection() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const onLogoUrlChangeRef = useRef(onLogoUrlChange);
+  onLogoUrlChangeRef.current = onLogoUrlChange;
+
   useEffect(() => {
     fetch("/api/settings", { headers: { Accept: "application/json" } })
       .then((res) => res.json())
       .then((body: { data?: Record<string, unknown> }) => {
         if (body.data) {
           setRaw(body.data);
-          setLogoUrl(typeof body.data.logoUrl === "string" ? body.data.logoUrl : "");
+          onLogoUrlChangeRef.current(typeof body.data.logoUrl === "string" ? body.data.logoUrl : "");
           setReceiptFooterMessage(typeof body.data.receiptFooterMessage === "string" ? body.data.receiptFooterMessage : "");
           setReceiptThankYouMessage(
             typeof body.data.receiptThankYouMessage === "string" ? body.data.receiptThankYouMessage : "¡Gracias por su compra!"
@@ -576,7 +586,7 @@ function DocumentosSection() {
           <input
             className={inputCls}
             disabled={loading}
-            onChange={(e) => setLogoUrl(e.target.value)}
+            onChange={(e) => onLogoUrlChange(e.target.value)}
             placeholder="https://misitio.com/logo.png"
             type="text"
             value={logoUrl}
@@ -1256,14 +1266,43 @@ function ComingSoonSection({ label }: { label: string }) {
 
 // ─── Right Sidebar ────────────────────────────────────────────────────────────
 
-function RightSidebar({ activeCategory, businessName }: { activeCategory: string; businessName: string }) {
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+function RightSidebar({
+  activeCategory,
+  businessName,
+  logoUrl,
+  onLogoUrlChange
+}: {
+  activeCategory: string;
+  businessName: string;
+  logoUrl: string;
+  onLogoUrlChange: (logoUrl: string) => void;
+}) {
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  function saveLogoUrl(nextLogoUrl: string) {
+    onLogoUrlChange(nextLogoUrl);
+    fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ logoUrl: nextLogoUrl })
+    }).catch(() => {});
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setLogoPreview(url);
+    if (!file.type.startsWith("image/")) {
+      setUploadError("El archivo debe ser una imagen.");
+      return;
+    }
+    if (file.size > MAX_LOGO_IMAGE_BYTES) {
+      setUploadError("La imagen no puede superar los 2 MB.");
+      return;
+    }
+    setUploadError(null);
+    const reader = new FileReader();
+    reader.onload = () => saveLogoUrl(reader.result as string);
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -1275,9 +1314,9 @@ function RightSidebar({ activeCategory, businessName }: { activeCategory: string
           htmlFor="logo-upload"
           className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 py-6 text-center transition-colors hover:border-violet-300 hover:bg-violet-50"
         >
-          {logoPreview ? (
+          {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoPreview} alt="Logo preview" className="h-16 w-16 rounded-lg object-contain" />
+            <img src={logoUrl} alt="Logo preview" className="h-16 w-16 rounded-lg object-contain" />
           ) : (
             <>
               <Camera className="h-7 w-7 text-slate-300" />
@@ -1293,10 +1332,11 @@ function RightSidebar({ activeCategory, businessName }: { activeCategory: string
           className="sr-only"
           onChange={handleFileChange}
         />
-        {logoPreview && (
+        {uploadError && <p className="mt-2 text-xs text-rose-500">{uploadError}</p>}
+        {logoUrl && (
           <button
             type="button"
-            onClick={() => setLogoPreview(null)}
+            onClick={() => saveLogoUrl("")}
             className="mt-2 w-full text-center text-xs text-slate-400 hover:text-slate-600"
           >
             Quitar logo
@@ -1623,6 +1663,7 @@ export function Settings() {
   const [activeCategory, setActiveCategory] = useState("general");
   const [businessName, setBusinessName] = useState("");
   const [role, setRole] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Record<SectionGroupId, boolean>>({
     negocio: true,
     fiscal: false,
@@ -1635,6 +1676,17 @@ export function Settings() {
       .then((r) => r.json())
       .then((body: { data?: { role?: string } }) => {
         if (isActive && body.data?.role) setRole(body.data.role);
+      })
+      .catch(() => {});
+    return () => { isActive = false; };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+    fetch("/api/settings", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: { logoUrl?: unknown } }) => {
+        if (isActive && typeof body.data?.logoUrl === "string") setLogoUrl(body.data.logoUrl);
       })
       .catch(() => {});
     return () => { isActive = false; };
@@ -1654,7 +1706,7 @@ export function Settings() {
       case "general":
         return <GeneralSection onBusinessNameChange={setBusinessName} />;
       case "documentos":
-        return <DocumentosSection />;
+        return <DocumentosSection logoUrl={logoUrl} onLogoUrlChange={setLogoUrl} />;
       case "arca":
         return <FacturacionARCASection />;
       case "seguridad":
@@ -1763,7 +1815,12 @@ export function Settings() {
 
           {/* Right sidebar */}
           <div className="hidden w-56 flex-shrink-0 xl:block">
-            <RightSidebar activeCategory={activeCategory} businessName={businessName} />
+            <RightSidebar
+              activeCategory={activeCategory}
+              businessName={businessName}
+              logoUrl={logoUrl}
+              onLogoUrlChange={setLogoUrl}
+            />
           </div>
         </div>
       </div>

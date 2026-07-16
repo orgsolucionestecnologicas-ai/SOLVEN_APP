@@ -7,3 +7,13 @@
 ---
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
+
+### 2026-07-16 — QA-FIX-03: cierre de los 8 hallazgos 🟠/🟡/🟢 restantes del ciclo de QA
+Los 8 ítems se resolvieron sin N/A: `GET` de Caja/Ajustes ahora exige rol (con tests 403 nuevos), scripts de seed/reset apuntan a un tenant demo fijo por id, columna/buscador de Clientes usan email/teléfono reales, el cron de cotizaciones usa la plantilla correcta, "Subir logo" en Ajustes ya persiste de verdad, se eliminó un test de venta a crédito desactualizado (cobertura ya existe en otro archivo), `/debts` y `/debt-payments` quedaron bajo la sección `customers` de RolePermission, y el límite de crédito en el panel de pago ya es el real del cliente. Se encontró un efecto colateral no pedido en el ítem 1: `CashRegisterIndicator` en `app-shell.tsx` llama a `/api/cash-movements` para todos los roles sin distinción, así que `SUPERVISOR`/`INVENTORY`/`READONLY` ahora ven un saldo de caja incorrecto en el sidebar (no crashea, solo muestra el monto de apertura) — no se tocó `app-shell.tsx` por estar fuera del alcance del lote, queda documentado para decisión de Diego. `npm run typecheck`, `npm run lint` y `npm test` (228 passed, 0 fallas) sin regresiones. Detalle completo en `REPORTE_DE_CAMBIOS.md`.
+
+### 2026-07-16 — QA-FIX-02: RolePermission conectado a `requireRole` (decisión de Diego)
+`requireRole(roles, section?)` ahora consulta `RolePermission` para bloquear roles no-OWNER cuando hay una fila `canAccess:false`; OWNER nunca puede quedar bloqueado. Se mapearon 27 endpoints de escritura a 6 de las 10 secciones (customers, products, cashMovements, quotes, returns, pos) siguiendo el mismo criterio que `app-shell.tsx` usa para la navegación; `promotions` y `settings` quedan sin efecto real porque sus endpoints son todos OWNER-only. Dos casos ambiguos (`/api/debt-payments`, `/api/debts`) quedaron sin sección y marcados "pendiente de confirmar con Diego". Typecheck y tests (220 pass, 2 fallas preexistentes no relacionadas) corridos dos veces sin regresiones. Detalle completo en `REPORTE_DE_CAMBIOS.md`.
+
+### 2026-07-16 — QA-FIX-01: 9 endpoints sin control de rol, corregidos
+Se agregó `requireRole(...)` a los 9 endpoints de escritura (debts, customers/[id], categories, subcategories, services, recurring-expenses) que sólo validaban tenant, no rol — cualquier usuario autenticado podía escribir sin importar su permiso. Verificado con typecheck, tests (212 pass, 0 regresiones) y prueba en vivo con token READONLY: los 9 devuelven 403. Detalle completo en `REPORTE_DE_CAMBIOS.md`.
+

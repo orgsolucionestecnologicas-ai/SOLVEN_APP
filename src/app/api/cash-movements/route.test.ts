@@ -7,6 +7,7 @@ vi.mock("@/lib/tenant", () => ({
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ForbiddenError, requireRole } from "@/lib/tenant";
 import {
   createCashMovement,
   listCashMovements
@@ -21,6 +22,7 @@ vi.mock("../../../modules/cash", () => ({
 
 const mockedCreateCashMovement = vi.mocked(createCashMovement);
 const mockedListCashMovements = vi.mocked(listCashMovements);
+const mockedRequireRole = vi.mocked(requireRole);
 
 describe("cash movements API route", () => {
   beforeEach(() => {
@@ -35,6 +37,15 @@ describe("cash movements API route", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(expect.objectContaining({ data: [cashMovementJson] }));
+  });
+
+  it("returns 403 when the role is not authorized to list cash movements", async () => {
+    mockedRequireRole.mockRejectedValueOnce(new ForbiddenError());
+
+    const response = await GET(new Request("http://localhost/api/cash-movements"));
+
+    expect(response.status).toBe(403);
+    expect(mockedListCashMovements).not.toHaveBeenCalled();
   });
 
   it("returns a server error when cash movements cannot be listed", async () => {

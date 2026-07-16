@@ -21,6 +21,7 @@ import { formatARS as fmtMoney } from "@/lib/format-currency";
 type CustomerRecord = {
   id: string;
   name: string;
+  creditLimit?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -284,7 +285,7 @@ export function CustomerPaymentForm() {
 
   const avatarColor = getAvatarColor(customer.name);
   const initials = getInitials(customer.name);
-  const creditLimit = null; // Sin límite definido hasta implementar por cliente
+  const creditLimit = customer.creditLimit != null ? Number(customer.creditLimit) : null;
   const creditAvailable = creditLimit != null ? Math.max(0, creditLimit - totalRemaining) : null;
   const lastSaleDate = null;
 

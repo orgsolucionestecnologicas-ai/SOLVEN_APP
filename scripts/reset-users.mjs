@@ -9,6 +9,13 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// Antes se usaba prisma.tenant.findFirst({ orderBy: { createdAt: "asc" } }),
+// pero en una base con tenants reales el más viejo no es necesariamente el
+// tenant de pruebas — esto podía dejar al usuario admin de pruebas colgado
+// de un tenant real. Ahora apunta siempre al tenant demo conocido (mismo id
+// que usa prisma/seed.ts y scripts/seed-icase.mjs).
+const SEED_TENANT_ID = process.env.SEED_TENANT_ID || "seed_tenant_demo";
+
 async function main() {
   console.log("🔄 Iniciando reset de usuarios...\n");
 
@@ -20,14 +27,15 @@ async function main() {
   const deleted = await prisma.user.deleteMany({});
   console.log(`🗑️  Usuarios eliminados: ${deleted.count}`);
 
-  // 2. Buscar tenant de prueba o crear uno
-  let tenant = await prisma.tenant.findFirst({
-    orderBy: { createdAt: "asc" },
+  // 2. Buscar tenant demo conocido o crearlo
+  let tenant = await prisma.tenant.findUnique({
+    where: { id: SEED_TENANT_ID },
   });
 
   if (!tenant) {
     tenant = await prisma.tenant.create({
       data: {
+        id: SEED_TENANT_ID,
         businessName: "SOLVEN Test",
         email: "admin@solvenrs.com",
         plan: "trial",

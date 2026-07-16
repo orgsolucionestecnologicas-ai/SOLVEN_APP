@@ -18,8 +18,9 @@ import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from 
 export async function GET() {
   let tenantId: string;
   try {
-    tenantId = await requireTenantId();
+    ({ tenantId } = await requireRole(["OWNER"], "settings"));
   } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
     throw e;
   }
