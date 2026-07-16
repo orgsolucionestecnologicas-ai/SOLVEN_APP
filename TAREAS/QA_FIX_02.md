@@ -85,7 +85,12 @@ Leé el archivo CLAUDE.md para contexto del proyecto.
 
 Mismo formato que `QA_FIX_01`: bloque en `TAREAS/REPORTE_DE_CAMBIOS.md` con `### TAREA QA-FIX-02 — ✅ Completada`, incluyendo la tabla final de qué endpoint quedó mapeado a qué `section`, y cualquier ambigüedad que haya quedado pendiente de confirmar con Diego.
 
+**Además, agregá una entrada corta (2-4 líneas) al principio de `TAREAS/REPORTELIDER.md`**, mismo formato que en `QA_FIX_01`:
+
+```
+### YYYY-MM-DD — QA-FIX-02: [título corto]
+[2-4 líneas: qué se tocó, resultado, algo crítico a destacar si lo hay]
+```
+
 ### Reglas del ciclo
-- Regla de oro: no modifiques lógica de negocio, BD ni archivos fuera de los indicados. Ante la duda, menos es más — y ante la duda de una decisión de producto, preguntar en el reporte en vez de asumir.
-- Commit y push al final: `git add -A`, commit descriptivo mencionando "QA-FIX-02", `git push origin main`.
-- No borres ni archives `TAREAS/QA_FIX_02.md` al terminar — lo revisa el Ingeniero Líder primero.
+- Regla de oro: no modifiques lógica de negocio, BD ni archivos fuera de los indicados. Ante la duda, menos es más — y ante la duda de una decisión de 

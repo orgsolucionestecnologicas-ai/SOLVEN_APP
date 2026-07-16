@@ -84,7 +84,12 @@ Después de aplicar los 9 cambios:
 
 Igual que el ciclo de features: escribí el resultado en `TAREAS/REPORTE_DE_CAMBIOS.md` (creá el archivo si no existe, con el mismo formato usado en los lotes anteriores — un bloque `### TAREA QA-FIX-01 — ✅ Completada` con Qué se hizo / Archivos modificados / Migraciones / Algo pendiente / typecheck).
 
+**Además, agregá una entrada corta (2-4 líneas, no el detalle completo) al principio de `TAREAS/REPORTELIDER.md`** (creá el archivo si no existe, con encabezado `# REPORTE LÍDER — SOLVEN`). Esto es un log resumido aparte para que el Ingeniero Líder tenga una foto rápida de todo lo que se va generando sin abrir cada reporte detallado. Formato de la entrada:
+
+```
+### YYYY-MM-DD — QA-FIX-01: [título corto]
+[2-4 líneas: qué se tocó, resultado (típecheck/tests OK o no), algo crítico a destacar si lo hay]
+```
+
 ### Reglas del ciclo
-- Regla de oro: no modifiques lógica de negocio, BD ni archivos fuera de los indicados. Ante la duda, menos es más.
-- Commit y push al final: `git add -A` (en este caso sí podés incluir los archivos de `src/app/api/**` tocados, no solo `TAREAS/`, porque es el propósito de esta tarea), commit descriptivo mencionando "QA-FIX-01", y `git push origin main`.
-- Cuando termines, avisá que `TAREAS/QA_FIX_01.md` está listo para que el Ingeniero Líder lo revise contra `TAREAS/QA_REPORTE.md` — no lo borres vos, lo borra/archiva el Ingeniero Líder después de revisarlo.
+- Regla de oro: no modifiques lógica de negocio,
