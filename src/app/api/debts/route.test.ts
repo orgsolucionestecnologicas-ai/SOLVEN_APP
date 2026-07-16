@@ -1,11 +1,19 @@
-vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+vi.mock("@/lib/tenant", () => ({
+  requireTenantId: vi.fn().mockResolvedValue("test-tenant-id"),
+  requireRole: vi.fn().mockResolvedValue({ tenantId: "test-tenant-id", userId: "test-user-id", role: "OWNER" }),
+  ForbiddenError: class ForbiddenError extends Error {},
+  UnauthorizedError: class UnauthorizedError extends Error {}
+}));
 
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ForbiddenError, requireRole } from "@/lib/tenant";
 import { createDebt, type DebtWithCustomer, listDebts } from "../../../modules/debts";
 import { DebtValidationError } from "../../../modules/debts/debt-validation";
 import { GET, POST } from "./route";
+
+const mockedRequireRole = vi.mocked(requireRole);
 
 vi.mock("../../../modules/debts", () => ({
   createDebt: vi.fn(),
@@ -108,6 +116,23 @@ describe("debts API route", () => {
         message: "Customer was not found."
       }
     });
+  });
+
+  it("returns 403 when the role is not authorized to create debts", async () => {
+    mockedRequireRole.mockRejectedValueOnce(new ForbiddenError());
+
+    const response = await POST(
+      new Request("http://localhost/api/debts", {
+        method: "POST",
+        body: JSON.stringify({
+          customerId: "customer-1",
+          totalAmount: 90
+        })
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(mockedCreateDebt).not.toHaveBeenCalled();
   });
 });
 

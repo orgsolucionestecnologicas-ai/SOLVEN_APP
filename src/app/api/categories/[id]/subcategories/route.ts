@@ -7,17 +7,31 @@ import {
 } from "../../../../../modules/categories";
 import {
   errorResponse,
+  forbiddenResponse,
   invalidJsonResponse,
   isRequestObject,
-  successResponse
+  successResponse,
+  unauthorizedResponse
 } from "../../../_shared/responses";
-import { requireTenantId } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id: categoryId }, tenantId] = await Promise.all([params, requireTenantId()]);
+  let categoryId: string, tenantId: string;
+  try {
+    let role: { tenantId: string; userId: string; role: string };
+    ([{ id: categoryId }, role] = await Promise.all([
+      params,
+      requireRole(["OWNER", "INVENTORY"])
+    ]));
+    ({ tenantId } = role);
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
 
   let body: unknown;
   try {

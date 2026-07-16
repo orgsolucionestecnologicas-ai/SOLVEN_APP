@@ -1,10 +1,18 @@
-vi.mock("@/lib/tenant", () => ({ requireTenantId: vi.fn().mockResolvedValue("test-tenant-id") }));
+vi.mock("@/lib/tenant", () => ({
+  requireTenantId: vi.fn().mockResolvedValue("test-tenant-id"),
+  requireRole: vi.fn().mockResolvedValue({ tenantId: "test-tenant-id", userId: "test-user-id", role: "OWNER" }),
+  ForbiddenError: class ForbiddenError extends Error {},
+  UnauthorizedError: class UnauthorizedError extends Error {}
+}));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ForbiddenError, requireRole } from "@/lib/tenant";
 import { createService, listServices } from "../../../modules/services";
 import { ServiceValidationError } from "../../../modules/services/service-validation";
 import { GET, POST } from "./route";
+
+const mockedRequireRole = vi.mocked(requireRole);
 
 vi.mock("../../../modules/services", () => ({
   createService: vi.fn(),
@@ -83,6 +91,20 @@ describe("services API route", () => {
         details: ["El nombre del servicio es requerido."]
       }
     });
+  });
+
+  it("returns 403 when the role is not authorized to create services", async () => {
+    mockedRequireRole.mockRejectedValueOnce(new ForbiddenError());
+
+    const response = await POST(
+      new Request("http://localhost/api/services", {
+        method: "POST",
+        body: JSON.stringify({ name: "Corte de cabello", price: 150 })
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(mockedCreateService).not.toHaveBeenCalled();
   });
 });
 

@@ -6,12 +6,13 @@ import {
 } from "../../../modules/recurring-expenses/recurring-expense-validation";
 import {
   errorResponse,
+  forbiddenResponse,
   invalidJsonResponse,
   isRequestObject,
   successResponse,
   unauthorizedResponse
 } from "../_shared/responses";
-import { requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
 
 export async function GET() {
   let tenantId: string;
@@ -32,8 +33,9 @@ export async function GET() {
 export async function POST(request: Request) {
   let tenantId: string;
   try {
-    tenantId = await requireTenantId();
+    ({ tenantId } = await requireRole(["OWNER", "CASHIER"]));
   } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
     throw e;
   }

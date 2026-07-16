@@ -6,19 +6,33 @@ import {
 } from "../../../../modules/customers";
 import {
   errorResponse,
+  forbiddenResponse,
   invalidJsonResponse,
   isPrismaRecordNotFoundError,
   isRequestObject,
-  successResponse
+  successResponse,
+  unauthorizedResponse
 } from "../../_shared/responses";
-import { requireTenantId } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+  let id: string, tenantId: string;
+  try {
+    let role: { tenantId: string; userId: string; role: string };
+    ([{ id }, role] = await Promise.all([
+      params,
+      requireRole(["OWNER", "CASHIER", "SUPERVISOR"])
+    ]));
+    ({ tenantId } = role);
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
 
   let body: unknown;
   try {
@@ -49,7 +63,19 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const [{ id }, tenantId] = await Promise.all([params, requireTenantId()]);
+  let id: string, tenantId: string;
+  try {
+    let role: { tenantId: string; userId: string; role: string };
+    ([{ id }, role] = await Promise.all([
+      params,
+      requireRole(["OWNER", "CASHIER", "SUPERVISOR"])
+    ]));
+    ({ tenantId } = role);
+  } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
 
   const customer = await prisma.customer.findFirst({ where: { id, tenantId } });
   if (!customer) {

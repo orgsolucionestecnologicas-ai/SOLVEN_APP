@@ -7,3 +7,7 @@
 ---
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
+
+### 2026-07-16 — QA-FIX-01: 9 endpoints sin control de rol, corregidos
+Se agregó `requireRole(...)` a los 9 endpoints de escritura (debts, customers/[id], categories, subcategories, services, recurring-expenses) que sólo validaban tenant, no rol — cualquier usuario autenticado podía escribir sin importar su permiso. Verificado con typecheck, tests (212 pass, 0 regresiones) y prueba en vivo con token READONLY: los 9 devuelven 403. Detalle completo en `REPORTE_DE_CAMBIOS.md`.
+
