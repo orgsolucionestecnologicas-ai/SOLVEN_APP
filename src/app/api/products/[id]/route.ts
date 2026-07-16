@@ -45,7 +45,7 @@ export async function PUT(
   let id: string, tenantId: string, userId: string;
   try {
     let role: { tenantId: string; userId: string; role: string };
-    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER", "INVENTORY"])]));
+    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER", "INVENTORY"], "products")]));
     tenantId = role.tenantId;
     userId = role.userId;
   } catch (e) {

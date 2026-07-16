@@ -15,7 +15,7 @@ export async function DELETE(
   let subId: string, tenantId: string;
   try {
     let role: { tenantId: string; userId: string; role: string };
-    ([{ subId }, role] = await Promise.all([params, requireRole(["OWNER", "INVENTORY"])]));
+    ([{ subId }, role] = await Promise.all([params, requireRole(["OWNER", "INVENTORY"], "products")]));
     ({ tenantId } = role);
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();

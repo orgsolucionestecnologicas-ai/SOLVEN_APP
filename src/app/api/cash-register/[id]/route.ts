@@ -34,7 +34,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   let id: string, tenantId: string, userId: string;
   try {
     let role: { tenantId: string; userId: string; role: string };
-    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER", "CASHIER"])]));
+    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER", "CASHIER"], "cashMovements")]));
     ({ tenantId, userId } = role);
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();

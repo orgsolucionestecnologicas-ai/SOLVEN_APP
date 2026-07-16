@@ -29,7 +29,7 @@ export async function PATCH(request: Request) {
   let tenantId: string;
   let userId: string;
   try {
-    ({ tenantId, userId } = await requireRole(["OWNER", "INVENTORY"]));
+    ({ tenantId, userId } = await requireRole(["OWNER", "INVENTORY"], "products"));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();

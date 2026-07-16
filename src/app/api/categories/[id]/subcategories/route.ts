@@ -24,7 +24,7 @@ export async function POST(
     let role: { tenantId: string; userId: string; role: string };
     ([{ id: categoryId }, role] = await Promise.all([
       params,
-      requireRole(["OWNER", "INVENTORY"])
+      requireRole(["OWNER", "INVENTORY"], "products")
     ]));
     ({ tenantId } = role);
   } catch (e) {

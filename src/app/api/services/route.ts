@@ -28,7 +28,7 @@ export async function GET() {
 export async function POST(request: Request) {
   let tenantId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER", "INVENTORY"]));
+    ({ tenantId } = await requireRole(["OWNER", "INVENTORY"], "products"));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();

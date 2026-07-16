@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { type SessionPayload, verifySession } from "./auth";
+import { listRolePermissions } from "@/modules/role-permissions";
 
 export class ForbiddenError extends Error {
   constructor(message = "Forbidden") {
@@ -34,10 +35,20 @@ export async function requireTenantId(): Promise<string> {
 }
 
 export async function requireRole(
-  allowedRoles: string[]
+  allowedRoles: string[],
+  section?: string
 ): Promise<{ tenantId: string; userId: string; role: string }> {
   const session = await getSession();
   if (!session) throw new UnauthorizedError();
   if (!allowedRoles.includes(session.role)) throw new ForbiddenError();
+
+  if (section && session.role !== "OWNER") {
+    const permissions = await listRolePermissions(session.tenantId);
+    const permission = permissions.find(
+      (p) => p.role === session.role && p.section === section
+    );
+    if (permission && !permission.canAccess) throw new ForbiddenError();
+  }
+
   return { tenantId: session.tenantId, userId: session.userId, role: session.role };
 }

@@ -25,7 +25,7 @@ export async function PUT(
     let role: { tenantId: string; userId: string; role: string };
     ([{ id }, role] = await Promise.all([
       params,
-      requireRole(["OWNER", "CASHIER", "SUPERVISOR"])
+      requireRole(["OWNER", "CASHIER", "SUPERVISOR"], "customers")
     ]));
     ({ tenantId } = role);
   } catch (e) {
@@ -68,7 +68,7 @@ export async function DELETE(
     let role: { tenantId: string; userId: string; role: string };
     ([{ id }, role] = await Promise.all([
       params,
-      requireRole(["OWNER", "CASHIER", "SUPERVISOR"])
+      requireRole(["OWNER", "CASHIER", "SUPERVISOR"], "customers")
     ]));
     ({ tenantId } = role);
   } catch (e) {

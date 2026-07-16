@@ -14,7 +14,7 @@ import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let tenantId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER", "CASHIER"]));
+    ({ tenantId } = await requireRole(["OWNER", "CASHIER"], "quotes"));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
