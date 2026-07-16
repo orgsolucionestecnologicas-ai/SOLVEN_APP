@@ -268,3 +268,19 @@ Este ciclo de QA se ejecutó **contra la base de desarrollo, no producción** (v
 10. **[Pendiente de este ciclo, no un bug confirmado] Verificar en navegador**: descuento-a-$0, diferencia de caja, presupuesto de gastos excedido, y rendimiento real con 300+ registros (4.3/4.4) — requieren interacción visual que no fue posible automatizar en este entorno; es la principal brecha de cobertura que queda para el próximo ciclo.
 
 **Confirmaciones positivas destacadas de este ciclo** (para que no se re-investiguen sin necesidad): aislamiento multi-tenant funciona correctamente en todos los endpoints probados; `internalNotes` de clientes nunca se filtra a PDFs/emails; el segmento de cliente respeta el campo de BD; historial de ventas conserva toda la funcionalidad de las tareas archivadas como duplicadas; `Sale.cae` sigue siendo nullable (ARCA opt-in intacto); paginación de productos no filtra entre tenants.
+
+---
+
+## COMENTARIOS FINALES — Ingeniero Líder
+
+Reviso este reporte completo antes de que sigamos. Metodología sólida: tokens de sesión reales en vez de mocks, nada destructivo (todo lo creado en las pruebas de `READONLY` se limpió con un token `OWNER`), y honestidad explícita sobre lo que no se pudo probar (navegador, producción, emails reales) en vez de inventar una cobertura que no hubo. Así es como quiero que se documente un ciclo de QA.
+
+**Lectura del resultado:** la buena noticia es que lo más grave que pedía descartar el plan — fuga de datos entre tenants — no aparece en ningún lado probado. La mala noticia es que aparece algo distinto y también grave: **SOLVEN hoy no aplica control de rol en 9 endpoints de escritura reales**, y encima el panel de "Permisos" que un dueño de negocio usaría para restringir accesos (`RolePermission`) no hace nada en el backend — es una pantalla que miente. Ninguno de los dos hallazgos es un problema de UX, son huecos de autorización reales sobre un sistema que maneja plata, deuda de clientes y datos de negocio. Antes de sumar una sola feature nueva, esto se cierra.
+
+**Por qué agrupo los hallazgos 1 y 2:** no son dos arreglos separados, son la misma causa raíz — falta disciplina uniforme en cómo se protege cada ruta. El fix correcto no es solo agregar `requireRole([...])` a los 9 endpoints sueltos; es el momento de decidir si `RolePermission` pasa a ser la fuente de verdad real (y que `requireRole` la consulte) o si se declara explícitamente "solo controla navegación" y se lo dice en la propia UI para no generar falsa confianza. Conviene resolver ambos en la misma tanda de trabajo, no por separado.
+
+**Antes de tocar código, necesito que confirmes dos cosas** (el reporte no pudo verificarlas desde este entorno):
+1. ¿Corriste `npx prisma migrate deploy` en producción? Las 19 migraciones de las Tareas 121-158 están 100% aplicadas en desarrollo, no se sabe el estado en producción.
+2. ¿Está `CRON_SECRET` seteada en Vercel? Si no, es una acción tuya en el dashboard, no un fix de código — pero es igual de urgente que el resto.
+
+**Cómo sigo yo:** con tu OK, te armo un lote de tareas de *fix* (no de features) enfocado en los ítems 1 a 4 de la lista priorizada — la corrección de los 9 endpoints, la decisión sobre `RolePermission`, y el ajuste de `SUPERVISOR`. Los ítems 🟡/🟢 (columna Email de Clientes, recordatorio de cotización, logo decorativo, test desactualizado) quedan para un segundo lote, no son urgentes. El ítem 10 (descuento a $0, diferencia de caja, rendimiento con 300+ productos) no es un bug confirmado — es cobertura pendiente por falta de navegador en este entorno, hay que probarlo a mano o con un entorno que sí tenga esa herramienta antes de decidir si es un problema real.
