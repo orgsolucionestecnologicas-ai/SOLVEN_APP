@@ -154,7 +154,9 @@ Se construyó comparando (a) qué esconde `app-shell.tsx` por rol (`hiddenForRol
 - Rol/tenant usado para probar: token `SUPERVISOR` minteado para Tienda Mia (`cmpvlxaom00003hxx7yeykzfk`).
 - Screenshot o dato de referencia: ver tabla de matriz de permisos en "FASE 3.1 / 4.2" arriba.
 
-### [🟠 Alto] CRON_SECRET ausente deja los 3 endpoints de cron sin autenticación
+### [🟠 Alto] CRON_SECRET ausente deja los 3 endpoints de cron sin autenticación — ✅ RESUELTO 2026-07-16
+> Diego agregó `CRON_SECRET` en Vercel (entorno Production) vía agente de Chrome y redeployó. Vercel envía automáticamente el header `Authorization: Bearer <CRON_SECRET>` a sus propios crons, así que no hizo falta ningún cambio de código — el `if` que ya existía en los tres endpoints pasó a activarse solo. Pendiente de confirmación en la próxima corrida de los crons (3am/4am/9am) de que el header llega bien, pero el bug de configuración está cerrado.
+
 - Módulo: Cron jobs (3.11 / 5.3 del plan)
 - Dónde: `src/app/api/cron/expire-quotes/route.ts`, `src/app/api/cron/remind-expiring-quotes/route.ts`, `src/app/api/cron/generate-recurring-expenses/route.ts` — los tres con el mismo patrón: `if (cronSecret && authHeader !== \`Bearer ${cronSecret}\`) return errorResponse("Unauthorized", 401);`.
 - Qué pasó: la validación solo se ejecuta **si `cronSecret` es un valor truthy**. Si `process.env.CRON_SECRET` está ausente o vacía, la condición completa es `false` y el `if` nunca corta el flujo — cualquiera puede pegarle a estos tres endpoints sin ningún header y se ejecuta la lógica real (`expireOverdueQuotes()`, envío de recordatorios, generación de gastos recurrentes). Confirmado en este entorno local: `CRON_SECRET` está ausente tanto en `.env` como en `.env.local`. No se probó en vivo contra producción por el motivo explicado al inicio del reporte (el mismo request que confirma el bug ejecutaría la mutación real).
@@ -258,7 +260,7 @@ Este ciclo de QA se ejecutó **contra la base de desarrollo, no producción** (v
 
 1. **[🔴] Agregar `requireRole([...])` a los 9 endpoints de escritura sin verificación de rol** (`POST /api/debts`, `PUT`/`DELETE /api/customers/[id]`, `POST`/`DELETE /api/categories*`, `POST /api/services`, `POST /api/recurring-expenses`) — hoy cualquier usuario autenticado, incluido `READONLY`, puede escribir datos reales. Es el hallazgo más grave y más fácil de explotar de todo el ciclo.
 2. **[🔴] Decidir el futuro de `RolePermission`**: o se conecta `requireRole`/un wrapper a la tabla `RolePermission` para que la pantalla de Permisos controle acceso real, o se le aclara al `OWNER` en la propia UI que hoy solo oculta navegación — no dejarlo como está, porque genera una falsa sensación de control de acceso.
-3. **[🟠] Configurar `CRON_SECRET` en Vercel** — bug de varias tareas atrás, nunca confirmado como resuelto; los tres cron quedan abiertos sin autenticación mientras falte.
+3. ~~**[🟠] Configurar `CRON_SECRET` en Vercel**~~ — ✅ resuelto 2026-07-16 (ver hallazgo arriba).
 4. **[🟠] Igualar el acceso de lectura de `SUPERVISOR`** a lo que sugiere la navegación oculta — hoy puede leer todo Caja y Ajustes por API directa aunque no los vea en el menú.
 5. **[🟠] Corregir `seed-icase.mjs`/`reset-users.mjs`** para apuntar a un tenant identificado de forma explícita (no "el más viejo") — riesgo de borrar datos reales de Tienda Mia por accidente.
 6. **[🟡] Columna Email y buscador de Clientes**: usar `customer.email`/`customer.phone` reales en vez de los valores sintéticos que aún quedan en `customers-list.tsx`.
@@ -283,4 +285,4 @@ Reviso este reporte completo antes de que sigamos. Metodología sólida: tokens 
 1. ¿Corriste `npx prisma migrate deploy` en producción? Las 19 migraciones de las Tareas 121-158 están 100% aplicadas en desarrollo, no se sabe el estado en producción.
 2. ¿Está `CRON_SECRET` seteada en Vercel? Si no, es una acción tuya en el dashboard, no un fix de código — pero es igual de urgente que el resto.
 
-**Cómo sigo yo:** con tu OK, te armo un lote de tareas de *fix* (no de features) enfocado en los ítems 1 a 4 de la lista priorizada — la corrección de los 9 endpoints, la decisión sobre `RolePermission`, y el ajuste de `SUPERVISOR`. Los ítems 🟡/🟢 (columna Email de Clientes, recordatorio de cotización, logo decorativo, test desactualizado) quedan para un segundo lote, no son urgentes. El ítem 10 (descuento a $0, diferencia de caja, rendimiento con 300+ productos) no es un bug confirmado — es cobertura pendiente por falta de navegador en este entorno, hay que probarlo a mano o con un entorno que sí tenga esa herramienta antes de decidir si es un problema real.
+**Cómo sigo yo:** con tu OK, te armo un lote de tareas de *fix* (no de features) enfocado en los ítems 1 a 4 de la lista priorizada — la corrección de los 9 endpoints, la decisión sobre `RolePermission`, y el ajuste de `SUPERVISOR`. Los ítems 🟡/🟢 
