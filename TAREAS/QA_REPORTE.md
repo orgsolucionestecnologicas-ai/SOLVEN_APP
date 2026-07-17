@@ -124,7 +124,9 @@ Se construyó comparando (a) qué esconde `app-shell.tsx` por rol (`hiddenForRol
 
 ## HALLAZGOS
 
-### [🔴 Crítico] Varios endpoints de escritura no verifican rol — READONLY puede crear deudas, editar/borrar clientes, crear categorías y servicios
+### [🔴 Crítico] Varios endpoints de escritura no verifican rol — READONLY puede crear deudas, editar/borrar clientes, crear categorías y servicios — ✅ RESUELTO 2026-07-16 (QA-FIX-01)
+> Se agregó `requireRole([...])` a los 9 endpoints, replicando el patrón exacto de su endpoint hermano del mismo recurso. Verificado con `npm run typecheck` (0 errores), `npm test` (212 passed, 0 regresiones nuevas) y **prueba en vivo repitiendo el ataque original**: token de sesión con rol `READONLY` contra los 9 endpoints → los 9 devuelven `403` (antes devolvían 200/201). Detalle completo y tabla de roles en `TAREAS/REPORTE_DE_CAMBIOS.md`. `TAREAS/QA_FIX_01.md` se elimina tras esta revisión — ya cumplió su función.
+
 - Módulo: Deudas / Clientes / Productos (categorías) / Servicios / Gastos recurrentes — transversal a Fase 3.1 y 4.2 del plan.
 - Dónde: `src/app/api/debts/route.ts` (`POST`), `src/app/api/customers/[id]/route.ts` (`PUT` y `DELETE`), `src/app/api/categories/route.ts` (`POST`), `src/app/api/categories/[id]/route.ts` (`DELETE`), `src/app/api/categories/[id]/subcategories/route.ts` (`POST`), `src/app/api/categories/[id]/subcategories/[subId]/route.ts` (`DELETE`), `src/app/api/services/route.ts` (`POST`), `src/app/api/recurring-expenses/route.ts` (`POST`).
 - Qué pasó: se hizo un barrido de todos los `route.ts` bajo `src/app/api/**` que exportan `POST`/`PATCH`/`PUT`/`DELETE`, buscando cuáles **no** llaman a `requireRole(...)` en absoluto (solo `requireTenantId()`, que únicamente exige sesión válida, sin mirar el rol). Aparecieron 9 handlers de escritura reales (fuera de rutas públicas esperadas como `/api/auth/*`, `/api/onboarding/complete`, `/api/webhooks/rebill`, `/api/noa`, que correctamente no llevan `requireRole`). Se confirmó **en vivo** contra el tenant real (Tienda Mia) con un token de sesión legítimo de rol `READONLY` (el rol pensado para "solo lectura"):
@@ -138,7 +140,11 @@ Se construyó comparando (a) qué esconde `app-shell.tsx` por rol (`hiddenForRol
 - Rol/tenant usado para probar: token de sesión legítimo minteado con `createSession()` para `demo@solven.app` (tenant Tienda Mia, `cmpvlxaom00003hxx7yeykzfk`) con `role: "READONLY"` forzado en el payload — mismo mecanismo ya usado y documentado para el resto del ciclo, sin contraseña ni mutación fuera de las descritas arriba (todas limpiadas).
 - Screenshot o dato de referencia: barrido completo de `src/app/api/**/route.ts` filtrando por ausencia de `requireRole`; requests `curl` citados arriba con sus status codes reales.
 
-### [🔴 Crítico] RolePermission (permisos configurables) no tiene ningún efecto en el backend — es 100% decorativo
+### [🔴 Crítico] RolePermission (permisos configurables) no tiene ningún efecto en el backend — es 100% decorativo — ✅ RESUELTO 2026-07-16 (QA-FIX-02)
+> Diego decidió conectarlo de verdad (no solo aclarar en la UI). `requireRole(roles, section?)` ahora consulta `RolePermission` cuando se le pasa una sección: OWNER nunca puede quedar bloqueado (verificado con test simulando una fila `{OWNER, x, canAccess:false}`), el array hardcodeado sigue siendo el techo, y sin fila configurada el comportamiento es idéntico al de antes (no regresivo). Se mapearon 27 endpoints de escritura a 6 de las 10 secciones (`customers`, `products`, `cashMovements`, `quotes`, `returns`, `pos`), siguiendo el mismo criterio que ya usa `app-shell.tsx` para la navegación — UI y backend ahora cuentan la misma historia en esas 6 secciones. `promotions` y `settings` quedan sin efecto real porque sus endpoints de escritura son 100% OWNER-only (y OWNER nunca se bloquea, por diseño). `npm run typecheck` sin errores, `npm test` corrido dos veces: 220 passed / 2 failed (ambas fallas preexistentes ya documentadas, sin relación con este cambio) / 2 skipped, sin regresiones. Detalle completo, tabla de mapeo y los archivos de test nuevos en `TAREAS/REPORTE_DE_CAMBIOS.md`. `TAREAS/QA_FIX_02.md` se elimina tras esta revisión.
+>
+> **Quedó un cabo suelto, no un bug** — ver hallazgo 🟡 nuevo más abajo: "`/api/debts` y `/api/debt-payments` sin sección de RolePermission asignada".
+
 - Módulo: Usuarios y permisos (Tarea 148)
 - Dónde: `src/lib/tenant.ts:36-43` (`requireRole`) vs. `src/modules/role-permissions/*`, `src/app/api/role-permissions/route.ts`, `src/app/ui/role-permissions-table.tsx`, `src/app/settings/components/UsuariosPanel.tsx`.
 - Qué pasó: SOLVEN tiene una pantalla real (Ajustes → Usuarios → Permisos) donde el `OWNER` puede tildar, por rol y por sección (`dashboard`, `pos`, `returns`, `products`, `customers`, `cashMovements`, `quotes`, `reports`, `promotions`, `settings`), si ese rol `canAccess` esa sección o no (`role-permission-validation.ts`). Esto se guarda en la tabla `RolePermission`. Pero `requireRole()`, la función que protege **todas** las rutas de API (`src/lib/tenant.ts`), solo recibe un array hardcodeado de roles por ruta (ej. `requireRole(["OWNER","CASHIER","SUPERVISOR"])` en `src/app/api/customers/route.ts:40`) y **nunca consulta la tabla `RolePermission`**. Se confirmó con un grep exhaustivo de `requireRole(` en `src/app/api/**`: ninguna de las ~40 rutas que la usan referencia `RolePermission`. El único lugar del código que lee `RolePermission` es `app-shell.tsx` (para decidir qué ítems del menú mostrar/ocultar). Consecuencia concreta: si un `OWNER` usa la pantalla de Permisos para **sacarle** acceso a `customers` a un `CASHIER` (algo que la UI le deja hacer y que aparenta funcionar — el ítem de menú desaparece), ese `CASHIER` sigue pudiendo leer y crear clientes llamando directamente a `POST/GET /api/customers`, porque esa ruta acepta `CASHIER` de forma incondicional. Es exactamente el escenario que la sección 4.2 del plan pide marcar como hallazgo de seguridad, no de UX: un ítem oculto en la UI pero accesible por API directa.
@@ -146,7 +152,19 @@ Se construyó comparando (a) qué esconde `app-shell.tsx` por rol (`hiddenForRol
 - Rol/tenant usado para probar: inspección de código (`requireRole`, todas las rutas de `src/app/api/**`, y los tres archivos de `role-permissions`), sin necesidad de sesión — es una propiedad estática del código, reproducible en cualquier tenant/rol.
 - Screenshot o dato de referencia: `src/lib/tenant.ts:36-43`; `src/app/ui/app-shell.tsx:429-434` (única lectura de `rolePermissions` en todo el árbol de `src/app`); `src/app/api/customers/route.ts:40`.
 
-### [🟠 Alto] SUPERVISOR puede leer Caja y Ajustes por API directa aunque el menú se lo oculte
+### [🟡 Medio] `/api/debts` y `/api/debt-payments` quedaron sin sección de RolePermission asignada (pendiente de decisión de Diego) — ✅ RESUELTO 2026-07-16 (QA-FIX-03)
+> Diego decidió: sección `customers` para ambos. Se agregó `"customers"` como segundo parámetro al `requireRole([...])` existente en el `POST` de `/api/debts` y `/api/debt-payments`, sin tocar los arrays de roles. `/debts` sigue sin ítem de nav propio — decisión ya tomada, no un bug. Detalle en `REPORTE_DE_CAMBIOS.md`.
+- Módulo: Deudas / Usuarios y permisos — surgió al ejecutar QA-FIX-02 (conectar `RolePermission`), no es un hallazgo nuevo del QA original.
+- Dónde: `src/app/api/debts/route.ts` (POST), `src/app/api/debt-payments/route.ts` (POST).
+- Qué pasó: la página `/debts` (`debts-list.tsx`) no tiene ítem de navegación propio ni sección asignada en `RolePermission` — es una "página huérfana" en términos de permisos. `POST /api/debt-payments` sí se llama desde flujos de la sección `customers` (el modal de pago en `customers-list.tsx`/`customer-payment-form.tsx`), pero **también** desde `/debts`. Asignarle la sección `customers` a `debt-payments` restringiría de rebote el flujo de `/debts` sin que esa página esté gobernada por ningún permiso — el agente que ejecutó QA-FIX-02 correctamente no adivinó y lo dejó documentado en vez de forzar una decisión de producto.
+- Qué se esperaría: que Diego decida una de tres: (a) `/debts` pasa a considerarse parte de la sección `customers` (ambos endpoints toman esa sección), (b) se crea una sección nueva `debts` en `RolePermission` específica para esa página, o (c) se deja fuera del sistema de permisos configurables a propósito (documentado como decisión, no como olvido).
+- Rol/tenant usado para probar: N/A — hallazgo de diseño, no de comportamiento en vivo.
+- Screenshot o dato de referencia: `TAREAS/REPORTE_DE_CAMBIOS.md`, sección "Pendiente de confirmar con Diego" del reporte de QA-FIX-02.
+
+### [🟠 Alto] SUPERVISOR puede leer Caja y Ajustes por API directa aunque el menú se lo oculte — ✅ RESUELTO 2026-07-16 (QA-FIX-03)
+> Diego decidió restringir también la lectura. Se agregó `requireRole(["OWNER","CASHIER"], "cashMovements")` al `GET` de `/api/cash-movements` y `requireRole(["OWNER"], "settings")` al `GET` de `/api/settings` (mismos arrays que ya usaban sus `POST`/`PATCH`). Tests 403 nuevos en ambos archivos.
+>
+> **Efecto colateral encontrado, no un bug nuevo del hallazgo original — ver hallazgo 🟡 nuevo más abajo:** `CashRegisterIndicator` (sidebar, todos los roles) llama a este mismo endpoint y ahora recibe `403` para `SUPERVISOR`/`INVENTORY`/`READONLY`, mostrando un saldo de caja incorrecto para esos roles en vez de crashear. Pendiente de decisión de Diego.
 - Módulo: Usuarios y permisos / Caja / Configuración (4.2 del plan)
 - Dónde: `src/app/ui/app-shell.tsx:71,75` (`hiddenForRoles: ["SUPERVISOR"]` en las secciones `cashMovements` y `settings`) vs. `src/app/api/cash-movements/route.ts` (`GET`) y `src/app/api/settings/route.ts` (`GET`), ninguno de los dos con `requireRole` — solo `requireTenantId()`.
 - Qué pasó: probado en vivo con un token `SUPERVISOR` real: `GET /api/cash-movements` devolvió `200` con el historial completo de movimientos de caja (23 registros); `GET /api/settings` devolvió `200` con toda la configuración del negocio (datos fiscales, umbrales, mensajes de ticket, etc.). Los intentos de escritura (`POST /api/cash-movements`, `PATCH /api/settings`) sí devolvieron `403` correctamente, porque esos dos sí usan `requireRole(["OWNER","CASHIER"])` / `requireRole(["OWNER"])`. Es decir, el rol `SUPERVISOR` no ve "Caja" ni "Ajustes" en el menú lateral, pero si conoce (o adivina) la URL de la API puede leer ambos completos.
@@ -164,7 +182,8 @@ Se construyó comparando (a) qué esconde `app-shell.tsx` por rol (`hiddenForRol
 - Rol/tenant usado para probar: sin sesión — son rutas públicas por diseño (cron), el problema es la falta de autenticación de servicio.
 - Screenshot o dato de referencia: patrón idéntico confirmado por grep en los tres archivos citados; ver también Pre-vuelo punto 2.
 
-### [🟡 Medio] Columna Email de la lista de clientes muestra un valor 100% inventado, y el buscador no encuentra por teléfono/email reales
+### [🟡 Medio] Columna Email de la lista de clientes muestra un valor 100% inventado, y el buscador no encuentra por teléfono/email reales — ✅ RESUELTO 2026-07-16 (QA-FIX-03)
+> La columna ahora muestra `customer.email ?? "Sin email"`, y el buscador compara `c.phone`/`c.email` reales además de `c.name`/`c.taxId`. Las funciones sintéticas `getCustomerEmail`/`getCustomerPhone` se eliminaron.
 - Módulo: Clientes
 - Dónde: `src/app/ui/customers-list.tsx` — función `getCustomerEmail(name)` (línea 114-128, genera `nombre.apellido@email.com` a partir del *nombre*, sin relación con `customer.email`), usada en la celda de la tabla (línea 984); función `getCustomerPhone(id)` (línea 130-135, genera un teléfono determinístico a partir del *id*), usada en el filtro de búsqueda (línea 409).
 - Qué pasó: se confirmó el alcance exacto pedido por la sección 5.1 del plan. Lo que **sí** se corrigió (Tareas 136/142): el link de WhatsApp usa `customer.phone` real (línea 960-970) y la exportación CSV usa `customer.phone`/`customer.email` reales (línea 207-220, `exportCustomersToCsv`). Lo que **sigue roto**: (1) la columna "Email" de la tabla muestra siempre `getCustomerEmail(customer.name)`, un email fabricado a partir del nombre — nunca el `customer.email` real, aunque exista cargado; (2) el buscador de la tabla (línea 406-413) solo compara contra `c.name`, el teléfono **sintético** `getCustomerPhone(c.id)` y `c.taxId` — nunca contra `customer.phone` ni `customer.email` reales. Un cajero que busca a un cliente por su teléfono real no lo va a encontrar salvo coincidencia de casualidad con el valor fabricado.
@@ -172,7 +191,8 @@ Se construyó comparando (a) qué esconde `app-shell.tsx` por rol (`hiddenForRol
 - Rol/tenant usado para probar: inspección de código, reproducible en cualquier tenant/rol con clientes cargados.
 - Screenshot o dato de referencia: líneas citadas arriba en `customers-list.tsx`.
 
-### [🟡 Medio] El recordatorio automático de cotizaciones por vencer usa la plantilla de email equivocada
+### [🟡 Medio] El recordatorio automático de cotizaciones por vencer usa la plantilla de email equivocada — ✅ RESUELTO 2026-07-16 (QA-FIX-03)
+> `remind-expiring-quotes/route.ts` ahora llama a `sendQuoteExpiringReminderEmail` en vez de `sendQuoteEmail`. Solo se tocó el call site.
 - Módulo: Cotizaciones (3.7 / 4.5 del plan)
 - Dónde: `src/app/api/cron/remind-expiring-quotes/route.ts:2,44` (importa y llama a `sendQuoteEmail`) vs. `src/lib/email.ts:241` (`sendQuoteExpiringReminderEmail`, función dedicada para este caso que existe pero nunca se importa desde ningún lugar del proyecto — confirmado por grep).
 - Qué pasó: el cron de recordatorio (`3.11`) sí está conectado y sí se ejecuta (contradice el bug tal como está redactado en `CLAUDE.md` sección 5, que dice "no se llama desde ningún lugar" — la función en sí no se llama, pero el flujo de recordatorio automático sí funciona end-to-end): busca cotizaciones `DRAFT`/`SENT` que vencen en los próximos 2 días y sin `reminderSentAt`, y por cada una llama a `sendQuoteEmail(...)` (la plantilla genérica de "acá está tu cotización", la misma que se usa al enviarla manualmente por primera vez) en vez de `sendQuoteExpiringReminderEmail(...)` (la plantilla pensada específicamente para avisar que está por vencer). El cliente sí recibe un email, pero con el copy equivocado — no dice "tu cotización vence en 2 días", repite el envío original.
@@ -180,7 +200,8 @@ Se construyó comparando (a) qué esconde `app-shell.tsx` por rol (`hiddenForRol
 - Rol/tenant usado para probar: inspección de código — no se pudo probar el envío real porque `RESEND_API_KEY` está vacía en este entorno (ver Pre-vuelo punto 2).
 - Screenshot o dato de referencia: `remind-expiring-quotes/route.ts:44`; `email.ts:122` (`sendQuoteEmail`) y `email.ts:241` (`sendQuoteExpiringReminderEmail`).
 
-### [🟡 Medio] El "Subir logo" de Ajustes → Negocio es 100% decorativo — nunca persiste, solo muestra una preview local
+### [🟡 Medio] El "Subir logo" de Ajustes → Negocio es 100% decorativo — nunca persiste, solo muestra una preview local — ✅ RESUELTO 2026-07-16 (QA-FIX-03)
+> `handleFileChange` ahora valida tipo/tamaño, convierte a base64 y persiste al instante vía `PATCH /api/settings`. `logoUrl` se unificó como estado único compartido entre "Subir logo" y el campo de texto "URL del logo" — ya no son dos fuentes de verdad separadas.
 - Módulo: Configuración (3.14 del plan — el propio plan pedía confirmar si este bug conocido seguía o ya se había corregido)
 - Dónde: `src/app/ui/settings.tsx` — componente `RightSidebar`, función `handleFileChange` (línea 1262-1267): `const url = URL.createObjectURL(file); setLogoPreview(url);` y nada más, sin `fetch`/`FormData`/llamada a ninguna API.
 - Qué pasó: sigue exactamente igual que como se documentó antes de este ciclo — el dueño de negocio puede arrastrar/seleccionar una imagen en "Logo del negocio" (sidebar derecho de Ajustes), ve una preview inmediata, y todo parece funcionar. Pero `URL.createObjectURL` genera una URL local del navegador (`blob:...`) que nunca se sube a ningún lado ni se guarda en `StoreSettings.logoUrl` — al refrescar la página el logo "subido" desaparece sin ningún aviso. El único mecanismo que sí persiste de verdad es un campo de texto separado, "URL del logo" (línea 575-582), donde hay que pegar manualmente una URL ya alojada en otro lado. Las dos UI conviven en la misma pantalla y no están conectadas entre sí.
@@ -196,7 +217,8 @@ Se construyó comparando (a) qué esconde `app-shell.tsx` por rol (`hiddenForRol
 - Rol/tenant usado para probar: inspección de código.
 - Screenshot o dato de referencia: rutas citadas arriba.
 
-### [🟠 Alto] seed-icase.mjs y reset-users.mjs pueden borrar el tenant equivocado
+### [🟠 Alto] seed-icase.mjs y reset-users.mjs pueden borrar el tenant equivocado — ✅ RESUELTO 2026-07-16 (QA-FIX-03)
+> Ambos scripts ahora usan `prisma.tenant.findUnique({ where: { id: SEED_TENANT_ID } })` con `SEED_TENANT_ID = process.env.SEED_TENANT_ID || "seed_tenant_demo"`, en vez de "el más viejo por fecha". No se ejecutaron los scripts — validado solo por lectura de código.
 - Módulo: Infraestructura de datos de prueba / scripts
 - Dónde: `scripts/seed-icase.mjs` (~línea 118) y `scripts/reset-users.mjs` (~línea 24), ambos con `prisma.tenant.findFirst({ orderBy: { createdAt: "asc" } })`.
 - Qué pasó: la selección del "tenant de prueba" es simplemente el tenant más antiguo de toda la base, sin filtro por nombre/slug/flag. Hoy ese tenant es "Tienda Mia" (creado 2026-06-01), el único con login funcional (`demo@solven.app`) y 17 ventas orgánicas. El tenant que parece pensado como demo (`seed_tenant_demo`, con 313 productos del catálogo Icase) se creó dos días después, así que nunca sería el elegido por esta lógica. Correr `npm run seed:icase` o `npm run reset:users` borraría/resetearía datos reales de prueba acumulados en Tienda Mia en vez de tocar el tenant demo, y `reset-users.mjs` además reemplazaría el único login conocido por `admin@solvenrs.com`.
@@ -204,7 +226,8 @@ Se construyó comparando (a) qué esconde `app-shell.tsx` por rol (`hiddenForRol
 - Rol/tenant usado para probar: lectura directa vía Prisma (no se ejecutaron los scripts, para no gatillar el problema).
 - Screenshot o dato de referencia: tabla de tenants en Pre-vuelo, punto 4.
 
-### [🟡 Medio] Test de venta a crédito desactualizado tras la Tarea 138
+### [🟡 Medio] Test de venta a crédito desactualizado tras la Tarea 138 — ✅ RESUELTO 2026-07-16 (QA-FIX-03)
+> Se eliminó el test (no se reescribió) — la cobertura equivalente ya existía y pasaba en `sale-data-access.integration.test.ts > rejects CREDIT paymentType (only CASH accepted)`.
 - Módulo: Ventas / Tests
 - Dónde: `src/app/api/sales/route.integration.test.ts:84-116` (`creates a credit sale with debt through the API flow`).
 - Qué pasó: el test asume que `POST /api/sales` acepta `paymentType: "CREDIT"` y devuelve 201 — comportamiento removido a propósito por la Tarea 138. Falla con un `TypeError` poco claro en vez de una falla explícita, y ensucia la baseline de tests fallidos del proyecto.
@@ -212,7 +235,17 @@ Se construyó comparando (a) qué esconde `app-shell.tsx` por rol (`hiddenForRol
 - Rol/tenant usado para probar: N/A — test automatizado, corrido dos veces vía `npm test`.
 - Screenshot o dato de referencia: stack trace en Fase 1 arriba.
 
-### [🟢 Bajo] El panel de registro de pago muestra "Límite de crédito: —" siempre, aunque el cliente tenga uno cargado
+### [🟢 Bajo] El panel de registro de pago muestra "Límite de crédito: —" siempre, aunque el cliente tenga uno cargado — ✅ RESUELTO 2026-07-16 (QA-FIX-03)
+> `customer-payment-form.tsx` ahora recibe `creditLimit` real en `CustomerRecord` y lo muestra, mismo patrón que `debts-list.tsx`.
+
+### [🟡 Medio] NUEVO — `CashRegisterIndicator` del sidebar muestra un saldo de caja incorrecto para SUPERVISOR/INVENTORY/READONLY (efecto colateral de QA-FIX-03, ítem 1) — ✅ RESUELTO 2026-07-17 (QA-FIX-04)
+> Diego decidió ocultar el indicador (no crear un endpoint de solo-saldo nuevo) — menos superficie, cero riesgo de mostrar un dato incorrecto. `CashRegisterIndicator` ahora recibe `role`/`rolePermissions` desde `AppShell` y devuelve `null` sin disparar ningún `fetch` cuando el rol no tiene acceso configurado a `cashMovements` (mismo default `OWNER`/`CASHIER` que exige el backend). `OWNER`/`CASHIER` no cambian. Commit `d24be96`, verificado por el Ingeniero Líder (diff de 19 líneas en `app-shell.tsx`, exactamente lo pedido, sin tocar nada más). **Con esto el ciclo de QA 1 queda cerrado por completo — los 10 hallazgos resueltos.**
+- Módulo: Caja / Navegación — surgió al restringir `GET /api/cash-movements` por rol (decisión de Diego en QA-FIX-03).
+- Dónde: `src/app/ui/app-shell.tsx:359-403` (`CashRegisterIndicator`), llama a `GET /api/cash-movements` sin distinción de rol para calcular el saldo mostrado en el sidebar.
+- Qué pasó: con la restricción nueva (`requireRole(["OWNER","CASHIER"], "cashMovements")`), los roles `SUPERVISOR`, `INVENTORY` y `READONLY` reciben `403` en esa llamada. El componente no crashea (el `.catch` solo cubre errores de red, no 403), pero el saldo que muestra para esos tres roles cae al monto de apertura de caja (sin sumar/restar movimientos) en vez del saldo real — un dato visiblemente incorrecto en el sidebar, no un error visible.
+- Qué se esperaría: que Diego decida entre (a) ocultar `CashRegisterIndicator` del sidebar para esos tres roles (consistente con que ya no ven "Caja" en el menú), o (b) crear un endpoint de solo-saldo sin restricción de rol, separado de la lista completa de movimientos.
+- Rol/tenant usado para probar: inspección de código (no se probó en vivo).
+- Screenshot o dato de referencia: `TAREAS/REPORTE_DE_CAMBIOS.md`, sección "Ítem 1" del reporte de QA-FIX-03.
 - Módulo: Clientes / Deudas
 - Dónde: `src/app/ui/customer-payment-form.tsx:287` — `const creditLimit = null; // Sin límite definido hasta implementar por cliente`.
 - Qué pasó: el campo `creditLimit` de `Customer` existe en el schema, es editable desde `customer-detail.tsx`, y sí se usa correctamente en el formulario de alta de deuda (`debts-list.tsx:960-961`, con advertencia — no bloqueo — al superarlo, comportamiento correcto según el criterio de negocio). Pero el formulario de registro de pago (`customer-payment-form.tsx`) tiene el valor hardcodeado a `null` con un comentario que confirma que quedó sin conectar, así que el sidebar de ese formulario siempre muestra "Límite de crédito: —" en vez del valor real del cliente, incluso cuando sí tiene uno cargado.
@@ -250,24 +283,27 @@ No se pudo probar envío real de emails porque `RESEND_API_KEY` está vacía en 
 
 Este ciclo de QA se ejecutó **contra la base de desarrollo, no producción** (ver Pre-vuelo), combinando inspección exhaustiva de código con pruebas reales a nivel de API usando tokens de sesión legítimos (minteados con la función real `createSession()`, sin contraseñas ni accesos no autorizados). No hubo herramienta de navegador disponible, así que las verificaciones puramente visuales/UX de Fase 2 quedan como pendiente para el próximo ciclo — el foco de este ciclo fue lo que el propio plan marca como más crítico: aislamiento multi-tenant, permisos por rol, y los 5 riesgos conocidos de la sección 5.
 
-**Cantidad de hallazgos por severidad:**
-- 🔴 Crítico: 2
-- 🟠 Alto: 3
-- 🟡 Medio: 5
-- 🟢 Bajo: 2
+**Cantidad de hallazgos por severidad (al cierre de este ciclo, 2026-07-17 — actualizado tras QA-FIX-04):**
+- 🔴 Crítico: 2 encontrados — **2 resueltos** (QA-FIX-01, QA-FIX-02)
+- 🟠 Alto: 3 encontrados — **3 resueltos** (CRON_SECRET, SUPERVISOR lectura Caja/Ajustes, seed-icase/reset-users)
+- 🟡 Medio: 8 (6 originales + 1 de QA-FIX-02 + 1 de QA-FIX-03) — **8 resueltos**
+- 🟢 Bajo: 2 — **1 resuelto** (límite de crédito en panel de pago), **1 abierto a propósito** (gastos recurrentes, documentado como fuera de alcance, no un bug)
 
-**Lista priorizada — qué atacar primero en el próximo ciclo de desarrollo:**
+**Estado: el ciclo de QA 1 está cerrado por completo.** Los 9 hallazgos que eran bugs reales (🔴🟠🟡) están resueltos y verificados (QA-FIX-01 a 04). El único punto que sigue "abierto" es el 🟢 de gastos recurrentes, que nunca fue un bug — es una feature aceptada como fuera de alcance, a criterio de Diego para un ciclo futuro. No queda ningún hueco de seguridad, ni dato falso/sintético, ni inconsistencia UI-backend pendiente de este ciclo.
 
-1. **[🔴] Agregar `requireRole([...])` a los 9 endpoints de escritura sin verificación de rol** (`POST /api/debts`, `PUT`/`DELETE /api/customers/[id]`, `POST`/`DELETE /api/categories*`, `POST /api/services`, `POST /api/recurring-expenses`) — hoy cualquier usuario autenticado, incluido `READONLY`, puede escribir datos reales. Es el hallazgo más grave y más fácil de explotar de todo el ciclo.
-2. **[🔴] Decidir el futuro de `RolePermission`**: o se conecta `requireRole`/un wrapper a la tabla `RolePermission` para que la pantalla de Permisos controle acceso real, o se le aclara al `OWNER` en la propia UI que hoy solo oculta navegación — no dejarlo como está, porque genera una falsa sensación de control de acceso.
-3. ~~**[🟠] Configurar `CRON_SECRET` en Vercel**~~ — ✅ resuelto 2026-07-16 (ver hallazgo arriba).
-4. **[🟠] Igualar el acceso de lectura de `SUPERVISOR`** a lo que sugiere la navegación oculta — hoy puede leer todo Caja y Ajustes por API directa aunque no los vea en el menú.
-5. **[🟠] Corregir `seed-icase.mjs`/`reset-users.mjs`** para apuntar a un tenant identificado de forma explícita (no "el más viejo") — riesgo de borrar datos reales de Tienda Mia por accidente.
-6. **[🟡] Columna Email y buscador de Clientes**: usar `customer.email`/`customer.phone` reales en vez de los valores sintéticos que aún quedan en `customers-list.tsx`.
-7. **[🟡] Recordatorio de cotización por vencer**: cambiar `sendQuoteEmail` por `sendQuoteExpiringReminderEmail` en el cron correspondiente.
-8. **[🟡] "Subir logo" en Ajustes**: conectarlo a una persistencia real (o eliminarlo) — hoy es puramente decorativo.
-9. **[🟡] Reescribir o eliminar el test de venta a crédito desactualizado** (`sales/route.integration.test.ts`) para que la suite de tests deje de tener una falla roja permanente.
-10. **[Pendiente de este ciclo, no un bug confirmado] Verificar en navegador**: descuento-a-$0, diferencia de caja, presupuesto de gastos excedido, y rendimiento real con 300+ registros (4.3/4.4) — requieren interacción visual que no fue posible automatizar en este entorno; es la principal brecha de cobertura que queda para el próximo ciclo.
+**Lista priorizada — qué atacar antes de sumar features nuevas:**
+
+1. ~~**[🔴] Agregar `requireRole([...])` a los 9 endpoints de escritura sin verificación de rol**~~ — ✅ resuelto 2026-07-16 (QA-FIX-01).
+2. ~~**[🔴] Decidir el futuro de `RolePermission`**~~ — ✅ resuelto 2026-07-16 (QA-FIX-02).
+3. ~~**[🟠] Configurar `CRON_SECRET` en Vercel**~~ — ✅ resuelto 2026-07-16.
+4. ~~**[🟠] Igualar el acceso de lectura de `SUPERVISOR`**~~ — ✅ resuelto 2026-07-16 (QA-FIX-03). Generó el hallazgo 🟡 nuevo de `CashRegisterIndicator`, ver abajo.
+5. ~~**[🟠] Corregir `seed-icase.mjs`/`reset-users.mjs`**~~ — ✅ resuelto 2026-07-16 (QA-FIX-03).
+6. ~~**[🟡] Columna Email y buscador de Clientes**~~ — ✅ resuelto 2026-07-16 (QA-FIX-03).
+7. ~~**[🟡] Recordatorio de cotización por vencer**~~ — ✅ resuelto 2026-07-16 (QA-FIX-03).
+8. ~~**[🟡] "Subir logo" en Ajustes**~~ — ✅ resuelto 2026-07-16 (QA-FIX-03).
+9. ~~**[🟡] Test de venta a crédito desactualizado**~~ — ✅ resuelto 2026-07-16 (QA-FIX-03, se eliminó).
+10. ~~**[🟡] `CashRegisterIndicator` para `SUPERVISOR`/`INVENTORY`/`READONLY`**~~ — ✅ resuelto 2026-07-17 (QA-FIX-04, ver hallazgo arriba).
+11. **[Pendiente de cobertura, no un bug confirmado] Verificar en navegador**: descuento-a-$0, diferencia de caja, presupuesto de gastos excedido, y rendimiento real con 300+ registros (4.3/4.4) — requieren interacción visual que no fue posible automatizar en este entorno.
 
 **Confirmaciones positivas destacadas de este ciclo** (para que no se re-investiguen sin necesidad): aislamiento multi-tenant funciona correctamente en todos los endpoints probados; `internalNotes` de clientes nunca se filtra a PDFs/emails; el segmento de cliente respeta el campo de BD; historial de ventas conserva toda la funcionalidad de las tareas archivadas como duplicadas; `Sale.cae` sigue siendo nullable (ARCA opt-in intacto); paginación de productos no filtra entre tenants.
 
@@ -285,4 +321,4 @@ Reviso este reporte completo antes de que sigamos. Metodología sólida: tokens 
 1. ¿Corriste `npx prisma migrate deploy` en producción? Las 19 migraciones de las Tareas 121-158 están 100% aplicadas en desarrollo, no se sabe el estado en producción.
 2. ¿Está `CRON_SECRET` seteada en Vercel? Si no, es una acción tuya en el dashboard, no un fix de código — pero es igual de urgente que el resto.
 
-**Cómo sigo yo:** con tu OK, te armo un lote de tareas de *fix* (no de features) enfocado en los ítems 1 a 4 de la lista priorizada — la corrección de los 9 endpoints, la decisión sobre `RolePermission`, y el ajuste de `SUPERVISOR`. Los ítems 🟡/🟢 
+**Cómo sigo yo:** con tu OK, te armo un lote de tareas de *fix* (no de features) enfocado en los ítems 1 a 4 de la lista priorizada — la corrección de los 9 endpoints, la decisión sobre `RolePermission`, y el ajuste de `SUPERVISOR`. Los ítems 🟡/🟢 (columna Email de Clientes, recordatorio de cotización, logo decorativo, test desactualizado) quedan para un segundo lote, no son urgentes. El ítem 10 (descuento a $0, diferencia de caja, rendimiento con 300+ productos) no es un bug confirmado — es cobertura pendiente por falta de navegador en este entorno, hay que probarlo a mano o con un entorno que sí tenga esa herramienta antes de decidir si es un problema real.
