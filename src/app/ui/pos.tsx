@@ -1416,6 +1416,7 @@ export function Pos() {
       setOptionalCustomerOpen(false);
       setGlobalDiscountType("percent");
       setGlobalDiscountValue("");
+      setSaleGateResult(null);
       setProductsRefreshKey((k) => k + 1);
       setLastSale({
         saleId: successSaleId,

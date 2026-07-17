@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-17 — QA-FIX-05: POS no volvía a pedir vendedor/comprobante tras cobrar
+Bug nuevo (fuera del ciclo de QA, reportado por Diego en uso real). `submitSale()` en `pos.tsx` reseteaba el carrito tras una venta pero no `saleGateResult`, permitiendo cobrar de nuevo con el vendedor/comprobante de la venta anterior sin pasar por `SaleGateModal`. Fix de una línea (`setSaleGateResult(null)`), un solo archivo. `typecheck`/`lint` sin errores; `npm test` con la misma falla de concurrencia preexistente y no relacionada de QA-FIX-04 (esta vez también falló aislada, no solo en el suite completo — a seguir de cerca). Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-16 — QA-FIX-04: ocultar CashRegisterIndicator para roles sin acceso a Caja
 Cierra el último ítem abierto del ciclo de QA 1. `CashRegisterIndicator` (`app-shell.tsx`) ahora recibe `role`/`rolePermissions` y no renderiza nada (ni dispara los `fetch`) para roles sin acceso configurado a `cashMovements`, con el mismo default `OWNER`/`CASHIER` que usa el backend desde QA-FIX-03; `OWNER`/`CASHIER` no cambian. Sin test nuevo (no hay infraestructura de tests de componentes React en el proyecto). `npm run typecheck`/`lint` sin errores; `npm test` con una falla de concurrencia preexistente y no relacionada (confirmada flaky, pasa aislada). Detalle en `REPORTE_DE_CAMBIOS.md`.
 
