@@ -5,6 +5,7 @@ import {
   listReturns,
   processReturn,
   RETURN_REASON_CATEGORIES,
+  RETURN_REFUND_METHODS,
   ReturnValidationError,
   type ReturnItemInput
 } from "../../../modules/returns";
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
     items?: unknown;
     reasonCategory?: unknown;
     reasonNote?: unknown;
+    refundMethod?: unknown;
   };
 
   if (typeof input.saleId !== "string" || input.saleId.trim().length === 0) {
@@ -99,6 +101,14 @@ export async function POST(request: Request) {
 
   if (input.reasonNote !== undefined && typeof input.reasonNote !== "string") {
     return errorResponse("La nota del motivo debe ser texto.", 400);
+  }
+
+  if (
+    input.refundMethod !== undefined &&
+    (typeof input.refundMethod !== "string" ||
+      !RETURN_REFUND_METHODS.includes(input.refundMethod as (typeof RETURN_REFUND_METHODS)[number]))
+  ) {
+    return errorResponse("El método de reintegro elegido no es válido.", 400);
   }
 
   for (const item of input.items as unknown[]) {
@@ -131,7 +141,8 @@ export async function POST(request: Request) {
       returnItems,
       tenantId,
       input.reasonCategory as ReturnReasonCategory,
-      input.reasonNote as string | undefined
+      input.reasonNote as string | undefined,
+      input.refundMethod as string | undefined
     );
     return successResponse(result, 201);
   } catch (error) {

@@ -68,6 +68,9 @@ export function ReturnCreditNotePDFDocument({
           {returnRecord.reasonNote ? (
             <View style={styles.row}><Text style={styles.label}>Nota:</Text><Text style={styles.value}>{returnRecord.reasonNote}</Text></View>
           ) : null}
+          {returnRecord.refundMethod ? (
+            <View style={styles.row}><Text style={styles.label}>Reintegro:</Text><Text style={styles.value}>{returnRecord.refundMethod}</Text></View>
+          ) : null}
         </View>
 
         <View style={styles.section}>

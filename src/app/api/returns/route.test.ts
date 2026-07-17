@@ -17,6 +17,7 @@ vi.mock("../../../modules/returns", () => ({
   processReturn: vi.fn(),
   listReturns: vi.fn(),
   RETURN_REASON_CATEGORIES: ["DEFECTO", "ERROR_VENTA", "CAMBIO_OPINION", "OTRO"],
+  RETURN_REFUND_METHODS: ["Efectivo", "Tarjeta", "Transferencia", "VentaWeb", "Otro"],
   ReturnValidationError: class ReturnValidationError extends Error {
     constructor(message: string) {
       super(message);
@@ -59,8 +60,82 @@ describe("returns API route", () => {
       [{ productId: "product-1", quantity: 1 }],
       "test-tenant-id",
       "OTRO",
+      undefined,
       undefined
     );
+  });
+
+  it("passes refundMethod through to processReturn", async () => {
+    const result = {
+      returnId: "return-3",
+      saleId: "sale-1",
+      returnedItems: 1,
+      totalReturned: "15.00"
+    };
+    mockedProcessReturn.mockResolvedValueOnce(result);
+
+    const response = await POST(
+      new Request("http://localhost/api/returns", {
+        method: "POST",
+        body: JSON.stringify({
+          saleId: "sale-1",
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO",
+          refundMethod: "Tarjeta"
+        })
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockedProcessReturn).toHaveBeenCalledWith(
+      "sale-1",
+      [{ productId: "product-1", quantity: 1 }],
+      "test-tenant-id",
+      "OTRO",
+      undefined,
+      "Tarjeta"
+    );
+  });
+
+  it("returns 400 when refundMethod is not a known value", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/returns", {
+        method: "POST",
+        body: JSON.stringify({
+          saleId: "sale-1",
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO",
+          refundMethod: "Bitcoin"
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("reintegro");
+    expect(mockedProcessReturn).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when processReturn rejects a missing refundMethod on a non-credit sale", async () => {
+    mockedProcessReturn.mockRejectedValueOnce(
+      new ReturnValidationError("Debés indicar cómo se reintegra el dinero.")
+    );
+
+    const response = await POST(
+      new Request("http://localhost/api/returns", {
+        method: "POST",
+        body: JSON.stringify({
+          saleId: "sale-1",
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO"
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: { message: "Debés indicar cómo se reintegra el dinero." }
+    });
   });
 
   it("returns 400 when saleId is missing", async () => {

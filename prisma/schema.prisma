@@ -514,6 +514,7 @@ model Return {
   totalAmount    Decimal              @db.Decimal(12, 2)
   reasonCategory ReturnReasonCategory @default(OTRO)
   reasonNote     String?
+  refundMethod   String?
   createdAt      DateTime             @default(now())
 
   @@index([saleId])

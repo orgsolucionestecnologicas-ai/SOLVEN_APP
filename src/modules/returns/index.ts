@@ -36,6 +36,16 @@ export type ReturnListItem = {
   quantity: number;
 };
 
+export const RETURN_REFUND_METHODS = [
+  "Efectivo",
+  "Tarjeta",
+  "Transferencia",
+  "VentaWeb",
+  "Otro"
+] as const;
+
+export type ReturnRefundMethod = (typeof RETURN_REFUND_METHODS)[number];
+
 export type ReturnListRecord = {
   id: string;
   saleId: string;
@@ -43,6 +53,7 @@ export type ReturnListRecord = {
   createdAt: Date;
   reasonCategory: ReturnReasonCategory;
   reasonNote: string | null;
+  refundMethod: string | null;
   sale: { id: string; saleDate: Date; customerName: string | null };
   items: ReturnListItem[];
 };
@@ -88,6 +99,7 @@ export async function listReturns(
     createdAt: r.createdAt,
     reasonCategory: r.reasonCategory,
     reasonNote: r.reasonNote,
+    refundMethod: r.refundMethod,
     sale: {
       id: r.sale.id,
       saleDate: r.sale.saleDate,
@@ -155,6 +167,7 @@ export async function getReturnById(
     createdAt: returnRecord.createdAt,
     reasonCategory: returnRecord.reasonCategory,
     reasonNote: returnRecord.reasonNote,
+    refundMethod: returnRecord.refundMethod,
     sale: {
       id: returnRecord.sale.id,
       saleDate: returnRecord.sale.saleDate,
@@ -179,7 +192,8 @@ export async function processReturn(
   items: ReturnItemInput[],
   tenantId: string,
   reasonCategory: ReturnReasonCategory,
-  reasonNote?: string
+  reasonNote?: string,
+  refundMethod?: string
 ): Promise<ReturnResult> {
   if (!RETURN_REASON_CATEGORIES.includes(reasonCategory)) {
     throw new ReturnValidationError("El motivo de la devolución es inválido.");
@@ -193,6 +207,10 @@ export async function processReturn(
 
     if (!sale) {
       throw new ReturnValidationError("La venta no fue encontrada.");
+    }
+
+    if (sale.paymentType !== "CREDIT" && !refundMethod) {
+      throw new ReturnValidationError("Debés indicar cómo se reintegra el dinero.");
     }
 
     const saleItemByProductId = new Map(
@@ -258,7 +276,7 @@ export async function processReturn(
       returnTotal = returnTotal.plus(saleItem.unitPrice.mul(returnItem.quantity));
     }
 
-    if (sale.paymentType === "CASH") {
+    if (refundMethod === "Efectivo") {
       await tx.cashMovement.create({
         data: {
           tenantId,
@@ -291,6 +309,7 @@ export async function processReturn(
         totalAmount: returnTotal,
         reasonCategory,
         reasonNote: reasonNote?.trim() || null,
+        refundMethod: sale.paymentType === "CREDIT" ? null : refundMethod,
         items: {
           create: items.map((item) => ({
             productId: item.productId,
@@ -307,5 +326,5 @@ export async function processReturn(
       returnedItems: items.length,
       totalReturned: returnTotal.toFixed(2)
     };
-  });
+  }, { timeout: 15000 });
 }
