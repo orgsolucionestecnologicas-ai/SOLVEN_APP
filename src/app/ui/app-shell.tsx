@@ -12,7 +12,6 @@ import {
   Home,
   Loader2,
   Package,
-  RotateCcw,
   Search,
   Settings,
   Shield,
@@ -65,7 +64,6 @@ type NavItem = NavLinkItem | NavDisabledItem;
 const navItems: NavItem[] = [
   { type: "link",     href: "/dashboard",      label: "Inicio",        section: "dashboard",     Icon: Home },
   { type: "link",     href: "/pos",             label: "Ventas",        section: "pos",           Icon: ShoppingCart },
-  { type: "link",     href: "/returns",         label: "Devoluciones",  section: "returns",       Icon: RotateCcw },
   { type: "link",     href: "/products",        label: "Productos",     section: "products",      Icon: Package },
   { type: "link",     href: "/customers",       label: "Clientes",      section: "customers",     Icon: Users },
   { type: "link",     href: "/cash-movements",  label: "Caja",          section: "cashMovements", Icon: CreditCard, hiddenForRoles: ["SUPERVISOR"] },

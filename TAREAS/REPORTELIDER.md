@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-17 — UI-01: Devoluciones pasó de menú principal a pestaña dentro de Ventas
+Reorganización de UI pedida por Diego, no un bug. Se sacó "Devoluciones" del nav y de su ruta standalone (`/returns`, eliminada), y ahora vive como tercera pestaña en `Pos` (`Venta actual` / `Historial` / `Devoluciones`), reutilizando el componente `Returns` sin su header de página completa. La visibilidad por rol se preservó exacta (misma fórmula que `visibleNavItems` de `app-shell.tsx`). `typecheck`/`lint`/`test` sin errores (228 passed, incluida la prueba de concurrencia que QA-FIX-06 dejó estable). Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-17 — Cierre y archivo de QA_REPORTE.md (ciclo de QA 1)
 Releído completo el reporte original de QA (10 hallazgos: 2 críticos, 3 altos, 4 medios + 1 surgido como efecto colateral, 2 bajos). Los 9 que eran bugs reales quedaron resueltos y verificados vía QA-FIX-01 a 04; el único punto que sigue "abierto" (gastos recurrentes sin pantalla de gestión) nunca fue un bug — es una feature fuera de alcance, a criterio de Diego. Se archiva `TAREAS/QA_REPORTE.md`: el detalle técnico completo de cada hallazgo queda preservado en el historial de git de los commits QA-FIX-01 a 04. Ciclo de QA 1 cerrado por completo.
 

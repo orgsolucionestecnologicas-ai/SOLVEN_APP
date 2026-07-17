@@ -35,6 +35,7 @@ import { formatARS } from "@/lib/format-currency";
 import QRCode from "qrcode";
 import Link from "next/link";
 import { SalesList } from "./sales-list";
+import { Returns } from "./returns";
 import { SaleGateModal, type SaleGateResult } from "./sale-gate-modal";
 import { SwitchCashierModal, type SwitchCashierResult } from "./switch-cashier-modal";
 
@@ -200,7 +201,7 @@ type ActivePromotionsResponse = {
   error?: { message: string };
 };
 
-type ActiveTab = "Venta actual" | "Historial";
+type ActiveTab = "Venta actual" | "Historial" | "Devoluciones";
 
 const DRAFT_KEY = "solven_draft";
 const CART_KEY = "solven_pos_cart";
@@ -250,7 +251,7 @@ function playConfirmSound() {
 
 const PRODUCTS_PER_PAGE = 10;
 
-const TABS: ActiveTab[] = ["Venta actual", "Historial"];
+const TABS: ActiveTab[] = ["Venta actual", "Historial", "Devoluciones"];
 
 const PROMO_TYPE_LABEL: Record<string, string> = {
   PERCENTAGE: "Porcentaje",
@@ -343,6 +344,8 @@ type InvoiceResult = {
 
 export function Pos() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("Venta actual");
+  const [role, setRole] = useState<string | null>(null);
+  const [rolePermissions, setRolePermissions] = useState<Record<string, boolean> | null>(null);
 
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -522,6 +525,26 @@ export function Pos() {
       }
     }
     void checkCashRegister();
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/me", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: { role?: string } }) => {
+        if (body.data?.role) setRole(body.data.role);
+      })
+      .catch(() => {});
+    fetch("/api/role-permissions", { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((body: { data?: { role: string; section: string; canAccess: boolean }[] }) => {
+        if (!body.data) return;
+        const map: Record<string, boolean> = {};
+        for (const row of body.data) {
+          map[`${row.role}:${row.section}`] = row.canAccess;
+        }
+        setRolePermissions(map);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -1449,6 +1472,12 @@ export function Pos() {
     }
   }
 
+  const visibleTabs = TABS.filter((tab) => {
+    if (tab !== "Devoluciones" || !role) return true;
+    const configured = rolePermissions?.[`${role}:returns`];
+    return configured !== undefined ? configured : true;
+  });
+
   return (
     <>
       {/* Tab bar */}
@@ -1460,7 +1489,7 @@ export function Pos() {
         }
       >
         <div className="flex gap-6">
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab}
               className={
@@ -1481,6 +1510,8 @@ export function Pos() {
 
       {activeTab === "Historial" ? (
         <SalesList />
+      ) : activeTab === "Devoluciones" ? (
+        <Returns />
       ) : (
         <div
           className={`flex h-[calc(100vh-49px)] divide-x divide-slate-200 [.pos-dark_&]:divide-gray-700 bg-white [.pos-dark_&]:bg-gray-900 ${darkMode ? "pos-dark" : ""}`}
