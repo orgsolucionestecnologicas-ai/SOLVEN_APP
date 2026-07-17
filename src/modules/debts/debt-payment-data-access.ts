@@ -66,12 +66,15 @@ export async function registerDebtPayment(
         return debtPayment;
       });
     } catch (error) {
-      if (
+      const isTransactionConflict =
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2034" &&
-        attempt < 2
-      ) {
+        (error.code === "P2034" || error.code === "P2028");
+
+      if (isTransactionConflict && attempt < 2) {
         continue;
+      }
+      if (isTransactionConflict) {
+        throw new DebtPaymentAmountError();
       }
       throw error;
     }

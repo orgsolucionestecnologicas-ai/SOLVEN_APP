@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-17 — QA-FIX-06: error crudo de Prisma en pagos de deuda concurrentes
+Cierra el riesgo detectado al verificar QA-FIX-05. Se reprodujo el código real (`P2028`, "Unable to start a transaction in the given time") en 5 de 10 corridas aisladas del test de concurrencia; en las 10 corridas la integridad de datos se mantuvo intacta (sin sobrepago real). Se amplió el `catch` de `registerDebtPayment` para tratar `P2028` igual que `P2034` (reintento y luego `DebtPaymentAmountError`), sin tocar el `updateMany` que protege la plata. `typecheck`/`lint` sin errores; test corrido 5 veces tras el fix, 5/5 OK. Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-17 — QA-FIX-05: POS no volvía a pedir vendedor/comprobante tras cobrar
 Bug nuevo (fuera del ciclo de QA, reportado por Diego en uso real). `submitSale()` en `pos.tsx` reseteaba el carrito tras una venta pero no `saleGateResult`, permitiendo cobrar de nuevo con el vendedor/comprobante de la venta anterior sin pasar por `SaleGateModal`. Fix de una línea (`setSaleGateResult(null)`), un solo archivo. `typecheck`/`lint` sin errores; `npm test` con la misma falla de concurrencia preexistente y no relacionada de QA-FIX-04 (esta vez también falló aislada, no solo en el suite completo — a seguir de cerca). Detalle en `REPORTE_DE_CAMBIOS.md`.
 
