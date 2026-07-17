@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-17 — FIX-07: método de reintegro al procesar una devolución
+Bug real reportado por Diego: toda devolución generaba un `CashMovement` en Efectivo sin importar cómo se pagó realmente la venta, porque `Sale.paymentType` siempre es `"CASH"` aunque el pago haya sido mixto. Se agregó `Return.refundMethod` (nullable, sin enum) y un selector en el formulario; el `CashMovement` sólo se crea si el reintegro elegido es Efectivo. La rama de ventas a crédito no se tocó. `GET /api/sales` ya traía `paymentDetails` sin cambios (usa `include`). `typecheck`/`lint`/`test` sin errores (235 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-17 — UI-01: Devoluciones pasó de menú principal a pestaña dentro de Ventas
 Reorganización de UI pedida por Diego, no un bug. Se sacó "Devoluciones" del nav y de su ruta standalone (`/returns`, eliminada), y ahora vive como tercera pestaña en `Pos` (`Venta actual` / `Historial` / `Devoluciones`), reutilizando el componente `Returns` sin su header de página completa. La visibilidad por rol se preservó exacta (misma fórmula que `visibleNavItems` de `app-shell.tsx`). `typecheck`/`lint`/`test` sin errores (228 passed, incluida la prueba de concurrencia que QA-FIX-06 dejó estable). Detalle en `REPORTE_DE_CAMBIOS.md`.
 

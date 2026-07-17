@@ -9,6 +9,23 @@
 
 ---
 
+FIX-07 (bug real reportado por Diego, no hallazgo de QA) — 2026-07-17. Toda devolución sobre una venta no-crédito generaba un `CashMovement` en Efectivo por el monto completo, sin importar cómo se había pagado realmente la venta — porque toda venta nueva se crea con `paymentType: "CASH"` incluso cuando el pago fue mixto (mitad tarjeta, mitad efectivo), y el desglose real vive en `Sale.paymentDetails` (JSON), no en `paymentType`. Se agregó un selector "¿Cómo se reintegra?" (Efectivo / Tarjeta / Transferencia / VentaWeb / Otro — mismos 5 valores que `PAYMENT_METHOD_CONFIG` de `pos.tsx`) al formulario de devolución, y el `CashMovement` sólo se crea cuando el reintegro elegido es "Efectivo".
+
+- `prisma/schema.prisma`: se agregó `refundMethod String?` (nullable, sin enum nuevo) al modelo `Return`. Migración `20260717181000_add_return_refund_method` generada y aplicada contra la DB de desarrollo con `npx prisma migrate dev` (no se corrió `migrate deploy` contra producción). Registros existentes de `Return` quedan con `refundMethod: null`, sin backfill.
+- `src/modules/returns/index.ts`: nuevo export `RETURN_REFUND_METHODS` (los 5 valores). `processReturn()` ahora recibe un 6° parámetro opcional `refundMethod?: string`. La condición para crear el `CashMovement` pasó de `sale.paymentType === "CASH"` a `refundMethod === "Efectivo"`. Se exige `refundMethod` (lanza `ReturnValidationError`) salvo que la venta sea `CREDIT`. La rama `CREDIT` (reduce la deuda) quedó intacta, sin pedir método de reintegro. `refundMethod` se guarda en el `Return` creado (`null` si la venta es `CREDIT`) y se agregó a `ReturnListRecord`/`ReturnDetailRecord` y sus mapeos en `listReturns()`/`getReturnById()`. Se subió el timeout de la transacción de `processReturn` de 5000ms (default de Prisma) a 15000ms: la transacción hace varios round-trips secuenciales a Neon (venta, items, stock, movimiento de inventario, caja, devolución) y bajo latencia real de red superaba el default — confirmado reproduciendo el error real (`Transaction already closed`) en los tests de integración antes del ajuste.
+- `src/app/api/returns/route.ts`: valida `refundMethod` contra `RETURN_REFUND_METHODS` (400 si no es un valor conocido) y lo pasa a `processReturn`.
+- `src/app/ui/returns.tsx`: se extendió el tipo `Sale` con `paymentDetails`; se muestra un resumen de solo lectura "Pagado con" (lee `paymentDetails`, con fallback a Efectivo/Crédito si no hay desglose); se agregó el selector de método de reintegro (visible sólo cuando la venta no es `CREDIT`); `canSubmit` ahora exige `refundMethod` en ventas no-crédito; el POST incluye `refundMethod`; `ReturnConfirmStep` muestra el método elegido en el resumen de confirmación.
+- `src/app/ui/return-credit-note-pdf.tsx`: la nota de crédito impresa muestra el método de reintegro cuando existe.
+- **`GET /api/sales` ya devolvía `paymentDetails` sin cambios de backend**: `listSales` (`sale-data-access.ts`) usa `include` (no `select`) sobre `Sale`, por lo que ya traía todos los campos escalares, incluido `paymentDetails`. No fue necesario tocar `sale-data-access.ts` ni la ruta de sales.
+
+**Tests nuevos**: `src/modules/returns/index.integration.test.ts` (DB real) prueba que `refundMethod: "Efectivo"` crea el `CashMovement`, que `"Tarjeta"` no crea ninguno, que una venta `CREDIT` sigue funcionando sin pedir `refundMethod` y reduce la deuda igual que antes, y que falta `refundMethod` en una venta no-crédito lanza `ReturnValidationError`. `src/app/api/returns/route.test.ts` ganó 3 tests nuevos (pass-through de `refundMethod`, 400 por valor inválido, 400 cuando `processReturn` rechaza por falta de `refundMethod`) — 15/15 tests del archivo pasan.
+
+**Validación**: `npm run typecheck` y `npm run lint` sin errores. `npm test`: 235 passed / 2 skipped (237), sin regresiones. Commit `c43a3ca`.
+
+**Restricciones respetadas**: no se tocó `sale-validation.ts` ni la restricción de Tarea-138 (ventas nuevas siguen aceptando sólo `paymentType: "CASH"`); no se agregó enum nuevo en Prisma; no se corrió `migrate deploy` contra producción; la rama `CREDIT` de `processReturn` no se modificó.
+
+---
+
 QA-FIX-06 verificado por el Ingeniero Líder (diff de 11 líneas en debt-payment-data-access.ts, exactamente lo pedido, integridad de datos confirmada en las 10 corridas) — 2026-07-17. `QA_REPORTE.md` releído completo y archivado: los 10 hallazgos del ciclo de QA 1 están resueltos, único punto restante es la feature de gastos recurrentes (fuera de alcance). Resumen dejado en `TAREAS/REPORTELIDER.md`.
 
 ---
