@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-16 — QA-FIX-04: ocultar CashRegisterIndicator para roles sin acceso a Caja
+Cierra el último ítem abierto del ciclo de QA 1. `CashRegisterIndicator` (`app-shell.tsx`) ahora recibe `role`/`rolePermissions` y no renderiza nada (ni dispara los `fetch`) para roles sin acceso configurado a `cashMovements`, con el mismo default `OWNER`/`CASHIER` que usa el backend desde QA-FIX-03; `OWNER`/`CASHIER` no cambian. Sin test nuevo (no hay infraestructura de tests de componentes React en el proyecto). `npm run typecheck`/`lint` sin errores; `npm test` con una falla de concurrencia preexistente y no relacionada (confirmada flaky, pasa aislada). Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-16 — QA-FIX-03: cierre de los 8 hallazgos 🟠/🟡/🟢 restantes del ciclo de QA
 Los 8 ítems se resolvieron sin N/A: `GET` de Caja/Ajustes ahora exige rol (con tests 403 nuevos), scripts de seed/reset apuntan a un tenant demo fijo por id, columna/buscador de Clientes usan email/teléfono reales, el cron de cotizaciones usa la plantilla correcta, "Subir logo" en Ajustes ya persiste de verdad, se eliminó un test de venta a crédito desactualizado (cobertura ya existe en otro archivo), `/debts` y `/debt-payments` quedaron bajo la sección `customers` de RolePermission, y el límite de crédito en el panel de pago ya es el real del cliente. Se encontró un efecto colateral no pedido en el ítem 1: `CashRegisterIndicator` en `app-shell.tsx` llama a `/api/cash-movements` para todos los roles sin distinción, así que `SUPERVISOR`/`INVENTORY`/`READONLY` ahora ven un saldo de caja incorrecto en el sidebar (no crashea, solo muestra el monto de apertura) — no se tocó `app-shell.tsx` por estar fuera del alcance del lote, queda documentado para decisión de Diego. `npm run typecheck`, `npm run lint` y `npm test` (228 passed, 0 fallas) sin regresiones. Detalle completo en `REPORTE_DE_CAMBIOS.md`.
 

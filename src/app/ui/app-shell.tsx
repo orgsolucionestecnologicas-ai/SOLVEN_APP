@@ -356,12 +356,23 @@ type CashMovementSummary = {
   createdAt: string;
 };
 
-function CashRegisterIndicator() {
+function CashRegisterIndicator({
+  role,
+  rolePermissions
+}: {
+  role: string | null;
+  rolePermissions: Record<string, boolean> | null;
+}) {
   const [session, setSession] = useState<CashRegisterSessionSummary | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const configuredAccess = role ? rolePermissions?.[`${role}:cashMovements`] : undefined;
+  const canViewCash =
+    role !== null && (configuredAccess !== undefined ? configuredAccess : role === "OWNER" || role === "CASHIER");
+
   useEffect(() => {
+    if (!canViewCash) return;
     fetch("/api/cash-register", { headers: { Accept: "application/json" } })
       .then((r) => r.json())
       .then(async (body: { data?: CashRegisterSessionSummary | null }) => {
@@ -378,9 +389,9 @@ function CashRegisterIndicator() {
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [canViewCash]);
 
-  if (isLoading) return null;
+  if (!canViewCash || isLoading) return null;
 
   const isOpen = session?.status === "OPEN";
 
@@ -487,7 +498,7 @@ export function AppShell({ activeSection, eyebrow, title, children }: AppShellPr
 
         {/* Bottom — desktop only */}
         <div className="mt-auto hidden border-t border-slate-800 pt-3 lg:block">
-          <CashRegisterIndicator />
+          <CashRegisterIndicator role={role} rolePermissions={rolePermissions} />
           <SidebarUser />
           <LogoutButton />
         </div>
