@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-17 — UI-02: buscador, filtro de motivo, resumen y badge en historial de devoluciones
+Pestaña "Historial" de Devoluciones ganó buscador (folio o cliente, con debounce), filtro por motivo, 2 chips de resumen y badge de color por motivo en cada fila. El folio fabricado (fragmento del CUID) se reemplazó por el folio real de la venta, plomado desde `listReturns()`/`getReturnById()`. El chip de monto es de la página actual, no del período completo (`listReturns` no agrega el total period-wide) — se etiqueta explícitamente "en esta página" para no confundir. `typecheck`/`lint`/`test` sin errores (235 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-17 — FIX-07: método de reintegro al procesar una devolución
 Bug real reportado por Diego: toda devolución generaba un `CashMovement` en Efectivo sin importar cómo se pagó realmente la venta, porque `Sale.paymentType` siempre es `"CASH"` aunque el pago haya sido mixto. Se agregó `Return.refundMethod` (nullable, sin enum) y un selector en el formulario; el `CashMovement` sólo se crea si el reintegro elegido es Efectivo. La rama de ventas a crédito no se tocó. `GET /api/sales` ya traía `paymentDetails` sin cambios (usa `include`). `typecheck`/`lint`/`test` sin errores (235 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
 
