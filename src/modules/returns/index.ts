@@ -54,18 +54,41 @@ export type ReturnListRecord = {
   reasonCategory: ReturnReasonCategory;
   reasonNote: string | null;
   refundMethod: string | null;
-  sale: { id: string; saleDate: Date; customerName: string | null };
+  sale: { id: string; folio: number; saleDate: Date; customerName: string | null };
   items: ReturnListItem[];
 };
 
 export async function listReturns(
   tenantId: string,
-  filters: { page?: number; limit?: number; from?: Date; to?: Date; sellerId?: string } = {}
+  filters: {
+    page?: number;
+    limit?: number;
+    from?: Date;
+    to?: Date;
+    sellerId?: string;
+    reasonCategory?: ReturnReasonCategory;
+    search?: string;
+  } = {}
 ): Promise<{ data: ReturnListRecord[]; total: number }> {
-  const { page = 1, limit = 20, from, to, sellerId } = filters;
+  const { page = 1, limit = 20, from, to, sellerId, reasonCategory, search } = filters;
+
+  const trimmedSearch = search?.trim();
+  const searchAsFolio = trimmedSearch && /^\d+$/.test(trimmedSearch) ? Number(trimmedSearch) : undefined;
 
   const where: Prisma.ReturnWhereInput = {
-    sale: { tenantId, ...(sellerId ? { sellerId } : {}) },
+    sale: {
+      tenantId,
+      ...(sellerId ? { sellerId } : {}),
+      ...(trimmedSearch
+        ? {
+            OR: [
+              ...(searchAsFolio !== undefined ? [{ folio: searchAsFolio }] : []),
+              { customer: { name: { contains: trimmedSearch, mode: "insensitive" as const } } }
+            ]
+          }
+        : {})
+    },
+    ...(reasonCategory ? { reasonCategory } : {}),
     ...((from || to) ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {})
   };
 
@@ -77,7 +100,7 @@ export async function listReturns(
       skip: (page - 1) * limit,
       include: {
         items: true,
-        sale: { select: { id: true, saleDate: true, customer: { select: { name: true } } } }
+        sale: { select: { id: true, folio: true, saleDate: true, customer: { select: { name: true } } } }
       }
     }),
     prisma.return.count({ where })
@@ -102,6 +125,7 @@ export async function listReturns(
     refundMethod: r.refundMethod,
     sale: {
       id: r.sale.id,
+      folio: r.sale.folio,
       saleDate: r.sale.saleDate,
       customerName: r.sale.customer?.name ?? null
     },
@@ -136,6 +160,7 @@ export async function getReturnById(
       sale: {
         select: {
           id: true,
+          folio: true,
           saleDate: true,
           customer: { select: { name: true } },
           items: true
@@ -170,6 +195,7 @@ export async function getReturnById(
     refundMethod: returnRecord.refundMethod,
     sale: {
       id: returnRecord.sale.id,
+      folio: returnRecord.sale.folio,
       saleDate: returnRecord.sale.saleDate,
       customerName: returnRecord.sale.customer?.name ?? null
     },

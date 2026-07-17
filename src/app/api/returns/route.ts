@@ -36,10 +36,18 @@ export async function GET(request: Request) {
   const fromParam = searchParams.get("from");
   const toParam = searchParams.get("to");
   const sellerIdParam = searchParams.get("sellerId");
+  const reasonCategoryParam = searchParams.get("reasonCategory");
+  const searchParam = searchParams.get("search");
 
   const from = fromParam ? new Date(`${fromParam}T00:00:00`) : undefined;
   const to = toParam ? new Date(`${toParam}T23:59:59.999`) : undefined;
   const sellerId = sellerIdParam && sellerIdParam.trim().length > 0 ? sellerIdParam.trim() : undefined;
+  const search = searchParam && searchParam.trim().length > 0 ? searchParam.trim() : undefined;
+
+  if (reasonCategoryParam && !RETURN_REASON_CATEGORIES.includes(reasonCategoryParam as ReturnReasonCategory)) {
+    return errorResponse("El motivo de la devolución es inválido.", 400);
+  }
+  const reasonCategory = reasonCategoryParam ? (reasonCategoryParam as ReturnReasonCategory) : undefined;
 
   try {
     const result = await listReturns(tenantId, {
@@ -47,7 +55,9 @@ export async function GET(request: Request) {
       limit,
       from: from && !Number.isNaN(from.getTime()) ? from : undefined,
       to: to && !Number.isNaN(to.getTime()) ? to : undefined,
-      sellerId
+      sellerId,
+      reasonCategory,
+      search
     });
     return paginatedResponse(result.data, page, limit, result.total);
   } catch {

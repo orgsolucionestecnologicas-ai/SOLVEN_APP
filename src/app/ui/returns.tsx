@@ -77,7 +77,7 @@ type ReturnHistoryRecord = {
   createdAt: string;
   reasonCategory: ReturnReasonCategory;
   reasonNote: string | null;
-  sale: { id: string; saleDate: string; customerName: string | null };
+  sale: { id: string; folio: number; saleDate: string; customerName: string | null };
   items: ReturnHistoryItem[];
 };
 
@@ -119,6 +119,13 @@ const RETURN_REASON_OPTIONS: { value: ReturnReasonCategory; label: string }[] = 
   { value: "CAMBIO_OPINION", label: "Cambio de opinión del cliente" },
   { value: "OTRO", label: "Otro" }
 ];
+
+const REASON_BADGE_STYLES: Record<ReturnReasonCategory, string> = {
+  DEFECTO: "bg-amber-50 text-amber-700 border-amber-200",
+  ERROR_VENTA: "bg-slate-100 text-slate-600 border-slate-200",
+  CAMBIO_OPINION: "bg-slate-100 text-slate-600 border-slate-200",
+  OTRO: "bg-slate-100 text-slate-600 border-slate-200"
+};
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
@@ -792,7 +799,7 @@ function exportReturnsToCsv(records: ReturnHistoryRecord[]) {
     const totalQuantity = record.items.reduce((acc, item) => acc + item.quantity, 0);
     return [
       formatDate(record.createdAt),
-      `#${record.sale.id.slice(-8).toUpperCase()}`,
+      `#${record.sale.folio}`,
       record.items.map((item) => `${item.productName} x${item.quantity}`).join(", "),
       String(totalQuantity),
       reasonLabel,
@@ -826,6 +833,9 @@ function ReturnHistoryPanel() {
   const [toDate, setToDate] = useState("");
   const [sellerId, setSellerId] = useState("");
   const [sellers, setSellers] = useState<UserSummary[]>([]);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [reasonCategory, setReasonCategory] = useState<ReturnReasonCategory | "">("");
 
   useEffect(() => {
     fetch("/api/users", { headers: { Accept: "application/json" } })
@@ -836,6 +846,14 @@ function ReturnHistoryPanel() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
+
   const fetchHistory = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -844,6 +862,8 @@ function ReturnHistoryPanel() {
       if (fromDate) params.set("from", fromDate);
       if (toDate) params.set("to", toDate);
       if (sellerId) params.set("sellerId", sellerId);
+      if (searchQuery) params.set("search", searchQuery);
+      if (reasonCategory) params.set("reasonCategory", reasonCategory);
 
       const res = await fetch(`/api/returns?${params.toString()}`, {
         headers: { Accept: "application/json" }
@@ -857,11 +877,13 @@ function ReturnHistoryPanel() {
     } finally {
       setLoading(false);
     }
-  }, [page, fromDate, toDate, sellerId]);
+  }, [page, fromDate, toDate, sellerId, searchQuery, reasonCategory]);
 
   useEffect(() => {
     void fetchHistory();
   }, [fetchHistory]);
+
+  const pageTotal = records.reduce((acc, r) => acc + Number(r.totalAmount), 0);
 
   function handleFilterChange(setter: (value: string) => void, value: string) {
     setter(value);
@@ -874,7 +896,49 @@ function ReturnHistoryPanel() {
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-slate-900">Historial de devoluciones</h2>
 
+          {!loading && !loadError ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                {pagination?.total ?? records.length} devolución{(pagination?.total ?? records.length) !== 1 ? "es" : ""} en el período
+              </span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                {formatMoney(pageTotal)} devueltos en esta página
+              </span>
+            </div>
+          ) : null}
+
           <div className="mt-3 flex flex-wrap items-end gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Buscar</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  className="rounded-lg border border-slate-200 py-1.5 pl-8 pr-3 text-sm placeholder:text-slate-400 focus:border-violet-400 focus:outline-none"
+                  placeholder="Folio o cliente..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Motivo</label>
+              <select
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-violet-400 focus:outline-none"
+                value={reasonCategory}
+                onChange={(e) => {
+                  setReasonCategory(e.target.value as ReturnReasonCategory | "");
+                  setPage(1);
+                }}
+              >
+                <option value="">Todos</option>
+                {RETURN_REASON_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">Desde</label>
               <input
@@ -940,7 +1004,7 @@ function ReturnHistoryPanel() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-semibold text-slate-900">
-                      Venta #{record.sale.id.slice(-8).toUpperCase()}
+                      Venta #{record.sale.folio}
                     </p>
                     <span className="text-slate-300">·</span>
                     <p className="text-xs text-slate-500">{formatDate(record.createdAt)}</p>
@@ -950,6 +1014,11 @@ function ReturnHistoryPanel() {
                         <p className="text-xs text-slate-500">{record.sale.customerName}</p>
                       </>
                     ) : null}
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${REASON_BADGE_STYLES[record.reasonCategory]}`}
+                    >
+                      {RETURN_REASON_OPTIONS.find((o) => o.value === record.reasonCategory)?.label ?? record.reasonCategory}
+                    </span>
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
                     {record.items.map((item) => `${item.productName} x${item.quantity}`).join(", ")}
