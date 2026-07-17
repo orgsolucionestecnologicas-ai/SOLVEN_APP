@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-17 — Cierre y archivo de QA_REPORTE.md (ciclo de QA 1)
+Releído completo el reporte original de QA (10 hallazgos: 2 críticos, 3 altos, 4 medios + 1 surgido como efecto colateral, 2 bajos). Los 9 que eran bugs reales quedaron resueltos y verificados vía QA-FIX-01 a 04; el único punto que sigue "abierto" (gastos recurrentes sin pantalla de gestión) nunca fue un bug — es una feature fuera de alcance, a criterio de Diego. Se archiva `TAREAS/QA_REPORTE.md`: el detalle técnico completo de cada hallazgo queda preservado en el historial de git de los commits QA-FIX-01 a 04. Ciclo de QA 1 cerrado por completo.
+
 ### 2026-07-17 — QA-FIX-06: error crudo de Prisma en pagos de deuda concurrentes
 Cierra el riesgo detectado al verificar QA-FIX-05. Se reprodujo el código real (`P2028`, "Unable to start a transaction in the given time") en 5 de 10 corridas aisladas del test de concurrencia; en las 10 corridas la integridad de datos se mantuvo intacta (sin sobrepago real). Se amplió el `catch` de `registerDebtPayment` para tratar `P2028` igual que `P2034` (reintento y luego `DebtPaymentAmountError`), sin tocar el `updateMany` que protege la plata. `typecheck`/`lint` sin errores; test corrido 5 veces tras el fix, 5/5 OK. Detalle en `REPORTE_DE_CAMBIOS.md`.
 
