@@ -155,7 +155,6 @@ docs/skills/deployment-checklist.md → checklist de pre-deploy (ya existente, c
 | Rebill acepta cualquier firma si falta `REBILL_WEBHOOK_SECRET` | `src/app/api/webhooks/rebill/route.ts:12` | `if (!secret) return true;` — bypass total sin la env var. Diego decidió (2026-07-18) dejar la integración de Rebill para el final del proyecto; queda documentado pero fuera de la cola de trabajo actual. |
 | 3 cron jobs desprotegidos si falta `CRON_SECRET` | `src/app/api/cron/{expire-quotes,generate-recurring-expenses,remind-expiring-quotes}/route.ts` | Mismo patrón: `if (cronSecret && authHeader !== ...)` — si la env var no está seteada en Vercel, cualquiera puede invocar los 3 jobs sin autenticación. Menos crítico que Rebill (no mueven dinero directamente), pero deben protegerse antes de cerrar el proyecto. |
 | Código huérfano de un NOA interno nunca terminado | `src/lib/noa-knowledge/*` (16 archivos), `noa-intent-engine.ts`, `noa-queries.ts`, `noa-responses.ts` | Verificado con grep: **ningún archivo del proyecto los importa.** `POST /api/noa/internal` es un stub que siempre devuelve 404. Es deuda técnica inerte (no ejecuta, no es un riesgo), pero puede confundir a un agente futuro que piense que hay un NOA interno parcialmente activo. Candidato a eliminar cuando se retome la idea de NOA operativo interno (ver memoria `project_noa_operativo.md`) o directamente borrar si no se va a retomar. |
-| `requireTenantId()` sin try/catch en 2 endpoints — 401 esperado puede salir como 500 | `src/app/api/subscription/route.ts:7`, `src/app/api/dashboard/summary/route.ts:7` | Hallazgo de TESTS-01 (2026-07-18), confirmado leyendo ambos archivos: la llamada a `requireTenantId()` está fuera del bloque `try` de la función, así que sin sesión válida el `UnauthorizedError` se propaga sin capturar en vez de resolver al 401 que devuelve el resto de los endpoints. Todos los demás route handlers del proyecto envuelven esta llamada en try/catch correctamente — estos 2 son los únicos que no. Cubierto por un test que documenta el comportamiento actual (`subscription/route.test.ts`). |
 
 ### ✅ Resueltos desde la versión anterior de este documento (2026-06-14)
 
@@ -168,6 +167,7 @@ docs/skills/deployment-checklist.md → checklist de pre-deploy (ya existente, c
 | Devoluciones sobre ventas con pago dividido asumían siempre reintegro en efectivo | FIX-07 — selector de método de reintegro (`Return.refundMethod`) | 2026-07-17 |
 | `CashRegisterIndicator` mostraba saldo de caja a roles sin acceso configurado | QA-FIX-04 | 2026-07-16 |
 | "Cambiar contraseña" no verificaba sesión, comparaba contra la env var global `SOLVEN_PASSWORD` y nunca persistía `newPassword` (falso éxito) | FIX-11 (commit `cf1541c`) | 2026-07-18 |
+| `requireTenantId()` sin try/catch en `subscription`/`dashboard/summary` — 401 esperado salía como 500 | FIX-12 (commit `a8ee593`) | 2026-07-18 |
 
 ---
 
