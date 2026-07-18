@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-18 — FIX-11: cambio de contraseña ahora funciona de verdad
+Bug documentado en `CLAUDE.md` sección 5: el endpoint no verificaba sesión, comparaba contra la env var global `SOLVEN_PASSWORD` en vez del hash real del usuario, y nunca escribía `newPassword` en la DB — mentía éxito. Reescrito para usar `getSession()`, verificar contra `user.password` con `verifyPassword()`, y persistir con `hashPassword()` + `prisma.user.update({ where: { id, tenantId } })`. Se mantuvo el shape de error como string plano (no el helper `_shared/responses`) porque `settings.tsx` ya lo parsea así. Test nuevo con 4 casos. `typecheck`/`lint`/`test` sin errores (258 passed, 2 skipped; 1 falla de conexión a Neon en la corrida completa confirmada flaky y no relacionada, aislada pasó limpio). Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-18 — FIX-10: ivaRate de Servicios y Presupuestos, ya no hardcodeado en 0.21
 Bug documentado en `CLAUDE.md` sección 5. `Service` y `QuoteItem` no tenían campo `ivaRate` — cualquier venta o presupuesto con un servicio facturaba con IVA 21% fijo sin importar la alícuota real. Se agregó `ivaRate Float @default(0.21)` a ambos modelos (migración aplicada contra Neon, solo `ADD COLUMN`, sin tocar datos existentes), UI de servicios con selector de alícuota reutilizando `IVA_RATES` de products, y se reemplazó el `0.21` fijo en `sale-data-access.ts`, `quote-data-access.ts` y `pos.tsx` por el valor real del servicio/producto. No se tocó `src/lib/arca/*` ni `src/modules/invoices/*` (ya leen `ivaRate` por ítem). `typecheck`/`lint`/`test` sin errores (254 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
 
