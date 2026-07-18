@@ -24,11 +24,13 @@ describe("GET /api/subscription", () => {
     mockedRequireTenantId.mockResolvedValue("test-tenant-id");
   });
 
-  it("propagates UnauthorizedError without a session (route does not catch it — see report)", async () => {
+  it("returns 401 without a session", async () => {
     mockedRequireTenantId.mockReset();
     mockedRequireTenantId.mockRejectedValueOnce(new UnauthorizedError());
 
-    await expect(GET()).rejects.toBeInstanceOf(UnauthorizedError);
+    const response = await GET();
+
+    expect(response.status).toBe(401);
   });
 
   it("returns TRIAL defaults when there is no Subscription row", async () => {

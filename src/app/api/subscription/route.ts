@@ -1,10 +1,16 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
-import { requireTenantId } from "@/lib/tenant";
-import { errorResponse, successResponse } from "../_shared/responses";
+import { requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { errorResponse, successResponse, unauthorizedResponse } from "../_shared/responses";
 
 export async function GET() {
-  const tenantId = await requireTenantId();
+  let tenantId: string;
+  try {
+    tenantId = await requireTenantId();
+  } catch (e) {
+    if (e instanceof UnauthorizedError) return unauthorizedResponse();
+    throw e;
+  }
 
   try {
     const subscription = await prisma.subscription.findUnique({
