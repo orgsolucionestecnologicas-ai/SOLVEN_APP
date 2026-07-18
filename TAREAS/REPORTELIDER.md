@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-18 — FIX-08: ARCA ya no confía en items/total del cliente
+Hallazgo de máxima prioridad del Ingeniero Líder (bug documentado en `CLAUDE.md` sección 5, nunca corregido). `emitInvoice()` ahora carga la venta real desde la DB con `where: { id, tenantId }` (rechaza `saleId` de otro tenant o inexistente) y recalcula `items`/`total` del comprobante desde `sale.items`/`sale.totalAmount` — `input.items`/`input.total` se eliminaron del tipo `EmitInvoiceInput`, imposible volver a pasarlos por error. `docTipo` en la API ahora se valida contra los 3 valores permitidos. No se tocó `src/lib/arca/*` (WSAA/WSFE intactos). Reconciliación exacta por construcción: `totalAmount` ya es la suma de los ítems, sin necesidad de ajuste. Tests nuevos desde cero (no existían): 15 tests (5 unitarios de `emitInvoice` + 10 de la ruta), todo mockeado, nada pega a AFIP real. `typecheck`/`lint`/`test` sin errores (250 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-17 — UI-02: buscador, filtro de motivo, resumen y badge en historial de devoluciones
 Pestaña "Historial" de Devoluciones ganó buscador (folio o cliente, con debounce), filtro por motivo, 2 chips de resumen y badge de color por motivo en cada fila. El folio fabricado (fragmento del CUID) se reemplazó por el folio real de la venta, plomado desde `listReturns()`/`getReturnById()`. El chip de monto es de la página actual, no del período completo (`listReturns` no agrega el total period-wide) — se etiqueta explícitamente "en esta página" para no confundir. `typecheck`/`lint`/`test` sin errores (235 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
 
