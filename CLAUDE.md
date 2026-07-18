@@ -152,7 +152,6 @@ docs/skills/deployment-checklist.md → checklist de pre-deploy (ya existente, c
 
 | Bug | Archivo | Detalle |
 |-----|---------|---------|
-| **"Cambiar contraseña" en Configuración no funciona y miente que funcionó** | `src/app/api/auth/change-password/route.ts` | No verifica sesión (nadie autenticado, cualquiera puede llamarlo), compara `currentPassword` contra la env var global `SOLVEN_PASSWORD` (no contra el hash del usuario en la tabla `User`), y **nunca escribe `newPassword` en ningún lado** — no hay `prisma.user.update`, no hay `hashPassword()`. El endpoint devuelve `{ok:true}` y la UI (`settings.tsx`, sección "Seguridad") muestra "Contraseña actualizada correctamente" sin que nada haya cambiado. No existe ningún otro mecanismo de cambio de contraseña en el código (tampoco en `/api/users/[id]`). **Prioridad alta — es exactamente el tipo de dato falso que Diego pidió eliminar del sistema.** |
 | Rebill acepta cualquier firma si falta `REBILL_WEBHOOK_SECRET` | `src/app/api/webhooks/rebill/route.ts:12` | `if (!secret) return true;` — bypass total sin la env var. Diego decidió (2026-07-18) dejar la integración de Rebill para el final del proyecto; queda documentado pero fuera de la cola de trabajo actual. |
 | 3 cron jobs desprotegidos si falta `CRON_SECRET` | `src/app/api/cron/{expire-quotes,generate-recurring-expenses,remind-expiring-quotes}/route.ts` | Mismo patrón: `if (cronSecret && authHeader !== ...)` — si la env var no está seteada en Vercel, cualquiera puede invocar los 3 jobs sin autenticación. Menos crítico que Rebill (no mueven dinero directamente), pero deben protegerse antes de cerrar el proyecto. |
 | Código huérfano de un NOA interno nunca terminado | `src/lib/noa-knowledge/*` (16 archivos), `noa-intent-engine.ts`, `noa-queries.ts`, `noa-responses.ts` | Verificado con grep: **ningún archivo del proyecto los importa.** `POST /api/noa/internal` es un stub que siempre devuelve 404. Es deuda técnica inerte (no ejecuta, no es un riesgo), pero puede confundir a un agente futuro que piense que hay un NOA interno parcialmente activo. Candidato a eliminar cuando se retome la idea de NOA operativo interno (ver memoria `project_noa_operativo.md`) o directamente borrar si no se va a retomar. |
@@ -167,6 +166,7 @@ docs/skills/deployment-checklist.md → checklist de pre-deploy (ya existente, c
 | `sendQuoteExpiringReminderEmail` nunca se llamaba desde ningún lugar | Conectado al cron `remind-expiring-quotes` (registrado en `vercel.json`, corre 9am diario) | ya resuelto al momento de esta auditoría, fecha exacta no determinada |
 | Devoluciones sobre ventas con pago dividido asumían siempre reintegro en efectivo | FIX-07 — selector de método de reintegro (`Return.refundMethod`) | 2026-07-17 |
 | `CashRegisterIndicator` mostraba saldo de caja a roles sin acceso configurado | QA-FIX-04 | 2026-07-16 |
+| "Cambiar contraseña" no verificaba sesión, comparaba contra la env var global `SOLVEN_PASSWORD` y nunca persistía `newPassword` (falso éxito) | FIX-11 (commit `cf1541c`) | 2026-07-18 |
 
 ---
 
@@ -262,7 +262,6 @@ Los 3 comparten el mismo patrón de protección opcional: `if (cronSecret && aut
 ```
 DATABASE_URL                     — conexión Prisma/Neon
 SOLVEN_SESSION_SECRET            — firma HMAC de la cookie de sesión
-SOLVEN_PASSWORD                  — usado por el endpoint roto de cambio de contraseña (ver sección 5) — NO es la contraseña de ningún usuario individual
 RESEND_API_KEY                   — envío de emails
 NEXT_PUBLIC_APP_URL              — links absolutos en emails
 NEXT_PUBLIC_REBILL_CHECKOUT_URL  — botón de checkout (pricing, app-shell, suscripción vencida)
@@ -277,7 +276,7 @@ NODE_ENV                         — usado en login/register/switch-cashier y pr
 ### En `.env.example` (plantilla del repo, sin secretos)
 `DATABASE_URL`, `SOLVEN_USER`, `SOLVEN_PASSWORD`, `SOLVEN_SESSION_SECRET`
 
-`SOLVEN_USER` no aparece referenciado como `process.env.SOLVEN_USER` en ningún archivo bajo `src/` al momento de esta auditoría — verificar si sigue en uso antes de asumir que es necesaria, o si es vestigial.
+`SOLVEN_USER` no aparece referenciado como `process.env.SOLVEN_USER` en ningún archivo bajo `src/`. `SOLVEN_PASSWORD` tampoco — desde FIX-11 (2026-07-18) el endpoint de cambio de contraseña dejó de usarla (ahora compara contra el hash real del usuario). **Ambas parecen vestigiales** — antes de borrarlas de Vercel, confirmar con Diego que no se usan en ningún script de despliegue o proceso manual fuera de este repo.
 
 ### ALERTA DE SEGURIDAD (heredada, no reverificada en esta auditoría)
 La versión anterior de este documento advertía que `.env.production.example` contiene credenciales reales de Neon DB. No se abrió ese archivo para esta actualización (regla de la sección de arriba) — Diego debe confirmar si esas credenciales ya fueron rotadas.
