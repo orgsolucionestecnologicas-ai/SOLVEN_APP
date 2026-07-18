@@ -8,12 +8,14 @@
 
 ## Abiertos
 
-### 2026-07-18 — Borrar `SOLVEN_PASSWORD` / `SOLVEN_USER` de Vercel (falta la acción, no la confirmación)
-Confirmado por dos vías independientes que ninguna se usa: (1) grep en el código — ninguna se referencia en `src/` desde FIX-11; (2) BROWSER-01, agente de Chrome — ambas variables existen en Vercel (Production + Preview, creadas el 12 de mayo, marcadas "Sensitive", sin nota/descripción) pero no aparecen en los Build Logs del deploy más reciente. Diego confirmó verbalmente que ya las revisó. **Falta solo el paso de borrarlas de Vercel** (Settings → Environment Variables) — el Ingeniero Líder no tiene acceso para hacerlo directamente.
+(vacío por ahora)
 
 ---
 
 ## Cerrados
+
+### 2026-07-18 — Borrar `SOLVEN_PASSWORD` / `SOLVEN_USER` de Vercel (CERRADO)
+Confirmado por dos vías independientes que ninguna se usaba: grep en el código (sin referencias en `src/` desde FIX-11) y revisión en Vercel vía agente de Chrome (BROWSER-01, sin uso detectable en Build Logs). Borradas de Production y Preview por el agente de Chrome — Vercel confirmó "Removed Environment Variable successfully". Falta un próximo deploy normal para que el cambio tome efecto (no se forzó redeploy).
 
 ### 2026-07-18 — `requireTenantId()` sin try/catch en subscription y dashboard/summary (CERRADO)
 Hallazgo de TESTS-01. Resuelto en FIX-12 (commit `a8ee593`): ambos endpoints ahora envuelven `requireTenantId()` en try/catch y devuelven 401 en vez de propagar la excepción. Verificado por el Ingeniero Líder contra el diff, typecheck limpio. Ver `CLAUDE.md` sección 5.

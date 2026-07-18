@@ -274,10 +274,10 @@ NEXT_PUBLIC_SENTRY_DSN           — activación de Sentry
 NODE_ENV                         — usado en login/register/switch-cashier y prisma.ts
 ```
 
-### En `.env.example` (plantilla del repo, sin secretos)
+### En `.env.example` (plantilla del repo — desactualizada tras el punto siguiente)
 `DATABASE_URL`, `SOLVEN_USER`, `SOLVEN_PASSWORD`, `SOLVEN_SESSION_SECRET`
 
-**Confirmado vestigial (2026-07-18):** `SOLVEN_USER` no se referencia en ningún archivo bajo `src/`; `SOLVEN_PASSWORD` tampoco desde FIX-11 (el endpoint de cambio de contraseña ahora compara contra el hash real del usuario). Verificado por dos vías: grep en el código (ninguna referencia) y revisión directa en Vercel — ambas existen en Production/Preview, creadas el 12 de mayo, sin uso detectable en Build Logs. Pendiente solo la acción de borrarlas de Vercel (`TAREAS/PENDIENTES.md`).
+**`SOLVEN_USER` / `SOLVEN_PASSWORD` — eliminadas de Vercel (2026-07-18).** Eran vestigiales: sin referencias en `src/` (confirmado por grep; `SOLVEN_PASSWORD` dejó de usarse en FIX-11) y sin uso detectable en Build Logs. Borradas de Production y Preview en Vercel. `.env.example` todavía las lista — actualizar esa plantilla en algún momento para que no confunda a quien configure un entorno nuevo.
 
 ### ALERTA DE SEGURIDAD (heredada, no reverificada en esta auditoría)
 La versión anterior de este documento advertía que `.env.production.example` contiene credenciales reales de Neon DB. No se abrió ese archivo para esta actualización (regla de la sección de arriba) — Diego debe confirmar si esas credenciales ya fueron rotadas.
