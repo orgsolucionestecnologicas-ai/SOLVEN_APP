@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-18 — FIX-10: ivaRate de Servicios y Presupuestos, ya no hardcodeado en 0.21
+Bug documentado en `CLAUDE.md` sección 5. `Service` y `QuoteItem` no tenían campo `ivaRate` — cualquier venta o presupuesto con un servicio facturaba con IVA 21% fijo sin importar la alícuota real. Se agregó `ivaRate Float @default(0.21)` a ambos modelos (migración aplicada contra Neon, solo `ADD COLUMN`, sin tocar datos existentes), UI de servicios con selector de alícuota reutilizando `IVA_RATES` de products, y se reemplazó el `0.21` fijo en `sale-data-access.ts`, `quote-data-access.ts` y `pos.tsx` por el valor real del servicio/producto. No se tocó `src/lib/arca/*` ni `src/modules/invoices/*` (ya leen `ivaRate` por ítem). `typecheck`/`lint`/`test` sin errores (254 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-18 — FIX-08: ARCA ya no confía en items/total del cliente
 Hallazgo de máxima prioridad del Ingeniero Líder (bug documentado en `CLAUDE.md` sección 5, nunca corregido). `emitInvoice()` ahora carga la venta real desde la DB con `where: { id, tenantId }` (rechaza `saleId` de otro tenant o inexistente) y recalcula `items`/`total` del comprobante desde `sale.items`/`sale.totalAmount` — `input.items`/`input.total` se eliminaron del tipo `EmitInvoiceInput`, imposible volver a pasarlos por error. `docTipo` en la API ahora se valida contra los 3 valores permitidos. No se tocó `src/lib/arca/*` (WSAA/WSFE intactos). Reconciliación exacta por construcción: `totalAmount` ya es la suma de los ítems, sin necesidad de ajuste. Tests nuevos desde cero (no existían): 15 tests (5 unitarios de `emitInvoice` + 10 de la ruta), todo mockeado, nada pega a AFIP real. `typecheck`/`lint`/`test` sin errores (250 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
 
