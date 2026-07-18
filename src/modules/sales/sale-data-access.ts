@@ -386,7 +386,7 @@ function buildServiceSaleItem(
     serviceId: item.serviceId,
     quantity: item.quantity,
     unitPrice: service.price,
-    ivaRate: 0.21,
+    ivaRate: service.ivaRate,
     total: service.price.mul(item.quantity)
   };
 }

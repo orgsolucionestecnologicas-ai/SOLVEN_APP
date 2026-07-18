@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   ServiceValidationError,
-  validateCreateServiceInput
+  validateCreateServiceInput,
+  validateUpdateServiceInput
 } from "./service-validation";
 
 describe("validateCreateServiceInput", () => {
@@ -11,12 +12,14 @@ describe("validateCreateServiceInput", () => {
       validateCreateServiceInput({
         name: " Corte de cabello ",
         price: 150,
-        description: " Incluye lavado "
+        description: " Incluye lavado ",
+        ivaRate: 0.105
       })
     ).toEqual({
       name: "Corte de cabello",
       price: 150,
-      description: "Incluye lavado"
+      description: "Incluye lavado",
+      ivaRate: 0.105
     });
   });
 
@@ -28,8 +31,15 @@ describe("validateCreateServiceInput", () => {
       })
     ).toEqual({
       name: "Masaje",
-      price: 500
+      price: 500,
+      ivaRate: 0.21
     });
+  });
+
+  it("rejects an invalid ivaRate", () => {
+    expect(() =>
+      validateCreateServiceInput({ name: "Servicio", price: 100, ivaRate: 0.15 })
+    ).toThrow(ServiceValidationError);
   });
 
   it("trims name whitespace", () => {
@@ -65,5 +75,21 @@ describe("validateCreateServiceInput", () => {
     expect(() =>
       validateCreateServiceInput({ name: "", price: -1 })
     ).toThrow(ServiceValidationError);
+  });
+});
+
+describe("validateUpdateServiceInput", () => {
+  it("accepts a valid ivaRate", () => {
+    expect(validateUpdateServiceInput({ ivaRate: 0.27 })).toEqual({ ivaRate: 0.27 });
+  });
+
+  it("rejects an invalid ivaRate", () => {
+    expect(() => validateUpdateServiceInput({ ivaRate: 0.5 })).toThrow(
+      ServiceValidationError
+    );
+  });
+
+  it("leaves ivaRate untouched when not provided", () => {
+    expect(validateUpdateServiceInput({ price: 300 })).toEqual({ price: 300 });
   });
 });

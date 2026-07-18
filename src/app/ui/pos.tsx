@@ -98,6 +98,7 @@ type ServiceRecord = {
   code: string;
   name: string;
   price: string;
+  ivaRate: number;
   isActive: boolean;
 };
 
@@ -1217,7 +1218,7 @@ export function Pos() {
           quantity: 1,
           unitPrice: Number(service.price),
           maxStock: 9999,
-          ivaRate: 0.21,
+          ivaRate: service.ivaRate != null ? Number(service.ivaRate) : 0.21,
           discount: 0,
           discountType: "percent",
         },

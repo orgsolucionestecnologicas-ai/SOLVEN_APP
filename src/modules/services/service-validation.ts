@@ -1,19 +1,24 @@
+import { IVA_RATES, type IvaRate } from "@/modules/products/product-validation";
+
 export type CreateServiceInput = {
   name: string;
   price: number;
   description?: string;
+  ivaRate?: number;
 };
 
 export type ValidatedServiceInput = {
   name: string;
   price: number;
   description?: string;
+  ivaRate: number;
 };
 
 export type UpdateServiceInput = {
   name?: string;
   price?: number;
   description?: string;
+  ivaRate?: number;
 };
 
 export class ServiceValidationError extends Error {
@@ -39,6 +44,15 @@ export function validateCreateServiceInput(
     validationErrors.push("El precio debe ser mayor a cero.");
   }
 
+  let ivaRate = 0.21;
+  if (input.ivaRate !== undefined) {
+    if (!IVA_RATES.includes(input.ivaRate as IvaRate)) {
+      validationErrors.push("ivaRate inválido. Valores aceptados: 0, 0.105, 0.21, 0.27");
+    } else {
+      ivaRate = input.ivaRate;
+    }
+  }
+
   if (validationErrors.length > 0) {
     throw new ServiceValidationError(validationErrors);
   }
@@ -46,6 +60,7 @@ export function validateCreateServiceInput(
   return {
     name,
     price: input.price,
+    ivaRate,
     ...(description !== undefined && description.length > 0
       ? { description }
       : {})
@@ -80,6 +95,14 @@ export function validateUpdateServiceInput(
       typeof input.description === "string"
         ? input.description.trim()
         : undefined;
+  }
+
+  if (input.ivaRate !== undefined) {
+    if (!IVA_RATES.includes(input.ivaRate as IvaRate)) {
+      validationErrors.push("ivaRate inválido. Valores aceptados: 0, 0.105, 0.21, 0.27");
+    } else {
+      result.ivaRate = input.ivaRate;
+    }
   }
 
   if (validationErrors.length > 0) {

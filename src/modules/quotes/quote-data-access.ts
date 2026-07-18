@@ -67,6 +67,7 @@ export async function createQuote(
       name: string;
       quantity: number;
       unitPrice: Prisma.Decimal;
+      ivaRate: number;
       total: Prisma.Decimal;
     }> = [];
 
@@ -82,6 +83,7 @@ export async function createQuote(
           name: product.name,
           quantity: item.quantity,
           unitPrice: product.salePrice,
+          ivaRate: product.ivaRate,
           total: lineTotal,
         });
       } else if (item.serviceId) {
@@ -95,6 +97,7 @@ export async function createQuote(
           name: service.name,
           quantity: item.quantity,
           unitPrice: service.price,
+          ivaRate: service.ivaRate,
           total: lineTotal,
         });
       }
@@ -284,7 +287,7 @@ export async function confirmQuote(
           serviceId: item.serviceId,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          ivaRate: 0.21,
+          ivaRate: item.ivaRate,
           total: item.total,
         })),
       });

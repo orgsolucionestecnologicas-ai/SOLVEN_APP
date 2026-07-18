@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { formatARS } from "@/lib/format-currency";
+import { IVA_RATES } from "@/modules/products/product-validation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ type ServiceRecord = {
   name: string;
   description: string | null;
   price: string;
+  ivaRate: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -345,6 +347,7 @@ function ServiceModal({
     initialData ? String(Number(initialData.price)) : ""
   );
   const [description, setDescription] = useState(initialData?.description ?? "");
+  const [ivaRate, setIvaRate] = useState<number>(initialData?.ivaRate ?? 0.21);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -369,6 +372,7 @@ function ServiceModal({
       const body: Record<string, unknown> = {
         name: name.trim(),
         price: priceNum,
+        ivaRate,
       };
       if (description.trim()) body.description = description.trim();
       else if (isEdit) body.description = null;
@@ -463,6 +467,34 @@ function ServiceModal({
                 value={price}
               />
             </div>
+          </div>
+
+          <div>
+            <label
+              className="mb-1.5 block text-sm font-medium text-slate-700"
+              htmlFor="svc-iva-rate"
+            >
+              Alícuota de IVA
+            </label>
+            <select
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="svc-iva-rate"
+              onChange={(e) => setIvaRate(parseFloat(e.target.value))}
+              value={ivaRate}
+            >
+              {IVA_RATES.map((rate) => (
+                <option key={rate} value={rate}>
+                  {rate === 0
+                    ? "0% Exento"
+                    : rate === 0.105
+                      ? "10,5%"
+                      : rate === 0.21
+                        ? "21% — Alícuota general"
+                        : "27%"}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
