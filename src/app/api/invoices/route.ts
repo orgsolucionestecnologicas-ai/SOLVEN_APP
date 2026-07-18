@@ -35,18 +35,14 @@ export async function POST(request: Request) {
     return errorResponse("El cuerpo debe ser un objeto JSON.", 400);
   }
 
-  const { saleId, items, total, docTipo, docNro, concepto } = body as Record<string, unknown>;
+  const { saleId, docTipo, docNro, concepto } = body as Record<string, unknown>;
+
+  const ALLOWED_DOC_TIPOS = [99, 96, 80];
 
   if (typeof saleId !== "string" || !saleId) {
     return errorResponse("saleId es requerido.", 400);
   }
-  if (!Array.isArray(items) || items.length === 0) {
-    return errorResponse("items es requerido y no puede estar vacío.", 400);
-  }
-  if (typeof total !== "number" || total <= 0) {
-    return errorResponse("total inválido.", 400);
-  }
-  if (typeof docTipo !== "number") {
+  if (typeof docTipo !== "number" || !ALLOWED_DOC_TIPOS.includes(docTipo)) {
     return errorResponse("docTipo inválido.", 400);
   }
 
@@ -54,8 +50,6 @@ export async function POST(request: Request) {
     const invoice = await emitInvoice({
       tenantId,
       saleId,
-      items: items as Array<{ productName: string; quantity: number; unitPrice: number; ivaRate: number }>,
-      total,
       docTipo,
       docNro: typeof docNro === "string" ? docNro : "",
       concepto: typeof concepto === "number" ? concepto : undefined,

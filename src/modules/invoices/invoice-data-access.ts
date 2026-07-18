@@ -13,8 +13,6 @@ import type { CartItemForInvoice } from "@/lib/arca";
 export type EmitInvoiceInput = {
   tenantId: string;
   saleId: string;
-  items: CartItemForInvoice[];
-  total: number;
   docTipo: number;  // 99=Consumidor Final, 96=DNI, 80=CUIT
   docNro: string;
   concepto?: number;
@@ -38,6 +36,23 @@ export async function emitInvoice(input: EmitInvoiceInput): Promise<EmittedInvoi
   if (existing) {
     throw new ARCAError(`Esta venta ya tiene factura emitida (CAE: ${existing.cae})`);
   }
+
+  // Load the real sale for this tenant — never trust items/total from the client
+  const sale = await prisma.sale.findFirst({
+    where: { id: input.saleId, tenantId: input.tenantId },
+    include: { items: { include: { product: true, service: true } } },
+  });
+  if (!sale) {
+    throw new ARCAError("La venta no fue encontrada para este comercio.");
+  }
+
+  const items: CartItemForInvoice[] = sale.items.map((item) => ({
+    productName: item.product?.name ?? item.service?.name ?? "Producto/Servicio",
+    quantity: item.quantity,
+    unitPrice: Number(item.unitPrice),
+    ivaRate: item.ivaRate,
+  }));
+  const total = Number(sale.totalAmount);
 
   // Load config
   const config = await prisma.tenantARCAConfig.findUnique({ where: { tenantId: input.tenantId } });
@@ -64,8 +79,8 @@ export async function emitInvoice(input: EmitInvoiceInput): Promise<EmittedInvoi
 
   // Build voucher
   const voucher = buildARCAVoucher(
-    input.items,
-    input.total,
+    items,
+    total,
     input.docTipo,
     input.docNro,
     config.puntoVenta,
@@ -89,7 +104,7 @@ export async function emitInvoice(input: EmitInvoiceInput): Promise<EmittedInvoi
       puntoVenta: config.puntoVenta,
       docTipo: input.docTipo,
       docNro: input.docNro,
-      impTotal: input.total,
+      impTotal: total,
       impNeto: voucher.impNeto,
       impIVA: voucher.impIVA,
       impOpEx: voucher.impOpEx,
