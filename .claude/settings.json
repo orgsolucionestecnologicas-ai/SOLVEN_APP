@@ -90,7 +90,10 @@
       "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' -X DELETE http://localhost:3002/api/customers/nonexistent -H 'Cookie: solven_session=eyJ1c2VySWQiOiJjbXFlYnlhazAwMDAxYXI4bmFheWlrMXl5IiwidGVuYW50SWQiOiJjbXB2bHhhb20wMDAwM2h4eDd5ZXlremZrIiwic3Vic2NyaXB0aW9uU3RhdHVzIjoiQUNUSVZFIiwidHJpYWxFbmRzQXQiOm51bGwsInJvbGUiOiJSRUFET05MWSIsImFjdGl2ZUNhc2hpZXJJZCI6bnVsbH0=.0d8dba8da49d1b490a534500d8d6f5fadb44406f1750de8dd986deb40c4c7272')",
       "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' -X POST http://localhost:3002/api/categories -H 'Cookie: solven_session=eyJ1c2VySWQiOiJjbXFlYnlhazAwMDAxYXI4bmFheWlrMXl5IiwidGVuYW50SWQiOiJjbXB2bHhhb20wMDAwM2h4eDd5ZXlremZrIiwic3Vic2NyaXB0aW9uU3RhdHVzIjoiQUNUSVZFIiwidHJpYWxFbmRzQXQiOm51bGwsInJvbGUiOiJSRUFET05MWSIsImFjdGl2ZUNhc2hpZXJJZCI6bnVsbH0=.0d8dba8da49d1b490a534500d8d6f5fadb44406f1750de8dd986deb40c4c7272' -H 'Content-Type: application/json' -d '{\"name\":\"x\"}')",
       "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' -X DELETE http://localhost:3002/api/categories/nonexistent -H 'Cookie: solven_session=eyJ1c2VySWQiOiJjbXFlYnlhazAwMDAxYXI4bmFheWlrMXl5IiwidGVuYW50SWQiOiJjbXB2bHhhb20wMDAwM2h4eDd5ZXlremZrIiwic3Vic2NyaXB0aW9uU3RhdHVzIjoiQUNUSVZFIiwidHJpYWxFbmRzQXQiOm51bGwsInJvbGUiOiJSRUFET05MWSIsImFjdGl2ZUNhc2hpZXJJZCI6bnVsbH0=.0d8dba8da49d1b490a534500d8d6f5fadb44406f1750de8dd986deb40c4c7272')",
-      "Bash(grep -rn \"from \\\\\"@/app/ui/settings\\\\\"\\\\|from \\\\\"\\\\.\\\\./\\\\.\\\\./ui/settings\\\\\"\\\\|ui/settings\\\\\"\" src/app --include=\"*.tsx\")"
+      "Bash(grep -rn \"from \\\\\"@/app/ui/settings\\\\\"\\\\|from \\\\\"\\\\.\\\\./\\\\.\\\\./ui/settings\\\\\"\\\\|ui/settings\\\\\"\" src/app --include=\"*.tsx\")",
+      "Bash(rm \"src/app/returns/page.tsx\")",
+      "Bash(rmdir \"src/app/returns\")",
+      "Bash(tasklist)"
     ],
     "additionalDirectories": [
       "/home/diegogama/Escritorio/SOLVEN_APP/src/app/customers/[id]",
