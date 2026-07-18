@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-18 — FIX-12: requireTenantId() ahora devuelve 401 en vez de propagar la excepción
+Hallazgo de TESTS-01: `subscription/route.ts:7` y `dashboard/summary/route.ts:7` llamaban `requireTenantId()` fuera de todo try/catch, así que sin sesión el `UnauthorizedError` se propagaba sin capturar (probable 500 en vez del 401 esperado). Envuelto con el patrón estándar del proyecto en ambos archivos; test existente de `subscription` actualizado para esperar 401 en vez de la excepción propagada. No se tocó ninguna otra lógica. `typecheck`/`lint`/`test` sin errores (323 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-18 — TESTS-01: cobertura para quotes, reports, users, subscription, webhooks
 Los 5 módulos que `CLAUDE.md` sección 11 listaba sin ningún test ya tienen cobertura base (camino feliz + errores principales), 69 tests nuevos, solo archivos de test — ningún archivo de producción tocado. Hallazgo sin corregir (regla de la orden): `src/app/api/subscription/route.ts:7` llama `requireTenantId()` fuera de try/catch, así que sin sesión la respuesta no es un 401 sino un rechazo no capturado (probable 500 en producción); mismo patrón en `dashboard/summary/route.ts:7`, fuera de alcance. `typecheck`/`lint`/`test` sin errores (323 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
 
