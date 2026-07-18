@@ -277,7 +277,7 @@ NODE_ENV                         — usado en login/register/switch-cashier y pr
 ### En `.env.example` (plantilla del repo, sin secretos)
 `DATABASE_URL`, `SOLVEN_USER`, `SOLVEN_PASSWORD`, `SOLVEN_SESSION_SECRET`
 
-`SOLVEN_USER` no aparece referenciado como `process.env.SOLVEN_USER` en ningún archivo bajo `src/`. `SOLVEN_PASSWORD` tampoco — desde FIX-11 (2026-07-18) el endpoint de cambio de contraseña dejó de usarla (ahora compara contra el hash real del usuario). **Ambas parecen vestigiales** — antes de borrarlas de Vercel, confirmar con Diego que no se usan en ningún script de despliegue o proceso manual fuera de este repo.
+**Confirmado vestigial (2026-07-18):** `SOLVEN_USER` no se referencia en ningún archivo bajo `src/`; `SOLVEN_PASSWORD` tampoco desde FIX-11 (el endpoint de cambio de contraseña ahora compara contra el hash real del usuario). Verificado por dos vías: grep en el código (ninguna referencia) y revisión directa en Vercel — ambas existen en Production/Preview, creadas el 12 de mayo, sin uso detectable en Build Logs. Pendiente solo la acción de borrarlas de Vercel (`TAREAS/PENDIENTES.md`).
 
 ### ALERTA DE SEGURIDAD (heredada, no reverificada en esta auditoría)
 La versión anterior de este documento advertía que `.env.production.example` contiene credenciales reales de Neon DB. No se abrió ese archivo para esta actualización (regla de la sección de arriba) — Diego debe confirmar si esas credenciales ya fueron rotadas.

@@ -8,8 +8,8 @@
 
 ## Abiertos
 
-### 2026-07-18 — Confirmar si `SOLVEN_PASSWORD` / `SOLVEN_USER` siguen en uso
-Desde FIX-11, el endpoint de cambio de contraseña dejó de usar `SOLVEN_PASSWORD` (ahora compara contra el hash real del usuario). Verificado por grep: ninguna de las dos variables se referencia en `src/` al día de hoy. Antes de borrarlas de Vercel o de `.env`, Diego tiene que confirmar que no las usa algún script de despliegue, proceso manual, o algo fuera de este repo. Documentado también en `CLAUDE.md` sección 9.
+### 2026-07-18 — Borrar `SOLVEN_PASSWORD` / `SOLVEN_USER` de Vercel (falta la acción, no la confirmación)
+Confirmado por dos vías independientes que ninguna se usa: (1) grep en el código — ninguna se referencia en `src/` desde FIX-11; (2) BROWSER-01, agente de Chrome — ambas variables existen en Vercel (Production + Preview, creadas el 12 de mayo, marcadas "Sensitive", sin nota/descripción) pero no aparecen en los Build Logs del deploy más reciente. Diego confirmó verbalmente que ya las revisó. **Falta solo el paso de borrarlas de Vercel** (Settings → Environment Variables) — el Ingeniero Líder no tiene acceso para hacerlo directamente.
 
 ---
 
