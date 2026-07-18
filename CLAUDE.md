@@ -155,6 +155,7 @@ docs/skills/deployment-checklist.md → checklist de pre-deploy (ya existente, c
 | Rebill acepta cualquier firma si falta `REBILL_WEBHOOK_SECRET` | `src/app/api/webhooks/rebill/route.ts:12` | `if (!secret) return true;` — bypass total sin la env var. Diego decidió (2026-07-18) dejar la integración de Rebill para el final del proyecto; queda documentado pero fuera de la cola de trabajo actual. |
 | 3 cron jobs desprotegidos si falta `CRON_SECRET` | `src/app/api/cron/{expire-quotes,generate-recurring-expenses,remind-expiring-quotes}/route.ts` | Mismo patrón: `if (cronSecret && authHeader !== ...)` — si la env var no está seteada en Vercel, cualquiera puede invocar los 3 jobs sin autenticación. Menos crítico que Rebill (no mueven dinero directamente), pero deben protegerse antes de cerrar el proyecto. |
 | Código huérfano de un NOA interno nunca terminado | `src/lib/noa-knowledge/*` (16 archivos), `noa-intent-engine.ts`, `noa-queries.ts`, `noa-responses.ts` | Verificado con grep: **ningún archivo del proyecto los importa.** `POST /api/noa/internal` es un stub que siempre devuelve 404. Es deuda técnica inerte (no ejecuta, no es un riesgo), pero puede confundir a un agente futuro que piense que hay un NOA interno parcialmente activo. Candidato a eliminar cuando se retome la idea de NOA operativo interno (ver memoria `project_noa_operativo.md`) o directamente borrar si no se va a retomar. |
+| `requireTenantId()` sin try/catch en 2 endpoints — 401 esperado puede salir como 500 | `src/app/api/subscription/route.ts:7`, `src/app/api/dashboard/summary/route.ts:7` | Hallazgo de TESTS-01 (2026-07-18), confirmado leyendo ambos archivos: la llamada a `requireTenantId()` está fuera del bloque `try` de la función, así que sin sesión válida el `UnauthorizedError` se propaga sin capturar en vez de resolver al 401 que devuelve el resto de los endpoints. Todos los demás route handlers del proyecto envuelven esta llamada en try/catch correctamente — estos 2 son los únicos que no. Cubierto por un test que documenta el comportamiento actual (`subscription/route.test.ts`). |
 
 ### ✅ Resueltos desde la versión anterior de este documento (2026-06-14)
 
@@ -312,17 +313,11 @@ Especial:         /api/noa (exacto)
 
 ## 11. COBERTURA DE TESTS
 
-~48 archivos `*.test.ts` (incluye `*.integration.test.ts`) al momento de esta auditoría. Módulos **sin** test dedicado, verificado por ausencia en el listado de archivos:
-```
-quotes        — sin tests (ni modules/quotes ni api/quotes)
-reports       — sin tests
-users         — sin tests (ni modules/users ni api/users)
-subscription  — sin tests
-webhooks      — sin tests (api/webhooks/rebill)
-```
-Módulos que **ya tienen** cobertura y antes no la tenían: `settings` (`api/settings/route.test.ts`), `invoices` (`modules/invoices/invoice-data-access.test.ts` + `api/invoices/route.test.ts`, agregados en FIX-08), `returns` (`api/returns/route.test.ts` + `modules/returns/index.integration.test.ts`).
+~58 archivos `*.test.ts` (incluye `*.integration.test.ts`) al 2026-07-18, tras TESTS-01. Módulos que **ya tienen** cobertura y antes no la tenían: `settings` (`api/settings/route.test.ts`), `invoices` (agregados en FIX-08), `returns`, y desde TESTS-01 (2026-07-18, 69 tests nuevos): `quotes` (`quote-validation.test.ts`, `api/quotes/route.test.ts`, `api/quotes/[id]/confirm/route.test.ts`), `reports` (`export/route.test.ts`, `export-pdf/route.test.ts`), `users` (`user-validation.test.ts`, `api/users/route.test.ts`, `api/users/[id]/route.test.ts`), `subscription` (`api/subscription/route.test.ts` — este mismo test documentó el bug de la sección 5), `webhooks` (`api/webhooks/rebill/route.test.ts`).
 
-No se corrió la suite completa dentro de este entorno de auditoría (limitación del sandbox: binarios nativos de `rollup` compilados para Windows no corren en Linux) — el conteo de tests pasando debe confirmarse corriendo `npm test` en el entorno real antes de confiar en cualquier número específico.
+Módulos sin test dedicado conocidos al momento de esta actualización: ninguno de los listados originalmente en la auditoría del 2026-07-18 sigue sin cobertura. No se hizo un nuevo barrido completo del proyecto — puede haber módulos más chicos sin test que no estaban en el radar original.
+
+No se corrió la suite completa dentro de este entorno de auditoría (limitación del sandbox: binarios nativos de `rollup` compilados para Windows no corren en Linux) — el conteo de tests pasando debe confirmarse corriendo `npm test` en el entorno real antes de confiar en cualquier número específico. El agente ejecutor reportó 323 passed / 2 skipped tras TESTS-01.
 
 ---
 

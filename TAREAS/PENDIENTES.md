@@ -11,6 +11,9 @@
 ### 2026-07-18 — Confirmar si `SOLVEN_PASSWORD` / `SOLVEN_USER` siguen en uso
 Desde FIX-11, el endpoint de cambio de contraseña dejó de usar `SOLVEN_PASSWORD` (ahora compara contra el hash real del usuario). Verificado por grep: ninguna de las dos variables se referencia en `src/` al día de hoy. Antes de borrarlas de Vercel o de `.env`, Diego tiene que confirmar que no las usa algún script de despliegue, proceso manual, o algo fuera de este repo. Documentado también en `CLAUDE.md` sección 9.
 
+### 2026-07-18 — `requireTenantId()` sin try/catch en subscription y dashboard/summary
+Hallazgo de TESTS-01, confirmado leyendo el código: `src/app/api/subscription/route.ts:7` y `src/app/api/dashboard/summary/route.ts:7` llaman `requireTenantId()` fuera del bloque `try`. Sin sesión válida, el `UnauthorizedError` se propaga sin capturar en vez de devolver el 401 limpio que da el resto del proyecto — probablemente termina como 500 genérico en producción. Fix simple (mover la llamada adentro del try, o envolverla en su propio try/catch como hace el resto de los endpoints) pero no se tocó porque la orden de tests tenía prohibido modificar código de producción. Documentado también en `CLAUDE.md` sección 5. Candidato a una orden chica (FIX-12) cuando Diego quiera priorizarlo.
+
 ---
 
 ## Cerrados
