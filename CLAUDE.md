@@ -1,7 +1,8 @@
 # SOLVEN — Master Context for AI Agents
 
 > Este archivo es la fuente de verdad para cualquier agente IA trabajando en SOLVEN.
-> Fecha de actualización: 2026-06-14 | Commit base: faebc39
+> Fecha de actualización: 2026-07-18 | Commit base: 7be97d0
+> Cada claim de este documento fue verificado línea por línea contra el código real en esta fecha (schema, rutas, middleware, package.json, tests) — no es una copia de la versión anterior con parches sueltos. Ver sección 13 para el detalle de qué cambió respecto a la versión del 2026-06-14.
 
 ---
 
@@ -15,26 +16,45 @@ SOLVEN es un SaaS de control de negocio para comercios minoristas físicos peque
 - Mercado: Argentina exclusivamente
 - Moneda: ARS exclusivamente — NUNCA usar otra moneda
 - URL producción: https://solven-app-484v.vercel.app
-- Repo: github.com/orgsolucionestecnologicas-ai/SOLVEN_APP (branch: main)
+- Repo: github.com/orgsolucionestecnologicas-ai/SOLVEN_APP (branch: main) — verificado vía `git remote -v`
 - Deploy: Vercel — auto-deploy en push a main
+- Estado: **en producción, con clientes reales.** No es un proyecto en desarrollo — todo cambio de schema o de lógica financiera debe tratarse como cambio contra datos reales.
 
 ---
 
 ## 2. STACK
 
+Versiones verificadas contra `package.json` (no supuestas):
+
 ```
-Framework:  Next.js 15.5 (App Router) + TypeScript strict
-Styling:    Tailwind CSS 3.4
-ORM:        Prisma 5.22
+Framework:  Next.js 15.5.15 (App Router) + TypeScript 5.8.3 strict
+Styling:    Tailwind CSS 3.4.17
+ORM:        Prisma 5.22.0 (cliente + CLI)
 Database:   PostgreSQL / Neon (serverless)
 Deploy:     Vercel
-Tests:      Vitest 3.2
-Emails:     Resend
+Tests:      Vitest ^3.2.4
+Lint:       ESLint 8.57.1 + eslint-config-next
+Emails:     Resend ^6.12.4
 Pagos/Sub:  Rebill (webhooks)
-Factura:    ARCA / AFIP (WSAA + WSFE)
-AI:         Anthropic SDK @0.96 (claude-haiku-4-5-20251001) — solo NOA ventas
-Monitoring: Sentry @10.57 (inactivo — ver sección 8)
+Factura:    ARCA / AFIP (WSAA + WSFE) — implementación propia en src/lib/arca/
+AI:         Anthropic SDK ^0.96.0 (claude-haiku-4-5-20251001) — solo NOA ventas (landing)
+Monitoring: @sentry/nextjs ^10.57.0 (instalado, auto-desactivado sin DSN — ver sección 8)
+PDF:        @react-pdf/renderer ^4.5.1 (cotizaciones, devoluciones, reportes)
+XML/SOAP:   fast-xml-parser ^5.8.0, node-forge ^1.4.0, axios ^1.17.0 (todo para WSAA/WSFE de ARCA)
+QR:         qrcode ^1.5.4 (comprobantes ARCA)
+Auth:       bcryptjs ^3.0.3 (hash de contraseñas) + JWT custom con Web Crypto (HMAC-SHA256)
 ```
+
+Scripts (`package.json`):
+```
+npm run dev          → next dev
+npm run build         → next build
+npm run lint          → eslint . --ext .js,.jsx,.ts,.tsx
+npm run typecheck     → tsc --noEmit
+npm test              → vitest run
+npm run prisma:validate → prisma validate
+```
+Correr `npm run lint && npm run typecheck && npm test` antes de todo commit — no es opcional.
 
 ---
 
@@ -45,46 +65,62 @@ Implementado 100% por código — **sin Row-Level Security en Postgres**.
 **TODOS los queries Prisma deben tener `where: { tenantId }`**. Sin excepción.
 
 ### Auth
-- JWT custom, cookie `solven_session` (httpOnly, secure)
+- Sesión: JWT custom (HMAC-SHA256 vía Web Crypto, no librería JWT), cookie `solven_session` (httpOnly)
 - Firmada con `SOLVEN_SESSION_SECRET`
-- Funciones: `verifySession()` / `getSession()` en `src/lib/auth.ts`
+- Contraseñas de usuario: hasheadas con `bcryptjs` (`hashPassword`/`verifyPassword` en `src/lib/auth.ts`)
+- Funciones: `verifySession()` / `getSession()` / `requireTenantId()` / `requireRole()` en `src/lib/auth.ts` y `src/lib/tenant.ts`
 - Errores: usar siempre `ForbiddenError` / `UnauthorizedError` de `src/lib/tenant.ts`
 - **NUNCA usar `new Error()` genérico para errores de auth**
+- `src/middleware.ts` protege todas las rutas no listadas como públicas, redirige a `/login` sin sesión válida, y a `/suscripcion-vencida` si `subscriptionStatus` es `CANCELLED`/`EXPIRED`/`TRIAL` vencido. También aplica rate limiting simple en memoria (por IP) a `/api/auth/login` (10/min), `POST /api/sales` (60/min) y `/api/webhooks/rebill` (100/min).
 
-### Roles (enum UserRole en schema)
-`OWNER` | `CASHIER` | `INVENTORY` | `READONLY`
-**❌ NO existe el rol ADMIN — no crearlo, no usarlo**
+### Roles y permisos (RBAC de dos capas)
+**`enum UserRole` (schema.prisma): `OWNER | CASHIER | INVENTORY | READONLY | SUPERVISOR`**
+❌ NO existe el rol ADMIN — no crearlo, no usarlo.
+⚠️ `SUPERVISOR` se agregó después de la versión anterior de este documento — cualquier lugar del código que enumere roles manualmente debe incluirlo.
+
+Capa 1 — rol hardcodeado por endpoint: `requireRole(["OWNER","CASHIER"], section?)`.
+Capa 2 — override por tenant vía modelo `RolePermission` (tabla `tenantId + role + section → canAccess`): si existe una fila `canAccess:false` para `(role, section)`, el acceso se bloquea aunque el rol esté en la lista hardcodeada de la capa 1. **`OWNER` nunca puede ser bloqueado** (ni por código ni por validación: `role==="OWNER" && section==="settings" && canAccess===false` se rechaza explícitamente en `role-permission-validation.ts`).
+
+Las 10 secciones válidas (`ROLE_PERMISSION_SECTIONS` en `src/modules/role-permissions/role-permission-validation.ts`):
+```
+dashboard, pos, returns, products, customers, cashMovements, quotes, reports, promotions, settings
+```
+Este mismo array de secciones también controla qué ítems de navegación ve cada rol en `app-shell.tsx` (`visibleNavItems`) y qué pestañas ve en `pos.tsx` (`visibleTabs`) — cualquier feature nueva con control de acceso por rol debe reusar este patrón, no inventar uno nuevo.
 
 ### Estructura de carpetas clave
 ```
 src/
+  middleware.ts    → auth global, rate limiting, rutas públicas
   app/
-    api/           → Route handlers (Next.js)
+    api/           → 82 route handlers (Next.js) agrupados por dominio, verificado con `find src/app/api -name route.ts*`
       noa/         → POST /api/noa (NOA ventas, landing page, público)
-      invoices/    → ARCA emission
+      noa/internal/→ stub muerto, siempre 404 (ver sección 7)
+      invoices/    → POST emisión ARCA + GET /test (chequeo de conectividad WSFE)
       webhooks/rebill/ → Rebill webhook
-      cron/expire-quotes/ → Vercel cron
-    ui/            → Componentes de UI compartidos (app-shell, pos, etc.)
+      cron/        → 3 jobs (expire-quotes, generate-recurring-expenses, remind-expiring-quotes)
+      role-permissions/ → CRUD de RolePermission
+    ui/            → Componentes de UI compartidos (app-shell, pos, services, returns, etc. — la mayoría de la lógica de pantalla vive acá, no en app/*/page.tsx)
+    ayuda/         → stubs muertos, redirigen a /dashboard (ver sección 7)
   components/
     noa/           → NoaChat.tsx (landing page — único NOA activo)
   lib/
-    auth.ts        → verifySession, getSession
-    tenant.ts      → requireRole, ForbiddenError, UnauthorizedError
+    auth.ts        → hashPassword, verifySession, getSession, createSession
+    tenant.ts       → requireRole, requireTenantId, ForbiddenError, UnauthorizedError
     prisma.ts      → Prisma client singleton
-    email.ts       → Resend — 6 emails transaccionales
-    noa-prompt.ts  → System prompt NOA ventas
-    noa-storage.ts → localStorage session NOA ventas
-    arca/          → WSAA + WSFE implementation
-    help-knowledge-base.ts → VACÍO (centro de ayuda removido — fase 2)
-    help-search.ts → VACÍO (removido — fase 2)
-  modules/         → Business logic por dominio
-    audit/         → AuditLog module
-    quotes/        → Cotizaciones (con expireOverdueQuotes)
-    returns/       → Devoluciones
-    services/      → Servicios
-    [otros]
+    email.ts       → Resend — 9 emails transaccionales (ver sección 8)
+    noa-prompt.ts / noa-storage.ts → NOA ventas (landing, activo)
+    noa-knowledge/, noa-intent-engine.ts, noa-queries.ts, noa-responses.ts → **CÓDIGO HUÉRFANO, sin ningún import en el proyecto** (ver sección 7 — deuda técnica, candidato a limpieza)
+    help-knowledge-base.ts / help-search.ts → archivos vacíos, centro de ayuda removido (fase 2)
+    arca/          → wsaa-client, wsfe-client, cert-crypto, token-cache, voucher-builder, arca-errors
+  modules/         → Lógica de negocio por dominio (22 carpetas), patrón `*-validation.ts` + `*-data-access.ts` + `index.ts` (barrel export)
+    audit, cash, cash-register, categories, customers, dashboard, debts,
+    expense-budgets, expenses, invoices, inventory, products, promotions,
+    quotes, recurring-expenses, returns, role-permissions, sales, services,
+    settings, suppliers, users
 prisma/
-  schema.prisma    → 24+ modelos, fuente de verdad del schema
+  schema.prisma    → 32 modelos, fuente de verdad del schema (ver sección 6)
+vercel.json        → define los 3 cron jobs
+docs/skills/deployment-checklist.md → checklist de pre-deploy (ya existente, consultar antes de deploys grandes)
 ```
 
 ---
@@ -100,53 +136,71 @@ prisma/
 ✅ Moneda: ARS exclusivamente — NUNCA RD$, USD, ITBIS, ni otra
 ✅ Todos los queries Prisma con tenantId scope
 ✅ Auth errors: ForbiddenError / UnauthorizedError de src/lib/tenant.ts
-✅ Totales de venta: calculados en backend, nunca confiar en el cliente
+✅ Totales de venta: calculados en backend, nunca confiar en el cliente (ver FIX-08, sección 5)
 ✅ Operaciones financieras: atómicas con transacciones Prisma
 ✅ NO trabajar en VENTO ni HERMETIC (proyectos archivados indefinidamente)
 ✅ .env con credenciales reales: NO leer, NO modificar, NO commitear — informar a Diego
-✅ NOA existe SOLO en la landing page — NO hay NOA interno en la app
+✅ NOA existe SOLO en la landing page — NO hay NOA interno activo en la app (pero sí hay código huérfano de un intento anterior, ver sección 7)
+✅ Cualquier endpoint que module dinero, stock o facturación: recalcular desde la base de datos, nunca confiar en el payload del cliente para montos/IDs sensibles
 ```
 
 ---
 
-## 5. BUGS CONOCIDOS (sin corregir)
+## 5. BUGS CONOCIDOS Y DEUDA TÉCNICA
 
-| Bug | Archivo | Fix |
-|-----|---------|-----|
-| ~~`requireRole(["OWNER", "ADMIN", "CASHIER"])` — ADMIN no existe~~ | ~~`src/app/api/invoices/route.ts`~~ | ✅ CORREGIDO 2026-06-14 |
-| `Service.ivaRate` no existe en schema — hardcodeado `0.21` en 3 lugares | `prisma/schema.prisma:388` + `pos.tsx:813` + `sale-data-access.ts:338` + `quote-data-access.ts:291` | Agregar campo + migración + UI |
-| Cron bloqueado por middleware sin cookie + sin CRON_SECRET | `src/app/api/cron/expire-quotes/route.ts` | ✅ Middleware corregido (cron es público) — falta CRON_SECRET en Vercel |
-| `/api/invoices` confía en payload del cliente y no valida `saleId` por tenant | `src/modules/invoices/invoice-data-access.ts:37,81` | Refactorizar para leer venta desde DB con `tenantId` |
-| `sendQuoteExpiringReminderEmail` no se llama desde ningún lugar | `src/lib/email.ts:189` | Conectar al cron o a un trigger de cotizaciones |
-| Rebill acepta cualquier firma si falta `REBILL_WEBHOOK_SECRET` | `src/app/api/webhooks/rebill/route.ts:10` | Agregar `REBILL_WEBHOOK_SECRET` en Vercel como obligatorio |
+### 🔴 Activo — sin corregir
+
+| Bug | Archivo | Detalle |
+|-----|---------|---------|
+| **"Cambiar contraseña" en Configuración no funciona y miente que funcionó** | `src/app/api/auth/change-password/route.ts` | No verifica sesión (nadie autenticado, cualquiera puede llamarlo), compara `currentPassword` contra la env var global `SOLVEN_PASSWORD` (no contra el hash del usuario en la tabla `User`), y **nunca escribe `newPassword` en ningún lado** — no hay `prisma.user.update`, no hay `hashPassword()`. El endpoint devuelve `{ok:true}` y la UI (`settings.tsx`, sección "Seguridad") muestra "Contraseña actualizada correctamente" sin que nada haya cambiado. No existe ningún otro mecanismo de cambio de contraseña en el código (tampoco en `/api/users/[id]`). **Prioridad alta — es exactamente el tipo de dato falso que Diego pidió eliminar del sistema.** |
+| Rebill acepta cualquier firma si falta `REBILL_WEBHOOK_SECRET` | `src/app/api/webhooks/rebill/route.ts:12` | `if (!secret) return true;` — bypass total sin la env var. Diego decidió (2026-07-18) dejar la integración de Rebill para el final del proyecto; queda documentado pero fuera de la cola de trabajo actual. |
+| 3 cron jobs desprotegidos si falta `CRON_SECRET` | `src/app/api/cron/{expire-quotes,generate-recurring-expenses,remind-expiring-quotes}/route.ts` | Mismo patrón: `if (cronSecret && authHeader !== ...)` — si la env var no está seteada en Vercel, cualquiera puede invocar los 3 jobs sin autenticación. Menos crítico que Rebill (no mueven dinero directamente), pero deben protegerse antes de cerrar el proyecto. |
+| Código huérfano de un NOA interno nunca terminado | `src/lib/noa-knowledge/*` (16 archivos), `noa-intent-engine.ts`, `noa-queries.ts`, `noa-responses.ts` | Verificado con grep: **ningún archivo del proyecto los importa.** `POST /api/noa/internal` es un stub que siempre devuelve 404. Es deuda técnica inerte (no ejecuta, no es un riesgo), pero puede confundir a un agente futuro que piense que hay un NOA interno parcialmente activo. Candidato a eliminar cuando se retome la idea de NOA operativo interno (ver memoria `project_noa_operativo.md`) o directamente borrar si no se va a retomar. |
+
+### ✅ Resueltos desde la versión anterior de este documento (2026-06-14)
+
+| Bug | Resuelto en | Fecha |
+|-----|-------------|-------|
+| `requireRole(["OWNER","ADMIN","CASHIER"])` — ADMIN no existe | — | 2026-06-14 |
+| `/api/invoices` confiaba en `items`/`total` del cliente y no validaba `saleId` por tenant | FIX-08 (commit `d4b2c83`) | 2026-07-18 |
+| `Service.ivaRate` y `QuoteItem.ivaRate` no existían — hardcodeado `0.21` en 4 puntos (sales, quotes creación, quotes→venta, POS) | FIX-10 (commit `2a36506`) | 2026-07-18 |
+| `sendQuoteExpiringReminderEmail` nunca se llamaba desde ningún lugar | Conectado al cron `remind-expiring-quotes` (registrado en `vercel.json`, corre 9am diario) | ya resuelto al momento de esta auditoría, fecha exacta no determinada |
+| Devoluciones sobre ventas con pago dividido asumían siempre reintegro en efectivo | FIX-07 — selector de método de reintegro (`Return.refundMethod`) | 2026-07-17 |
+| `CashRegisterIndicator` mostraba saldo de caja a roles sin acceso configurado | QA-FIX-04 | 2026-07-16 |
 
 ---
 
-## 6. MODELOS PRISMA (24+ modelos)
+## 6. MODELOS PRISMA (32 modelos)
+
+Lista completa verificada contra `prisma/schema.prisma` (no es una lista parcial):
 
 ```
-Tenant, User, StoreSettings, Subscription
-Product, Category, Subcategory, Service
+Tenant, User, RolePermission
+Product, Category, Subcategory, Supplier, Service
 Sale, SaleItem, Return, ReturnItem
-Expense, Customer, Debt, DebtPayment
+Expense, ExpenseBudget, RecurringExpense
+Customer, Debt, DebtPayment
 CashMovement, CashRegisterSession, InventoryMovement
 Promotion, PromotionUsage
 Quote, QuoteItem
-CodeCounter, AuditLog
+CodeCounter, StoreSettings, Subscription, AuditLog
 TenantARCAConfig, ARCATokenCache, Invoice
 ```
 
+**Enums:** `SalePaymentType` (CASH|CREDIT|MIXED — nuevas ventas vía API restringidas a CASH solamente), `UserRole` (5 valores, ver sección 3), `SubscriptionStatus`, `QuoteStatus`, `ReceiptType`, `ReturnReasonCategory`, `PromotionType`, `PromotionApplication`, `PromotionActivation`, `CustomerSegment`, `CashRegisterStatus`.
+
 **Campos críticos:**
 - `Sale.cae String?` — nullable (ARCA opt-in)
-- `SaleItem.ivaRate Float @default(0.21)` — fracción
-- `Product.ivaRate Float @default(0.21)` — fracción
-- `Service` — **NO tiene ivaRate** (bug conocido)
-- `UserRole` enum: `OWNER | CASHIER | INVENTORY | READONLY`
+- `Sale.paymentDetails Json?` — desglose real de pago dividido (efectivo/tarjeta/transferencia/etc.), independiente de `paymentType`
+- `SaleItem.ivaRate`, `Product.ivaRate`, `Service.ivaRate`, `QuoteItem.ivaRate` — los 4 son `Float @default(0.21)`, todos configurables desde FIX-10 (antes `Service`/`QuoteItem` no existían)
+- `Return.refundMethod String?` — nullable solo si la venta original fue `CREDIT` (desde FIX-07)
+- `RolePermission` — ver sección 3, sistema de permisos por tenant
 
 ---
 
-## 7. NOA — ÚNICO SISTEMA ACTIVO (ventas / landing page)
+## 7. NOA
 
+**Único sistema activo: NOA ventas (landing page, público)**
 ```
 Endpoint:   POST /api/noa  (SIN auth — público)
 Componente: src/components/noa/NoaChat.tsx
@@ -155,8 +209,9 @@ Propósito:  Convertir visitantes en clientes → trial 14 días
 Estado:     ✅ FUNCIONA
 ```
 
-**NOA interno fue removido del proyecto.** No hay asistente IA dentro de la app.
-La página `/ayuda` y el centro de ayuda estático también fueron removidos — **se rediseñarán en fase 2**.
+**NOA interno:** el endpoint `POST /api/noa/internal` existe pero es un stub que siempre devuelve 404 ("NOA interno eliminado"). Sin embargo, en `src/lib/` sobrevive una implementación bastante completa y nunca importada de un motor de conocimiento interno (`noa-knowledge/` con 16 módulos: account, arca, cash, customers, dashboard, faq, glossary, inventory, navigation, pos, products, promotions, quotes, reports, returns, services, settings, users; más `noa-intent-engine.ts`, `noa-queries.ts`, `noa-responses.ts` con sus tests). No representa ningún riesgo activo (no se ejecuta), pero es deuda técnica y contexto potencialmente confuso — ver sección 5.
+
+La página `/ayuda` y `/ayuda/unanswered` también son stubs (redirigen a `/dashboard`); `POST /api/help/unanswered` devuelve 404. El centro de ayuda estático se rediseñará en fase 2, según decisión previa de Diego.
 
 ---
 
@@ -164,104 +219,139 @@ La página `/ayuda` y el centro de ayuda estático también fueron removidos —
 
 ### Rebill (suscripciones)
 - Webhook: `POST /api/webhooks/rebill` — HMAC-SHA256 con `REBILL_WEBHOOK_SECRET`
-- 5 eventos: `subscription.activated`, `payment.success`, `payment.failed`, `subscription.cancelled`, `subscription.trial_will_end`
+- 5 eventos manejados: `subscription.activated`/`subscription.created`, `payment.success`/`invoice.paid`, `payment.failed`/`invoice.payment_failed`, `subscription.cancelled`, `subscription.trial_will_end`
 - Conectado a modelo `Subscription` + emails de Resend
-- `REBILL_API_KEY` está en .env pero **no se usa en el código actualmente**
+- `REBILL_API_KEY` no se referencia en ningún `process.env.*` dentro de `src/` — no se usa en el código actual
+- **Bypass de firma sin `REBILL_WEBHOOK_SECRET` — ver sección 5. Diego decidió (2026-07-18) tratar esta integración al final del proyecto, no ahora.**
 
 ### Resend (emails)
-- 6 emails transaccionales en `src/lib/email.ts`
-- FROM: `SOLVEN <no-reply@solven.app>`
-- sendWelcomeEmail, sendTrialEndingEmail, sendPaymentFailedEmail, sendCancellationEmail, sendQuoteEmail, sendQuoteExpiringReminderEmail
+9 funciones en `src/lib/email.ts` (más que las 6 documentadas antes):
+`sendWelcomeEmail`, `sendTrialEndingEmail`, `sendPaymentFailedEmail`, `sendCancellationEmail`, `sendQuoteEmail`, `sendSaleReceiptEmail`, `sendQuoteExpiringReminderEmail`, `sendLowStockAlertEmail`, `sendCashRegisterDifferenceAlertEmail`.
 
-### ARCA/AFIP (facturación electrónica)
-- Implementación completa: `src/lib/arca/` (wsaa-client, wsfe-client, cert-crypto, token-cache, voucher-builder)
-- Opt-in por tenant (`TenantARCAConfig`) y por venta (`Sale.cae nullable`)
-- Config endpoint: `POST /api/tenants/arca-config`
-- Emisión: `POST /api/invoices` (tiene bug de ADMIN — ver sección 5)
+### ARCA/AFIP (facturación electrónica) — **implementación completa y verificada**
+- `src/lib/arca/`: wsaa-client, wsfe-client, cert-crypto, token-cache, voucher-builder, arca-errors
+- Opt-in por tenant (`TenantARCAConfig`) y por venta (`Sale.cae` nullable)
+- Config: `POST /api/tenants/arca-config` (+ `/cert` para subir certificado)
+- Chequeo de conectividad: `GET /api/invoices/test` (OWNER-only, prueba conexión WSFE contra el ambiente configurado sin emitir nada)
+- Emisión: `POST /api/invoices` — **desde FIX-08 (2026-07-18) recalcula `items`/`total` desde `sale.items`/`sale.totalAmount` reales en base de datos, verificando que `saleId` pertenezca al tenant autenticado.** Ya no confía en el payload del cliente. Cubierto por tests unitarios e de integración (`src/modules/invoices/invoice-data-access.test.ts`, `src/app/api/invoices/route.test.ts`).
+- Reconciliación de montos: `Sale.totalAmount` es siempre la suma exacta de `SaleItem.total` — el descuento (`discountAmount`) se guarda aparte solo para trazabilidad de promociones, ya viene aplicado en el `unitPrice` de cada ítem.
 
-### Vercel Cron
-- `GET /api/cron/expire-quotes` — diario a las 3am UTC
-- Definido en `vercel.json`
-- **Desprotegido si CRON_SECRET no está en env** (ver bug sección 5)
+### Vercel Cron (3 jobs, definidos en `vercel.json`)
+```
+GET /api/cron/expire-quotes              → 3:00 UTC diario — expira presupuestos vencidos
+GET /api/cron/generate-recurring-expenses → 4:00 UTC diario — genera gastos recurrentes del mes
+GET /api/cron/remind-expiring-quotes      → 9:00 UTC diario — envía recordatorio de presupuestos por vencer
+```
+Los 3 comparten el mismo patrón de protección opcional: `if (cronSecret && authHeader !== ...)` — desprotegidos si `CRON_SECRET` no está en Vercel (ver sección 5).
 
 ### Sentry (monitoring)
-- Instalado pero **INACTIVO** — falta `NEXT_PUBLIC_SENTRY_DSN` en env
-- Se activa sin cambio de código si se agrega la variable
+- 3 archivos de config presentes: `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`
+- `enabled: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN)` — se auto-desactiva limpiamente sin la DSN, no es un bug, es una feature apagada a propósito hasta que se configure
 
 ### Anthropic
-- SDK instalado: `@anthropic-ai/sdk ^0.96.0`
-- Modelo: `claude-haiku-4-5-20251001`
+- SDK: `@anthropic-ai/sdk ^0.96.0`, modelo `claude-haiku-4-5-20251001`
 - Usado exclusivamente en NOA ventas (landing page)
 
 ---
 
 ## 9. VARIABLES DE ENTORNO
 
-### Presentes en .env
-`DATABASE_URL` | `SOLVEN_USER` | `SOLVEN_PASSWORD` | `SOLVEN_SESSION_SECRET`
-`REBILL_WEBHOOK_SECRET` | `REBILL_API_KEY` (sin uso en código)
-`RESEND_API_KEY` | `NEXT_PUBLIC_REBILL_CHECKOUT_URL`
+**Regla:** nunca leer el contenido real de `.env`, `.env.local` ni `.env.production.example` — esta sección se construyó sin abrir esos archivos, solo revisando `.env.example` (plantilla sin secretos reales) y grepeando `process.env.*` en el código fuente.
 
-### Presentes en .env.local
-`ANTHROPIC_API_KEY` | `ARCA_CERT_ENCRYPTION_KEY` | `ARCA_ENVIRONMENT`
-
-### FALTANTES en Vercel (configurar manualmente)
+### Referenciadas en el código (`src/`)
 ```
-CRON_SECRET               🔴 CRÍTICA — endpoint desprotegido sin esto
-NEXT_PUBLIC_APP_URL       🟡 Para links en emails y URLs absolutas
-ANTHROPIC_API_KEY         🟡 Necesaria en producción para NOA ventas
-NEXT_PUBLIC_SENTRY_DSN    🟢 Para activar monitoring
-SENTRY_ORG                🟢 Source maps
-SENTRY_PROJECT            🟢 Source maps
-SENTRY_AUTH_TOKEN         🟢 Source maps
+DATABASE_URL                     — conexión Prisma/Neon
+SOLVEN_SESSION_SECRET            — firma HMAC de la cookie de sesión
+SOLVEN_PASSWORD                  — usado por el endpoint roto de cambio de contraseña (ver sección 5) — NO es la contraseña de ningún usuario individual
+RESEND_API_KEY                   — envío de emails
+NEXT_PUBLIC_APP_URL              — links absolutos en emails
+NEXT_PUBLIC_REBILL_CHECKOUT_URL  — botón de checkout (pricing, app-shell, suscripción vencida)
+REBILL_WEBHOOK_SECRET            — firma del webhook de Rebill
+ANTHROPIC_API_KEY                — NOA ventas
+CRON_SECRET                      — protección opcional de los 3 cron jobs
+ARCA_CERT_ENCRYPTION_KEY         — cifrado del certificado/clave privada ARCA en DB
+NEXT_PUBLIC_SENTRY_DSN           — activación de Sentry
+NODE_ENV                         — usado en login/register/switch-cashier y prisma.ts
 ```
 
-### ALERTA DE SEGURIDAD
-`.env.production.example` contiene credenciales reales de Neon DB.
-Diego debe rotarlas manualmente. NUNCA leer, NUNCA commitear este archivo.
+### En `.env.example` (plantilla del repo, sin secretos)
+`DATABASE_URL`, `SOLVEN_USER`, `SOLVEN_PASSWORD`, `SOLVEN_SESSION_SECRET`
+
+`SOLVEN_USER` no aparece referenciado como `process.env.SOLVEN_USER` en ningún archivo bajo `src/` al momento de esta auditoría — verificar si sigue en uso antes de asumir que es necesaria, o si es vestigial.
+
+### ALERTA DE SEGURIDAD (heredada, no reverificada en esta auditoría)
+La versión anterior de este documento advertía que `.env.production.example` contiene credenciales reales de Neon DB. No se abrió ese archivo para esta actualización (regla de la sección de arriba) — Diego debe confirmar si esas credenciales ya fueron rotadas.
 
 ---
 
 ## 10. PÁGINAS Y RUTAS
 
 ### Públicas (sin auth) — declaradas en `src/middleware.ts`
-`/` `/pricing` `/login` `/register` `/onboarding` `/suscripcion-vencida`
-`/api/noa` (NOA ventas — streaming público)
-`/api/auth/*` `/api/webhooks/*` `/api/cron/*`
+```
+PUBLIC_PATHS:     /  /login  /register  /pricing  /onboarding  /suscripcion-vencida
+PUBLIC_PREFIXES:  /egg-token*
+WEBHOOK_PREFIX:   /api/webhooks/*
+AUTH_PREFIX:      /api/auth/*
+CRON_PREFIX:      /api/cron/*
+Especial:         /api/noa (exacto)
+```
+`/egg-token*` es un prefijo público no documentado en la versión anterior de este archivo — no se investigó su propósito en esta auditoría, solo se confirmó que existe en middleware.ts.
 
-### App (requieren auth)
-`/dashboard` `/pos` `/products` `/products/new` `/products/[id]`
-`/services` `/inventory` `/inventory/adjust` `/inventory/entry`
-`/customers` `/customers/new` `/customers/[id]` `/customers/[id]/payment`
-`/debts` `/expenses` `/sales` `/returns`
-`/promotions` `/quotes` `/cash-movements` `/cash-movements/new`
-`/reports` `/settings` `/usuarios` `/cuenta`
-`/suscripcion-vencida`
-> `/ayuda` — removida, se rediseña en fase 2
+### App (requieren auth) — verificado por `page.tsx` existentes
+```
+/dashboard  /pos  /products  /products/new  /products/[id]
+/services  /inventory  /inventory/adjust  /inventory/entry
+/customers  /customers/new  /customers/[id]  /customers/[id]/payment
+/debts  /expenses  /sales  /promotions  /quotes
+/cash-movements  /cash-movements/new
+/reports  /settings  /usuarios  /cuenta  /suscripcion-vencida
+```
+> `/returns` — **ya no existe como página propia** (se eliminó en UI-01, 2026-07-17). Devoluciones ahora vive como pestaña dentro de `/pos` (junto a Venta actual e Historial), con la misma visibilidad por rol que tenía el ítem de navegación.
+> `/ayuda` y `/ayuda/unanswered` — stubs que redirigen a `/dashboard`, ver sección 7.
 
 ---
 
-## 11. PRIORIDADES ACTUALES (2026-06-14)
+## 11. COBERTURA DE TESTS
 
+~48 archivos `*.test.ts` (incluye `*.integration.test.ts`) al momento de esta auditoría. Módulos **sin** test dedicado, verificado por ausencia en el listado de archivos:
 ```
-✅ Fix bug ADMIN en /api/invoices/route.ts → corregido 2026-06-14
-✅ /api/noa, /pricing, /onboarding, /api/cron/* declarados públicos en middleware
-P1: Agregar CRON_SECRET en Vercel (protección interna del endpoint)
-P1: Agregar REBILL_WEBHOOK_SECRET en Vercel (critico — sin él acepta cualquier firma)
-P1: Corregir ARCA — validar saleId por tenantId antes de emitir; recalcular items desde DB
-P2: Agregar Service.ivaRate al schema (migración + UI + 3 lugares hardcodeados)
-P2: Configurar NEXT_PUBLIC_APP_URL y ANTHROPIC_API_KEY en Vercel
-P2: Conectar sendQuoteExpiringReminderEmail desde cron o trigger de cotizaciones
-P3: Activar Sentry (agregar DSN en Vercel)
-P3: Agregar tests para: quotes, reports, users, settings, subscription, invoices, webhooks
+quotes        — sin tests (ni modules/quotes ni api/quotes)
+reports       — sin tests
+users         — sin tests (ni modules/users ni api/users)
+subscription  — sin tests
+webhooks      — sin tests (api/webhooks/rebill)
 ```
+Módulos que **ya tienen** cobertura y antes no la tenían: `settings` (`api/settings/route.test.ts`), `invoices` (`modules/invoices/invoice-data-access.test.ts` + `api/invoices/route.test.ts`, agregados en FIX-08), `returns` (`api/returns/route.test.ts` + `modules/returns/index.integration.test.ts`).
+
+No se corrió la suite completa dentro de este entorno de auditoría (limitación del sandbox: binarios nativos de `rollup` compilados para Windows no corren en Linux) — el conteo de tests pasando debe confirmarse corriendo `npm test` en el entorno real antes de confiar en cualquier número específico.
 
 ---
 
 ## 12. CONVENCIONES DE CÓDIGO
 
 - **Errores API:** usar helpers de `src/app/api/_shared/responses.ts` (successResponse, errorResponse, forbiddenResponse, unauthorizedResponse)
+- **Módulos de negocio:** patrón `*-validation.ts` (funciones puras de validación + tipos) + `*-data-access.ts` (queries Prisma) + `index.ts` (barrel export) — seguido consistentemente en las 22 carpetas de `src/modules/`
 - **Tests:** Vitest — correr `npm run lint && npm run typecheck && npm test` antes de cada commit
 - **Commits:** `feat:` / `fix:` / `refactor:` / `docs:` / `test:` / `chore:`
 - **No RLS:** todo el aislamiento de tenants es por código — revisar SIEMPRE
-- **Financiero:** valores monetarios en ARS, nunca float aritmético para dinero, operaciones atómicas
+- **Financiero:** valores monetarios en `Decimal` de Prisma (nunca `Float` para dinero — `ivaRate` es la única excepción legítima, es una fracción, no un monto), operaciones atómicas con `$transaction`
+- **Deploy:** ver `docs/skills/deployment-checklist.md` para el checklist pre-deploy completo (lint, typecheck, test, build, migraciones, verificación post-deploy)
+
+---
+
+## 13. CAMBIOS RESPECTO A LA VERSIÓN 2026-06-14 DE ESTE DOCUMENTO
+
+Para que quien lo valide pueda auditar rápido qué cambió y por qué, sin releer todo:
+
+1. **Roles:** se agregó `SUPERVISOR` al enum (la versión anterior listaba solo 4 roles).
+2. **RBAC:** se documentó por primera vez el sistema completo de `RolePermission` (10 secciones, override por tenant) — antes no estaba descrito en absoluto, pese a ser central.
+3. **Modelos:** de 24 (subcontados, la lista vieja ya tenía 28) a 32 — se agregaron `RolePermission`, `ExpenseBudget`, `RecurringExpense`, `Supplier` a la lista.
+4. **ARCA:** el bug de confianza en el cliente (`items`/`total`) está resuelto y verificado (FIX-08) — antes figuraba como pendiente P1.
+5. **ivaRate de servicios:** resuelto (FIX-10) — antes figuraba como pendiente P2.
+6. **sendQuoteExpiringReminderEmail:** confirmado conectado a un cron real — antes figuraba como "nunca se llama".
+7. **Nuevo hallazgo (no estaba en ninguna versión anterior):** el cambio de contraseña de usuario está completamente roto y reporta éxito falso — ver sección 5.
+8. **Nuevo hallazgo:** código huérfano de un NOA interno nunca terminado, sin ningún import activo — ver secciones 5 y 7.
+9. **Devoluciones:** ya no es una página propia (`/returns`), ahora es una pestaña dentro de `/pos` (UI-01), con selector de método de reintegro (FIX-07).
+10. **Cron jobs:** de 1 documentado a 3 reales, todos con el mismo patrón de bypass opcional si falta `CRON_SECRET`.
+11. **Emails:** de 6 a 9 funciones reales en `email.ts`.
+12. **Rebill:** decisión explícita de Diego (2026-07-18) de tratar esta integración al final del proyecto — no es negligencia, es orden de prioridad deliberada.
