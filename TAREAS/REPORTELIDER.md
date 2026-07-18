@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-18 — TESTS-01: cobertura para quotes, reports, users, subscription, webhooks
+Los 5 módulos que `CLAUDE.md` sección 11 listaba sin ningún test ya tienen cobertura base (camino feliz + errores principales), 69 tests nuevos, solo archivos de test — ningún archivo de producción tocado. Hallazgo sin corregir (regla de la orden): `src/app/api/subscription/route.ts:7` llama `requireTenantId()` fuera de try/catch, así que sin sesión la respuesta no es un 401 sino un rechazo no capturado (probable 500 en producción); mismo patrón en `dashboard/summary/route.ts:7`, fuera de alcance. `typecheck`/`lint`/`test` sin errores (323 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-18 — FIX-11: cambio de contraseña ahora funciona de verdad
 Bug documentado en `CLAUDE.md` sección 5: el endpoint no verificaba sesión, comparaba contra la env var global `SOLVEN_PASSWORD` en vez del hash real del usuario, y nunca escribía `newPassword` en la DB — mentía éxito. Reescrito para usar `getSession()`, verificar contra `user.password` con `verifyPassword()`, y persistir con `hashPassword()` + `prisma.user.update({ where: { id, tenantId } })`. Se mantuvo el shape de error como string plano (no el helper `_shared/responses`) porque `settings.tsx` ya lo parsea así. Test nuevo con 4 casos. `typecheck`/`lint`/`test` sin errores (258 passed, 2 skipped; 1 falla de conexión a Neon en la corrida completa confirmada flaky y no relacionada, aislada pasó limpio). Detalle en `REPORTE_DE_CAMBIOS.md`.
 
