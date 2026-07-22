@@ -550,14 +550,14 @@ export function Reports() {
         </div>
         <div className="mb-4 grid grid-cols-5 gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-xl border border-slate-200 bg-slate-50" />
+            <div key={i} className="h-28 animate-pulse rounded-2xl border border-slate-100 bg-slate-50" />
           ))}
         </div>
         <div className="grid grid-cols-4 gap-4">
           {Array.from({ length: 7 }).map((_, i) => (
             <div
               key={i}
-              className={`h-64 animate-pulse rounded-xl border border-slate-200 bg-slate-50 ${i === 0 ? "col-span-2" : ""}`}
+              className={`h-64 animate-pulse rounded-2xl border border-slate-100 bg-slate-50 ${i === 0 ? "col-span-2" : ""}`}
             />
           ))}
         </div>
@@ -843,7 +843,7 @@ function MetricCard({
   sparkColor: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${iconBgClass}`}>
           <Icon className={iconColorClass} size={16} />
@@ -957,7 +957,7 @@ function PeriodComparisonPanel({
 }) {
   const fmt = new Intl.DateTimeFormat("es-419", { day: "numeric", month: "short", year: "numeric" });
   return (
-    <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-4">
+    <div className="rounded-2xl border border-violet-200 bg-violet-50/40 p-5">
       <h3 className="mb-1 text-sm font-semibold text-slate-950">Comparación de períodos</h3>
       <p className="mb-3 text-xs text-slate-500">
         <span className="font-medium text-slate-700">Período A:</span> {fmt.format(rangeA.start)} – {fmt.format(rangeA.end)}
@@ -1024,7 +1024,7 @@ function SalesEvolutionPanel({ sales }: { sales: SaleRecord[] }) {
   const gridFractions = [0, 0.25, 0.5, 0.75, 1];
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-950">Evolución de ventas</h3>
         <div className="flex items-center gap-3">
@@ -1038,12 +1038,12 @@ function SalesEvolutionPanel({ sales }: { sales: SaleRecord[] }) {
               Período anterior
             </span>
           </div>
-          <button className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50" type="button">
+          <button className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50" type="button">
             Por día
             <ChevronDown className="ml-1 inline" size={11} />
           </button>
           <button
-            className="rounded-md border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
             onClick={() => svgRef.current && downloadSvgAsPng(svgRef.current, "evolucion-ventas.png")}
             title="Descargar PNG"
             type="button"
@@ -1172,11 +1172,11 @@ function CategoryDonutPanel({ sales }: { sales: SaleRecord[] }) {
   );
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-950">Ventas por categoría</h3>
         <button
-          className="rounded-md border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
+          className="rounded-lg border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
           onClick={() => svgRef.current && downloadSvgAsPng(svgRef.current, "ventas-por-categoria.png")}
           title="Descargar PNG"
           type="button"
@@ -1284,7 +1284,7 @@ function GrowthSummaryPanel({ metrics }: { metrics: AllMetrics }) {
   ];
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <h3 className="mb-3 text-sm font-semibold text-slate-950">Resumen de crecimiento</h3>
       <div className="space-y-2.5">
         {rows.map((row) => {
@@ -1327,7 +1327,7 @@ function PaymentMethodPanel({ sales }: { sales: SaleRecord[] }) {
   const segments = buildDonutSegments(segmentData.filter((d) => d.value > 0));
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <h3 className="mb-3 text-sm font-semibold text-slate-950">Ventas por método de pago</h3>
       {total === 0 ? (
         <p className="py-4 text-center text-xs text-slate-400">Sin ventas este período</p>
@@ -1399,7 +1399,7 @@ function TopProductsPanel({ sales }: { sales: SaleRecord[] }) {
   }, [sales]);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <h3 className="mb-3 text-sm font-semibold text-slate-950">Top productos más vendidos</h3>
       {topProducts.length === 0 ? (
         <p className="py-4 text-center text-xs text-slate-400">Sin datos de ventas</p>
@@ -1458,7 +1458,7 @@ function TopCustomersPanel({
   }, [sales]);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <h3 className="mb-3 text-sm font-semibold text-slate-950">Clientes con más compras</h3>
       {topCustomers.length === 0 ? (
         <p className="py-4 text-center text-xs text-slate-400">
@@ -1508,12 +1508,12 @@ function ProfitabilityPanel({
   const marginPct = pctChange(currMargin, prevMargin);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <h3 className="mb-3 text-sm font-semibold text-slate-950">Rentabilidad del período</h3>
       <div className="space-y-4">
         <div>
           <p className="text-xs text-slate-500">Ganancia bruta</p>
-          <p className={`text-2xl font-bold ${currProfit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+          <p className={`text-2xl font-semibold tracking-tight ${currProfit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
             {formatMoney(currProfit)}
           </p>
           <p className={`mt-0.5 text-xs font-medium ${profitPct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
@@ -1522,7 +1522,7 @@ function ProfitabilityPanel({
         </div>
         <div className="border-t border-slate-100 pt-3">
           <p className="text-xs text-slate-500">Margen de ganancia</p>
-          <p className={`text-2xl font-bold ${currMargin >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+          <p className={`text-2xl font-semibold tracking-tight ${currMargin >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
             {currMargin.toFixed(1)}%
           </p>
           <p className={`mt-0.5 text-xs font-medium ${marginPct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
@@ -1545,7 +1545,7 @@ function ServiciosActivosPanel({ services }: { services: ServiceRecord[] }) {
   const activeCount = services.filter((s) => s.isActive).length;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-50">
         <Wrench className="text-cyan-600" size={16} />
       </div>
@@ -1584,7 +1584,7 @@ function SalesHeatmapPanel({ sales }: { sales: SaleRecord[] }) {
   const maxCount = Math.max(...grid.flat(), 1);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <h3 className="mb-3 text-sm font-semibold text-slate-950">Mapa de calor de ventas</h3>
       <div className="overflow-x-auto">
         <div className="min-w-max">
@@ -1664,7 +1664,7 @@ function MonthlyComparisonPanel({ sales }: { sales: SaleRecord[] }) {
   const barW = (svgW - pLeft - pRight) / 12 - 2;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <h3 className="mb-3 text-sm font-semibold text-slate-950">Comparación mensual</h3>
       <svg className="w-full" viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
         {data.map((d, i) => {
@@ -1742,7 +1742,7 @@ function KeyIndicatorsPanel({ sales }: { sales: SaleRecord[] }) {
   }, [sales]);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <h3 className="mb-3 text-sm font-semibold text-slate-950">Indicadores clave</h3>
       {!indicators ? (
         <p className="py-4 text-center text-xs text-slate-400">Sin datos</p>
@@ -1854,7 +1854,7 @@ function VentasTab({ sales }: { sales: SaleRecord[] }) {
       <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
         Los servicios vendidos se registran junto a las ventas de productos.
       </p>
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-slate-950">Evolución de ventas — últimos 30 días</h3>
         <svg className="w-full" viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
           {[0, 0.25, 0.5, 0.75, 1].map((f, i) => {
@@ -1883,7 +1883,7 @@ function VentasTab({ sales }: { sales: SaleRecord[] }) {
         </svg>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
           <h3 className="text-sm font-semibold text-slate-950">Historial de ventas</h3>
           <input
@@ -2029,20 +2029,20 @@ function ProductosTab({ sales, products }: { sales: SaleRecord[]; products: Prod
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Productos en catálogo</p>
-          <p className="mt-1 text-2xl font-bold text-slate-950">{products.length}</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{products.length}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Unidades vendidas</p>
-          <p className="mt-1 text-2xl font-bold text-slate-950">{totalUnits}</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{totalUnits}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Ingresos totales</p>
-          <p className="mt-1 text-2xl font-bold text-slate-950">{formatMoney(totalRevenue)}</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{formatMoney(totalRevenue)}</p>
         </div>
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-4 py-3">
           <h3 className="text-sm font-semibold text-slate-950">Rendimiento por producto</h3>
         </div>
@@ -2134,7 +2134,7 @@ function ServiciosTab({ services }: { services: ServiceRecord[] }) {
         </button>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -2207,14 +2207,14 @@ function VendedoresTab({ sales }: { sales: SaleRecord[] }) {
   return (
     <div className="space-y-4">
       {sellerStats.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center shadow-sm">
           <p className="text-sm text-slate-400">Sin ventas registradas en el período.</p>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-3 gap-4">
             {podium.map((seller, i) => (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm" key={seller.code}>
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 text-center shadow-sm" key={seller.code}>
                 <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${podiumStyles[i].badge}`}>
                   {podiumStyles[i].label}
                 </span>
@@ -2225,7 +2225,7 @@ function VendedoresTab({ sales }: { sales: SaleRecord[] }) {
             ))}
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
             <div className="border-b border-slate-100 px-4 py-3">
               <h3 className="text-sm font-semibold text-slate-950">Ventas por vendedor</h3>
             </div>
@@ -2315,18 +2315,18 @@ function ClientesTab({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Clientes nuevos</p>
-          <p className="mt-1 text-2xl font-bold text-slate-950">{newCustomersCount}</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{newCustomersCount}</p>
           <p className="mt-0.5 text-xs text-slate-400">Primera compra en el período</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Clientes recurrentes</p>
-          <p className="mt-1 text-2xl font-bold text-slate-950">{recurringCustomersCount}</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{recurringCustomersCount}</p>
           <p className="mt-0.5 text-xs text-slate-400">2 o más compras en el período</p>
         </div>
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="w-24 shrink-0 text-xs font-medium text-slate-500">Nuevos</span>
@@ -2345,20 +2345,20 @@ function ClientesTab({
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Clientes registrados</p>
-          <p className="mt-1 text-2xl font-bold text-slate-950">{customers.length}</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{customers.length}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Total compras</p>
-          <p className="mt-1 text-2xl font-bold text-slate-950">{totalPurchases}</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{totalPurchases}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Ingresos de clientes</p>
-          <p className="mt-1 text-2xl font-bold text-slate-950">{formatMoney(totalSpent)}</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{formatMoney(totalSpent)}</p>
         </div>
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-4 py-3">
           <h3 className="text-sm font-semibold text-slate-950">Clientes por valor</h3>
         </div>
@@ -2443,20 +2443,20 @@ function InventarioTab({ products }: { products: ProductRecord[] }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Valor del inventario</p>
-          <p className="mt-1 text-2xl font-bold text-slate-950">{formatMoney(totalValue)}</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{formatMoney(totalValue)}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Stock bajo</p>
-          <p className={`mt-1 text-2xl font-bold ${lowStock > 0 ? "text-orange-600" : "text-slate-950"}`}>{lowStock}</p>
+          <p className={`mt-1 text-2xl font-semibold tracking-tight ${lowStock > 0 ? "text-orange-600" : "text-slate-950"}`}>{lowStock}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Sin stock</p>
-          <p className={`mt-1 text-2xl font-bold ${outOfStock > 0 ? "text-rose-600" : "text-slate-950"}`}>{outOfStock}</p>
+          <p className={`mt-1 text-2xl font-semibold tracking-tight ${outOfStock > 0 ? "text-rose-600" : "text-slate-950"}`}>{outOfStock}</p>
         </div>
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-4 py-3">
           <h3 className="text-sm font-semibold text-slate-950">Estado del inventario</h3>
         </div>
@@ -2568,7 +2568,7 @@ function CrecimientoTab({ sales }: { sales: SaleRecord[] }) {
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-3">
         {kpis.map((k) => (
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm" key={k.label}>
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm" key={k.label}>
             <p className="text-xs font-medium text-slate-500">{k.label}</p>
             <p className="mt-1 text-xl font-bold text-slate-950">{k.value}</p>
             {k.delta && (
@@ -2577,7 +2577,7 @@ function CrecimientoTab({ sales }: { sales: SaleRecord[] }) {
           </div>
         ))}
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-slate-950">Ventas acumuladas — últimos 30 días</h3>
         <svg className="w-full" viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
           {[0, 0.25, 0.5, 0.75, 1].map((f, i) => {
@@ -2605,7 +2605,7 @@ function CrecimientoTab({ sales }: { sales: SaleRecord[] }) {
             })}
         </svg>
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-slate-950">Métricas de crecimiento</h3>
         <div className="grid grid-cols-2 gap-4">
           {[
@@ -2754,9 +2754,9 @@ function RentabilidadTab({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-4">
-        <div className="col-span-1 flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="col-span-1 flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Ganancia bruta</p>
-          <p className={`mt-1 text-3xl font-bold ${profit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+          <p className={`mt-1 text-3xl font-semibold tracking-tight ${profit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
             {formatMoney(profit)}
           </p>
           <p className={`mt-1 text-sm font-medium ${margin >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
@@ -2773,7 +2773,7 @@ function RentabilidadTab({
             </div>
           </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <h3 className="mb-3 text-sm font-semibold text-slate-950">Ganancia vs Gastos</h3>
           <div className="flex items-center justify-center">
             <svg height="100" viewBox="0 0 100 100" width="100" xmlns="http://www.w3.org/2000/svg">
@@ -2810,7 +2810,7 @@ function RentabilidadTab({
             ))}
           </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <h3 className="mb-3 text-sm font-semibold text-slate-950">Ingresos por categoría</h3>
           {catRevenue.length === 0 ? (
             <p className="py-4 text-center text-xs text-slate-400">Sin datos</p>
@@ -2834,7 +2834,7 @@ function RentabilidadTab({
             </div>
           )}
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <h3 className="mb-3 text-sm font-semibold text-slate-950">Desglose de cobro</h3>
           <div className="space-y-3">
             <div>
@@ -2879,7 +2879,7 @@ function RentabilidadTab({
       </div>
 
       {services.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
             <h3 className="text-sm font-semibold text-slate-950">Servicios</h3>
             <p className="mt-0.5 text-xs text-slate-500">
@@ -2910,7 +2910,7 @@ function RentabilidadTab({
       )}
 
       {productProfitability.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
             <h3 className="text-sm font-semibold text-slate-950">Rentabilidad por producto</h3>
             <p className="mt-0.5 text-xs text-slate-500">
@@ -3136,7 +3136,7 @@ function ReporteMensualTab({
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         {cards.map((card) => (
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm" key={card.label}>
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm" key={card.label}>
             <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-lg ${card.iconBg}`}>
               <card.Icon className={card.iconColor} size={16} />
             </div>
@@ -3151,7 +3151,7 @@ function ReporteMensualTab({
       </div>
 
       {showComparison && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
             <h3 className="text-sm font-semibold text-slate-950">Comparación con {prevMonthShort}</h3>
           </div>
@@ -3183,7 +3183,7 @@ function ReporteMensualTab({
       )}
 
       <div className="flex gap-4">
-        <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="min-w-0 flex-1 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-950">Evolución de ventas</h3>
             <div className="flex items-center gap-3">
@@ -3197,7 +3197,7 @@ function ReporteMensualTab({
                   Ventas al contado
                 </span>
               </div>
-              <button className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50" type="button">
+              <button className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50" type="button">
                 Diario
                 <ChevronDown className="ml-1 inline" size={11} />
               </button>
@@ -3235,7 +3235,7 @@ function ReporteMensualTab({
         </div>
 
         <div className="w-72 shrink-0 space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-slate-950">Ventas por método de pago</h3>
             {totalAmount === 0 ? (
               <p className="py-4 text-center text-xs text-slate-400">Sin ventas este período</p>
@@ -3281,7 +3281,7 @@ function ReporteMensualTab({
             )}
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-slate-950">Resumen de caja</h3>
             <div className="space-y-2 text-xs">
               {[
@@ -3300,7 +3300,7 @@ function ReporteMensualTab({
             </Link>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-slate-950">Indicadores generales</h3>
             <div className="space-y-2.5">
               {[
@@ -3323,7 +3323,7 @@ function ReporteMensualTab({
       </div>
 
       <div className="flex gap-4">
-        <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="min-w-0 flex-1 rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
             <h3 className="text-sm font-semibold text-slate-950">Top 10 productos más vendidos</h3>
           </div>
@@ -3364,7 +3364,7 @@ function ReporteMensualTab({
           </div>
         </div>
 
-        <div className="w-72 shrink-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="w-72 shrink-0 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <h3 className="mb-3 text-sm font-semibold text-slate-950">Resumen de clientes</h3>
           <div className="space-y-2.5">
             {[
@@ -3473,7 +3473,7 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
             <Star className="text-amber-600" size={16} />
           </div>
@@ -3482,7 +3482,7 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
           <p className="mt-0.5 text-xs text-slate-500">{topByUnits ? `${topByUnits.units} unidades` : "Sin datos"}</p>
           <p className="text-xs font-semibold text-emerald-600">{topByUnits ? formatMoney(topByUnits.revenue) : ""}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
             <TrendingUp className="text-emerald-600" size={16} />
           </div>
@@ -3491,7 +3491,7 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
           <p className="mt-0.5 text-xs font-semibold text-emerald-600">{topByGross ? formatMoney(topByGross.gross) : "Sin datos"}</p>
           <p className="text-xs text-slate-400">{topByGross ? `Margen: ${topByGross.margin.toFixed(1)}%` : ""}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
             <Clock className="text-slate-500" size={16} />
           </div>
@@ -3500,19 +3500,19 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
           <p className="mt-0.5 text-xs text-slate-500">{bottomByUnits ? `${bottomByUnits.units} unidades` : "Sin datos"}</p>
           <p className="text-xs font-medium text-orange-500">Rotación baja</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
             <PieChart className="text-violet-600" size={16} />
           </div>
           <p className="text-xs font-medium text-slate-500">% de ventas (Top 5)</p>
-          <p className="mt-0.5 text-2xl font-bold text-slate-950">{top5Pct.toFixed(1)}%</p>
+          <p className="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900">{top5Pct.toFixed(1)}%</p>
           <p className="mt-0.5 text-xs text-slate-500">de las ventas totales</p>
         </div>
       </div>
 
       <div className="flex gap-4">
         <div className="min-w-0 flex-1 space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <h3 className="text-sm font-semibold text-slate-950">Lista de productos</h3>
               <p className="text-xs text-slate-400">
@@ -3585,7 +3585,7 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
             )}
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-slate-950">Ventas por producto (Top 10)</h3>
             {top10.length === 0 ? (
               <p className="py-8 text-center text-xs text-slate-400">Sin datos de ventas</p>
@@ -3613,7 +3613,7 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
         </div>
 
         <div className="w-72 shrink-0 space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-slate-950">Top 5 por ventas</h3>
             {productStats.slice(0, 5).map((prod, i) => (
               <div className="mb-2 flex items-center justify-between text-xs" key={prod.name}>
@@ -3629,7 +3629,7 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
             </Link>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-slate-950">Productos de bajo rendimiento</h3>
             {productStats.length === 0 ? (
               <p className="text-xs text-slate-400">Sin datos</p>
@@ -3808,15 +3808,15 @@ function RecomendacionesTab({
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
             <Lightbulb className="text-emerald-600" size={16} />
           </div>
           <p className="text-xs font-medium text-slate-500">Oportunidades detectadas</p>
-          <p className="mt-0.5 text-2xl font-bold text-slate-950">{recommendations.length}</p>
+          <p className="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900">{recommendations.length}</p>
           <p className="mt-0.5 text-xs text-slate-400">Recomendaciones generadas</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50">
             <TrendingUp className="text-orange-600" size={16} />
           </div>
@@ -3824,26 +3824,26 @@ function RecomendacionesTab({
           <p className="mt-0.5 text-xl font-bold text-slate-950">{formatMoney(totalImpact)}</p>
           <p className="mt-0.5 text-xs text-emerald-600">Aumento estimado en ganancias</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
             <Package className="text-violet-600" size={16} />
           </div>
           <p className="text-xs font-medium text-slate-500">Productos a mejorar</p>
-          <p className="mt-0.5 text-2xl font-bold text-slate-950">{lowStockCount + negMarginCount}</p>
+          <p className="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900">{lowStockCount + negMarginCount}</p>
           <p className="mt-0.5 text-xs text-slate-400">Con bajo rendimiento</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50">
             <AlertTriangle className="text-rose-600" size={16} />
           </div>
           <p className="text-xs font-medium text-slate-500">Nivel de prioridad</p>
-          <p className="mt-0.5 text-2xl font-bold text-slate-950">{overallPriority}</p>
+          <p className="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900">{overallPriority}</p>
           <p className="mt-0.5 text-xs text-slate-400">Basado en el análisis de tu negocio</p>
         </div>
       </div>
 
       <div className="flex gap-4">
-        <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="min-w-0 flex-1 rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
             <h3 className="text-sm font-semibold text-slate-950">Lista de recomendaciones</h3>
           </div>
@@ -3885,7 +3885,7 @@ function RecomendacionesTab({
         </div>
 
         <div className="w-72 shrink-0 space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-slate-950">Impacto por categoría</h3>
             <div className="space-y-2.5">
               {Object.entries(categoryImpact).map(([cat, amt]) => (
@@ -3906,7 +3906,7 @@ function RecomendacionesTab({
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-slate-950">Áreas que necesitan atención</h3>
             <div className="space-y-2.5">
               <div className="flex items-center gap-3 rounded-lg border border-rose-100 bg-rose-50 p-2.5">
