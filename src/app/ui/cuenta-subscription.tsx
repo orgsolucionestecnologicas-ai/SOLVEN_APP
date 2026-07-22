@@ -79,7 +79,7 @@ export function CuentaSubscription() {
     <div className="space-y-6 max-w-2xl p-5 sm:p-8">
 
       {/* Info del negocio */}
-      <div className="bg-slate-50 rounded-xl border border-slate-200 p-5">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-medium text-slate-500 mb-3">Información del negocio</h2>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
@@ -94,7 +94,7 @@ export function CuentaSubscription() {
       </div>
 
       {/* Estado de suscripción */}
-      <div className="bg-slate-50 rounded-xl border border-slate-200 p-5">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-medium text-slate-500 mb-4">Suscripción</h2>
 
         {!sub ? (
@@ -154,7 +154,7 @@ export function CuentaSubscription() {
       </div>
 
       {/* Acciones */}
-      <div className="bg-slate-50 rounded-xl border border-slate-200 p-5">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-medium text-slate-500 mb-4">Gestionar suscripción</h2>
         <div className="space-y-3">
 
