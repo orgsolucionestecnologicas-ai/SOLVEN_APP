@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-23 — DESIGN-01: pulido visual de estilo en toda la app (Fable, una sola pasada)
+Lenguaje de estilo único definido en `docs/estilo-ui.md` (tarjetas `rounded-2xl border-slate-100 shadow-sm p-5`, dropdowns `rounded-xl shadow-lg`, controles `rounded-lg`, KPIs `font-semibold tracking-tight`; `rounded-md` eliminado) y aplicado a las 29 pantallas con clases en `src/app/ui/` + canvas `slate-50` en el área de contenido del shell. Solo clases Tailwind y CSS base — cero lógica, rutas, API o schema; sidebar oscuro, PDFs y NoaChat intactos. `lint`/`typecheck`/`test` limpios (323 passed / 2 skipped). En rama `design/pulido-estilo-fable`, sin mergear — esperar revisión del preview de Vercel por Diego. Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-22 — FIX-13: seed idempotente, 401 JSON en middleware para rutas API, CRON_SECRET obligatorio fuera de development
 3 fixes independientes: `scripts/seed-icase.mjs` usa `upsert` en vez de `create` (evita `P2002` al re-correr contra DB poblada); `src/middleware.ts` devuelve JSON (401/402) en vez de redirect cuando la ruta es `/api/*`, sin cambiar el comportamiento de páginas; los 3 cron routes ahora rechazan si falta `CRON_SECRET` fuera de `development`, en vez de dejar pasar todo. Sin tests previos en los archivos tocados (no se agregaron nuevos, por regla de la orden). `typecheck`/`lint`/`test` sin errores (323 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
 
