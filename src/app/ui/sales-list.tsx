@@ -209,7 +209,7 @@ export function SalesList() {
     setReturningSale(null);
     setPage(1);
     setRefreshKey((k) => k + 1);
-    setSuccessMessage("DevoluciÃ³n procesada exitosamente.");
+    setSuccessMessage("Devolución procesada exitosamente.");
     setTimeout(() => setSuccessMessage(null), 4000);
   }
 
@@ -220,7 +220,7 @@ export function SalesList() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-sm font-semibold text-slate-900">
-            {showAllSales ? "Historial completo" : "Ventas del dÃ­a"}
+            {showAllSales ? "Historial completo" : "Ventas del día"}
           </p>
           {!showAllSales ? (
             <input
@@ -239,7 +239,7 @@ export function SalesList() {
             }}
             type="button"
           >
-            {showAllSales ? "â† Filtrar por fecha" : "Ver historial completo â†’"}
+            {showAllSales ? "← Filtrar por fecha" : "Ver historial completo →"}
           </button>
           <input
             className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-950 focus:border-violet-400 focus:outline-none"
@@ -265,13 +265,13 @@ export function SalesList() {
             onChange={(e) => { setPaymentFilter(e.target.value); setPage(1); }}
             value={paymentFilter}
           >
-            <option value="">Todos los mÃ©todos de pago</option>
+            <option value="">Todos los métodos de pago</option>
             <option value="Efectivo">Efectivo</option>
             <option value="Tarjeta">Tarjeta</option>
             <option value="Transferencia">Transferencia</option>
             <option value="VentaWeb">Venta web</option>
             <option value="Otro">Otro</option>
-            <option value="CREDIT">CrÃ©dito</option>
+            <option value="CREDIT">Crédito</option>
           </select>
           <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
             <input
@@ -280,7 +280,7 @@ export function SalesList() {
               onChange={(e) => setGroupByDay(e.target.checked)}
               type="checkbox"
             />
-            Agrupar por dÃ­a
+            Agrupar por día
           </label>
           <button
             className="text-xs font-medium text-violet-600 hover:text-violet-700 disabled:cursor-not-allowed disabled:text-slate-300"
@@ -318,7 +318,7 @@ export function SalesList() {
               onClick={() => setShowAllSales(true)}
               type="button"
             >
-              Ver historial completo â†’
+              Ver historial completo →
             </button>
           </div>
         )
@@ -334,7 +334,7 @@ export function SalesList() {
                       {formatDayHeader(group.dateKey)}
                     </h3>
                     <p className="text-xs text-slate-500">
-                      {group.sales.length} {group.sales.length === 1 ? "venta" : "ventas"} Â· {formatARS(group.subtotal)}
+                      {group.sales.length} {group.sales.length === 1 ? "venta" : "ventas"} · {formatARS(group.subtotal)}
                     </p>
                   </div>
                   <SaleCards
@@ -410,8 +410,8 @@ function SaleCard({
 }) {
   const productSummary =
     sale.items.length > 0
-      ? sale.items.map((i) => `${i.product?.name ?? i.service?.name ?? "Ãtem"} Ã—${i.quantity}`).join(" Â· ")
-      : "Sin Ã­tems";
+      ? sale.items.map((i) => `${i.product?.name ?? i.service?.name ?? "Ítem"} ×${i.quantity}`).join(" · ")
+      : "Sin ítems";
   const grossProfit = getSaleGrossProfit(sale);
 
   return (
@@ -469,7 +469,7 @@ function SaleCard({
             }
             title={
               grossProfit.hasNonProductItems
-                ? "No incluye Ã­tems de servicio (sin costo definido)"
+                ? "No incluye ítems de servicio (sin costo definido)"
                 : undefined
             }
           >
@@ -514,7 +514,7 @@ function shareSaleWhatsApp(sale: SaleRecord) {
     formatDateTime(sale.saleDate),
     "",
     ...sale.items.map(
-      (item) => `${item.quantity} Ã— ${item.product?.name ?? item.service?.name ?? "Ãtem"}`
+      (item) => `${item.quantity} × ${item.product?.name ?? item.service?.name ?? "Ítem"}`
     ),
     "",
     `Total: ${formatMoney(sale.totalAmount)}`
@@ -574,7 +574,7 @@ function SaleDetailModal({
             onClick={onClose}
             type="button"
           >
-            âœ•
+            ✕
           </button>
         </div>
 
@@ -639,7 +639,7 @@ function SaleDetailModal({
                     {sale.items.map((item) => (
                       <tr key={item.id}>
                         <td className="px-4 py-3 text-sm text-slate-950">
-                          {item.product?.name ?? item.service?.name ?? "Ãtem"}
+                          {item.product?.name ?? item.service?.name ?? "Ítem"}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-slate-700">
                           {numberFormatter.format(item.quantity)}
@@ -665,7 +665,7 @@ function SaleDetailModal({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">Sin Ã­tems registrados.</p>
+            <p className="text-sm text-slate-500">Sin ítems registrados.</p>
           )}
         </div>
 
@@ -730,7 +730,7 @@ function ReturnModal({
       }))
   );
   const [returnMethod, setReturnMethod] = useState<
-    "Efectivo" | "CrÃ©dito a cuenta"
+    "Efectivo" | "Crédito a cuenta"
   >("Efectivo");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -760,7 +760,7 @@ function ReturnModal({
 
   async function handleConfirm() {
     if (selectedItems.length === 0) {
-      setSubmitError("SeleccionÃ¡ al menos un producto para devolver.");
+      setSubmitError("Seleccioná al menos un producto para devolver.");
       return;
     }
 
@@ -783,14 +783,14 @@ function ReturnModal({
 
       if (!response.ok || !responseBody.data) {
         setSubmitError(
-          responseBody.error?.message ?? "No se pudo procesar la devoluciÃ³n."
+          responseBody.error?.message ?? "No se pudo procesar la devolución."
         );
         return;
       }
 
       onSuccess();
     } catch {
-      setSubmitError("No se pudo procesar la devoluciÃ³n.");
+      setSubmitError("No se pudo procesar la devolución.");
     } finally {
       setIsSubmitting(false);
     }
@@ -807,21 +807,21 @@ function ReturnModal({
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h2 className="text-sm font-semibold text-slate-950">
-            DevoluciÃ³n â€” Venta {formatFolio(sale.folio)}
+            Devolución — Venta {formatFolio(sale.folio)}
           </h2>
           <button
             className="text-slate-400 hover:text-slate-700"
             onClick={onClose}
             type="button"
           >
-            âœ•
+            ✕
           </button>
         </div>
 
         <div className="space-y-4 px-6 py-5">
           {sale.items.length === 0 ? (
             <p className="text-sm text-slate-500">
-              Esta venta no tiene Ã­tems para devolver.
+              Esta venta no tiene ítems para devolver.
             </p>
           ) : (
             <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
@@ -864,10 +864,10 @@ function ReturnModal({
 
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700">
-              MÃ©todo de devoluciÃ³n
+              Método de devolución
             </p>
             <div className="flex rounded-lg border border-slate-200 p-0.5">
-              {(["Efectivo", "CrÃ©dito a cuenta"] as const).map((method) => (
+              {(["Efectivo", "Crédito a cuenta"] as const).map((method) => (
                 <button
                   className={
                     returnMethod === method
@@ -907,7 +907,7 @@ function ReturnModal({
             onClick={handleConfirm}
             type="button"
           >
-            {isSubmitting ? "Procesando..." : "Confirmar devoluciÃ³n"}
+            {isSubmitting ? "Procesando..." : "Confirmar devolución"}
           </button>
         </div>
       </div>
@@ -1043,7 +1043,7 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
     event.preventDefault();
 
     if (lineItems.length === 0) {
-      setSubmitError("DebÃ©s agregar al menos un producto.");
+      setSubmitError("Debés agregar al menos un producto.");
       return;
     }
 
@@ -1099,7 +1099,7 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
             onClick={onClose}
             type="button"
           >
-            âœ•
+            ✕
           </button>
         </div>
 
@@ -1159,7 +1159,7 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
 
               {selectedProduct ? (
                 <p className="mt-1.5 text-xs text-slate-500">
-                  Precio de venta: {formatMoney(selectedProduct.salePrice)} Â·
+                  Precio de venta: {formatMoney(selectedProduct.salePrice)} ·
                   Stock disponible:{" "}
                   {numberFormatter.format(selectedProduct.stock)}
                 </p>
@@ -1230,7 +1230,7 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
             ) : (
               <div className="rounded-lg border border-dashed border-slate-300 p-5 text-center">
                 <p className="text-sm text-slate-500">
-                  No hay productos en la venta. SeleccionÃ¡ un producto y hacÃ©
+                  No hay productos en la venta. Seleccioná un producto y hacé
                   clic en Agregar.
                 </p>
               </div>
@@ -1276,7 +1276,7 @@ type PaymentBadgeInfo = {
 
 function getPaymentBadgeInfo(sale: SaleRecord): PaymentBadgeInfo {
   if (sale.paymentType === "CREDIT") {
-    return { label: "CrÃ©dito", className: "bg-blue-50 text-blue-800" };
+    return { label: "Crédito", className: "bg-blue-50 text-blue-800" };
   }
 
   const methods =
@@ -1326,7 +1326,7 @@ function CopyFolioButton({ folio }: { folio: number }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // clipboard unavailable â€” no-op
+      // clipboard unavailable — no-op
     }
   }
 
@@ -1353,7 +1353,7 @@ function ReturnStatusBadge({ returnStatus }: { returnStatus: SaleRecord["returnS
           : "inline-flex rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700"
       }
     >
-      {returnStatus === "FULL" ? "Devuelta" : "DevoluciÃ³n parcial"}
+      {returnStatus === "FULL" ? "Devuelta" : "Devolución parcial"}
     </span>
   );
 }
@@ -1416,7 +1416,7 @@ function EmptyState() {
         No hay ventas registradas.
       </p>
       <p className="mt-1 text-sm text-slate-500">
-        Las ventas aparecerÃ¡n aquÃ­ cuando existan registros en el sistema.
+        Las ventas aparecerán aquí cuando existan registros en el sistema.
       </p>
     </div>
   );
@@ -1474,7 +1474,7 @@ function formatDayHeader(dateKey: string) {
 }
 
 function getPaymentMethodLabel(sale: SaleRecord): string {
-  if (sale.paymentType === "CREDIT") return "CrÃ©dito";
+  if (sale.paymentType === "CREDIT") return "Crédito";
   if (Array.isArray(sale.paymentDetails) && sale.paymentDetails.length > 0) {
     return Array.from(new Set(sale.paymentDetails.map((split) => split.method))).join(" + ");
   }
@@ -1502,7 +1502,7 @@ function escapeCsvValue(value: string): string {
 }
 
 function exportSalesToCsv(sales: SaleRecord[]) {
-  const header = ["Folio", "Fecha", "Vendedor", "Cliente", "MÃ©todo de pago", "Total"];
+  const header = ["Folio", "Fecha", "Vendedor", "Cliente", "Método de pago", "Total"];
   const rows = sales.map((sale) => [
     formatFolio(sale.folio),
     formatDateTime(sale.saleDate),

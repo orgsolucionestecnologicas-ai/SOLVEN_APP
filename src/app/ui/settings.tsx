@@ -28,7 +28,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 
 const MAX_LOGO_IMAGE_BYTES = 2 * 1024 * 1024;
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type StoreInfo = {
   businessName: string;
@@ -80,7 +80,7 @@ type Category = {
   group: SectionGroupId;
 };
 
-// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_STORE: StoreInfo = {
   businessName: "SOLVEN",
@@ -108,18 +108,18 @@ const DEFAULT_TOGGLES: TogglesConfig = {
 const CATEGORIES: Category[] = [
   { id: "general", label: "General", icon: Store, group: "negocio" },
   { id: "usuarios", label: "Usuarios", icon: Users, group: "negocio" },
-  { id: "pagos", label: "MÃ©todos de pago", icon: CreditCard, group: "negocio" },
+  { id: "pagos", label: "Métodos de pago", icon: CreditCard, group: "negocio" },
   { id: "descuentos", label: "Descuentos", icon: Percent, group: "negocio" },
   { id: "sucursales", label: "Sucursales", icon: Building, group: "negocio" },
   { id: "inventario", label: "Inventario", icon: Layers, group: "negocio" },
   { id: "documentos", label: "Documentos", icon: FileText, group: "fiscal" },
-  { id: "arca", label: "FacturaciÃ³n ElectrÃ³nica", icon: Receipt, group: "fiscal" },
+  { id: "arca", label: "Facturación Electrónica", icon: Receipt, group: "fiscal" },
   { id: "nube", label: "Nube y respaldo", icon: Cloud, group: "sistema" },
   { id: "notificaciones", label: "Notificaciones", icon: Bell, group: "sistema" },
   { id: "integraciones", label: "Integraciones", icon: Plug, group: "sistema" },
   { id: "sistema", label: "Sistema", icon: SettingsIcon, group: "sistema" },
   { id: "seguridad", label: "Seguridad", icon: Shield, group: "sistema" },
-  { id: "auditoria", label: "AuditorÃ­a", icon: History, group: "sistema" }
+  { id: "auditoria", label: "Auditoría", icon: History, group: "sistema" }
 ];
 
 const SECTION_GROUPS: { id: SectionGroupId; label: string }[] = [
@@ -128,7 +128,7 @@ const SECTION_GROUPS: { id: SectionGroupId; label: string }[] = [
   { id: "sistema", label: "Sistema" }
 ];
 
-// â”€â”€â”€ Toggle Switch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Toggle Switch ────────────────────────────────────────────────────────────
 
 function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -150,11 +150,11 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: b
   );
 }
 
-// â”€â”€â”€ Quick Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Quick Cards ──────────────────────────────────────────────────────────────
 
 function QuickCards({ onNavigate }: { onNavigate: (id: string) => void }) {
   const cards = [
-    { label: "VersiÃ³n", value: "1.0.0", sub: "MVP", icon: Crown, color: "bg-violet-50 text-violet-600", action: "sistema" },
+    { label: "Versión", value: "1.0.0", sub: "MVP", icon: Crown, color: "bg-violet-50 text-violet-600", action: "sistema" },
     { label: "Plan activo", value: "MVP", sub: "Gratuito", icon: CheckCircle, color: "bg-emerald-50 text-emerald-600", action: "sistema" },
     { label: "Sucursales", value: "1", sub: "Activa", icon: Building, color: "bg-blue-50 text-blue-600", action: "sucursales" },
     { label: "Usuarios", value: "1", sub: "Administrador", icon: Users, color: "bg-amber-50 text-amber-600", action: "usuarios" },
@@ -184,7 +184,7 @@ function QuickCards({ onNavigate }: { onNavigate: (id: string) => void }) {
   );
 }
 
-// â”€â”€â”€ General Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── General Section ──────────────────────────────────────────────────────────
 
 function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name: string) => void }) {
   const [store, setStore] = useState<StoreInfo>(DEFAULT_STORE);
@@ -242,7 +242,7 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
       setStoreSaved(true);
       setTimeout(() => setStoreSaved(false), 2500);
     } catch {
-      setSaveError("OcurriÃ³ un error. Intenta de nuevo.");
+      setSaveError("Ocurrió un error. Intenta de nuevo.");
     }
   }
 
@@ -271,7 +271,7 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
       {/* Store info */}
       <form onSubmit={handleStoreSubmit} className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
-          <h3 className="text-sm font-semibold text-slate-900">InformaciÃ³n del negocio</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Información del negocio</h3>
           <p className="mt-0.5 text-xs text-slate-500">Datos generales visibles en recibos y reportes.</p>
         </div>
         <div className="grid grid-cols-1 gap-4 px-6 py-5 sm:grid-cols-2">
@@ -296,7 +296,7 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
             />
           </div>
           <div>
-            <label className={labelCls}>TelÃ©fono</label>
+            <label className={labelCls}>Teléfono</label>
             <input
               className={inputCls}
               value={store.phone}
@@ -307,7 +307,7 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
             />
           </div>
           <div>
-            <label className={labelCls}>Correo electrÃ³nico</label>
+            <label className={labelCls}>Correo electrónico</label>
             <input
               className={inputCls}
               value={store.email}
@@ -318,7 +318,7 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
             />
           </div>
           <div className="sm:col-span-2">
-            <label className={labelCls}>DirecciÃ³n</label>
+            <label className={labelCls}>Dirección</label>
             <input
               className={inputCls}
               value={store.address}
@@ -328,7 +328,7 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
             />
           </div>
           <div>
-            <label className={labelCls}>CUIT / IdentificaciÃ³n fiscal</label>
+            <label className={labelCls}>CUIT / Identificación fiscal</label>
             <input
               className={inputCls}
               value={store.taxId}
@@ -341,7 +341,7 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
 
         {/* Regional config */}
         <div className="border-t border-slate-100 px-6 pb-5 pt-5">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">ConfiguraciÃ³n regional</p>
+          <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">Configuración regional</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelCls}>Moneda</label>
@@ -351,9 +351,9 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
                 value={regional.currency}
                 onChange={(e) => setRegional((r) => ({ ...r, currency: e.target.value }))}
               >
-                <option value="ARS">ARS â€“ Peso Argentino</option>
-                <option value="USD">USD â€“ DÃ³lar Estadounidense</option>
-                <option value="EUR">EUR â€“ Euro</option>
+                <option value="ARS">ARS – Peso Argentino</option>
+                <option value="USD">USD – Dólar Estadounidense</option>
+                <option value="EUR">EUR – Euro</option>
               </select>
             </div>
             <div>
@@ -364,10 +364,10 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
                 value={regional.timezone}
                 onChange={(e) => setRegional((r) => ({ ...r, timezone: e.target.value }))}
               >
-                <option value="America/Argentina/Buenos_Aires">AmÃ©rica/Buenos Aires (UTC-3)</option>
-                <option value="America/New_York">AmÃ©rica/Nueva York (UTC-5)</option>
-                <option value="America/Bogota">AmÃ©rica/BogotÃ¡ (UTC-5)</option>
-                <option value="America/Mexico_City">AmÃ©rica/Ciudad de MÃ©xico (UTC-6)</option>
+                <option value="America/Argentina/Buenos_Aires">América/Buenos Aires (UTC-3)</option>
+                <option value="America/New_York">América/Nueva York (UTC-5)</option>
+                <option value="America/Bogota">América/Bogotá (UTC-5)</option>
+                <option value="America/Mexico_City">América/Ciudad de México (UTC-6)</option>
               </select>
             </div>
             <div>
@@ -391,7 +391,7 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
                 value={regional.language}
                 onChange={(e) => setRegional((r) => ({ ...r, language: e.target.value }))}
               >
-                <option value="es">EspaÃ±ol</option>
+                <option value="es">Español</option>
                 <option value="en">English</option>
               </select>
             </div>
@@ -423,13 +423,13 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-semibold text-slate-900">Preferencias del sistema</h3>
-          <p className="mt-0.5 text-xs text-slate-500">Se guardan automÃ¡ticamente.</p>
+          <p className="mt-0.5 text-xs text-slate-500">Se guardan automáticamente.</p>
         </div>
         <div className="divide-y divide-slate-50">
           {[
-            { key: "printer" as const, label: "Impresora activa", sub: "Habilita la impresiÃ³n automÃ¡tica de recibos" },
+            { key: "printer" as const, label: "Impresora activa", sub: "Habilita la impresión automática de recibos" },
             { key: "sounds" as const, label: "Sonidos del sistema", sub: "Alertas de audio al completar acciones" },
-            { key: "darkMode" as const, label: "Modo oscuro", sub: "Cambia la apariencia de la interfaz (prÃ³ximamente)" },
+            { key: "darkMode" as const, label: "Modo oscuro", sub: "Cambia la apariencia de la interfaz (próximamente)" },
             { key: "desktopNotifications" as const, label: "Notificaciones de escritorio", sub: "Alertas del navegador para eventos importantes" }
           ].map((item) => (
             <div key={item.key} className="flex items-center justify-between px-6 py-4">
@@ -449,7 +449,7 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
   );
 }
 
-// â”€â”€â”€ Documentos Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Documentos Section ───────────────────────────────────────────────────────
 
 function TicketPreview({
   businessName,
@@ -466,7 +466,7 @@ function TicketPreview({
     <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-6 py-4">
         <h3 className="text-sm font-semibold text-slate-900">Vista previa del ticket</h3>
-        <p className="mt-0.5 text-xs text-slate-500">Se actualiza mientras editÃ¡s los campos.</p>
+        <p className="mt-0.5 text-xs text-slate-500">Se actualiza mientras editás los campos.</p>
       </div>
       <div className="flex justify-center px-6 py-5">
         <div
@@ -486,10 +486,10 @@ function TicketPreview({
           )}
           <p className="text-center text-sm font-bold">{businessName || "SOLVEN"}</p>
           <div className="my-2 border-t border-dashed border-slate-300" />
-          <p className="text-xs">Producto de ejemplo x1 â€” $1000</p>
-          <p className="text-xs">Otro producto x2 â€” $2500</p>
+          <p className="text-xs">Producto de ejemplo x1 — $1000</p>
+          <p className="text-xs">Otro producto x2 — $2500</p>
           <div className="my-2 border-t border-dashed border-slate-300" />
-          <p className="text-xs font-bold">TOTAL â€” $3500</p>
+          <p className="text-xs font-bold">TOTAL — $3500</p>
           <div className="my-2 border-t border-dashed border-slate-300" />
           {receiptThankYouMessage && <p className="text-center text-xs">{receiptThankYouMessage}</p>}
           {receiptFooterMessage && <p className="mt-1 text-center text-[11px] text-slate-500">{receiptFooterMessage}</p>}
@@ -508,7 +508,7 @@ function DocumentosSection({
 }) {
   const [raw, setRaw] = useState<Record<string, unknown> | null>(null);
   const [receiptFooterMessage, setReceiptFooterMessage] = useState("");
-  const [receiptThankYouMessage, setReceiptThankYouMessage] = useState("Â¡Gracias por su compra!");
+  const [receiptThankYouMessage, setReceiptThankYouMessage] = useState("¡Gracias por su compra!");
   const [initialReceiptNumber, setInitialReceiptNumber] = useState("0");
   const [defaultIvaRate, setDefaultIvaRate] = useState(0.21);
   const [loading, setLoading] = useState(true);
@@ -528,7 +528,7 @@ function DocumentosSection({
           onLogoUrlChangeRef.current(typeof body.data.logoUrl === "string" ? body.data.logoUrl : "");
           setReceiptFooterMessage(typeof body.data.receiptFooterMessage === "string" ? body.data.receiptFooterMessage : "");
           setReceiptThankYouMessage(
-            typeof body.data.receiptThankYouMessage === "string" ? body.data.receiptThankYouMessage : "Â¡Gracias por su compra!"
+            typeof body.data.receiptThankYouMessage === "string" ? body.data.receiptThankYouMessage : "¡Gracias por su compra!"
           );
           setInitialReceiptNumber(
             typeof body.data.initialReceiptNumber === "number" ? String(body.data.initialReceiptNumber) : "0"
@@ -561,7 +561,7 @@ function DocumentosSection({
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
-      setError("OcurriÃ³ un error. Intenta de nuevo.");
+      setError("Ocurrió un error. Intenta de nuevo.");
     } finally {
       setSaving(false);
     }
@@ -577,8 +577,8 @@ function DocumentosSection({
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
       <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-100 bg-white shadow-sm lg:col-span-2">
       <div className="border-b border-slate-100 px-6 py-4">
-        <h3 className="text-sm font-semibold text-slate-900">PersonalizaciÃ³n del ticket</h3>
-        <p className="mt-0.5 text-xs text-slate-500">Logo, pie de pÃ¡gina y mensaje de agradecimiento que se imprimen en cada ticket.</p>
+        <h3 className="text-sm font-semibold text-slate-900">Personalización del ticket</h3>
+        <p className="mt-0.5 text-xs text-slate-500">Logo, pie de página y mensaje de agradecimiento que se imprimen en cada ticket.</p>
       </div>
       <div className="space-y-4 px-6 py-5">
         <div>
@@ -598,24 +598,24 @@ function DocumentosSection({
             className={inputCls}
             disabled={loading}
             onChange={(e) => setReceiptThankYouMessage(e.target.value)}
-            placeholder="Â¡Gracias por su compra!"
+            placeholder="¡Gracias por su compra!"
             type="text"
             value={receiptThankYouMessage}
           />
         </div>
         <div>
-          <label className={labelCls}>Pie de pÃ¡gina</label>
+          <label className={labelCls}>Pie de página</label>
           <input
             className={inputCls}
             disabled={loading}
             onChange={(e) => setReceiptFooterMessage(e.target.value)}
-            placeholder="Ej. Cambios dentro de 10 dÃ­as con ticket"
+            placeholder="Ej. Cambios dentro de 10 días con ticket"
             type="text"
             value={receiptFooterMessage}
           />
         </div>
         <div>
-          <label className={labelCls}>NÃºmero inicial de comprobante</label>
+          <label className={labelCls}>Número inicial de comprobante</label>
           <input
             className={inputCls}
             disabled={loading}
@@ -626,7 +626,7 @@ function DocumentosSection({
             value={initialReceiptNumber}
           />
           <p className="mt-1 text-xs text-slate-400">
-            Solo aplica al primer comprobante que emitas (si migrÃ¡s desde otro sistema y querÃ©s continuar la numeraciÃ³n). No afecta comprobantes ya emitidos.
+            Solo aplica al primer comprobante que emitas (si migrás desde otro sistema y querés continuar la numeración). No afecta comprobantes ya emitidos.
           </p>
         </div>
         <div>
@@ -637,9 +637,9 @@ function DocumentosSection({
             onChange={(e) => setDefaultIvaRate(parseFloat(e.target.value))}
             value={defaultIvaRate}
           >
-            <option value={0.21}>21% â€” AlÃ­cuota general</option>
-            <option value={0.105}>10,5% â€” AlÃ­cuota reducida</option>
-            <option value={0.27}>27% â€” AlÃ­cuota incrementada</option>
+            <option value={0.21}>21% — Alícuota general</option>
+            <option value={0.105}>10,5% — Alícuota reducida</option>
+            <option value={0.27}>27% — Alícuota incrementada</option>
             <option value={0}>0% / Exento</option>
           </select>
           <p className="mt-1 text-xs text-slate-400">
@@ -679,7 +679,7 @@ function DocumentosSection({
   );
 }
 
-// â”€â”€â”€ Seguridad Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Seguridad Section ────────────────────────────────────────────────────────
 
 function SeguridadSection() {
   const router = useRouter();
@@ -696,7 +696,7 @@ function SeguridadSection() {
     setErrorMessage(null);
 
     if (newPassword !== confirmPassword) {
-      setErrorMessage("La nueva contraseÃ±a y la confirmaciÃ³n no coinciden.");
+      setErrorMessage("La nueva contraseña y la confirmación no coinciden.");
       return;
     }
 
@@ -709,15 +709,15 @@ function SeguridadSection() {
       });
       const body = (await response.json()) as { error?: string };
       if (!response.ok) {
-        setErrorMessage(body.error ?? "No se pudo cambiar la contraseÃ±a.");
+        setErrorMessage(body.error ?? "No se pudo cambiar la contraseña.");
         return;
       }
-      setSuccessMessage("ContraseÃ±a actualizada correctamente.");
+      setSuccessMessage("Contraseña actualizada correctamente.");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch {
-      setErrorMessage("No se pudo cambiar la contraseÃ±a.");
+      setErrorMessage("No se pudo cambiar la contraseña.");
     } finally {
       setIsSubmitting(false);
     }
@@ -736,8 +736,8 @@ function SeguridadSection() {
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
-          <h3 className="text-sm font-semibold text-slate-900">Cambiar contraseÃ±a</h3>
-          <p className="mt-0.5 text-xs text-slate-500">Actualiza tu contraseÃ±a de acceso al sistema.</p>
+          <h3 className="text-sm font-semibold text-slate-900">Cambiar contraseña</h3>
+          <p className="mt-0.5 text-xs text-slate-500">Actualiza tu contraseña de acceso al sistema.</p>
         </div>
         <form className="space-y-4 px-6 py-5" onSubmit={handleSubmit}>
           {successMessage && (
@@ -756,21 +756,21 @@ function SeguridadSection() {
           )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className={labelCls} htmlFor="current-password">ContraseÃ±a actual</label>
+              <label className={labelCls} htmlFor="current-password">Contraseña actual</label>
               <input
                 autoComplete="current-password"
                 className={inputCls}
                 disabled={isSubmitting}
                 id="current-password"
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="ContraseÃ±a actual"
+                placeholder="Contraseña actual"
                 required
                 type="password"
                 value={currentPassword}
               />
             </div>
             <div>
-              <label className={labelCls} htmlFor="new-password">Nueva contraseÃ±a</label>
+              <label className={labelCls} htmlFor="new-password">Nueva contraseña</label>
               <input
                 autoComplete="new-password"
                 className={inputCls}
@@ -778,14 +778,14 @@ function SeguridadSection() {
                 id="new-password"
                 minLength={6}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="MÃ­nimo 6 caracteres"
+                placeholder="Mínimo 6 caracteres"
                 required
                 type="password"
                 value={newPassword}
               />
             </div>
             <div>
-              <label className={labelCls} htmlFor="confirm-password">Confirmar nueva contraseÃ±a</label>
+              <label className={labelCls} htmlFor="confirm-password">Confirmar nueva contraseña</label>
               <input
                 autoComplete="new-password"
                 className={inputCls}
@@ -793,7 +793,7 @@ function SeguridadSection() {
                 id="confirm-password"
                 minLength={6}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repite la nueva contraseÃ±a"
+                placeholder="Repite la nueva contraseña"
                 required
                 type="password"
                 value={confirmPassword}
@@ -806,7 +806,7 @@ function SeguridadSection() {
               disabled={isSubmitting}
               type="submit"
             >
-              {isSubmitting ? "Guardando..." : "Cambiar contraseÃ±a"}
+              {isSubmitting ? "Guardando..." : "Cambiar contraseña"}
             </button>
           </div>
         </form>
@@ -815,8 +815,8 @@ function SeguridadSection() {
       {/* Session */}
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
-          <h3 className="text-sm font-semibold text-slate-900">SesiÃ³n activa</h3>
-          <p className="mt-0.5 text-xs text-slate-500">Cierra la sesiÃ³n en este dispositivo.</p>
+          <h3 className="text-sm font-semibold text-slate-900">Sesión activa</h3>
+          <p className="mt-0.5 text-xs text-slate-500">Cierra la sesión en este dispositivo.</p>
         </div>
         <div className="px-6 py-5">
           <button
@@ -825,7 +825,7 @@ function SeguridadSection() {
             type="button"
           >
             <Lock className="h-3.5 w-3.5" />
-            Cerrar sesiÃ³n
+            Cerrar sesión
           </button>
         </div>
       </div>
@@ -833,7 +833,7 @@ function SeguridadSection() {
   );
 }
 
-// â”€â”€â”€ Sistema Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Sistema Section ──────────────────────────────────────────────────────────
 
 function SistemaSection() {
   const [role, setRole] = useState<string | null>(null);
@@ -857,21 +857,21 @@ function SistemaSection() {
   }
 
   const rows = [
-    { label: "VersiÃ³n del sistema", value: "1.0.0" },
+    { label: "Versión del sistema", value: "1.0.0" },
     { label: "Plan", value: "MVP" },
     { label: "Framework", value: "Next.js 15 (App Router)" },
-    { label: "Base de datos", value: "PostgreSQL Â· Prisma ORM" },
-    { label: "AutenticaciÃ³n", value: "Cookie Â· HMAC" },
+    { label: "Base de datos", value: "PostgreSQL · Prisma ORM" },
+    { label: "Autenticación", value: "Cookie · HMAC" },
     { label: "Estado del sistema", value: "Operativo" },
-    { label: "Entorno", value: "ProducciÃ³n" }
+    { label: "Entorno", value: "Producción" }
   ];
 
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
-          <h3 className="text-sm font-semibold text-slate-900">InformaciÃ³n del sistema</h3>
-          <p className="mt-0.5 text-xs text-slate-500">Detalles tÃ©cnicos de la instalaciÃ³n actual.</p>
+          <h3 className="text-sm font-semibold text-slate-900">Información del sistema</h3>
+          <p className="mt-0.5 text-xs text-slate-500">Detalles técnicos de la instalación actual.</p>
         </div>
         <dl className="divide-y divide-slate-50">
           {rows.map(({ label, value }) => (
@@ -896,7 +896,7 @@ function SistemaSection() {
           <div>
             <p className="text-sm font-semibold text-violet-900">SOLVEN MVP</p>
             <p className="mt-1 text-xs text-violet-700">
-              Sistema de punto de venta diseÃ±ado para pequeÃ±os y medianos negocios. Incluye gestiÃ³n de ventas, inventario, caja, crÃ©ditos y reportes.
+              Sistema de punto de venta diseñado para pequeños y medianos negocios. Incluye gestión de ventas, inventario, caja, créditos y reportes.
             </p>
           </div>
         </div>
@@ -909,7 +909,7 @@ function SistemaSection() {
             <div className="flex-1">
               <p className="text-sm font-semibold text-slate-900">Respaldo de datos</p>
               <p className="mt-1 text-xs text-slate-500">
-                Descarga un archivo JSON con todos tus productos, clientes, ventas y configuraciÃ³n.
+                Descarga un archivo JSON con todos tus productos, clientes, ventas y configuración.
               </p>
               <button
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-violet-200 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-50 disabled:opacity-50"
@@ -918,7 +918,7 @@ function SistemaSection() {
                 type="button"
               >
                 <Download size={14} />
-                {isDownloading ? "Descargandoâ€¦" : "Descargar respaldo"}
+                {isDownloading ? "Descargando…" : "Descargar respaldo"}
               </button>
               <p className="mt-2 text-xs text-slate-400">
                 Recomendado: realizar un respaldo antes de cambios importantes.
@@ -931,7 +931,7 @@ function SistemaSection() {
   );
 }
 
-// â”€â”€â”€ AuditorÃ­a Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Auditoría Section ────────────────────────────────────────────────────────
 
 type AuditLogRow = {
   id: string;
@@ -1006,7 +1006,7 @@ function AuditLogSection() {
         setTotalPages(body.pagination?.totalPages ?? 1);
       })
       .catch(() => {
-        if (isActive) setError("No se pudieron cargar los registros de auditorÃ­a.");
+        if (isActive) setError("No se pudieron cargar los registros de auditoría.");
       })
       .finally(() => {
         if (isActive) setLoading(false);
@@ -1032,7 +1032,7 @@ function AuditLogSection() {
         >
           <option value="">Todos los usuarios</option>
           {users.map((u) => (
-            <option key={u.id} value={u.id}>{u.userCode ? `${u.userCode} â€” ${u.name}` : u.name}</option>
+            <option key={u.id} value={u.id}>{u.userCode ? `${u.userCode} — ${u.name}` : u.name}</option>
           ))}
         </select>
         <select
@@ -1058,13 +1058,13 @@ function AuditLogSection() {
               <tr>
                 <th className="px-6 py-2.5 font-medium">Fecha</th>
                 <th className="px-6 py-2.5 font-medium">Usuario</th>
-                <th className="px-6 py-2.5 font-medium">AcciÃ³n</th>
+                <th className="px-6 py-2.5 font-medium">Acción</th>
                 <th className="px-6 py-2.5 font-medium">Entidad</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td className="px-6 py-6 text-center text-slate-400" colSpan={4}>Cargandoâ€¦</td></tr>
+                <tr><td className="px-6 py-6 text-center text-slate-400" colSpan={4}>Cargando…</td></tr>
               ) : logs.length === 0 ? (
                 <tr><td className="px-6 py-6 text-center text-slate-400" colSpan={4}>Sin registros para los filtros seleccionados.</td></tr>
               ) : (
@@ -1073,7 +1073,7 @@ function AuditLogSection() {
                     <td className="px-6 py-3 text-slate-600">{auditDateFormatter.format(new Date(log.createdAt))}</td>
                     <td className="px-6 py-3 font-medium text-slate-900">{log.userCode ?? log.user.name}</td>
                     <td className="px-6 py-3 text-slate-600">{auditActionLabel(log.action)}</td>
-                    <td className="px-6 py-3 text-slate-500">{log.entityType}{log.entityId ? ` Â· ${log.entityId.slice(0, 8)}` : ""}</td>
+                    <td className="px-6 py-3 text-slate-500">{log.entityType}{log.entityId ? ` · ${log.entityId.slice(0, 8)}` : ""}</td>
                   </tr>
                 ))
               )}
@@ -1083,7 +1083,7 @@ function AuditLogSection() {
       )}
 
       <div className="flex items-center justify-between px-6 py-4">
-        <span className="text-xs text-slate-400">PÃ¡gina {page} de {totalPages}</span>
+        <span className="text-xs text-slate-400">Página {page} de {totalPages}</span>
         <div className="flex gap-2">
           <button
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
@@ -1107,7 +1107,7 @@ function AuditLogSection() {
   );
 }
 
-// â”€â”€â”€ Notificaciones Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Notificaciones Section ───────────────────────────────────────────────────
 
 type EmailAlertsConfig = {
   lowStockEmailAlerts: boolean;
@@ -1175,7 +1175,7 @@ function NotificacionesSection() {
       setThresholdSaved(true);
       setTimeout(() => setThresholdSaved(false), 2500);
     } catch {
-      setThresholdError("OcurriÃ³ un error. Intenta de nuevo.");
+      setThresholdError("Ocurrió un error. Intenta de nuevo.");
     } finally {
       setSavingThreshold(false);
     }
@@ -1186,11 +1186,11 @@ function NotificacionesSection() {
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-semibold text-slate-900">Alertas por email</h3>
-          <p className="mt-0.5 text-xs text-slate-500">Se envÃ­an al email del propietario de la cuenta.</p>
+          <p className="mt-0.5 text-xs text-slate-500">Se envían al email del propietario de la cuenta.</p>
         </div>
         <div className="divide-y divide-slate-50">
           {[
-            { key: "lowStockEmailAlerts" as const, label: "Stock crÃ­tico", sub: "Avisa cuando una venta deja un producto en stock mÃ­nimo o agotado" },
+            { key: "lowStockEmailAlerts" as const, label: "Stock crítico", sub: "Avisa cuando una venta deja un producto en stock mínimo o agotado" },
             { key: "cashDifferenceEmailAlerts" as const, label: "Diferencia de caja", sub: "Avisa cuando un cierre de caja tiene una diferencia con el monto esperado" }
           ].map((item) => (
             <div key={item.key} className="flex items-center justify-between px-6 py-4">
@@ -1210,7 +1210,7 @@ function NotificacionesSection() {
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-semibold text-slate-900">Gastos de alto monto</h3>
           <p className="mt-0.5 text-xs text-slate-500">
-            Si configurÃ¡s un umbral, se va a pedir una confirmaciÃ³n extra antes de guardar un gasto que lo supere. Dejalo vacÃ­o para no pedir confirmaciÃ³n adicional.
+            Si configurás un umbral, se va a pedir una confirmación extra antes de guardar un gasto que lo supere. Dejalo vacío para no pedir confirmación adicional.
           </p>
         </div>
         <div className="px-6 py-5">
@@ -1250,7 +1250,7 @@ function NotificacionesSection() {
   );
 }
 
-// â”€â”€â”€ PrÃ³ximamente placeholder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Próximamente placeholder ─────────────────────────────────────────────────
 
 function ComingSoonSection({ label }: { label: string }) {
   return (
@@ -1259,12 +1259,12 @@ function ComingSoonSection({ label }: { label: string }) {
         <SettingsIcon className="h-6 w-6 text-slate-400" />
       </div>
       <p className="text-sm font-medium text-slate-700">{label}</p>
-      <p className="mt-1 text-xs text-slate-400">Esta secciÃ³n estarÃ¡ disponible prÃ³ximamente.</p>
+      <p className="mt-1 text-xs text-slate-400">Esta sección estará disponible próximamente.</p>
     </div>
   );
 }
 
-// â”€â”€â”€ Right Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Right Sidebar ────────────────────────────────────────────────────────────
 
 function RightSidebar({
   activeCategory,
@@ -1346,7 +1346,7 @@ function RightSidebar({
 
       {/* Quick actions */}
       <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-        <p className="mb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Acciones rÃ¡pidas</p>
+        <p className="mb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Acciones rápidas</p>
         <div className="space-y-2">
           <button
             type="button"
@@ -1364,10 +1364,10 @@ function RightSidebar({
         <p className="mb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Resumen</p>
         <div className="space-y-2.5">
           {[
-            { label: "Negocio", value: businessName || "â€”" },
-            { label: "VersiÃ³n", value: "1.0.0" },
+            { label: "Negocio", value: businessName || "—" },
+            { label: "Versión", value: "1.0.0" },
             { label: "Plan", value: "MVP" },
-            { label: "SecciÃ³n activa", value: CATEGORIES.find((c) => c.id === activeCategory)?.label ?? "â€”" }
+            { label: "Sección activa", value: CATEGORIES.find((c) => c.id === activeCategory)?.label ?? "—" }
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center justify-between">
               <span className="text-xs text-slate-500">{label}</span>
@@ -1380,7 +1380,7 @@ function RightSidebar({
   );
 }
 
-// â”€â”€â”€ FacturaciÃ³n ARCA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Facturación ARCA ────────────────────────────────────────────────────────
 
 function FacturacionARCASection() {
   const [loading, setLoading] = useState(true);
@@ -1444,13 +1444,13 @@ function FacturacionARCASection() {
       });
       const b = (await r.json()) as { error?: string };
       if (!r.ok) { setError(b.error ?? "Error al guardar"); return; }
-      setSuccess("ConfiguraciÃ³n guardada correctamente");
+      setSuccess("Configuración guardada correctamente");
     } finally { setSaving(false); }
   }
 
   async function handleSaveCerts(e: FormEvent) {
     e.preventDefault();
-    if (!certPem.trim() || !keyPem.trim()) { setError("IngresÃ¡ el certificado y la clave privada"); return; }
+    if (!certPem.trim() || !keyPem.trim()) { setError("Ingresá el certificado y la clave privada"); return; }
     setSavingCert(true);
     setError(null);
     try {
@@ -1469,7 +1469,7 @@ function FacturacionARCASection() {
   }
 
   async function handleDeleteCerts() {
-    if (!confirm("Â¿Eliminar los certificados cargados? Esta acciÃ³n no se puede deshacer.")) return;
+    if (!confirm("¿Eliminar los certificados cargados? Esta acción no se puede deshacer.")) return;
     await fetch("/api/tenants/arca-config/cert", { method: "DELETE" });
     setHasCert(false);
     setSuccess("Certificados eliminados");
@@ -1483,7 +1483,7 @@ function FacturacionARCASection() {
       const b = (await r.json()) as { error?: string; data?: { wsfe?: { appServer?: string; dbServer?: string } } };
       if (!r.ok) { setTestResult({ ok: false, msg: b.error ?? "Error" }); return; }
       const wsfe = b.data?.wsfe;
-      setTestResult({ ok: true, msg: `AppServer: ${wsfe?.appServer ?? "â€”"} | DbServer: ${wsfe?.dbServer ?? "â€”"}` });
+      setTestResult({ ok: true, msg: `AppServer: ${wsfe?.appServer ?? "—"} | DbServer: ${wsfe?.dbServer ?? "—"}` });
     } catch { setTestResult({ ok: false, msg: "Error de red" }); }
     finally { setTesting(false); }
   }
@@ -1495,8 +1495,8 @@ function FacturacionARCASection() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-base font-semibold text-slate-900">FacturaciÃ³n ElectrÃ³nica ARCA/AFIP</h2>
-        <p className="mt-1 text-sm text-slate-500">EmitÃ­ facturas A, B o C directamente desde el punto de venta.</p>
+        <h2 className="text-base font-semibold text-slate-900">Facturación Electrónica ARCA/AFIP</h2>
+        <p className="mt-1 text-sm text-slate-500">Emití facturas A, B o C directamente desde el punto de venta.</p>
       </div>
 
       {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -1505,8 +1505,8 @@ function FacturacionARCASection() {
       {/* Habilitar/deshabilitar */}
       <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <div>
-          <p className="text-sm font-medium text-slate-900">Habilitar facturaciÃ³n electrÃ³nica</p>
-          <p className="text-xs text-slate-500">Muestra el botÃ³n &quot;Emitir Factura&quot; en el POS tras cada venta</p>
+          <p className="text-sm font-medium text-slate-900">Habilitar facturación electrónica</p>
+          <p className="text-xs text-slate-500">Muestra el botón &quot;Emitir Factura&quot; en el POS tras cada venta</p>
         </div>
         <ToggleSwitch checked={arcaEnabled} onChange={handleToggle} />
       </div>
@@ -1542,7 +1542,7 @@ function FacturacionARCASection() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">CondiciÃ³n IVA</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Condición IVA</label>
               <select
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
                 value={condicionIVA}
@@ -1559,8 +1559,8 @@ function FacturacionARCASection() {
                 value={ambiente}
                 onChange={(e) => setAmbiente(e.target.value)}
               >
-                <option value="homo">HomologaciÃ³n (testing)</option>
-                <option value="prod">ProducciÃ³n</option>
+                <option value="homo">Homologación (testing)</option>
+                <option value="prod">Producción</option>
               </select>
             </div>
           </div>
@@ -1578,12 +1578,12 @@ function FacturacionARCASection() {
               disabled={testing}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             >
-              {testing ? "Probando..." : "Probar conexiÃ³n WSFE"}
+              {testing ? "Probando..." : "Probar conexión WSFE"}
             </button>
           </div>
           {testResult && (
             <p className={`text-xs ${testResult.ok ? "text-emerald-600" : "text-red-600"}`}>
-              {testResult.ok ? "âœ“ " : "âœ— "}{testResult.msg}
+              {testResult.ok ? "✓ " : "✗ "}{testResult.msg}
             </p>
           )}
         </form>
@@ -1606,7 +1606,7 @@ function FacturacionARCASection() {
         {hasCert ? (
           <div className="space-y-3">
             <p className="text-xs text-slate-500">
-              Los certificados estÃ¡n encriptados (AES-256-GCM) y almacenados de forma segura.
+              Los certificados están encriptados (AES-256-GCM) y almacenados de forma segura.
             </p>
             <button
               type="button"
@@ -1619,7 +1619,7 @@ function FacturacionARCASection() {
         ) : (
           <form onSubmit={handleSaveCerts} className="space-y-4">
             <p className="text-xs text-slate-500">
-              PegÃ¡ el contenido del certificado (.crt) y la clave privada (.key) emitidos por ARCA/AFIP.
+              Pegá el contenido del certificado (.crt) y la clave privada (.key) emitidos por ARCA/AFIP.
             </p>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">Certificado (.crt)</label>
@@ -1657,7 +1657,7 @@ function FacturacionARCASection() {
   );
 }
 
-// â”€â”€â”€ Main Settings Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main Settings Component ──────────────────────────────────────────────────
 
 export function Settings() {
   const [activeCategory, setActiveCategory] = useState("general");
@@ -1716,10 +1716,10 @@ export function Settings() {
       case "notificaciones":
         return <NotificacionesSection />;
       case "auditoria":
-        return role === "OWNER" ? <AuditLogSection /> : <ComingSoonSection label="AuditorÃ­a" />;
+        return role === "OWNER" ? <AuditLogSection /> : <ComingSoonSection label="Auditoría" />;
       default: {
         const cat = visibleCategories.find((c) => c.id === activeCategory);
-        return <ComingSoonSection label={cat?.label ?? "Esta secciÃ³n"} />;
+        return <ComingSoonSection label={cat?.label ?? "Esta sección"} />;
       }
     }
   }
@@ -1732,11 +1732,11 @@ export function Settings() {
       <div className="border-b border-slate-200 bg-white px-6 py-4">
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <SettingsIcon className="h-4 w-4" />
-          <span>ConfiguraciÃ³n</span>
+          <span>Configuración</span>
           <span className="text-slate-300">/</span>
           <span className="font-medium text-slate-900">{activeLabel}</span>
         </div>
-        <h1 className="mt-1 text-lg font-semibold text-slate-900">ConfiguraciÃ³n</h1>
+        <h1 className="mt-1 text-lg font-semibold text-slate-900">Configuración</h1>
       </div>
 
       <div className="mx-auto max-w-screen-xl px-4 py-6 sm:px-6">
@@ -1747,7 +1747,7 @@ export function Settings() {
 
         {/* 3-column layout */}
         <div className="flex gap-5">
-          {/* Left sidebar â€” categories */}
+          {/* Left sidebar — categories */}
           <nav className="hidden w-52 flex-shrink-0 lg:block">
             <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
               {SECTION_GROUPS.map((group) => {
