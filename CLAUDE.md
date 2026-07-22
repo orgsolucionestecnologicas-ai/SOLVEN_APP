@@ -153,13 +153,15 @@ docs/skills/deployment-checklist.md → checklist de pre-deploy (ya existente, c
 | Bug | Archivo | Detalle |
 |-----|---------|---------|
 | Rebill acepta cualquier firma si falta `REBILL_WEBHOOK_SECRET` | `src/app/api/webhooks/rebill/route.ts:12` | `if (!secret) return true;` — bypass total sin la env var. Diego decidió (2026-07-18) dejar la integración de Rebill para el final del proyecto; queda documentado pero fuera de la cola de trabajo actual. |
-| 3 cron jobs desprotegidos si falta `CRON_SECRET` | `src/app/api/cron/{expire-quotes,generate-recurring-expenses,remind-expiring-quotes}/route.ts` | Mismo patrón: `if (cronSecret && authHeader !== ...)` — si la env var no está seteada en Vercel, cualquiera puede invocar los 3 jobs sin autenticación. Menos crítico que Rebill (no mueven dinero directamente), pero deben protegerse antes de cerrar el proyecto. |
 | Código huérfano de un NOA interno nunca terminado | `src/lib/noa-knowledge/*` (16 archivos), `noa-intent-engine.ts`, `noa-queries.ts`, `noa-responses.ts` | Verificado con grep: **ningún archivo del proyecto los importa.** `POST /api/noa/internal` es un stub que siempre devuelve 404. Es deuda técnica inerte (no ejecuta, no es un riesgo), pero puede confundir a un agente futuro que piense que hay un NOA interno parcialmente activo. Candidato a eliminar cuando se retome la idea de NOA operativo interno (ver memoria `project_noa_operativo.md`) o directamente borrar si no se va a retomar. |
 
 ### ✅ Resueltos desde la versión anterior de este documento (2026-06-14)
 
 | Bug | Resuelto en | Fecha |
 |-----|-------------|-------|
+| 3 cron jobs desprotegidos si falta `CRON_SECRET` | FIX-13 (commit `551ac74`) — ahora exigen el secreto fuera de `NODE_ENV==='development'` | 2026-07-22 |
+| APIs `/api/*` devolvían redirect HTML en vez de 401/402 JSON sin sesión válida | FIX-13 (commit `551ac74`) — `src/middleware.ts` distingue `pathname.startsWith("/api/")` | 2026-07-22 |
+| Seed roto por `productCode` único global (`P2002` al re-correr) | FIX-13 (commit `551ac74`) — `scripts/seed-icase.mjs` usa `upsert` | 2026-07-22 |
 | `requireRole(["OWNER","ADMIN","CASHIER"])` — ADMIN no existe | — | 2026-06-14 |
 | `/api/invoices` confiaba en `items`/`total` del cliente y no validaba `saleId` por tenant | FIX-08 (commit `d4b2c83`) | 2026-07-18 |
 | `Service.ivaRate` y `QuoteItem.ivaRate` no existían — hardcodeado `0.21` en 4 puntos (sales, quotes creación, quotes→venta, POS) | FIX-10 (commit `2a36506`) | 2026-07-18 |

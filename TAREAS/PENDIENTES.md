@@ -12,18 +12,6 @@
 
 ### 🔴 Crítico
 
-#### QA-01 — Seed roto por `productCode` único global
-`scripts/seed-icase.mjs` usa `prisma.product.create()` con un `productCode` fijo por producto (línea ~220), y `productCode` es `@unique` global en el schema (`prisma/schema.prisma:156`). Verificado: no hay upsert ni manejo de colisión. Si el seed se re-ejecuta, falla con `P2002`. Bloquea la generación de fixtures/datos de prueba.
-**Fix:** usar `upsert` sobre `productCode`, o generar códigos únicos por corrida del seed.
-
-#### QA-02 — APIs devuelven redirect HTML en vez de 401 JSON
-Verificado en `src/middleware.ts` (líneas ~80-97): cualquier ruta no pública sin sesión válida recibe `NextResponse.redirect(new URL("/login", ...))`, sin distinguir si es una ruta `/api/*`. Un cliente externo (mobile, integración, fetch desde JS) recibe HTML de redirect en vez de un 401 JSON limpio.
-**Fix:** en el middleware, si `pathname.startsWith("/api/")` y no hay sesión válida, devolver `NextResponse.json({error:"Unauthorized"}, {status:401})` en vez de redirect.
-
-#### QA-04 — Cron `expire-quotes` ejecutable sin `CRON_SECRET`
-Ya documentado como bug activo conocido en `CLAUDE.md` (sección de deuda técnica): el cron solo valida el secreto si la variable `CRON_SECRET` existe en el entorno. Sin la variable configurada, cualquiera puede disparar el cron en producción.
-**Fix:** exigir siempre el secreto salvo en `NODE_ENV==='development'` explícito. Mismo patrón aplica a los otros 2 cron jobs mencionados en `CLAUDE.md`.
-
 #### T3 — Rotar token de GitHub expuesto
 Manual, no verificable desde este entorno (sandbox sin credenciales de git). `github.com/settings/tokens` → revocar el token actual → generar uno nuevo con permisos `repo` → actualizar donde se use. ~30 min.
 
@@ -91,6 +79,9 @@ Requiere acceso manual de Diego al portal ARCA con Clave Fiscal nivel 3 — no s
 ---
 
 ## Cerrados
+
+### 2026-07-22 — QA-01, QA-02, QA-04 (CERRADO — FIX-13, commit `551ac74`)
+Los 3 fixes críticos que quedaban del backlog general (no de integraciones externas) se resolvieron en una sola orden: `scripts/seed-icase.mjs` ahora usa `prisma.product.upsert()` por `productCode` (ya no falla `P2002` al re-correr); `src/middleware.ts` devuelve JSON 401/402 en vez de redirect cuando `pathname` empieza con `/api/` (páginas sin cambios); los 3 cron jobs (`expire-quotes`, `generate-recurring-expenses`, `remind-expiring-quotes`) ahora rechazan si falta `CRON_SECRET` fuera de `NODE_ENV==='development'`. Verificado por el Ingeniero Líder contra el diff completo (`git show 551ac74`) y `typecheck` reverificado independientemente, limpio. Detalle en `TAREAS/REPORTELIDER.md`.
 
 ### 2026-07-18 — Auditoría completa de Notion: 6 tarjetas "Pendiente" ya estaban resueltas en el código
 Al migrar todo Notion a este archivo, se verificó cada tarjeta contra el código real (no solo se confió en el texto de Notion). Estas 6 figuraban como "⏳ Pendiente" pero ya estaban resueltas:
