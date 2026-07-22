@@ -1837,7 +1837,7 @@ export function Pos() {
                             </span>
                           ) : null}
                           <button
-                            className="flex-shrink-0 rounded-md bg-violet-600 px-2 py-1 text-xs font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="flex-shrink-0 rounded-lg bg-violet-600 px-2 py-1 text-xs font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
                             disabled={!canAdd}
                             onClick={() => addToCart(product)}
                             type="button"
@@ -1932,7 +1932,7 @@ export function Pos() {
                             </span>
                           ) : null}
                           <button
-                            className="flex-shrink-0 rounded-md bg-violet-600 px-2 py-1 text-xs font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="flex-shrink-0 rounded-lg bg-violet-600 px-2 py-1 text-xs font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
                             disabled={cashRegisterStatus !== "open" || saleGateResult === null}
                             onClick={() => addServiceToCart(service)}
                             type="button"
@@ -2099,7 +2099,7 @@ export function Pos() {
                 </button>
                 {cartItems.length > 0 ? (
                   <button
-                    className="rounded-md p-1.5 text-rose-400 hover:bg-rose-50 hover:text-rose-600"
+                    className="rounded-lg p-1.5 text-rose-400 hover:bg-rose-50 hover:text-rose-600"
                     onClick={() => setCartItems([])}
                     type="button"
                   >
@@ -2221,7 +2221,7 @@ export function Pos() {
                       </div>
                       <div className="flex w-28 items-center justify-center gap-0.5">
                         <button
-                          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-[11px] text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
+                          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-[11px] text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                           onClick={() =>
                             updateQuantity(cartItemKey(item), item.quantity - 1)
                           }
@@ -2232,8 +2232,8 @@ export function Pos() {
                         <input
                           className={
                             invalidQuantityIds.has(itemId)
-                              ? "w-16 rounded-md border border-rose-400 bg-rose-50 py-0.5 text-center text-xs font-semibold tabular-nums text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-200"
-                              : "w-16 rounded-md border border-transparent bg-transparent py-0.5 text-center text-xs font-semibold tabular-nums text-slate-950 [.pos-dark_&]:text-slate-100 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                              ? "w-16 rounded-lg border border-rose-400 bg-rose-50 py-0.5 text-center text-xs font-semibold tabular-nums text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                              : "w-16 rounded-lg border border-transparent bg-transparent py-0.5 text-center text-xs font-semibold tabular-nums text-slate-950 [.pos-dark_&]:text-slate-100 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
                           }
                           min="0"
                           onBlur={() => commitQuantityInput(itemId, item.maxStock)}
@@ -2253,8 +2253,8 @@ export function Pos() {
                         <button
                           className={
                             item.quantity >= item.maxStock
-                              ? "flex h-5 w-5 flex-shrink-0 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 text-[11px] text-slate-300"
-                              : "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-[11px] text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
+                              ? "flex h-5 w-5 flex-shrink-0 cursor-not-allowed items-center justify-center rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 text-[11px] text-slate-300"
+                              : "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-[11px] text-slate-600 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                           }
                           disabled={item.quantity >= item.maxStock}
                           onClick={() =>
@@ -2290,7 +2290,7 @@ export function Pos() {
                       <div className="flex items-center gap-2 pb-2 pl-14 pr-4">
                         {discountEditingId === itemId ? (
                           <>
-                            <div className="flex overflow-hidden rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700">
+                            <div className="flex overflow-hidden rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700">
                               <button
                                 className={
                                   discountDraftType === "percent"
@@ -2316,7 +2316,7 @@ export function Pos() {
                             </div>
                             <input
                               autoFocus
-                              className="w-16 rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 px-1.5 py-0.5 text-[11px] text-slate-950 [.pos-dark_&]:text-slate-100 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                              className="w-16 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 px-1.5 py-0.5 text-[11px] text-slate-950 [.pos-dark_&]:text-slate-100 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                               min="0"
                               onChange={(e) => setDiscountDraftValue(e.target.value)}
                               onKeyDown={(e) => {
@@ -2328,7 +2328,7 @@ export function Pos() {
                               value={discountDraftValue}
                             />
                             <button
-                              className="rounded-md bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-violet-700"
+                              className="rounded-lg bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-violet-700"
                               onClick={() => applyItemDiscount()}
                               type="button"
                             >
@@ -2347,8 +2347,8 @@ export function Pos() {
                             <button
                               className={
                                 hasManualDiscount
-                                  ? "rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 hover:bg-violet-200"
-                                  : "rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
+                                  ? "rounded-lg bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 hover:bg-violet-200"
+                                  : "rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                               }
                               onClick={() => openDiscountEditor(item)}
                               type="button"
@@ -2479,7 +2479,7 @@ export function Pos() {
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-slate-500">Descuento global</span>
                   <div className="flex items-center gap-1">
-                    <div className="flex overflow-hidden rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700">
+                    <div className="flex overflow-hidden rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700">
                       <button
                         className={
                           globalDiscountType === "percent"
@@ -2504,7 +2504,7 @@ export function Pos() {
                       </button>
                     </div>
                     <input
-                      className="w-16 rounded-md border border-slate-200 [.pos-dark_&]:border-gray-700 px-1.5 py-0.5 text-right text-xs text-slate-950 [.pos-dark_&]:text-slate-100 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                      className="w-16 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 px-1.5 py-0.5 text-right text-xs text-slate-950 [.pos-dark_&]:text-slate-100 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                       min="0"
                       onChange={(e) => setGlobalDiscountValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -2637,7 +2637,7 @@ export function Pos() {
                     : "Cobrar"}
                 </button>
                 <button
-                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-slate-400 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
+                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-slate-100 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-slate-400 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200 shadow-sm"
                   onClick={() => setCotizacionOpen(true)}
                   title="Imprimir"
                   type="button"
@@ -2646,7 +2646,7 @@ export function Pos() {
                 </button>
                 <div className="relative" ref={moreDropdownRef}>
                   <button
-                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-slate-400 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200"
+                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-slate-100 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 text-slate-400 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600 hover:text-slate-600 [.pos-dark_&]:hover:text-slate-200 shadow-sm"
                     onClick={() => setMoreDropdownOpen((v) => !v)}
                     title="Más opciones"
                     type="button"
@@ -2703,7 +2703,7 @@ export function Pos() {
                 {!lastSaleCollapsed ? (
                   <div className="space-y-2.5 border-t border-slate-200 [.pos-dark_&]:border-gray-700 px-5 py-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold tabular-nums text-slate-950 [.pos-dark_&]:text-slate-100">
+                      <span className="text-2xl font-semibold tracking-tight tabular-nums text-slate-950 [.pos-dark_&]:text-slate-100">
                         #{lastSale.folio}
                       </span>
                       <button
@@ -2736,7 +2736,7 @@ export function Pos() {
                     </ul>
                     <div className="flex items-center justify-between border-t border-slate-200 [.pos-dark_&]:border-gray-700 pt-2">
                       <span className="text-xs font-semibold text-slate-700 [.pos-dark_&]:text-slate-300">Total</span>
-                      <span className="text-2xl font-bold tabular-nums text-slate-950 [.pos-dark_&]:text-slate-100">
+                      <span className="text-2xl font-semibold tracking-tight tabular-nums text-slate-950 [.pos-dark_&]:text-slate-100">
                         {formatMoneyNum(lastSale.total)}
                       </span>
                     </div>
@@ -2772,7 +2772,7 @@ export function Pos() {
           onClick={() => setNoteModalOpen(false)}
         >
           <div
-            className="w-full max-w-sm rounded-xl bg-white shadow-xl"
+            className="w-full max-w-sm rounded-2xl bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
@@ -2823,7 +2823,7 @@ export function Pos() {
           onClick={() => setCotizacionOpen(false)}
         >
           <div
-            className="w-full max-w-lg rounded-xl bg-white shadow-xl"
+            className="w-full max-w-lg rounded-2xl bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -3003,7 +3003,7 @@ export function Pos() {
                     .map((promo) => (
                       <div
                         key={promo.id}
-                        className="rounded-xl border border-slate-200 bg-white p-3"
+                        className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
@@ -3153,7 +3153,7 @@ export function Pos() {
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                     Total
                   </p>
-                  <p className="text-2xl font-bold tabular-nums text-slate-950">
+                  <p className="text-2xl font-semibold tracking-tight tabular-nums text-slate-950">
                     {formatMoneyNum(cartNet)}
                   </p>
                 </div>
@@ -3187,7 +3187,7 @@ export function Pos() {
                         {/* Dropdown de método */}
                         <div className="relative min-w-0 flex-1">
                           <select
-                            className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-3 pr-7 text-sm font-medium text-slate-700 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 cursor-pointer"
+                            className="w-full appearance-none rounded-2xl border border-slate-100 bg-white py-2.5 pl-3 pr-7 text-sm font-medium text-slate-700 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 cursor-pointer shadow-sm"
                             value={split.method}
                             onChange={(e) =>
                               setPaymentSplits(prev =>
@@ -3223,7 +3223,7 @@ export function Pos() {
                           </span>
                           <input
                             autoFocus={splitIndex === paymentSplits.length - 1}
-                            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-7 pr-3 text-right text-sm tabular-nums font-medium text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                            className="w-full rounded-2xl border border-slate-100 bg-white py-2.5 pl-7 pr-3 text-right text-sm tabular-nums font-medium text-slate-950 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 shadow-sm"
                             inputMode="decimal"
                             min="0"
                             placeholder="0.00"
@@ -3358,7 +3358,7 @@ export function Pos() {
             <div className="flex gap-3 border-t border-slate-100 px-6 py-4">
               <button
                 type="button"
-                className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                className="flex-1 rounded-lg border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
                 onClick={() => setShowPaymentModal(false)}
               >
                 Cancelar
@@ -3432,7 +3432,7 @@ function QuickActionButton({
 function ProductStockBadge({ stock }: { stock: number }) {
   if (stock === 0) {
     return (
-      <span className="inline-flex rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700">
+      <span className="inline-flex rounded-lg bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700">
         Sin stock
       </span>
     );
@@ -3440,14 +3440,14 @@ function ProductStockBadge({ stock }: { stock: number }) {
 
   if (stock <= 5) {
     return (
-      <span className="inline-flex rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+      <span className="inline-flex rounded-lg bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
         Stock: {stock}
       </span>
     );
   }
 
   return (
-    <span className="inline-flex rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+    <span className="inline-flex rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
       Stock: {stock}
     </span>
   );
@@ -3699,7 +3699,7 @@ function PrintModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+      <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
         <div className="border-b border-emerald-100 bg-emerald-50 px-6 py-4">
           <p className="text-sm font-semibold text-emerald-800">✓ Venta registrada</p>
           <p className="mt-0.5 text-xs text-emerald-600">
@@ -3817,7 +3817,7 @@ function InvoiceModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+      <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
         <div className="border-b border-slate-200 px-6 py-4">
           <h3 className="text-base font-semibold text-slate-900">Emitir Factura Electrónica</h3>
         </div>

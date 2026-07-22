@@ -1,3 +1,9 @@
+/*
+ * Lenguaje de estilo UI — ver docs/estilo-ui.md (DESIGN-01).
+ * Radios: tarjetas/modales rounded-2xl · dropdowns rounded-xl · controles rounded-lg · pills rounded-full.
+ * Tarjeta: border-slate-100 + bg-white + shadow-sm + p-5. Canvas de contenido: slate-50.
+ * KPI: text-2xl font-semibold tracking-tight text-slate-900.
+ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,4 +23,11 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-sora), 'Sora', sans-serif;
+}
+
+/* Superficie blanca por defecto para controles de formulario (el canvas de
+   contenido es slate-50; sin esto, los inputs sin bg-* se ven grises).
+   Especificidad mínima: cualquier utilidad bg-* la pisa. */
+input, select, textarea {
+  background-color: #ffffff;
 }

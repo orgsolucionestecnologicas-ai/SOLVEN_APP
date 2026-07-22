@@ -309,7 +309,7 @@ function NewQuoteModal({
               }}
             />
             {customerOptions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-lg border border-slate-200 bg-white shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-xl border border-slate-200 bg-white shadow-lg">
                 {customerOptions.map((c) => (
                   <button
                     key={c.id}
@@ -351,7 +351,7 @@ function NewQuoteModal({
               onChange={(e) => setProductQuery(e.target.value)}
             />
             {productOptions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-lg border border-slate-200 bg-white shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-xl border border-slate-200 bg-white shadow-lg">
                 {productOptions.map((p) => {
                   const reserved = reservedStock.get(p.id) ?? 0;
                   return (
@@ -413,7 +413,7 @@ function NewQuoteModal({
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className="block text-sm font-medium text-slate-700">Descuento</label>
-              <div className="flex overflow-hidden rounded-md border border-slate-300 text-xs">
+              <div className="flex overflow-hidden rounded-lg border border-slate-300 text-xs">
                 <button
                   type="button"
                   className={`px-2 py-0.5 font-medium ${discountMode === "amount" ? "bg-violet-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}

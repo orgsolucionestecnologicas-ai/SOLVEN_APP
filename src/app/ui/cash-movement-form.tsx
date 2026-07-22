@@ -217,7 +217,7 @@ export function CashMovementForm() {
 
             {/* Section 1: Información general */}
             <FormSection number={1} title="Información general">
-              <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-5">
+              <div className="space-y-5 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 {/* Type toggle */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -225,11 +225,11 @@ export function CashMovementForm() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-sm font-medium transition-all ${
+                      className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-5 text-sm font-medium transition-all ${
                         movementType === "IN"
                           ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                          : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
-                      }`}
+                          : "border-slate-100 bg-white text-slate-500 hover:border-slate-300"
+                      } shadow-sm`}
                       onClick={() => setMovementType("IN")}
                       type="button"
                     >
@@ -238,11 +238,11 @@ export function CashMovementForm() {
                       <span className="text-xs font-normal text-slate-400">Dinero que entra a caja</span>
                     </button>
                     <button
-                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-sm font-medium transition-all ${
+                      className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-5 text-sm font-medium transition-all ${
                         movementType === "OUT"
                           ? "border-rose-500 bg-rose-50 text-rose-700"
-                          : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
-                      }`}
+                          : "border-slate-100 bg-white text-slate-500 hover:border-slate-300"
+                      } shadow-sm`}
                       onClick={() => setMovementType("OUT")}
                       type="button"
                     >
@@ -316,7 +316,7 @@ export function CashMovementForm() {
 
             {/* Section 2: Detalles del movimiento */}
             <FormSection number={2} title="Detalles del movimiento">
-              <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+              <div className="space-y-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 {/* Categoría */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="cm-categoria">
@@ -406,14 +406,14 @@ export function CashMovementForm() {
 
             {/* Section 3: Monto */}
             <FormSection number={3} title="Monto del movimiento">
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <div className="flex items-center overflow-hidden rounded-lg border border-slate-300 focus-within:border-violet-500">
                   <span className="border-r border-slate-300 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
                     $
                   </span>
                   <input
                     autoFocus
-                    className="flex-1 bg-white px-4 py-3 text-2xl font-bold text-slate-950 placeholder:text-slate-300 focus:outline-none"
+                    className="flex-1 bg-white px-4 py-3 text-2xl font-semibold tracking-tight text-slate-900 placeholder:text-slate-300 focus:outline-none"
                     min="0.01"
                     onChange={(e) => setMonto(e.target.value)}
                     placeholder="0.00"
@@ -431,7 +431,7 @@ export function CashMovementForm() {
 
             {/* Section 4: Comprobante (visual only) */}
             <FormSection number={4} title="Comprobante / Evidencia (opcional)">
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 py-8">
                   <UploadIcon className="text-slate-300" size={32} />
                   <div className="text-center">
@@ -446,7 +446,7 @@ export function CashMovementForm() {
 
             {/* Section 5: Observaciones */}
             <FormSection number={5} title="Observaciones adicionales (opcional)">
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <textarea
                   className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-sm placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
                   maxLength={200}
@@ -472,7 +472,7 @@ export function CashMovementForm() {
           <div className="space-y-4">
 
             {/* Panel 1: Resumen del movimiento */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Resumen del movimiento</h3>
               <div className="space-y-2.5">
                 <SummaryRow
@@ -501,7 +501,7 @@ export function CashMovementForm() {
             </div>
 
             {/* Panel 2: Saldo después */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Saldo después de este movimiento</h3>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -523,7 +523,7 @@ export function CashMovementForm() {
             </div>
 
             {/* Panel 3: Categorías comunes */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="mb-2 text-sm font-semibold text-slate-950">Categorías comunes</h3>
               <div className="space-y-1">
                 {(movementType === "IN" ? CATEGORIES_IN : CATEGORIES_OUT).map((cat) => (
@@ -541,7 +541,7 @@ export function CashMovementForm() {
             </div>
 
             {/* Panel 4: Información importante */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="mb-2 text-sm font-semibold text-slate-950">Información importante</h3>
               <ul className="space-y-1.5">
                 {[

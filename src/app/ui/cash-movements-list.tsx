@@ -507,7 +507,7 @@ export function CashMovementsList() {
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-slate-200 bg-white">
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
               <h3 className="text-sm font-semibold text-slate-950">Lista de movimientos</h3>
               <p className="text-xs text-slate-400">{filteredMovements.length} resultado{filteredMovements.length !== 1 ? "s" : ""}</p>
@@ -587,14 +587,14 @@ export function CashMovementsList() {
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1">
                               <button
-                                className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                                 onClick={() => setDetailMovement(m)}
                                 type="button"
                               >
                                 <Eye size={13} />
                               </button>
                               <button
-                                className="hidden rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                className="hidden rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                                 type="button"
                               >
                                 <MoreHorizontal size={13} />
@@ -619,7 +619,7 @@ export function CashMovementsList() {
                 </p>
                 <div className="flex items-center gap-1">
                   <button
-                    className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+                    className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
                     disabled={safePage === 1}
                     onClick={() => changePage(safePage - 1)}
                     type="button"
@@ -631,7 +631,7 @@ export function CashMovementsList() {
                       <span className="px-2 text-xs text-slate-400" key={`el-${i}`}>...</span>
                     ) : (
                       <button
-                        className={p === safePage ? "h-7 min-w-[1.75rem] rounded-md bg-violet-600 px-2 text-xs font-semibold text-white" : "h-7 min-w-[1.75rem] rounded-md border border-slate-200 px-2 text-xs text-slate-700 hover:bg-slate-50"}
+                        className={p === safePage ? "h-7 min-w-[1.75rem] rounded-lg bg-violet-600 px-2 text-xs font-semibold text-white" : "h-7 min-w-[1.75rem] rounded-lg border border-slate-200 px-2 text-xs text-slate-700 hover:bg-slate-50"}
                         key={p}
                         onClick={() => changePage(p)}
                         type="button"
@@ -641,7 +641,7 @@ export function CashMovementsList() {
                     )
                   )}
                   <button
-                    className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+                    className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
                     disabled={safePage === totalPages}
                     onClick={() => changePage(safePage + 1)}
                     type="button"
@@ -698,7 +698,7 @@ export function CashMovementsList() {
         <aside className="w-72 shrink-0 border-l border-slate-200 px-4 py-5">
           <div className="space-y-5">
             {/* Panel 1: Resumen del día */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Resumen del día</h3>
               <div className="space-y-2">
                 <SidebarRow label="Monto inicial" value={fmtMoney(openingAmount)} valueClass="text-slate-950" />
@@ -714,7 +714,7 @@ export function CashMovementsList() {
             </div>
 
             {/* Panel 2: Categorías más usadas */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Categorías más usadas</h3>
               <CategoryBreakdown categorySums={categorySums} />
               <button className="mt-3 hidden text-xs font-medium text-violet-600 hover:text-violet-800" type="button">
@@ -804,7 +804,7 @@ function CashRegisterHistoryView({ onBack }: { onBack: () => void }) {
       </div>
 
       <div className="flex-1 px-6 py-4">
-        <div className="rounded-xl border border-slate-200 bg-white">
+        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
             <h3 className="text-sm font-semibold text-slate-950">Sesiones cerradas</h3>
             <p className="text-xs text-slate-400">{pagination ? `${pagination.total} sesión${pagination.total !== 1 ? "es" : ""}` : ""}</p>
@@ -883,7 +883,7 @@ function CashRegisterHistoryView({ onBack }: { onBack: () => void }) {
               </p>
               <div className="flex items-center gap-1">
                 <button
-                  className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+                  className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
                   disabled={!pagination.hasPrev}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   type="button"
@@ -891,7 +891,7 @@ function CashRegisterHistoryView({ onBack }: { onBack: () => void }) {
                   <ChevronLeft size={14} />
                 </button>
                 <button
-                  className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+                  className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
                   disabled={!pagination.hasNext}
                   onClick={() => setPage((p) => p + 1)}
                   type="button"
@@ -1036,7 +1036,7 @@ function MetricCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <p className="text-xs font-medium text-slate-500">{label}</p>
       <div className="mt-1 flex items-center gap-2">
         <p className={`text-xl font-bold ${valueClass}`}>{value}</p>
@@ -1122,7 +1122,7 @@ function MovementDetailModal({ movement, onClose }: { movement: CashMovementReco
             </div>
           </div>
           <div className={`rounded-xl p-4 text-center ${isIN ? "bg-emerald-50" : "bg-rose-50"}`}>
-            <p className={`text-2xl font-bold ${isIN ? "text-emerald-600" : "text-rose-600"}`}>
+            <p className={`text-2xl font-semibold tracking-tight ${isIN ? "text-emerald-600" : "text-rose-600"}`}>
               {isIN ? "+" : "−"}{fmtMoney(movement.amount)}
             </p>
           </div>

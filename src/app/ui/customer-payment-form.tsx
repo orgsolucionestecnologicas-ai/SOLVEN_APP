@@ -331,7 +331,7 @@ export function CustomerPaymentForm() {
           <div className="mx-auto max-w-2xl space-y-5">
             {/* Section 1: Cliente */}
             <Section title="Seleccionar cliente" number={1}>
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div
                     className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-bold text-white ${avatarColor}`}
@@ -358,7 +358,7 @@ export function CustomerPaymentForm() {
 
             {/* Section 2: Información del pago */}
             <Section title="Información del pago" number={2}>
-              <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+              <div className="space-y-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 {/* Amount */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -415,11 +415,11 @@ export function CustomerPaymentForm() {
                   <div className="grid grid-cols-5 gap-2">
                     {PAYMENT_METHODS.map(({ id, label, Icon }) => (
                       <button
-                        className={`flex flex-col items-center gap-1.5 rounded-xl border py-3 text-xs font-medium transition-all ${
+                        className={`flex flex-col items-center gap-1.5 rounded-2xl border py-3 text-xs font-medium transition-all ${
                           method === id
                             ? "border-violet-500 bg-violet-50 text-violet-700"
-                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                        }`}
+                            : "border-slate-100 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                        } shadow-sm`}
                         key={id}
                         onClick={() => setMethod(id)}
                         type="button"
@@ -479,7 +479,7 @@ export function CustomerPaymentForm() {
 
             {/* Section 3: Summary */}
             <Section title="Resumen del pago" number={3}>
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <div className="grid grid-cols-3 gap-4">
                   <SummaryCard
                     label="Saldo actual"
@@ -541,7 +541,7 @@ export function CustomerPaymentForm() {
         <aside className="w-72 shrink-0 overflow-y-auto border-l border-slate-200 px-4 py-5">
           <div className="space-y-4">
             {/* Panel 1: Resumen del cliente */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Resumen del cliente</h3>
               <div className="rounded-lg bg-rose-50 p-3 text-center">
                 <p className="text-xs text-slate-500">Deuda actual</p>
@@ -557,7 +557,7 @@ export function CustomerPaymentForm() {
             </div>
 
             {/* Panel 2: Historial de pagos recientes */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Historial de pagos recientes</h3>
               {recentPayments.length === 0 ? (
                 <p className="text-xs text-slate-400">Sin pagos registrados</p>
@@ -585,7 +585,7 @@ export function CustomerPaymentForm() {
             </div>
 
             {/* Panel 3: Detalle de la deuda */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Detalle de la deuda</h3>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

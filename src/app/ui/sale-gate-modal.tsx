@@ -67,7 +67,7 @@ export function SaleGateModal({ open, arcaEnabled, onConfirm, onCancel }: SaleGa
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
         <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
           <Shield className="text-violet-600" size={18} />
           <h3 className="text-sm font-semibold text-slate-950">Iniciar nueva venta</h3>

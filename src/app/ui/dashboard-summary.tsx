@@ -388,7 +388,7 @@ function KpiTooltip({ text }: { text: string }) {
   return (
     <span className="group relative inline-flex flex-shrink-0">
       <span className="cursor-default text-sm leading-none text-gray-400">ⓘ</span>
-      <span className="pointer-events-none absolute right-0 top-full z-10 mt-1.5 w-56 rounded-md bg-slate-900 px-2.5 py-1.5 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+      <span className="pointer-events-none absolute right-0 top-full z-10 mt-1.5 w-56 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
         {text}
       </span>
     </span>
@@ -414,7 +414,7 @@ function MetricCard({
   tooltipText?: string;
 }) {
   const animatedValue = useCountUp(value);
-  const cardClassName = `rounded-xl border border-slate-100 bg-white p-5 shadow-sm${
+  const cardClassName = `rounded-2xl border border-slate-100 bg-white p-5 shadow-sm${
     href ? " cursor-pointer transition hover:ring-2 hover:ring-violet-500/30" : ""
   }`;
 
@@ -423,7 +423,7 @@ function MetricCard({
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{format(animatedValue)}</p>
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{format(animatedValue)}</p>
           {trendLabel ? (
             <p className={`mt-1 text-xs font-medium ${trendPositive ? "text-green-600" : "text-red-500"}`}>
               {trendLabel}
@@ -464,12 +464,12 @@ function LowStockCard({ count }: { count: number | null }) {
   return (
     <Link
       href="/inventory"
-      className="block cursor-pointer rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition hover:ring-2 hover:ring-violet-500/30"
+      className="block cursor-pointer rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:ring-2 hover:ring-violet-500/30"
     >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-slate-500">Productos bajos</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
             {count === null ? "—" : animatedCount}
           </p>
         </div>
@@ -616,7 +616,7 @@ function MainSalesChart({
   const hasData = salesByDay.some((d) => d.total > 0) || expensesByDay.some((d) => d.total > 0);
 
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="mb-2">
         <p className="text-sm font-semibold text-slate-900">Ingresos vs. gastos — últimos 7 días</p>
       </div>
@@ -756,7 +756,7 @@ function TopProductsPanel() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-900">Productos más vendidos</p>
         <Link href="/products" className="text-xs font-medium text-violet-600 hover:text-violet-700">
@@ -811,7 +811,7 @@ function PendingQuotesWidget() {
   }, []);
 
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-900">Cotizaciones pendientes</p>
         <Link href="/quotes" className="text-xs font-medium text-violet-600 hover:text-violet-700">
@@ -877,7 +877,7 @@ function TopSellersWidget() {
   }, []);
 
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <p className="mb-4 text-sm font-semibold text-slate-900">Top vendedores hoy</p>
       {isLoading ? (
         <div className="flex items-center justify-center py-6">
@@ -992,7 +992,7 @@ function CashMovementsPanel({ cashMovements }: { cashMovements: CashMovement[] |
   const items = (cashMovements ?? []).slice(0, 5);
 
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-900">Movimientos de caja</p>
         <Link href="/cash-movements" className="text-xs font-medium text-violet-600 hover:text-violet-700">
@@ -1054,7 +1054,7 @@ function AlertsPanel({
   const hasAlerts = lowStockCount > 0 || pendingDebtsCount > 0 || expiringQuotes.length > 0;
 
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-900">Alertas importantes</p>
         <Link href="/quotes" className="text-xs font-medium text-violet-600 hover:text-violet-700">
@@ -1131,7 +1131,7 @@ function QuickSummaryPanel({
   ];
 
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <p className="mb-4 text-sm font-semibold text-slate-900">Resumen rápido</p>
       <ul className="space-y-2.5">
         {rows.map((row) => (
@@ -1169,7 +1169,7 @@ function QuickActions() {
           <Link
             key={action.label}
             href={action.href}
-            className="flex flex-col items-center gap-2 rounded-xl border border-slate-100 bg-white p-4 shadow-sm hover:border-violet-200 hover:bg-violet-50"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:border-violet-200 hover:bg-violet-50"
           >
             <action.Icon size={20} className="text-violet-600" />
             <span className="text-center text-xs font-medium text-slate-700">{action.label}</span>
@@ -1184,13 +1184,13 @@ function QuickActions() {
 
 function DashboardEmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
       <ShoppingBag size={48} className="text-slate-300" />
       <h2 className="text-lg font-semibold text-slate-900">Sin actividad en este período</h2>
       <p className="text-sm text-slate-500">Registrá tu primera venta del día desde el POS.</p>
       <Link
         href="/pos"
-        className="mt-2 inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700"
+        className="mt-2 inline-flex items-center justify-center rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700"
       >
         Ir al POS
       </Link>
@@ -1203,19 +1203,19 @@ function DashboardEmptyState() {
 function DashboardSkeleton() {
   return (
     <div className="min-h-full bg-slate-50 px-6 py-6">
-      <div className="mb-6 h-16 animate-pulse rounded-xl bg-white" />
+      <div className="mb-6 h-16 animate-pulse rounded-2xl bg-white" />
       <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-28 animate-pulse rounded-xl bg-white" />
+          <div key={i} className="h-28 animate-pulse rounded-2xl bg-white" />
         ))}
       </div>
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
-        <div className="h-64 animate-pulse rounded-xl bg-white lg:col-span-3" />
-        <div className="h-64 animate-pulse rounded-xl bg-white lg:col-span-2" />
+        <div className="h-64 animate-pulse rounded-2xl bg-white lg:col-span-3" />
+        <div className="h-64 animate-pulse rounded-2xl bg-white lg:col-span-2" />
       </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-48 animate-pulse rounded-xl bg-white" />
+          <div key={i} className="h-48 animate-pulse rounded-2xl bg-white" />
         ))}
       </div>
     </div>

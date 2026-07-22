@@ -700,7 +700,7 @@ export function ProductsInventory() {
               <p className="mt-1 text-xs text-slate-400">{'Crea tu primer servicio con el botón "Agregar servicio"'}</p>
             </div>
           ) : (
-            <div className="rounded-xl border border-slate-200 bg-white">
+            <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200">
                   <thead className="bg-slate-50">
@@ -735,7 +735,7 @@ export function ProductsInventory() {
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-1">
                             <button
-                              className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                               onClick={() => setEditingService(svc)}
                               title="Editar"
                               type="button"
@@ -743,7 +743,7 @@ export function ProductsInventory() {
                               <Pencil size={13} />
                             </button>
                             <button
-                              className={`rounded-md px-2 py-1 text-xs font-medium ${svc.isActive ? "text-slate-500 hover:bg-slate-100" : "text-emerald-600 hover:bg-emerald-50"}`}
+                              className={`rounded-lg px-2 py-1 text-xs font-medium ${svc.isActive ? "text-slate-500 hover:bg-slate-100" : "text-emerald-600 hover:bg-emerald-50"}`}
                               onClick={() => handleToggleService(svc.id)}
                               type="button"
                             >
@@ -767,14 +767,14 @@ export function ProductsInventory() {
       {/* Summary cards */}
       {activeMainTab === "Productos" ? (
         <div className="grid grid-cols-1 gap-4 border-b border-slate-200 px-6 py-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
               <Package className="text-violet-600" size={16} />
             </div>
             <p className="mt-2 text-xs font-medium text-slate-500">Total SKUs</p>
             <p className="mt-0.5 text-xl font-semibold text-slate-950">{inventorySummary.totalSkus}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
               <Tag className="text-emerald-600" size={16} />
             </div>
@@ -783,7 +783,7 @@ export function ProductsInventory() {
               {moneyFormatter.format(inventorySummary.totalStockValue)}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50">
               <AlertTriangle className="text-rose-600" size={16} />
             </div>
@@ -1029,7 +1029,7 @@ export function ProductsInventory() {
             <EmptyState onClear={clearFilters} />
           ) : null}
           {!isLoading && !loadError && filteredProducts.length > 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white">
+            <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200">
                   <thead className="bg-slate-50">
@@ -1138,7 +1138,7 @@ export function ProductsInventory() {
 
                 <div className="flex items-center gap-1">
                   <button
-                    className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+                    className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
                     disabled={safePage === 1}
                     onClick={() => changePage(safePage - 1)}
                     type="button"
@@ -1158,8 +1158,8 @@ export function ProductsInventory() {
                       <button
                         className={
                           p === safePage
-                            ? "h-7 min-w-[1.75rem] rounded-md bg-violet-600 px-2 text-xs font-semibold text-white"
-                            : "h-7 min-w-[1.75rem] rounded-md border border-slate-200 px-2 text-xs text-slate-700 hover:bg-slate-50"
+                            ? "h-7 min-w-[1.75rem] rounded-lg bg-violet-600 px-2 text-xs font-semibold text-white"
+                            : "h-7 min-w-[1.75rem] rounded-lg border border-slate-200 px-2 text-xs text-slate-700 hover:bg-slate-50"
                         }
                         key={p}
                         onClick={() => changePage(p)}
@@ -1171,7 +1171,7 @@ export function ProductsInventory() {
                   )}
 
                   <button
-                    className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+                    className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
                     disabled={safePage === totalPages}
                     onClick={() => changePage(safePage + 1)}
                     type="button"
@@ -1433,7 +1433,7 @@ function ProductRow({
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-1">
           <button
-            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             onClick={() => router.push(`/products/${product.id}`)}
             title="Editar"
             type="button"
@@ -1443,7 +1443,7 @@ function ProductRow({
 
           <div className="relative">
             <button
-              className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               onClick={onMenuToggle}
               type="button"
             >
@@ -1678,7 +1678,7 @@ function BulkConfirmModal({
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-sm rounded-xl bg-white shadow-xl"
+        className="w-full max-w-sm rounded-2xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -1699,7 +1699,7 @@ function BulkConfirmModal({
 
           <div className="flex justify-end gap-3 pt-2">
             <button
-              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               disabled={isSubmitting}
               onClick={onCancel}
               type="button"
@@ -1707,7 +1707,7 @@ function BulkConfirmModal({
               Cancelar
             </button>
             <button
-              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
               disabled={isSubmitting}
               onClick={onConfirm}
               type="button"
@@ -1805,7 +1805,7 @@ function ImportProductsModal({ onClose, onSuccess }: ImportProductsModalProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-xl bg-white shadow-xl"
+        className="w-full max-w-2xl rounded-2xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -1894,14 +1894,14 @@ function ImportProductsModal({ onClose, onSuccess }: ImportProductsModalProps) {
           {!result ? (
             <>
               <button
-                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 onClick={onClose}
                 type="button"
               >
                 Cancelar
               </button>
               <button
-                className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
                 disabled={rows.length === 0 || isSubmitting}
                 onClick={handleConfirm}
                 type="button"
@@ -1911,7 +1911,7 @@ function ImportProductsModal({ onClose, onSuccess }: ImportProductsModalProps) {
             </>
           ) : (
             <button
-              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
               onClick={handleFinish}
               type="button"
             >
@@ -1996,7 +1996,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl bg-white shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -2016,7 +2016,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
           <FormField htmlFor="product-name" label="Nombre">
             <input
               autoFocus
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="product-name"
               onChange={(e) => setName(e.target.value)}
@@ -2036,7 +2036,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
 
           <FormField htmlFor="product-category" label="Categoría">
             <select
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="product-category"
               onChange={(e) => setCategoryName(e.target.value)}
@@ -2051,7 +2051,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
 
           <FormField htmlFor="product-cost-price" label="Precio de costo">
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="product-cost-price"
               min="0"
@@ -2066,7 +2066,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
 
           <FormField htmlFor="product-sale-price" label="Precio de venta">
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="product-sale-price"
               min="0"
@@ -2081,7 +2081,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
 
           <FormField htmlFor="product-iva-rate" label="Alícuota de IVA">
             <select
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
               disabled={isSubmitting}
               id="product-iva-rate"
               onChange={(e) => setIvaRate(parseFloat(e.target.value))}
@@ -2095,7 +2095,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
           </FormField>
 
           {Number(salePrice) > 0 ? (
-            <div className="space-y-1 rounded-md bg-slate-50 p-3 text-xs text-slate-500">
+            <div className="space-y-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
               <div className="flex justify-between">
                 <span>Precio final (IVA incluido)</span>
                 <span className="font-medium text-slate-950">{formatMoney(salePrice)}</span>
@@ -2121,7 +2121,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
 
           <FormField htmlFor="product-stock" label="Stock inicial">
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="product-stock"
               min="0"
@@ -2142,7 +2142,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
 
           <div className="flex justify-end gap-3 pt-2">
             <button
-              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               disabled={isSubmitting}
               onClick={onClose}
               type="button"
@@ -2150,7 +2150,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
               Cancelar
             </button>
             <button
-              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
               disabled={isSubmitting}
               type="submit"
             >
@@ -2223,7 +2223,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl bg-white shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -2241,7 +2241,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
 
         <form className="space-y-4 px-6 py-5" onSubmit={handleSubmit}>
           {product.productCode ? (
-            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
               <p className="text-xs text-slate-500">Código del producto</p>
               <p className="font-mono text-sm font-semibold text-slate-700">{product.productCode}</p>
             </div>
@@ -2250,7 +2250,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
           <FormField htmlFor="edit-product-name" label="Nombre">
             <input
               autoFocus
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="edit-product-name"
               onChange={(e) => setName(e.target.value)}
@@ -2269,7 +2269,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
 
           <FormField htmlFor="edit-product-category" label="Categoría">
             <select
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="edit-product-category"
               onChange={(e) => setCategoryName(e.target.value)}
@@ -2284,7 +2284,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
 
           <FormField htmlFor="edit-product-cost-price" label="Precio de costo">
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="edit-product-cost-price"
               min="0"
@@ -2298,7 +2298,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
 
           <FormField htmlFor="edit-product-sale-price" label="Precio de venta">
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="edit-product-sale-price"
               min="0"
@@ -2312,7 +2312,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
 
           <FormField htmlFor="edit-product-iva-rate" label="Alícuota de IVA">
             <select
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-violet-500 focus:outline-none"
               disabled={isSubmitting}
               id="edit-product-iva-rate"
               onChange={(e) => setIvaRate(parseFloat(e.target.value))}
@@ -2326,7 +2326,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
           </FormField>
 
           {Number(salePrice) > 0 ? (
-            <div className="space-y-1 rounded-md bg-slate-50 p-3 text-xs text-slate-500">
+            <div className="space-y-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
               <div className="flex justify-between">
                 <span>Precio final (IVA incluido)</span>
                 <span className="font-medium text-slate-950">{formatMoney(salePrice)}</span>
@@ -2354,7 +2354,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Stock actual
             </label>
-            <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
               <span className="text-sm text-slate-700">
                 {numberFormatter.format(product.stock)} unidades
               </span>
@@ -2372,7 +2372,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
 
           <div className="flex justify-end gap-3 pt-2">
             <button
-              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               disabled={isSubmitting}
               onClick={onClose}
               type="button"
@@ -2380,7 +2380,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
               Cancelar
             </button>
             <button
-              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
               disabled={isSubmitting}
               type="submit"
             >
@@ -2451,7 +2451,7 @@ function AdjustStockModal({ product, onClose, onSuccess }: AdjustStockModalProps
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl bg-white shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -2484,7 +2484,7 @@ function AdjustStockModal({ product, onClose, onSuccess }: AdjustStockModalProps
           <FormField htmlFor="new-stock" label="Nuevo stock">
             <input
               autoFocus
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="new-stock"
               min="0"
@@ -2516,7 +2516,7 @@ function AdjustStockModal({ product, onClose, onSuccess }: AdjustStockModalProps
 
           <FormField htmlFor="adjustment-reason" label="Motivo del ajuste">
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="adjustment-reason"
               onChange={(e) => setReason(e.target.value)}
@@ -2535,7 +2535,7 @@ function AdjustStockModal({ product, onClose, onSuccess }: AdjustStockModalProps
 
           <div className="flex justify-end gap-3 pt-2">
             <button
-              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               disabled={isSubmitting}
               onClick={onClose}
               type="button"
@@ -2543,7 +2543,7 @@ function AdjustStockModal({ product, onClose, onSuccess }: AdjustStockModalProps
               Cancelar
             </button>
             <button
-              className="rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
               disabled={isSubmitting}
               type="submit"
             >
@@ -2604,7 +2604,7 @@ function DeleteProductModal({ product, onClose, onSuccess }: DeleteProductModalP
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-xl bg-white shadow-xl"
+        className="w-full max-w-sm rounded-2xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -2628,7 +2628,7 @@ function DeleteProductModal({ product, onClose, onSuccess }: DeleteProductModalP
           <FormField htmlFor="delete-password" label="Contraseña">
             <input
               autoFocus
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="delete-password"
               onChange={(e) => setPassword(e.target.value)}
@@ -2646,7 +2646,7 @@ function DeleteProductModal({ product, onClose, onSuccess }: DeleteProductModalP
 
           <div className="flex justify-end gap-3 pt-2">
             <button
-              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               disabled={isSubmitting}
               onClick={onClose}
               type="button"
@@ -2654,7 +2654,7 @@ function DeleteProductModal({ product, onClose, onSuccess }: DeleteProductModalP
               Cancelar
             </button>
             <button
-              className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
               disabled={isSubmitting || !password}
               onClick={() => void handleDelete()}
               type="button"
@@ -2743,7 +2743,7 @@ function CategoryManagerModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl bg-white shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -2819,7 +2819,7 @@ function CategoryManagerModal({
             <div className="flex gap-2">
               <input
                 autoFocus
-                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
                 onChange={(e) => {
                   setNewCategoryName(e.target.value);
                   setAddError(null);
@@ -2835,7 +2835,7 @@ function CategoryManagerModal({
                 value={newCategoryName}
               />
               <button
-                className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
                 disabled={addLoading}
                 onClick={() => void handleAdd()}
                 type="button"
@@ -2902,7 +2902,7 @@ function ProductImageDropzone({ id, imageUrl, onChange, disabled }: ProductImage
   return (
     <FormField htmlFor={id} label="Foto del producto">
       <div
-        className={`flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-4 text-center transition-colors ${
+        className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
           isDragging ? "border-violet-500 bg-violet-50" : "border-slate-300 bg-slate-50"
         }`}
         onDragLeave={() => setIsDragging(false)}
@@ -2920,7 +2920,7 @@ function ProductImageDropzone({ id, imageUrl, onChange, disabled }: ProductImage
         {imageUrl ? (
           <div className="relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img alt="Producto" className="h-20 w-20 rounded-md object-cover" src={imageUrl} />
+            <img alt="Producto" className="h-20 w-20 rounded-lg object-cover" src={imageUrl} />
             <button
               className="absolute -right-2 -top-2 rounded-full bg-white p-0.5 text-slate-500 shadow hover:text-rose-600"
               disabled={disabled}
@@ -2957,7 +2957,7 @@ function ProductImageDropzone({ id, imageUrl, onChange, disabled }: ProductImage
 
 function LoadingState() {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
+    <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           className="h-14 animate-pulse border-b border-slate-100 bg-slate-50 last:border-b-0"
@@ -2978,7 +2978,7 @@ function ErrorState({ message }: { message: string }) {
 
 function EmptyState({ onClear }: { onClear: () => void }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+    <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center shadow-sm">
       <Package className="mx-auto mb-3 text-slate-300" size={32} />
       <p className="text-sm font-semibold text-slate-950">
         No hay productos que coincidan
@@ -3048,7 +3048,7 @@ function EditServiceModal({ service, onClose, onSuccess }: EditServiceModalProps
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl bg-white shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -3060,7 +3060,7 @@ function EditServiceModal({ service, onClose, onSuccess }: EditServiceModalProps
           <FormField htmlFor="esvc-name" label="Nombre del servicio">
             <input
               autoFocus
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="esvc-name"
               onChange={(e) => setName(e.target.value)}
@@ -3072,7 +3072,7 @@ function EditServiceModal({ service, onClose, onSuccess }: EditServiceModalProps
 
           <FormField htmlFor="esvc-price" label="Precio">
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="esvc-price"
               min="0.01"
@@ -3086,7 +3086,7 @@ function EditServiceModal({ service, onClose, onSuccess }: EditServiceModalProps
 
           <FormField htmlFor="esvc-desc" label="Descripción (opcional)">
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="esvc-desc"
               onChange={(e) => setDescription(e.target.value)}
@@ -3103,7 +3103,7 @@ function EditServiceModal({ service, onClose, onSuccess }: EditServiceModalProps
 
           <div className="flex justify-end gap-3 pt-2">
             <button
-              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               disabled={isSubmitting}
               onClick={onClose}
               type="button"
@@ -3111,7 +3111,7 @@ function EditServiceModal({ service, onClose, onSuccess }: EditServiceModalProps
               Cancelar
             </button>
             <button
-              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
               disabled={isSubmitting}
               type="submit"
             >
@@ -3174,7 +3174,7 @@ function CreateServiceModal({ onClose, onSuccess }: CreateServiceModalProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl bg-white shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -3186,7 +3186,7 @@ function CreateServiceModal({ onClose, onSuccess }: CreateServiceModalProps) {
           <FormField htmlFor="svc-name" label="Nombre del servicio">
             <input
               autoFocus
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="svc-name"
               onChange={(e) => setName(e.target.value)}
@@ -3199,7 +3199,7 @@ function CreateServiceModal({ onClose, onSuccess }: CreateServiceModalProps) {
 
           <FormField htmlFor="svc-price" label="Precio">
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="svc-price"
               min="0.01"
@@ -3214,7 +3214,7 @@ function CreateServiceModal({ onClose, onSuccess }: CreateServiceModalProps) {
 
           <FormField htmlFor="svc-desc" label="Descripción (opcional)">
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="svc-desc"
               onChange={(e) => setDescription(e.target.value)}
@@ -3232,7 +3232,7 @@ function CreateServiceModal({ onClose, onSuccess }: CreateServiceModalProps) {
 
           <div className="flex justify-end gap-3 pt-2">
             <button
-              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               disabled={isSubmitting}
               onClick={onClose}
               type="button"
@@ -3240,7 +3240,7 @@ function CreateServiceModal({ onClose, onSuccess }: CreateServiceModalProps) {
               Cancelar
             </button>
             <button
-              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
               disabled={isSubmitting}
               type="submit"
             >

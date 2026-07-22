@@ -360,7 +360,7 @@ export function Returns() {
 
           {/* Left: Sales list */}
           <div className="flex flex-col gap-4">
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
               <div className="border-b border-slate-100 px-5 py-4">
                 <h2 className="text-sm font-semibold text-slate-900">Seleccioná una venta</h2>
                 <p className="mt-0.5 text-xs text-slate-500">Buscá por ID, cliente o fecha</p>
@@ -449,13 +449,13 @@ export function Returns() {
           {/* Right: Return form */}
           <div className="flex flex-col gap-4">
             {!selectedSale ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white py-20 text-center">
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-100 bg-white py-20 text-center shadow-sm">
                 <RotateCcw className="mb-3 h-10 w-10 text-slate-300" />
                 <p className="text-sm font-medium text-slate-600">Seleccioná una venta</p>
                 <p className="mt-1 text-xs text-slate-400">Los ítems aparecerán aquí para procesar la devolución</p>
               </div>
             ) : (
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
                 <div className="border-b border-slate-100 px-5 py-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -522,12 +522,12 @@ export function Returns() {
                                   type="button"
                                   onClick={() => handleQuantityChange(item.productId!, String(currentQty - 1), maxQty)}
                                   disabled={currentQty === 0}
-                                  className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                                 >
                                   −
                                 </button>
                                 <input
-                                  className="w-14 rounded-md border border-slate-200 px-2 py-1 text-center text-sm font-semibold text-slate-900 focus:border-violet-400 focus:outline-none"
+                                  className="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm font-semibold text-slate-900 focus:border-violet-400 focus:outline-none"
                                   type="number"
                                   min="0"
                                   max={maxQty}
@@ -538,7 +538,7 @@ export function Returns() {
                                   type="button"
                                   onClick={() => handleQuantityChange(item.productId!, String(currentQty + 1), maxQty)}
                                   disabled={currentQty >= maxQty}
-                                  className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                                 >
                                   +
                                 </button>
@@ -892,7 +892,7 @@ function ReturnHistoryPanel() {
 
   return (
     <div className="mx-auto w-full max-w-screen-xl px-4 py-6 sm:px-6">
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-slate-900">Historial de devoluciones</h2>
 
@@ -1053,7 +1053,7 @@ function ReturnHistoryPanel() {
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={!pagination.hasPrev}
-                className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
               >
                 Anterior
               </button>
@@ -1064,7 +1064,7 @@ function ReturnHistoryPanel() {
                 type="button"
                 onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
                 disabled={!pagination.hasNext}
-                className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
               >
                 Siguiente
               </button>

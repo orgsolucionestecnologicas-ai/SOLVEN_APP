@@ -168,7 +168,7 @@ function QuickCards({ onNavigate }: { onNavigate: (id: string) => void }) {
           key={card.label}
           type="button"
           onClick={() => onNavigate(card.action)}
-          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-shadow hover:shadow-md"
+          className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3.5 text-left shadow-sm transition-shadow hover:shadow-md"
         >
           <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${card.color}`}>
             <card.icon className="h-4 w-4" />
@@ -269,7 +269,7 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
   return (
     <div className="space-y-6">
       {/* Store info */}
-      <form onSubmit={handleStoreSubmit} className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <form onSubmit={handleStoreSubmit} className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-semibold text-slate-900">Información del negocio</h3>
           <p className="mt-0.5 text-xs text-slate-500">Datos generales visibles en recibos y reportes.</p>
@@ -420,7 +420,7 @@ function GeneralSection({ onBusinessNameChange }: { onBusinessNameChange: (name:
       </form>
 
       {/* Toggles */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-semibold text-slate-900">Preferencias del sistema</h3>
           <p className="mt-0.5 text-xs text-slate-500">Se guardan automáticamente.</p>
@@ -463,7 +463,7 @@ function TicketPreview({
   receiptFooterMessage: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-6 py-4">
         <h3 className="text-sm font-semibold text-slate-900">Vista previa del ticket</h3>
         <p className="mt-0.5 text-xs text-slate-500">Se actualiza mientras editás los campos.</p>
@@ -575,7 +575,7 @@ function DocumentosSection({
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-      <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
+      <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-100 bg-white shadow-sm lg:col-span-2">
       <div className="border-b border-slate-100 px-6 py-4">
         <h3 className="text-sm font-semibold text-slate-900">Personalización del ticket</h3>
         <p className="mt-0.5 text-xs text-slate-500">Logo, pie de página y mensaje de agradecimiento que se imprimen en cada ticket.</p>
@@ -734,7 +734,7 @@ function SeguridadSection() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-semibold text-slate-900">Cambiar contraseña</h3>
           <p className="mt-0.5 text-xs text-slate-500">Actualiza tu contraseña de acceso al sistema.</p>
@@ -813,7 +813,7 @@ function SeguridadSection() {
       </div>
 
       {/* Session */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-semibold text-slate-900">Sesión activa</h3>
           <p className="mt-0.5 text-xs text-slate-500">Cierra la sesión en este dispositivo.</p>
@@ -868,7 +868,7 @@ function SistemaSection() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-semibold text-slate-900">Información del sistema</h3>
           <p className="mt-0.5 text-xs text-slate-500">Detalles técnicos de la instalación actual.</p>
@@ -903,7 +903,7 @@ function SistemaSection() {
       </div>
 
       {role === "OWNER" ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="flex items-start gap-3">
             <Download className="mt-0.5 h-5 w-5 flex-shrink-0 text-violet-600" />
             <div className="flex-1">
@@ -1018,7 +1018,7 @@ function AuditLogSection() {
     "rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100";
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-6 py-4">
         <h3 className="text-sm font-semibold text-slate-900">Registro de actividad</h3>
         <p className="mt-0.5 text-xs text-slate-500">Historial de acciones realizadas por los usuarios del negocio.</p>
@@ -1183,7 +1183,7 @@ function NotificacionesSection() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-semibold text-slate-900">Alertas por email</h3>
           <p className="mt-0.5 text-xs text-slate-500">Se envían al email del propietario de la cuenta.</p>
@@ -1206,7 +1206,7 @@ function NotificacionesSection() {
           ))}
         </div>
       </div>
-      <form onSubmit={handleSaveThreshold} className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <form onSubmit={handleSaveThreshold} className="rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h3 className="text-sm font-semibold text-slate-900">Gastos de alto monto</h3>
           <p className="mt-0.5 text-xs text-slate-500">
@@ -1254,7 +1254,7 @@ function NotificacionesSection() {
 
 function ComingSoonSection({ label }: { label: string }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 py-16 text-center">
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-16 text-center">
       <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
         <SettingsIcon className="h-6 w-6 text-slate-400" />
       </div>
@@ -1308,7 +1308,7 @@ function RightSidebar({
   return (
     <aside className="flex flex-col gap-4">
       {/* Logo upload */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <p className="mb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Logo del negocio</p>
         <label
           htmlFor="logo-upload"
@@ -1345,7 +1345,7 @@ function RightSidebar({
       </div>
 
       {/* Quick actions */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <p className="mb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Acciones rápidas</p>
         <div className="space-y-2">
           <button
@@ -1360,7 +1360,7 @@ function RightSidebar({
       </div>
 
       {/* System info summary */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <p className="mb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Resumen</p>
         <div className="space-y-2.5">
           {[
@@ -1503,7 +1503,7 @@ function FacturacionARCASection() {
       {success && <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>}
 
       {/* Habilitar/deshabilitar */}
-      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <div>
           <p className="text-sm font-medium text-slate-900">Habilitar facturación electrónica</p>
           <p className="text-xs text-slate-500">Muestra el botón &quot;Emitir Factura&quot; en el POS tras cada venta</p>
@@ -1512,7 +1512,7 @@ function FacturacionARCASection() {
       </div>
 
       {/* Datos del emisor */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <h3 className="mb-4 text-sm font-semibold text-slate-800">Datos del emisor</h3>
         <form onSubmit={handleSaveConfig} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -1590,7 +1590,7 @@ function FacturacionARCASection() {
       </div>
 
       {/* Certificados */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-800">Certificados digitales</h3>
           {hasCert ? (
@@ -1749,7 +1749,7 @@ export function Settings() {
         <div className="flex gap-5">
           {/* Left sidebar — categories */}
           <nav className="hidden w-52 flex-shrink-0 lg:block">
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
               {SECTION_GROUPS.map((group) => {
                 const isExpanded = expandedGroups[group.id];
                 const categoriesInGroup = visibleCategories.filter((cat) => cat.group === group.id);

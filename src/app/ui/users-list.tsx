@@ -264,7 +264,7 @@ export function UsersList() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
@@ -310,7 +310,7 @@ export function UsersList() {
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-800">{user.name || "—"}</td>
                   <td className="px-4 py-3">
-                    <span className="rounded-md bg-violet-100 px-2 py-1 font-mono text-xs font-semibold text-violet-700">
+                    <span className="rounded-lg bg-violet-100 px-2 py-1 font-mono text-xs font-semibold text-violet-700">
                       {user.userCode ?? "—"}
                     </span>
                   </td>
@@ -421,7 +421,7 @@ export function UsersList() {
 
       {deleteTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
             <div className="px-6 py-5">
               <p className="text-sm font-semibold text-slate-950">¿Eliminar usuario?</p>
               <p className="mt-1.5 text-sm text-slate-500">
@@ -459,7 +459,7 @@ export function UsersList() {
 
       {deactivateTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
             <div className="px-6 py-5">
               <p className="text-sm font-semibold text-slate-950">¿Desactivar usuario?</p>
               <p className="mt-1.5 text-sm text-slate-500">
@@ -525,7 +525,7 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+      <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <p className="text-sm font-semibold text-slate-950">Agregar usuario</p>
           <button className="text-slate-400 hover:text-slate-600" onClick={onClose} type="button">

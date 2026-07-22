@@ -334,7 +334,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
           <div className="space-y-6 lg:col-span-2">
             <form id="new-product-form" onSubmit={handleSubmit}>
               {/* Section 1 — Información básica */}
-              <div className="rounded-xl border border-slate-200 bg-white p-6">
+              <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
                 <div className="mb-5 flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
                     <Tag className="text-blue-600" size={15} />
@@ -372,7 +372,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                         value={sku}
                       />
                       <button
-                        className="flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                        className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
                         onClick={handleGenerateSku}
                         title="Generar SKU desde nombre"
                         type="button"
@@ -383,7 +383,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                     </div>
                   </FormField>
 
-                  <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                     <p className="text-xs text-slate-500">Código del producto</p>
                     {isEditMode && initialData?.productCode ? (
                       <p className="font-mono text-sm font-semibold text-slate-700">{initialData.productCode}</p>
@@ -485,7 +485,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
               </div>
 
               {/* Section 2 — Precios */}
-              <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+              <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
                 <div className="mb-5 flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100">
                     <Diamond className="text-violet-600" size={15} />
@@ -560,7 +560,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
               </div>
 
               {/* Section 3 — Inventario */}
-              <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+              <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
                 <div className="mb-5 flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
                     <Calendar className="text-emerald-600" size={15} />
@@ -574,7 +574,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     <FormField htmlFor="pf-stock" label="Stock actual" required={!isEditMode}>
                       {isEditMode ? (
-                        <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                           <span className="text-sm text-slate-700">{stock} unidades</span>
                           <span className="text-xs text-slate-400">Ajustá desde inventario</span>
                         </div>
@@ -695,7 +695,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
               </div>
 
               {/* Section 4 — Información adicional */}
-              <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+              <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
                 <div className="mb-5 flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
                     <FileText className="text-slate-600" size={15} />
@@ -708,7 +708,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                 <div className="space-y-4">
                   <FormField htmlFor="pf-description" label="Descripción">
                     <textarea
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
                       disabled={isSubmitting}
                       id="pf-description"
                       onChange={(e) => setDescription(e.target.value)}
@@ -790,7 +790,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
           <div className="lg:col-span-1">
             <div className="sticky top-6 space-y-4">
               {/* Panel 1: Imagen */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <h3 className="mb-3 text-sm font-semibold text-slate-950">
                   Imagen del producto
                 </h3>
@@ -809,7 +809,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
               </div>
 
               {/* Panel 2: Vista previa */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <h3 className="mb-3 text-sm font-semibold text-slate-950">
                   Vista previa
                 </h3>
@@ -837,7 +837,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
               </div>
 
               {/* Panel 3: Resumen del producto */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <h3 className="mb-3 text-sm font-semibold text-slate-950">
                   Resumen del producto
                 </h3>
@@ -890,7 +890,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
               </div>
 
               {/* Panel 4: Inventario */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <h3 className="mb-3 text-sm font-semibold text-slate-950">
                   Inventario
                 </h3>
@@ -996,7 +996,7 @@ function NewSupplierModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
         <h3 className="mb-4 text-sm font-semibold text-slate-950">Nuevo proveedor</h3>
         <div className="space-y-3">
           <FormField htmlFor="ns-name" label="Nombre" required>
@@ -1059,10 +1059,10 @@ function NewSupplierModal({
 }
 
 const inputClass =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none";
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none";
 
 const selectClass =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-violet-500 focus:outline-none";
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-violet-500 focus:outline-none";
 
 type FormFieldProps = {
   label: string;
@@ -1090,7 +1090,7 @@ function FormField({
         {tooltip ? (
           <span className="group relative ml-0.5 cursor-default">
             <Info className="text-slate-400" size={12} />
-            <span className="absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs text-white group-hover:block">
+            <span className="absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-800 px-2 py-1 text-xs text-white group-hover:block">
               {tooltip}
             </span>
           </span>
