@@ -284,12 +284,12 @@ export function CashRegisterOpen({ onOpened }: { onOpened: () => void }) {
                 Ingresa el monto de efectivo con el que inicias la caja.
               </p>
               <div className="mb-4">
-                <div className="flex overflow-hidden rounded-xl border-2 border-slate-200 focus-within:border-violet-500">
+                <div className="flex overflow-hidden rounded-lg border-2 border-slate-200 focus-within:border-violet-500">
                   <span className="border-r border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold text-slate-500">
                     AR$
                   </span>
                   <input
-                    className="flex-1 px-4 py-3 text-2xl font-bold text-slate-950 focus:outline-none"
+                    className="flex-1 px-4 py-3 text-2xl font-semibold tracking-tight text-slate-900 focus:outline-none"
                     min="0"
                     onChange={(e) => setOpeningAmount(e.target.value)}
                     placeholder="0"
@@ -332,7 +332,7 @@ export function CashRegisterOpen({ onOpened }: { onOpened: () => void }) {
                         {denom.label}
                       </p>
                       <input
-                        className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-center text-sm focus:border-violet-500 focus:outline-none"
+                        className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-center text-sm focus:border-violet-500 focus:outline-none"
                         min="0"
                         onChange={(e) =>
                           setDenomCount(denom.key, parseInt(e.target.value) || 0)
@@ -398,7 +398,7 @@ export function CashRegisterOpen({ onOpened }: { onOpened: () => void }) {
 
             <div className="mt-5 rounded-xl bg-violet-600 p-4 text-white">
               <p className="text-xs font-medium text-violet-200">Monto inicial en efectivo</p>
-              <p className="mt-1 text-3xl font-bold">{fmt(openingAmountNum)}</p>
+              <p className="mt-1 text-3xl font-semibold tracking-tight">{fmt(openingAmountNum)}</p>
             </div>
 
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">

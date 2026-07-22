@@ -96,7 +96,7 @@ function emptyBreakdown(): BreakdownCounts {
 }
 
 function SkeletonCard() {
-  return <div className="h-24 animate-pulse rounded-xl border border-slate-200 bg-slate-50" />;
+  return <div className="h-24 animate-pulse rounded-2xl border border-slate-100 bg-slate-50" />;
 }
 
 export function CashRegisterClose({
@@ -536,7 +536,7 @@ export function CashRegisterClose({
                           </td>
                           <td className="px-4 py-2.5">
                             <input
-                              className="w-20 rounded-md border border-slate-200 px-2 py-1 text-center text-sm focus:border-violet-500 focus:outline-none"
+                              className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm focus:border-violet-500 focus:outline-none"
                               min="0"
                               onChange={(e) =>
                                 setDenomCount(denom.key, parseInt(e.target.value) || 0)
@@ -575,7 +575,7 @@ export function CashRegisterClose({
                       <td />
                       <td className="px-4 py-3">
                         <input
-                          className="w-32 rounded-md border border-emerald-300 bg-white px-2 py-1.5 text-right text-base font-bold text-emerald-700 focus:border-violet-500 focus:outline-none"
+                          className="w-32 rounded-lg border border-emerald-300 bg-white px-2 py-1.5 text-right text-base font-bold text-emerald-700 focus:border-violet-500 focus:outline-none"
                           min="0"
                           onChange={(e) => setManualTotal(e.target.value)}
                           step="0.01"
@@ -702,7 +702,7 @@ export function CashRegisterClose({
               <div className="my-3 border-t border-slate-200" />
               <div className="rounded-xl bg-violet-600 p-3 text-white">
                 <p className="text-xs text-violet-200">Total esperado en caja</p>
-                <p className="mt-0.5 text-2xl font-bold">{fmt(expectedAmount)}</p>
+                <p className="mt-0.5 text-2xl font-semibold tracking-tight">{fmt(expectedAmount)}</p>
                 <p className="mt-1 text-xs text-violet-300">
                   Apertura + Entradas − Salidas
                 </p>

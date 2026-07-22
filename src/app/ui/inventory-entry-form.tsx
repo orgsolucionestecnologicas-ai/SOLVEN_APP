@@ -351,7 +351,7 @@ export function InventoryEntryForm() {
           {/* Left: form sections */}
           <div className="space-y-6 lg:col-span-2">
             {/* Section 1 */}
-            <div className="rounded-xl border border-slate-200 bg-white p-6">
+            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
               <div className="mb-5 flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
                   <PackagePlus className="text-emerald-600" size={15} />
@@ -478,7 +478,7 @@ export function InventoryEntryForm() {
                     Notas (opcional)
                   </label>
                   <textarea
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
                     id="ent-notas"
                     onChange={(e) => setNotas(e.target.value)}
                     placeholder="Observaciones sobre esta entrada de stock..."
@@ -490,7 +490,7 @@ export function InventoryEntryForm() {
             </div>
 
             {/* Section 2: Products */}
-            <div className="rounded-xl border border-slate-200 bg-white p-6">
+            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
               <div className="mb-5 flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
                   <Package className="text-emerald-600" size={15} />
@@ -618,7 +618,7 @@ export function InventoryEntryForm() {
                             <td className="px-4 py-3">
                               <div className="flex justify-center">
                                 <input
-                                  className="w-20 rounded-md border border-slate-300 px-2 py-1 text-center text-sm text-slate-950 focus:border-violet-500 focus:outline-none"
+                                  className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-center text-sm text-slate-950 focus:border-violet-500 focus:outline-none"
                                   min="1"
                                   onChange={(e) =>
                                     updateItem(
@@ -642,7 +642,7 @@ export function InventoryEntryForm() {
                                   AR$
                                 </span>
                                 <input
-                                  className="w-24 rounded-md border border-slate-300 px-2 py-1 text-right text-sm text-slate-950 focus:border-violet-500 focus:outline-none"
+                                  className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm text-slate-950 focus:border-violet-500 focus:outline-none"
                                   min="0"
                                   onChange={(e) =>
                                     updateItem(
@@ -660,7 +660,7 @@ export function InventoryEntryForm() {
                             <td className="px-4 py-3">
                               <div className="flex justify-center">
                                 <select
-                                  className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 focus:border-violet-500 focus:outline-none"
+                                  className="rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 focus:border-violet-500 focus:outline-none"
                                   onChange={(e) =>
                                     updateItem(
                                       item.productId,
@@ -688,7 +688,7 @@ export function InventoryEntryForm() {
                             </td>
                             <td className="px-3 py-3">
                               <button
-                                className="rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                                className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                                 onClick={() => removeItem(item.productId)}
                                 type="button"
                               >
@@ -725,7 +725,7 @@ export function InventoryEntryForm() {
             </div>
 
             {/* Section 3: Totales */}
-            <div className="rounded-xl border border-slate-200 bg-white p-6">
+            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
               <h2 className="mb-4 text-sm font-semibold text-slate-950">
                 Totales y ajustes adicionales
               </h2>
@@ -822,7 +822,7 @@ export function InventoryEntryForm() {
             ) : null}
 
             {/* Bottom bar */}
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-6 py-4">
+            <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white px-6 py-4 shadow-sm">
               <button
                 className="flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                 disabled={isSubmitting}
@@ -848,7 +848,7 @@ export function InventoryEntryForm() {
           <div className="lg:col-span-1">
             <div className="sticky top-6 space-y-4">
               {/* Panel 1: Resumen */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <h3 className="mb-3 text-sm font-semibold text-slate-950">
                   Resumen de la entrada
                 </h3>
@@ -856,7 +856,7 @@ export function InventoryEntryForm() {
                   <p className="text-xs text-slate-500">
                     Total productos: {entryItems.length}
                   </p>
-                  <p className="mt-1 text-2xl font-bold text-emerald-600">
+                  <p className="mt-1 text-2xl font-semibold tracking-tight text-emerald-600">
                     AR$ {moneyFmt.format(totalFinal)}
                   </p>
                 </div>
@@ -902,7 +902,7 @@ export function InventoryEntryForm() {
               </div>
 
               {/* Panel 3: Entradas recientes */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-slate-950">
                     Entradas recientes
@@ -953,7 +953,7 @@ export function InventoryEntryForm() {
               </div>
 
               {/* Panel 4: Documentos */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                 <h3 className="mb-3 text-sm font-semibold text-slate-950">
                   Documentos adjuntos
                 </h3>
@@ -974,10 +974,10 @@ export function InventoryEntryForm() {
 }
 
 const inputClass =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none";
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none";
 
 const selectClass =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-violet-500 focus:outline-none";
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-violet-500 focus:outline-none";
 
 const labelClass = "mb-1.5 block text-sm font-medium text-slate-700";
 

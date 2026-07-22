@@ -111,7 +111,7 @@ export function CustomerNewForm() {
       <div className="px-6 py-6">
         <div className="max-w-2xl">
           <form id="new-customer-form" onSubmit={handleSubmit}>
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
               <div className="mb-5 flex items-center gap-2">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-600">
                   <User size={12} className="text-white" />
