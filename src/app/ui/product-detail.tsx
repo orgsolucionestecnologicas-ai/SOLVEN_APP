@@ -95,7 +95,7 @@ export function ProductPriceHistory({ productId }: { productId: string }) {
       )}
 
       {!loading && !error && entries.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white py-12 text-center">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white py-12 text-center shadow-sm">
           <p className="text-sm text-slate-500">Sin cambios de precio registrados para este producto.</p>
         </div>
       )}
@@ -103,7 +103,7 @@ export function ProductPriceHistory({ productId }: { productId: string }) {
       {!loading && !error && entries.length > 0 && (
         <ul className="space-y-3">
           {entries.map((entry) => (
-            <li key={entry.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <li key={entry.id} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between gap-2">
                 <span className="text-sm font-semibold text-slate-700">{entry.user.name}</span>
                 <span className="flex-shrink-0 text-xs text-slate-400">{formatDate(entry.createdAt)}</span>
@@ -159,7 +159,7 @@ export function ProductMovementsTimeline({ productId }: { productId: string }) {
       )}
 
       {!loading && !error && movements.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white py-12 text-center">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white py-12 text-center shadow-sm">
           <p className="text-sm text-slate-500">Sin movimientos registrados para este producto.</p>
         </div>
       )}
@@ -182,7 +182,7 @@ export function ProductMovementsTimeline({ productId }: { productId: string }) {
                     style={{ top: "2px" }}
                   />
 
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <span

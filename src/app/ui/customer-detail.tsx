@@ -379,7 +379,7 @@ export function CustomerDetail() {
       </div>
 
       {/* Customer card */}
-      <div className="mx-6 mt-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mx-6 mt-5 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start gap-5">
           <div className="flex items-center gap-4">
             <div
@@ -395,7 +395,7 @@ export function CustomerDetail() {
                 </span>
               </div>
               {totalDebt > 0 ? (
-                <p className="mt-1 text-3xl font-bold text-rose-700">
+                <p className="mt-1 text-3xl font-semibold tracking-tight text-rose-700">
                   Deuda pendiente: {fmtMoney(totalDebt)}
                 </p>
               ) : null}
@@ -496,11 +496,11 @@ export function CustomerDetail() {
         {/* Right sidebar */}
         <aside className="ml-5 w-72 shrink-0 space-y-4">
           {/* Panel 1: Resumen de deuda */}
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-slate-950">Resumen de deuda</h3>
             <div className="rounded-lg bg-rose-50 p-3 text-center">
               <p className="text-xs text-slate-500">Saldo pendiente</p>
-              <p className="mt-1 text-2xl font-bold text-rose-600">{fmtMoney(totalDebt)}</p>
+              <p className="mt-1 text-2xl font-semibold tracking-tight text-rose-600">{fmtMoney(totalDebt)}</p>
               <p className="mt-0.5 text-xs text-slate-400">
                 En {activeDebts.length} factura{activeDebts.length !== 1 ? "s" : ""} pendiente{activeDebts.length !== 1 ? "s" : ""}
               </p>
@@ -533,7 +533,7 @@ export function CustomerDetail() {
           </div>
 
           {/* Panel 2: Estadísticas */}
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-950">Estadísticas del cliente</h3>
               <button className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50" type="button">
@@ -553,7 +553,7 @@ export function CustomerDetail() {
 
           {/* Panel 3: Contacto */}
           {(customer.phone ?? customer.email ?? customer.address ?? customer.taxId) ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Contacto</h3>
               <div className="space-y-2">
                 {customer.phone ? (
@@ -592,7 +592,7 @@ export function CustomerDetail() {
           ) : null}
 
           {/* Panel 3: Notas */}
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-950">Notas del cliente</h3>
               <button className="text-xs text-violet-600 hover:text-violet-800" type="button">
@@ -623,7 +623,7 @@ export function CustomerDetail() {
 
       {isDeleteConfirming ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onClick={() => !isDeleting && setIsDeleteConfirming(false)}>
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-5">
               <h2 className="text-sm font-semibold text-slate-950">Eliminar cliente</h2>
               <p className="mt-2 text-sm text-slate-600">
@@ -637,7 +637,7 @@ export function CustomerDetail() {
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
               <button
-                className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
                 disabled={isDeleting}
                 onClick={() => setIsDeleteConfirming(false)}
                 type="button"
@@ -645,7 +645,7 @@ export function CustomerDetail() {
                 Cancelar
               </button>
               <button
-                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
                 disabled={isDeleting}
                 onClick={() => void handleDelete()}
                 type="button"
@@ -697,7 +697,7 @@ function SalesTable({
     return <p className="py-4 text-center text-sm text-slate-400">Sin compras registradas</p>;
   }
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
       <table className="min-w-full divide-y divide-slate-200">
         <thead className="bg-slate-50">
           <tr>
@@ -770,7 +770,7 @@ function PaymentsTable({
   }
   const debtMap = new Map(allDebts.map((d) => [d.id, d]));
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
       <table className="min-w-full divide-y divide-slate-200">
         <thead className="bg-slate-50">
           <tr>
@@ -991,7 +991,7 @@ function DeudaTab({
         const paid = total - remaining;
         const paidPct = total > 0 ? Math.round((paid / total) * 100) : 0;
         return (
-          <div className="rounded-xl border border-slate-200 bg-white p-4" key={debt.id}>
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm" key={debt.id}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-950">Factura {saleNumber(debt.id)}</p>
@@ -1028,7 +1028,7 @@ function DeudaTab({
 
 function DocumentosTab() {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white py-16">
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white py-16">
       <FileText className="mb-3 text-slate-300" size={40} />
       <p className="text-sm font-semibold text-slate-950">Próximamente</p>
       <p className="mt-1 text-xs text-slate-400">
@@ -1117,7 +1117,7 @@ function EditCustomerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h2 className="text-sm font-semibold text-slate-950">Editar cliente</h2>
           <button className="text-slate-400 hover:text-slate-700" onClick={onClose} type="button">✕</button>
@@ -1129,7 +1129,7 @@ function EditCustomerModal({
             </label>
             <input
               autoFocus
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="edit-name"
               onChange={(e) => setName(e.target.value)}
@@ -1147,7 +1147,7 @@ function EditCustomerModal({
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
               <input
-                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
                 disabled={isSubmitting}
                 id="edit-phone"
                 onChange={(e) => setPhone(e.target.value)}
@@ -1166,7 +1166,7 @@ function EditCustomerModal({
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
               <input
-                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
                 disabled={isSubmitting}
                 id="edit-email"
                 onChange={(e) => setEmail(e.target.value)}
@@ -1185,7 +1185,7 @@ function EditCustomerModal({
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
               <input
-                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
                 disabled={isSubmitting}
                 id="edit-address"
                 onChange={(e) => setAddress(e.target.value)}
@@ -1204,7 +1204,7 @@ function EditCustomerModal({
             <div className="relative">
               <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
               <input
-                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
                 disabled={isSubmitting}
                 id="edit-tax-id"
                 onChange={(e) => setTaxId(e.target.value)}
@@ -1221,7 +1221,7 @@ function EditCustomerModal({
               <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
             </label>
             <textarea
-              className="w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="edit-internal-notes"
               onChange={(e) => setInternalNotes(e.target.value)}
@@ -1240,7 +1240,7 @@ function EditCustomerModal({
               <span className="ml-1.5 text-xs font-normal text-slate-400">(opcional)</span>
             </label>
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="edit-birth-date"
               onChange={(e) => setBirthDate(e.target.value)}
@@ -1257,7 +1257,7 @@ function EditCustomerModal({
             <div className="relative">
               <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
               <input
-                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
                 disabled={isSubmitting}
                 id="edit-credit-limit"
                 min={0}
@@ -1278,7 +1278,7 @@ function EditCustomerModal({
               Segmento
             </label>
             <select
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
               disabled={isSubmitting}
               id="edit-segment"
               onChange={(e) => setSegment(e.target.value as CustomerSegment)}
@@ -1298,7 +1298,7 @@ function EditCustomerModal({
           ) : null}
           <div className="flex justify-end gap-3 pt-2">
             <button
-              className="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               disabled={isSubmitting}
               onClick={onClose}
               type="button"
@@ -1306,7 +1306,7 @@ function EditCustomerModal({
               Cancelar
             </button>
             <button
-              className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
               disabled={isSubmitting}
               type="submit"
             >
