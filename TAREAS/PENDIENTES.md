@@ -80,6 +80,9 @@ Requiere acceso manual de Diego al portal ARCA con Clave Fiscal nivel 3 — no s
 
 ## Cerrados
 
+### 2026-07-23 — DESIGN-01 + DESIGN-02: pulido visual de estilo en toda la app (CERRADO — merge `b0d9b0d`)
+Pasada única de estilo (Fable) sobre las ~34 pantallas de `src/app/ui/` con lenguaje unificado (`docs/estilo-ui.md`: radios en 4 niveles, tarjeta estándar `rounded-2xl border-slate-100 bg-white shadow-sm p-5`, KPIs `font-semibold tracking-tight`). Cero cambios de lógica/datos/rutas — verificado por el Ingeniero Líder contra el diff completo (`src/modules`, `src/app/api`, `prisma`, `middleware.ts`, `tenant.ts`, `auth.ts` sin tocar; sidebar oscuro intacto). DESIGN-02 corrigió 2 hallazgos de esa verificación: `role-permissions-table.tsx` (una de las pantallas que había quedado sin tocar) y una corrupción de encoding real (mojibake UTF-8→CP1252) en `settings.tsx`/`sales-list.tsx`, restaurada y verificada a nivel de bytes. Diego revisó el preview de Vercel y aprobó el resultado visual. Mergeado a `main` en `b0d9b0d`. Falta el push/deploy desde la máquina de Diego para que tome efecto en producción.
+
 ### 2026-07-22 — QA-01, QA-02, QA-04 (CERRADO — FIX-13, commit `551ac74`)
 Los 3 fixes críticos que quedaban del backlog general (no de integraciones externas) se resolvieron en una sola orden: `scripts/seed-icase.mjs` ahora usa `prisma.product.upsert()` por `productCode` (ya no falla `P2002` al re-correr); `src/middleware.ts` devuelve JSON 401/402 en vez de redirect cuando `pathname` empieza con `/api/` (páginas sin cambios); los 3 cron jobs (`expire-quotes`, `generate-recurring-expenses`, `remind-expiring-quotes`) ahora rechazan si falta `CRON_SECRET` fuera de `NODE_ENV==='development'`. Verificado por el Ingeniero Líder contra el diff completo (`git show 551ac74`) y `typecheck` reverificado independientemente, limpio. Detalle en `TAREAS/REPORTELIDER.md`.
 
