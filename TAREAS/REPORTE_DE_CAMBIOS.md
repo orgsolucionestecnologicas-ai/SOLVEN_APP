@@ -7,6 +7,45 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## 2026-07-23 — DESIGN-02: correcciones sobre DESIGN-01 (pulido visual)
+
+**Rama:** `design/pulido-estilo-fable` (la misma de DESIGN-01, NO se creó rama nueva; sigue sin mergear a `main`). 2 commits de código + 1 de docs: `60a2337` (estilo de role-permissions-table), `fd71f3b` (fix de mojibake en settings y sales-list), + este de reportes.
+
+Son las 2 correcciones puntuales que pidió la orden tras la verificación independiente de DESIGN-01. No es una pasada nueva.
+
+### Problema 1 — 4 pantallas figuraban sin tocar
+
+De las 4 listadas, solo 1 tenía contenido estilable:
+
+- **`role-permissions-table.tsx`** — se aplicó el lenguaje de `docs/estilo-ui.md`, solo `className`:
+  - Contenedor de la tabla: `rounded-xl border border-slate-200` → `rounded-2xl border border-slate-100 bg-white shadow-sm` (idéntico al patrón del `UsersList` que se renderiza justo arriba, en el mismo `UsuariosPanel`).
+  - Título de sección: `text-slate-950` → `text-slate-900` (consistente con el resto de títulos de la pasada).
+  - `thead`/`tbody`/caja de error ya coincidían con el lenguaje — no se tocaron.
+  - Se verificó antes de tocar (`git status` + `git diff main`): el archivo estaba idéntico a `main`, sin WIP ajeno de la feature de permisos por rol. Sin conflicto.
+- **`help-page.tsx`** y **`unanswered-queries.tsx`** — son stubs de **una sola línea** (`// Eliminado — …`), sin JSX ni clases. No hay nada que estilar. No se tocaron (no forzar cambios sin sentido).
+- **`user-avatar.tsx`** — ya cumple el lenguaje: avatar `rounded-full`, fondo violeta primario `bg-violet-600`. No requería cambios.
+
+Por eso `help-page.tsx`, `unanswered-queries.tsx` y `user-avatar.tsx` **no aparecen** en `git diff main...HEAD --stat` — es el resultado correcto, no un olvido.
+
+### Problema 2 — corrupción de encoding (mojibake), bug real no cosmético
+
+La pasada mecánica de DESIGN-01 guardó texto en español con doble codificación UTF-8→CP1252, dejando `¡ ¿ — · … í ó ñ …` como `Â¡ Â¿ â€" Â· â€¦ Ã­ Ã³ Ã±`. Se vería roto para el usuario.
+
+- **`settings.tsx`** y **`sales-list.tsx`** — texto restaurado a UTF-8 correcto. `sales-list.tsx` estaba **doble-codificado a nivel de bytes** (`ó` guardado como `C3 83 C2 B3`), y contenía casos con la ranura CP1252 indefinida `0x8D` (la `Í` de `"Ítem"`) que pasó como control C1 — ambos contemplados en la reversión.
+- Método: reversión determinística (decodificar como UTF-8 → re-encodear como CP1252 → decodificar como UTF-8), disparada solo en secuencias que empiezan con los chars de arranque de mojibake (`Â Ã â`), nunca sobre letras españolas correctas.
+- **Verificación de que no se alteró ningún texto legítimo:** comparando cada archivo corregido contra `main` tras neutralizar las clases, el texto quedó **idéntico a `main`** (0 diferencias de texto; las únicas diferencias reales vs `main` son los cambios de clase de DESIGN-01). El texto de `main` (previo a DESIGN-01) es la referencia correcta.
+- El grep obligatorio de la orden sobre el diff completo de la rama vs `main` (`grep -nE "^\+.*(Â|â€|Ã[^ -])"`) **no devuelve nada** en `src/`. Barrido adicional de todo `src/`: sin mojibake ni caracteres de control C1 en ningún otro archivo.
+
+### No tocado (regla de la orden, sigue vigente de DESIGN-01)
+`src/modules/*`, `src/app/api/*`, `prisma/*`, `middleware.ts`, `tenant.ts`, `auth.ts`, `NoaChat.tsx`, sidebar oscuro, los 3 PDFs, tests. Violeta `#7c3aed` y naranja `PAST_DUE` intactos.
+
+### Validación
+`lint` 0 · `typecheck` 0 · `npm test` 323 passed / 2 skipped (los mismos números que DESIGN-01 — ningún test se rompió).
+
+**Pendiente de decisión de Diego:** revisar el preview de Vercel de la rama y, si aprueba, mergear a `main`.
+
+---
+
 ## 2026-07-23 — DESIGN-01: pulido visual de estilo, toda la app, una sola pasada (Fable)
 
 **Rama:** `design/pulido-estilo-fable` (NO mergeada a `main` — esperar revisión del preview de Vercel por Diego). 6 commits: `d60d16b` (lenguaje de estilo), `ce418c5` (shell/dashboard/reportes/paginación), `5d90522` (formularios), `49972a1` (listados), `6b34f56` (POS/devoluciones/promos/servicios/ajustes), + este de docs.
