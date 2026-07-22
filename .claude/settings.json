@@ -93,7 +93,18 @@
       "Bash(grep -rn \"from \\\\\"@/app/ui/settings\\\\\"\\\\|from \\\\\"\\\\.\\\\./\\\\.\\\\./ui/settings\\\\\"\\\\|ui/settings\\\\\"\" src/app --include=\"*.tsx\")",
       "Bash(rm \"src/app/returns/page.tsx\")",
       "Bash(rmdir \"src/app/returns\")",
-      "Bash(tasklist)"
+      "Bash(tasklist)",
+      "Bash(node __TRACKED_VAR__/fix-mojibake.mjs src/app/ui/settings.tsx)",
+      "Bash(node __TRACKED_VAR__/fix-mojibake.mjs src/app/ui/sales-list.tsx)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"grep-exit: $?\")",
+      "Bash(grep -oP \"\\\\xc3\\\\x83.{0,3}tem\")",
+      "Bash(echo \"exit=$? \\(1 = no matches = good\\)\")",
+      "Bash(echo \"grep-exit=$? \\(1 = clean\\)\")",
+      "Bash(echo \"grep-exit=$? \\(1 = clean, no matches\\)\")",
+      "Bash(node \"C:/Users/SOLVEN/AppData/Local/Temp/claude/c--Users-SOLVEN-Desktop-PROYECTO-NOA-SOLVEN-SOLVEN-APP/93ff4944-0cda-45c9-96e9-dd103fc91e2e/scratchpad/verify-textmatch.mjs\")",
+      "Bash(echo \"exit=$? \\(1 = none\\)\")",
+      "Bash(git commit -q -m ' *)"
     ],
     "additionalDirectories": [
       "/home/diegogama/Escritorio/SOLVEN_APP/src/app/customers/[id]",
