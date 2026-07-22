@@ -95,7 +95,7 @@ export function RolePermissionsTable() {
 
   return (
     <div className="px-5 py-6 sm:px-8">
-      <h3 className="text-sm font-semibold text-slate-950">Permisos por rol</h3>
+      <h3 className="text-sm font-semibold text-slate-900">Permisos por rol</h3>
       <p className="mt-1 text-xs text-slate-500">
         Definí a qué secciones puede acceder cada rol. Si no configurás nada para una combinación, se usa el
         comportamiento por defecto del sistema.
@@ -107,7 +107,7 @@ export function RolePermissionsTable() {
         </div>
       ) : null}
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
