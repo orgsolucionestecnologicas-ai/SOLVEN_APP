@@ -7,8 +7,10 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get("Authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return errorResponse("Unauthorized", 401);
+  if (process.env.NODE_ENV !== "development" || cronSecret) {
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return errorResponse("Unauthorized", 401);
+    }
   }
 
   try {

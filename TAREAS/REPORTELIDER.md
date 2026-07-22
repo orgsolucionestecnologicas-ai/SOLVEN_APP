@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-07-22 — FIX-13: seed idempotente, 401 JSON en middleware para rutas API, CRON_SECRET obligatorio fuera de development
+3 fixes independientes: `scripts/seed-icase.mjs` usa `upsert` en vez de `create` (evita `P2002` al re-correr contra DB poblada); `src/middleware.ts` devuelve JSON (401/402) en vez de redirect cuando la ruta es `/api/*`, sin cambiar el comportamiento de páginas; los 3 cron routes ahora rechazan si falta `CRON_SECRET` fuera de `development`, en vez de dejar pasar todo. Sin tests previos en los archivos tocados (no se agregaron nuevos, por regla de la orden). `typecheck`/`lint`/`test` sin errores (323 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
+
 ### 2026-07-18 — FIX-12: requireTenantId() ahora devuelve 401 en vez de propagar la excepción
 Hallazgo de TESTS-01: `subscription/route.ts:7` y `dashboard/summary/route.ts:7` llamaban `requireTenantId()` fuera de todo try/catch, así que sin sesión el `UnauthorizedError` se propagaba sin capturar (probable 500 en vez del 401 esperado). Envuelto con el patrón estándar del proyecto en ambos archivos; test existente de `subscription` actualizado para esperar 401 en vez de la excepción propagada. No se tocó ninguna otra lógica. `typecheck`/`lint`/`test` sin errores (323 passed, 2 skipped). Detalle en `REPORTE_DE_CAMBIOS.md`.
 

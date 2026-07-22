@@ -214,20 +214,23 @@ async function main() {
   // ─── Helper crear producto ──────────────────────────────────────────────────
   let prodCount = 0;
   async function createProduct({ code, name, categoryName, categoryId, subcategoryId, salePrice, stock = 5 }) {
-    await prisma.product.create({
-      data: {
-        tenantId:     TID,
-        productCode:  code,
-        name,
-        categoryName,
-        categoryId,
-        subcategoryId,
-        salePrice,
-        costPrice:    cost(salePrice),
-        ivaRate:      0.21,
-        stock,
-        minStock:     1,
-      },
+    const data = {
+      tenantId:     TID,
+      productCode:  code,
+      name,
+      categoryName,
+      categoryId,
+      subcategoryId,
+      salePrice,
+      costPrice:    cost(salePrice),
+      ivaRate:      0.21,
+      stock,
+      minStock:     1,
+    };
+    await prisma.product.upsert({
+      where:  { productCode: code },
+      update: data,
+      create: data,
     });
     prodCount++;
   }

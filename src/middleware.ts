@@ -74,26 +74,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const isApi = pathname.startsWith("/api/");
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
   if (!token) {
+    if (isApi) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   const session = await verifySession(token);
 
   if (!session) {
+    if (isApi) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   const { subscriptionStatus, trialEndsAt } = session;
 
   if (subscriptionStatus === "CANCELLED" || subscriptionStatus === "EXPIRED") {
+    if (isApi) {
+      return NextResponse.json({ error: "Suscripción vencida" }, { status: 402 });
+    }
     return NextResponse.redirect(new URL("/suscripcion-vencida", request.url));
   }
 
   if (subscriptionStatus === "TRIAL" && trialEndsAt) {
     if (new Date(trialEndsAt) < new Date()) {
+      if (isApi) {
+        return NextResponse.json({ error: "Suscripción vencida" }, { status: 402 });
+      }
       return NextResponse.redirect(new URL("/suscripcion-vencida", request.url));
     }
   }
