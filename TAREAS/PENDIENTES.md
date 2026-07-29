@@ -12,6 +12,9 @@
 
 ### 🔴 Crítico
 
+#### QA-CHROME-01-a — Implementar venta a crédito/fiado real (decisión de producto pendiente)
+Confirmado por el Ingeniero Líder contra código (29-07-2026): el schema soporta `SalePaymentType.CREDIT/MIXED` y `Sale.debtId`, pero `sale-validation.ts` fuerza siempre `CASH` — no hay forma de vender fiado desde el POS. Existe un botón "Nueva deuda" suelto en Clientes, pero crea una deuda sin ítems ni descuento de stock, desconectada del checkout real. **No es un fix chico** — antes de ordenar la implementación hay que decidir con Diego: ¿una venta a crédito descuenta stock igual que una de contado? ¿"Mixed" (parte efectivo + parte fiado) es necesario ahora o se puede dejar solo CREDIT completo para una primera versión? ¿el `CashMovement` de una venta a crédito es $0 hasta que se cobre la deuda? Ver detalle completo en `TAREAS/QA_REPORTE.md`.
+
 #### T3 — Rotar token de GitHub expuesto
 Manual, no verificable desde este entorno (sandbox sin credenciales de git). `github.com/settings/tokens` → revocar el token actual → generar uno nuevo con permisos `repo` → actualizar donde se use. ~30 min.
 
@@ -23,6 +26,9 @@ La tarea original de Notion pedía rotar `SOLVEN_PASSWORD` y `SOLVEN_SESSION_SEC
 
 ### 🟠 Alto
 
+#### QA-CHROME-01-b — 2 hallazgos "Alto" sin verificar contra código todavía
+De `TAREAS/QA_REPORTE.md`: (1) la promoción "Automática" no se aplica sola al agregar el producto elegible al carrito, hay que abrir/cerrar el panel de Promociones para que calcule; (2) en Cotizaciones, al cambiar de cliente en el formulario, los campos Email/Teléfono no se limpian ni actualizan — quedan con los datos del cliente anterior. Ninguno de los dos fue verificado todavía contra el código real (a diferencia de los 3 Críticos de arriba, que sí).
+
 #### T18 — Smoke test manual completo en producción
 Flujo completo de venta (contado, crédito), inventario y promociones, probado a mano en producción (https://solven-app-484v.vercel.app). Anotar cualquier error encontrado. Sesión manual de Diego, no orden de código. ~55 min.
 **Por qué importa:** los tests automatizados (TESTS-01, FIX-10/11/12) cubren lógica unitaria, pero nadie recorrió el flujo end-to-end en producción real todavía.
@@ -32,6 +38,9 @@ Venta → devolución parcial → verificar que el stock sube y la caja refleja 
 **Por qué importa:** con FIX-07 (selector de método de reintegro) ya en producción, conviene verificar también que el método elegido se refleje bien en caja.
 
 ### 🟡 Medio
+
+#### QA-CHROME-01-c — 8 hallazgos Importante/Bajo sin verificar contra código todavía
+De `TAREAS/QA_REPORTE.md`, ninguno verificado aún: categoría de producto incorrecta en Reportes ("Otros" en vez de la real); vista de "Mi Negocio" muestra 0/8 campos para un usuario no-Owner del mismo tenant que sí completó esos datos (¿bug de sincronización o de la vista?); no hay campo de IVA por producto y los tickets siempre muestran "Impuestos (0%)" pese al IVA por defecto configurado; "Imprimir factura" aparece disponible aunque ARCA esté deshabilitado (no probado por precaución); placeholder de "mensaje de agradecimiento" se ve como texto real, no como placeholder; campo SKU dice que se autogenera pero bloquea el guardado si está vacío; selección de vendedor en el modal de venta no da feedback si falta elegirlo; carrito se borra sin pedir confirmación; badge de "venta suspendida" con comportamiento inconsistente al navegar; "Devoluciones" no se refleja en el resumen de Cierre de Caja aunque sí aparece en Movimientos de Caja; indicador de caja en el sidebar no se actualiza inmediatamente tras el cierre.
 
 #### [Devoluciones · UX] Mostrar detalle completo de la venta original antes de confirmar
 Mejora de UX en el flujo de devoluciones. Sin archivos específicos anotados en Notion.
