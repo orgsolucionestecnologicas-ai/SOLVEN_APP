@@ -12,8 +12,8 @@
 
 ### 🔴 Crítico
 
-#### QA-CHROME-01-a — Implementar venta a crédito/fiado real (decisión de producto pendiente)
-Confirmado por el Ingeniero Líder contra código (29-07-2026): el schema soporta `SalePaymentType.CREDIT/MIXED` y `Sale.debtId`, pero `sale-validation.ts` fuerza siempre `CASH` — no hay forma de vender fiado desde el POS. Existe un botón "Nueva deuda" suelto en Clientes, pero crea una deuda sin ítems ni descuento de stock, desconectada del checkout real. **No es un fix chico** — antes de ordenar la implementación hay que decidir con Diego: ¿una venta a crédito descuenta stock igual que una de contado? ¿"Mixed" (parte efectivo + parte fiado) es necesario ahora o se puede dejar solo CREDIT completo para una primera versión? ¿el `CashMovement` de una venta a crédito es $0 hasta que se cobre la deuda? Ver detalle completo en `TAREAS/QA_REPORTE.md`.
+#### QA-CHROME-01-a — Venta a crédito/fiado real — YA ORDENADA (`FEATURE-01`)
+Confirmado por el Ingeniero Líder contra código (29-07-2026): el schema soporta `SalePaymentType.CREDIT/MIXED` y `Sale.debtId`, pero `sale-validation.ts` fuerza siempre `CASH`. Diego decidió (29-07-2026) implementarla lo más completa posible: CREDIT + MIXED, stock descontado igual que en una venta de contado. Orden completa en `TAREAS/FEATURE-01_venta_a_credito.md`, con mapa de código investigado archivo:línea. Mover a Cerrados cuando se ejecute y verifique.
 
 #### T3 — Rotar token de GitHub expuesto
 Manual, no verificable desde este entorno (sandbox sin credenciales de git). `github.com/settings/tokens` → revocar el token actual → generar uno nuevo con permisos `repo` → actualizar donde se use. ~30 min.
