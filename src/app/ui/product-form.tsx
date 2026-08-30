@@ -204,7 +204,6 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
 
   function validate(): string | null {
     if (!name.trim()) return "El nombre del producto es obligatorio.";
-    if (!sku.trim()) return "El código / SKU es obligatorio.";
     if (!categoryName) return "La categoría es obligatoria.";
     const cost = parseFloat(costPrice);
     if (!costPrice || isNaN(cost) || cost < 0)
@@ -359,7 +358,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                     />
                   </FormField>
 
-                  <FormField htmlFor="pf-sku" label="Código / SKU" required>
+                  <FormField htmlFor="pf-sku" label="Código / SKU">
                     <div className="flex gap-2">
                       <input
                         className={`${inputClass} flex-1`}
@@ -367,7 +366,6 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                         id="pf-sku"
                         onChange={(e) => setSku(e.target.value)}
                         placeholder="Ej. ARROZ-5KG"
-                        required
                         type="text"
                         value={sku}
                       />
