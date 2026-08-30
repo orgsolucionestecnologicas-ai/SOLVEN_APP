@@ -3727,7 +3727,7 @@ function PrintModal({
             type="button"
           >
             <FileText size={16} className="flex-shrink-0 text-slate-400" />
-            Imprimir factura
+            {invoice?.cae ? "Imprimir factura" : "Imprimir comprobante (no fiscal)"}
           </button>
           <button
             className="flex w-full items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
