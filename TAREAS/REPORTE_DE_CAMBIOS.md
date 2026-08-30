@@ -7,6 +7,28 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+## FIX-16 — Cotización, IVA por producto, comprobante no fiscal, carritos suspendidos
+
+**1 — La cotización no limpiaba Email/Teléfono al cambiar de cliente.** En `NewQuoteModal` (`quotes-list.tsx`), al elegir un cliente se autocompletaban Email y Teléfono, pero si luego se editaba el nombre para cargar otro cliente esos campos conservaban los datos del anterior. Ahora, al modificar el nombre cuando había un cliente seleccionado, se deselecciona el cliente y se vacían Email y Teléfono.
+- `src/app/ui/quotes-list.tsx`
+
+**2 — IVA por producto.**
+(a) El formulario de producto no permitía elegir la alícuota de IVA (el campo `Product.ivaRate` existía en el schema pero no se exponía en la UI). Se agregó un selector de IVA (0% / 10,5% / 21% / 27%) en la sección de Precios de `product-form.tsx`. En alta toma como valor inicial el "IVA por defecto" de Ajustes (`/api/settings` → `defaultIvaRate`); en edición carga el IVA real del producto — se agregó `ivaRate` a los datos que pasa `product-edit-view.tsx`, evitando que al guardar se pisara con 0.21.
+(b) El resumen del carrito del POS mostraba "Impuestos (0%): $0" fijo. Ahora calcula el IVA realmente contenido en los precios de los ítems (mismo criterio que `handlePrintInvoice`) y lo muestra como "IVA incluido".
+- `src/app/ui/product-form.tsx`
+- `src/app/products/[id]/product-edit-view.tsx`
+- `src/app/ui/pos.tsx`
+
+**3 — El botón "Imprimir factura" no se distinguía de una factura fiscal.** Con ARCA deshabilitado, ese botón del modal de venta registrada genera un comprobante no fiscal (el documento ya incluye la leyenda "Documento no válido como factura fiscal"), pero el rótulo hacía pensar que era una factura. Ahora muestra "Imprimir factura" solo cuando hay CAE (factura electrónica emitida) y "Imprimir comprobante (no fiscal)" en caso contrario. No se tocó el flujo de emisión ARCA.
+- `src/app/ui/pos.tsx`
+
+**4 — Dos mecanismos de "Suspender" inconsistentes.** Convivían dos formas de suspender una venta: una guardaba un único borrador en `localStorage` (con banner de recuperación) y otra apilaba hasta 3 carritos solo en estado de React (se perdían al recargar). Se unificaron en un único mecanismo: la lista de carritos suspendidos (hasta 3) ahora persiste en `localStorage` y se recupera desde el ícono de pausa del encabezado del carrito. Todos los accesos a "Suspender" (barra superior, acciones rápidas y menú "Más opciones") usan ese mecanismo; se eliminaron el borrador único, su banner y sus handlers. La lectura contempla un borrador viejo ya guardado y lo migra a la lista.
+- `src/app/ui/pos.tsx`
+
+Validación: `npm run typecheck` y `npm run lint` sin errores. `npm test`: 322 passed / 2 skipped; 2 tests de integración fallaron por falta de conexión a la base Neon (`Can't reach database server`) y pasan al reintentarlos aislados — no dependen de estos cambios (son de deudas/clientes, módulos no tocados).
+
+---
+
 ## FIX-15 — 7 bugs menores (Reportes, Ajustes, POS, Cierre de Caja)
 
 **1 — Categoría real en Reportes.** `reports.tsx` calculaba la categoría de cada producto con un heurístico de palabras clave (`CATEGORY_KEYWORDS` / `getProductCategory`) que ignoraba el campo real. Ahora usa `product.categoryName`. Se eliminó el heurístico, se actualizaron los 6 puntos de uso (donut de categorías, indicadores clave, ProductosTab, InventarioTab, RentabilidadTab, TopProductosTab) y se alinearon los colores de `CHART_ENTRIES` a las categorías reales (Alimentos, Bebidas, Lácteos, Limpieza, Cuidado Personal, Hogar, Panadería, Snacks, Otros). Para que las ventas expongan la categoría, se agregó `categoryName` al `select` del producto en `listSales` (`sale-data-access.ts`) y a los tipos correspondientes.
