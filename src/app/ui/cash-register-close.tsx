@@ -222,6 +222,20 @@ export function CashRegisterClose({
     () => sumMoney(sessionOutMovements.map((m) => m.amount)),
     [sessionOutMovements]
   );
+  const sessionReturns = useMemo(
+    () =>
+      cashMovements.filter(
+        (m) =>
+          m.type === "OUT" &&
+          m.source === "RETURN" &&
+          new Date(m.createdAt) >= openedAtDate
+      ),
+    [cashMovements, openedAtDate]
+  );
+  const totalReturns = useMemo(
+    () => sumMoney(sessionReturns.map((m) => m.amount)),
+    [sessionReturns]
+  );
   const totalExpensesAmount = useMemo(
     () => sumMoney(sessionExpenses.map((e) => e.amount)),
     [sessionExpenses]
@@ -439,12 +453,12 @@ export function CashRegisterClose({
                     textClass="text-rose-900"
                   />
                   <SalesSummaryCard
-                    amount={0}
-                    bgClass="bg-slate-50 opacity-50"
-                    count={0}
-                    label="Devoluciones (próx.)"
+                    amount={totalReturns}
+                    bgClass="bg-slate-50"
+                    count={sessionReturns.length}
+                    label="Devoluciones"
                     pct={0}
-                    textClass="text-slate-400"
+                    textClass="text-slate-700"
                   />
                 </div>
               )}
@@ -702,7 +716,7 @@ export function CashRegisterClose({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">(-) Devoluciones</span>
-                  <span className="font-semibold text-slate-900">{fmt(0)}</span>
+                  <span className="font-semibold text-slate-900">{fmt(totalReturns)}</span>
                 </div>
               </div>
               <div className="my-3 border-t border-slate-200" />
