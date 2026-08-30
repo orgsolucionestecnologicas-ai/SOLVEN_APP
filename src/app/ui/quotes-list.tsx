@@ -303,9 +303,14 @@ function NewQuoteModal({
               placeholder="Buscar cliente o escribir nombre…"
               value={customerQuery}
               onChange={(e) => {
-                setCustomerQuery(e.target.value);
-                if (!e.target.value) setSelectedCustomer(null);
-                setCustomerName(e.target.value);
+                const value = e.target.value;
+                setCustomerQuery(value);
+                setCustomerName(value);
+                if (selectedCustomer && value !== selectedCustomer.name) {
+                  setSelectedCustomer(null);
+                  setCustomerEmail("");
+                  setCustomerPhone("");
+                }
               }}
             />
             {customerOptions.length > 0 && (
