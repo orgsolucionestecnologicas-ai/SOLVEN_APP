@@ -29,6 +29,9 @@ const ROLES: { value: string; label: string }[] = [
 // Mismos defaults hardcodeados que usa AppShell (hiddenForRoles en navItems de app-shell.tsx)
 // cuando no hay ninguna fila configurada todavía en RolePermission para esa combinación.
 const DEFAULT_HIDDEN: Record<string, string[]> = {
+  CASHIER: ["settings"],
+  INVENTORY: ["settings"],
+  READONLY: ["settings"],
   SUPERVISOR: ["cashMovements", "settings"]
 };
 
