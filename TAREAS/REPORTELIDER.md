@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-08-30 — Archivado `FIX-14_*.md` y `QA_REPORTE.md` (QA-CHROME-01, ciclo 29-07 al 30-08)
+Con FIX-14 cerrado y los 13 hallazgos restantes ya triageados uno por uno (7 en `FIX-15`, 4 en `FIX-16`, 1 falso positivo, 1 no concluyente, todos documentados en `PENDIENTES.md`), se confirmó que los 16 hallazgos de `QA_REPORTE.md` están 100% cubiertos en otro lado (FIX-14 cerrado, FEATURE-01, FIX-15, FIX-16, PENDIENTES.md). Se archivaron ambos archivos (`git rm`) — el detalle técnico queda preservado en el historial de git y en estas notas. `TAREAS/` queda solo con las órdenes vigentes: `FEATURE-01`, `FIX-15`, `FIX-16`.
+
 ### 2026-08-30 — FIX-14 ejecutado y verificado (con 1 bug crítico corregido antes del cierre)
 El agente de VS Code ejecutó FIX-14 (commits `50eddaa`, `30eecc9`, `5fb870c`): monto neto en `CashMovement`/reportes/cierre de caja, y Ajustes oculto por defecto para CASHIER/INVENTORY/READONLY. Verificación del Ingeniero Líder contra el diff real (no el self-report) encontró que el helper `saleNet` agregado en `src/app/ui/reports.tsx` se llamaba a sí mismo en vez de leer `totalAmount` — recursión infinita que crashea cualquier tab de Reportes (RangeError: Maximum call stack size exceeded) en ~20 call sites. No lo detectaba typecheck/lint/tests porque es válido en tipos y no hay test de render para `reports.tsx`. Corregido en `62abb5a` (una línea), typecheck y lint verificados limpios de nuevo tras el fix. FIX-14 queda cerrado.
 
