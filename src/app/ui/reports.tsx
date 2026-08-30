@@ -35,7 +35,7 @@ function formatMoney(value: number | string): string {
 
 // Monto neto realmente cobrado por una venta: total de ítems menos el descuento por promoción.
 function saleNet(sale: { totalAmount: string; discountAmount: string }): number {
-  return saleNet(sale) - Number(sale.discountAmount);
+  return Number(sale.totalAmount) - Number(sale.discountAmount);
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
