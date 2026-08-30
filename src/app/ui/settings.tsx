@@ -508,7 +508,7 @@ function DocumentosSection({
 }) {
   const [raw, setRaw] = useState<Record<string, unknown> | null>(null);
   const [receiptFooterMessage, setReceiptFooterMessage] = useState("");
-  const [receiptThankYouMessage, setReceiptThankYouMessage] = useState("¡Gracias por su compra!");
+  const [receiptThankYouMessage, setReceiptThankYouMessage] = useState("");
   const [initialReceiptNumber, setInitialReceiptNumber] = useState("0");
   const [defaultIvaRate, setDefaultIvaRate] = useState(0.21);
   const [loading, setLoading] = useState(true);
@@ -528,7 +528,7 @@ function DocumentosSection({
           onLogoUrlChangeRef.current(typeof body.data.logoUrl === "string" ? body.data.logoUrl : "");
           setReceiptFooterMessage(typeof body.data.receiptFooterMessage === "string" ? body.data.receiptFooterMessage : "");
           setReceiptThankYouMessage(
-            typeof body.data.receiptThankYouMessage === "string" ? body.data.receiptThankYouMessage : "¡Gracias por su compra!"
+            typeof body.data.receiptThankYouMessage === "string" ? body.data.receiptThankYouMessage : ""
           );
           setInitialReceiptNumber(
             typeof body.data.initialReceiptNumber === "number" ? String(body.data.initialReceiptNumber) : "0"
@@ -552,7 +552,7 @@ function DocumentosSection({
           ...raw,
           logoUrl,
           receiptFooterMessage,
-          receiptThankYouMessage,
+          receiptThankYouMessage: receiptThankYouMessage.trim() || "¡Gracias por su compra!",
           initialReceiptNumber: Number(initialReceiptNumber) || 0,
           defaultIvaRate
         })
