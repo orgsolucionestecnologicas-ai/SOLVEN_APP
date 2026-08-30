@@ -69,6 +69,24 @@ describe("sale data access", () => {
     expect(cashMovement).toMatchObject({ type: "IN", source: "SALE", referenceId: sale.id });
   });
 
+  it("records the net amount (total minus discount) in the cash movement while keeping totalAmount gross", async () => {
+    const product = await createTestProduct("DISCOUNT", 100, 5);
+
+    const sale = await createSale({
+      items: [{ productId: product.id, quantity: 2 }],
+      discountAmount: 30
+    }, testTenantId);
+
+    const persistedSale = await prisma.sale.findUniqueOrThrow({ where: { id: sale.id } });
+    const cashMovement = await prisma.cashMovement.findFirstOrThrow({
+      where: { source: "SALE", referenceId: sale.id }
+    });
+
+    expect(persistedSale.totalAmount.toString()).toBe("200");
+    expect(persistedSale.discountAmount.toString()).toBe("30");
+    expect(cashMovement.amount.toString()).toBe("170");
+  });
+
   it("rejects CREDIT paymentType (only CASH accepted)", async () => {
     const product = await createTestProduct("CREDIT_REJECT", 11, 7);
     await expect(

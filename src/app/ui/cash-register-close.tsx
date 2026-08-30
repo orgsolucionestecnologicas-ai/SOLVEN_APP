@@ -31,6 +31,7 @@ type SaleRecord = {
   saleDate: string;
   paymentType: "CASH" | "CREDIT";
   totalAmount: string;
+  discountAmount: string;
   customer: { name: string } | null;
 };
 
@@ -89,6 +90,11 @@ const timeFmt = new Intl.DateTimeFormat("es-419", {
 
 function sumMoney(items: string[]): number {
   return items.reduce((s, v) => s + Number(v), 0);
+}
+
+// Monto neto realmente cobrado por una venta: total de ítems menos el descuento por promoción.
+function saleNet(sale: { totalAmount: string; discountAmount: string }): number {
+  return Number(sale.totalAmount) - Number(sale.discountAmount);
 }
 
 function emptyBreakdown(): BreakdownCounts {
@@ -168,15 +174,15 @@ export function CashRegisterClose({
     [sessionSales]
   );
   const totalSales = useMemo(
-    () => sumMoney(sessionSales.map((s) => s.totalAmount)),
+    () => sessionSales.reduce((acc, s) => acc + saleNet(s), 0),
     [sessionSales]
   );
   const totalCashSales = useMemo(
-    () => sumMoney(cashSales.map((s) => s.totalAmount)),
+    () => cashSales.reduce((acc, s) => acc + saleNet(s), 0),
     [cashSales]
   );
   const totalCreditSales = useMemo(
-    () => sumMoney(creditSales.map((s) => s.totalAmount)),
+    () => creditSales.reduce((acc, s) => acc + saleNet(s), 0),
     [creditSales]
   );
 

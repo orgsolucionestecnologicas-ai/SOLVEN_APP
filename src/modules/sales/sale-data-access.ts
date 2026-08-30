@@ -222,7 +222,7 @@ export async function createSale(
       data: {
         tenantId,
         type: "IN",
-        amount: totalAmount,
+        amount: totalAmount.minus(discountAmount),
         source: "SALE",
         referenceId: sale.id
       }

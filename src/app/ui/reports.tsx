@@ -33,12 +33,18 @@ function formatMoney(value: number | string): string {
   return formatARS(Number(value));
 }
 
+// Monto neto realmente cobrado por una venta: total de ítems menos el descuento por promoción.
+function saleNet(sale: { totalAmount: string; discountAmount: string }): number {
+  return saleNet(sale) - Number(sale.discountAmount);
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SaleRecord = {
   id: string;
   saleDate: string;
   totalAmount: string;
+  discountAmount: string;
   paymentType: "CASH" | "CREDIT";
   customerId: string | null;
   customer: { name: string } | null;
@@ -195,8 +201,8 @@ function computeMetrics(
   currRange: { start: Date; end: Date },
   prevRange: { start: Date; end: Date }
 ): AllMetrics {
-  const currTotal = currSales.reduce((s, x) => s + Number(x.totalAmount), 0);
-  const prevTotal = prevSales.reduce((s, x) => s + Number(x.totalAmount), 0);
+  const currTotal = currSales.reduce((s, x) => s + saleNet(x), 0);
+  const prevTotal = prevSales.reduce((s, x) => s + saleNet(x), 0);
   const currCount = currSales.length;
   const prevCount = prevSales.length;
   const currAvg = currCount > 0 ? currTotal / currCount : 0;
@@ -515,7 +521,7 @@ export function Reports() {
   const sparklines = useMemo(() => {
     const last7 = getLastNDays(7);
     const dailyTotal = (arr: SaleRecord[]) =>
-      last7.map((day) => arr.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0));
+      last7.map((day) => arr.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + saleNet(x), 0));
     const dailyCount = (arr: SaleRecord[]) =>
       last7.map((day) => arr.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).length);
     const dailyUnits = (arr: SaleRecord[]) =>
@@ -526,7 +532,7 @@ export function Reports() {
       last7.map((day) => {
         const ds = arr.filter((s) => isSameLocalDay(new Date(s.saleDate), day));
         if (!ds.length) return 0;
-        return ds.reduce((s, x) => s + Number(x.totalAmount), 0) / ds.length;
+        return ds.reduce((s, x) => s + saleNet(x), 0) / ds.length;
       });
     return {
       totalSales: dailyTotal(sales),
@@ -982,7 +988,7 @@ function SalesEvolutionPanel({ sales }: { sales: SaleRecord[] }) {
   const currentValues = useMemo(
     () =>
       last21.map((day) =>
-        sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)
+        sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + saleNet(x), 0)
       ),
     [sales, last21]
   );
@@ -990,7 +996,7 @@ function SalesEvolutionPanel({ sales }: { sales: SaleRecord[] }) {
   const previousValues = useMemo(
     () =>
       prev21.map((day) =>
-        sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)
+        sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + saleNet(x), 0)
       ),
     [sales, prev21]
   );
@@ -1313,8 +1319,8 @@ function GrowthSummaryPanel({ metrics }: { metrics: AllMetrics }) {
 // ─── PaymentMethodPanel ───────────────────────────────────────────────────────
 
 function PaymentMethodPanel({ sales }: { sales: SaleRecord[] }) {
-  const cashTotal = sales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + Number(x.totalAmount), 0);
-  const creditTotal = sales.filter((s) => s.paymentType === "CREDIT").reduce((s, x) => s + Number(x.totalAmount), 0);
+  const cashTotal = sales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + saleNet(x), 0);
+  const creditTotal = sales.filter((s) => s.paymentType === "CREDIT").reduce((s, x) => s + saleNet(x), 0);
   const total = cashTotal + creditTotal;
 
   const segmentData = [
@@ -1451,7 +1457,7 @@ function TopCustomersPanel({
       byCustomer.set(key, {
         name: sale.customer.name,
         count: existing.count + 1,
-        total: existing.total + Number(sale.totalAmount),
+        total: existing.total + saleNet(sale),
       });
     }
     return [...byCustomer.values()].sort((a, b) => b.total - a.total).slice(0, 5);
@@ -1646,7 +1652,7 @@ function MonthlyComparisonPanel({ sales }: { sales: SaleRecord[] }) {
         const d = new Date(s.saleDate);
         return d >= start && d <= end;
       });
-      const curr = monthSales.reduce((s, x) => s + Number(x.totalAmount), 0);
+      const curr = monthSales.reduce((s, x) => s + saleNet(x), 0);
       const label = new Intl.DateTimeFormat("es-419", { month: "short" }).format(start);
       const isCurrent = offset === 0;
       return { label, curr, isCurrent };
@@ -1723,8 +1729,8 @@ function KeyIndicatorsPanel({ sales }: { sales: SaleRecord[] }) {
     for (const sale of sales) {
       const d = new Date(sale.saleDate);
       const dayKey = d.toLocaleDateString("es-419", { weekday: "long" });
-      byDay.set(dayKey, (byDay.get(dayKey) ?? 0) + Number(sale.totalAmount));
-      byHour[d.getHours()] += Number(sale.totalAmount);
+      byDay.set(dayKey, (byDay.get(dayKey) ?? 0) + saleNet(sale));
+      byHour[d.getHours()] += saleNet(sale);
       for (const item of sale.items) {
         if (!item.product) continue;
         const cat = getProductCategory(item.product.name);
@@ -1803,7 +1809,7 @@ function VentasTab({ sales }: { sales: SaleRecord[] }) {
   const dailyRevenue = useMemo(
     () =>
       last30.map((day) =>
-        sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)
+        sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + saleNet(x), 0)
       ),
     [sales, last30]
   );
@@ -1933,7 +1939,7 @@ function VentasTab({ sales }: { sales: SaleRecord[] }) {
                       {sale.paymentType === "CASH" ? "Efectivo" : "Crédito"}
                     </td>
                     <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-900">
-                      {formatMoney(sale.totalAmount)}
+                      {formatMoney(saleNet(sale))}
                     </td>
                     <td className="px-4 py-2.5">
                       <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
@@ -2189,7 +2195,7 @@ function VendedoresTab({ sales }: { sales: SaleRecord[] }) {
       byCode.set(code, {
         code,
         count: existing.count + 1,
-        total: existing.total + Number(sale.totalAmount),
+        total: existing.total + saleNet(sale),
       });
     }
     return [...byCode.values()]
@@ -2285,7 +2291,7 @@ function ClientesTab({
       byId.set(sale.customerId, {
         name: sale.customer.name,
         purchases: existing.purchases + 1,
-        total: existing.total + Number(sale.totalAmount),
+        total: existing.total + saleNet(sale),
         lastDate: saleDate > existing.lastDate ? saleDate : existing.lastDate,
       });
     }
@@ -2513,7 +2519,7 @@ function CrecimientoTab({ sales }: { sales: SaleRecord[] }) {
 
   const { cumulative, daily } = useMemo(() => {
     const d = last30.map((day) =>
-      sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)
+      sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + saleNet(x), 0)
     );
     let acc = 0;
     const c = d.map((v) => { acc += v; return acc; });
@@ -2528,7 +2534,7 @@ function CrecimientoTab({ sales }: { sales: SaleRecord[] }) {
       return d;
     });
     return days.map((day) =>
-      sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)
+      sales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + saleNet(x), 0)
     );
   }, [sales]);
 
@@ -2646,7 +2652,7 @@ function RentabilidadTab({
     () =>
       sales
         .filter((s) => { const d = new Date(s.saleDate); return d >= currStart && d <= currEnd; })
-        .reduce((s, x) => s + Number(x.totalAmount), 0),
+        .reduce((s, x) => s + saleNet(x), 0),
     [sales, currStart, currEnd]
   );
 
@@ -2694,10 +2700,10 @@ function RentabilidadTab({
   const paymentBreakdown = useMemo(() => {
     const cash = sales
       .filter((s) => { const d = new Date(s.saleDate); return d >= currStart && d <= currEnd && s.paymentType === "CASH"; })
-      .reduce((s, x) => s + Number(x.totalAmount), 0);
+      .reduce((s, x) => s + saleNet(x), 0);
     const credit = sales
       .filter((s) => { const d = new Date(s.saleDate); return d >= currStart && d <= currEnd && s.paymentType === "CREDIT"; })
-      .reduce((s, x) => s + Number(x.totalAmount), 0);
+      .reduce((s, x) => s + saleNet(x), 0);
     return { cash, credit };
   }, [sales, currStart, currEnd]);
 
@@ -2994,16 +3000,16 @@ function ReporteMensualTab({
   const { start: monthStart } = getMonthRange(0);
   const [showComparison, setShowComparison] = useState(false);
 
-  const totalAmount = useMemo(() => currentSales.reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
-  const cashAmount = useMemo(() => currentSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
-  const creditAmount = useMemo(() => currentSales.filter((s) => s.paymentType === "CREDIT").reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
+  const totalAmount = useMemo(() => currentSales.reduce((s, x) => s + saleNet(x), 0), [currentSales]);
+  const cashAmount = useMemo(() => currentSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + saleNet(x), 0), [currentSales]);
+  const creditAmount = useMemo(() => currentSales.filter((s) => s.paymentType === "CREDIT").reduce((s, x) => s + saleNet(x), 0), [currentSales]);
   const expensesTotal = useMemo(() => currentExpenses.reduce((s, e) => s + Number(e.amount), 0), [currentExpenses]);
   const grossProfit = totalAmount - expensesTotal;
   const grossMargin = totalAmount > 0 ? (grossProfit / totalAmount) * 100 : 0;
 
-  const prevTotal = useMemo(() => previousSales.reduce((s, x) => s + Number(x.totalAmount), 0), [previousSales]);
-  const prevCash = useMemo(() => previousSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + Number(x.totalAmount), 0), [previousSales]);
-  const prevCredit = useMemo(() => previousSales.filter((s) => s.paymentType === "CREDIT").reduce((s, x) => s + Number(x.totalAmount), 0), [previousSales]);
+  const prevTotal = useMemo(() => previousSales.reduce((s, x) => s + saleNet(x), 0), [previousSales]);
+  const prevCash = useMemo(() => previousSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + saleNet(x), 0), [previousSales]);
+  const prevCredit = useMemo(() => previousSales.filter((s) => s.paymentType === "CREDIT").reduce((s, x) => s + saleNet(x), 0), [previousSales]);
   const prevExpensesTotal = useMemo(() => previousExpenses.reduce((s, e) => s + Number(e.amount), 0), [previousExpenses]);
   const prevGrossProfit = prevTotal - prevExpensesTotal;
 
@@ -3019,11 +3025,11 @@ function ReporteMensualTab({
   }, [monthStart]);
 
   const dailyTotals = useMemo(
-    () => daysInMonth.map((day) => currentSales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)),
+    () => daysInMonth.map((day) => currentSales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + saleNet(x), 0)),
     [daysInMonth, currentSales]
   );
   const dailyCash = useMemo(
-    () => daysInMonth.map((day) => currentSales.filter((s) => s.paymentType === "CASH" && isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + Number(x.totalAmount), 0)),
+    () => daysInMonth.map((day) => currentSales.filter((s) => s.paymentType === "CASH" && isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + saleNet(x), 0)),
     [daysInMonth, currentSales]
   );
 
@@ -3711,8 +3717,8 @@ function RecomendacionesTab({
     return m;
   }, [currentSales]);
 
-  const totalRevenue = useMemo(() => currentSales.reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
-  const cashRevenue = useMemo(() => currentSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + Number(x.totalAmount), 0), [currentSales]);
+  const totalRevenue = useMemo(() => currentSales.reduce((s, x) => s + saleNet(x), 0), [currentSales]);
+  const cashRevenue = useMemo(() => currentSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + saleNet(x), 0), [currentSales]);
   const avgSalePrice = currentSales.length > 0 ? totalRevenue / currentSales.length : 0;
 
   const recommendations = useMemo<Rec[]>(() => {
@@ -3743,7 +3749,7 @@ function RecomendacionesTab({
     const customerRevMap = new Map<string, number>();
     for (const sale of currentSales) {
       if (!sale.customerId) continue;
-      customerRevMap.set(sale.customerId, (customerRevMap.get(sale.customerId) ?? 0) + Number(sale.totalAmount));
+      customerRevMap.set(sale.customerId, (customerRevMap.get(sale.customerId) ?? 0) + saleNet(sale));
     }
     const top10CustRev = [...customerRevMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).reduce((s, [, v]) => s + v, 0);
     if (totalRevenue > 0 && top10CustRev / totalRevenue > 0.6) {
