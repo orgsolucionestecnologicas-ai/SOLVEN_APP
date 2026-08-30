@@ -170,6 +170,7 @@ docs/skills/deployment-checklist.md → checklist de pre-deploy (ya existente, c
 | `CashRegisterIndicator` mostraba saldo de caja a roles sin acceso configurado | QA-FIX-04 | 2026-07-16 |
 | "Cambiar contraseña" no verificaba sesión, comparaba contra la env var global `SOLVEN_PASSWORD` y nunca persistía `newPassword` (falso éxito) | FIX-11 (commit `cf1541c`) | 2026-07-18 |
 | `requireTenantId()` sin try/catch en `subscription`/`dashboard/summary` — 401 esperado salía como 500 | FIX-12 (commit `a8ee593`) | 2026-07-18 |
+| `CashMovement`/reportes/cierre de caja usaban `totalAmount` bruto en vez de neto (`- discountAmount`) en ventas con promoción; roles no-Owner (CASHIER/INVENTORY/READONLY) veían "Ajustes" por defecto | FIX-14 (commits `50eddaa`, `30eecc9`, `62abb5a`) — helper `saleNet` agregado por el agente ejecutor tenía una recursión infinita (`saleNet` llamándose a sí mismo), no detectada por lint/typecheck/test; corregida por el Ingeniero Líder en `62abb5a` | 2026-08-30 |
 
 ---
 
@@ -328,6 +329,7 @@ No se corrió la suite completa dentro de este entorno de auditoría (limitació
 - **Errores API:** usar helpers de `src/app/api/_shared/responses.ts` (successResponse, errorResponse, forbiddenResponse, unauthorizedResponse)
 - **Módulos de negocio:** patrón `*-validation.ts` (funciones puras de validación + tipos) + `*-data-access.ts` (queries Prisma) + `index.ts` (barrel export) — seguido consistentemente en las 22 carpetas de `src/modules/`
 - **Tests:** Vitest — correr `npm run lint && npm run typecheck && npm test` antes de cada commit
+- ⚠️ **Lint/typecheck/test NO garantizan ausencia de bugs de runtime en componentes de UI sin test de render** (ej. `reports.tsx`, `cash-register-close.tsx`): un helper recursivo sobre sí mismo (`function f(x){ return f(x) - ... }`) es válido en TypeScript y no lo agarra ningún test si no hay uno que efectivamente renderice/ejecute el componente (ver FIX-14, sección 5). Al agregar o modificar funciones puras de agregación en `src/app/ui/*.tsx`, releerlas una vez más buscando específicamente auto-referencias antes de dar el fix por cerrado.
 - **Commits:** `feat:` / `fix:` / `refactor:` / `docs:` / `test:` / `chore:`
 - **No RLS:** todo el aislamiento de tenants es por código — revisar SIEMPRE
 - **Financiero:** valores monetarios en `Decimal` de Prisma (nunca `Float` para dinero — `ivaRate` es la única excepción legítima, es una fracción, no un monto), operaciones atómicas con `$transaction`
