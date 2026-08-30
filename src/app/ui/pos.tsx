@@ -2100,7 +2100,7 @@ export function Pos() {
                 {cartItems.length > 0 ? (
                   <button
                     className="rounded-lg p-1.5 text-rose-400 hover:bg-rose-50 hover:text-rose-600"
-                    onClick={() => setCartItems([])}
+                    onClick={handleLimpiarVenta}
                     type="button"
                   >
                     <Trash2 size={14} />
