@@ -824,6 +824,12 @@ export function Pos() {
       : 0;
   const cartGrandTotal = cartNet - globalDiscountAmount;
 
+  const cartIva = cartItems.reduce((sum, item) => {
+    const totalFinal = item.unitPrice * item.quantity;
+    const neto = item.ivaRate > 0 ? totalFinal / (1 + item.ivaRate) : totalFinal;
+    return sum + (totalFinal - neto);
+  }, 0);
+
   const totalAssigned = paymentSplits.reduce(
     (sum, s) => sum + (parseFloat(s.amount) || 0),
     0
@@ -2524,9 +2530,9 @@ export function Pos() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Impuestos (0%)</span>
+                  <span className="text-xs text-slate-500">IVA incluido</span>
                   <span className="tabular-nums text-xs font-medium text-slate-700 [.pos-dark_&]:text-slate-300">
-                    {formatMoneyNum(0)}
+                    {formatMoneyNum(cartIva)}
                   </span>
                 </div>
                 <div className="border-t border-slate-200 [.pos-dark_&]:border-gray-700 pt-1.5">
