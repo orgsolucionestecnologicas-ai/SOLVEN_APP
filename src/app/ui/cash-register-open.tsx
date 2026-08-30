@@ -113,6 +113,7 @@ export function CashRegisterOpen({ onOpened }: { onOpened: () => void }) {
         setError(body.error?.message ?? "No se pudo abrir la caja.");
         return;
       }
+      window.dispatchEvent(new Event("cash-register-opened"));
       onOpened();
     } catch {
       setError("No se pudo conectar con el servidor.");

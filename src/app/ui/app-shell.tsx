@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { formatARS } from "@/lib/format-currency";
 import {
@@ -369,13 +369,14 @@ function CashRegisterIndicator({
   const canViewCash =
     role !== null && (configuredAccess !== undefined ? configuredAccess : role === "OWNER" || role === "CASHIER");
 
-  useEffect(() => {
+  const loadStatus = useCallback(() => {
     if (!canViewCash) return;
     fetch("/api/cash-register", { headers: { Accept: "application/json" } })
       .then((r) => r.json())
       .then(async (body: { data?: CashRegisterSessionSummary | null }) => {
         const current = body.data ?? null;
         setSession(current);
+        setBalance(null);
         if (!current || current.status !== "OPEN") return;
         const movementsRes = await fetch("/api/cash-movements", { headers: { Accept: "application/json" } });
         const movementsBody = (await movementsRes.json()) as { data?: CashMovementSummary[] };
@@ -388,6 +389,16 @@ function CashRegisterIndicator({
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, [canViewCash]);
+
+  useEffect(() => {
+    loadStatus();
+    window.addEventListener("cash-register-closed", loadStatus);
+    window.addEventListener("cash-register-opened", loadStatus);
+    return () => {
+      window.removeEventListener("cash-register-closed", loadStatus);
+      window.removeEventListener("cash-register-opened", loadStatus);
+    };
+  }, [loadStatus]);
 
   if (!canViewCash || isLoading) return null;
 
