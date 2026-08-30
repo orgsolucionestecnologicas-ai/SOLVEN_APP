@@ -26,7 +26,7 @@ export type SaleWithCustomer = Sale & { customer: { name: string } | null };
 export type SaleListRecord = Sale & {
   customer: { name: string; phone: string | null; email: string | null } | null;
   items: (SaleItem & {
-    product: { name: string; costPrice: Prisma.Decimal } | null;
+    product: { name: string; costPrice: Prisma.Decimal; categoryName: string } | null;
     service: { name: string } | null;
   })[];
   returnStatus: "NONE" | "PARTIAL" | "FULL";
@@ -296,7 +296,7 @@ export async function listSales(
         customer: { select: { name: true, phone: true, email: true } },
         items: {
           include: {
-            product: { select: { name: true, costPrice: true } },
+            product: { select: { name: true, costPrice: true, categoryName: true } },
             service: { select: { name: true } }
           }
         }

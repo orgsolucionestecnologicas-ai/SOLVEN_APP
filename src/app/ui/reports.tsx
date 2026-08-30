@@ -54,7 +54,7 @@ type SaleRecord = {
     quantity: number;
     unitPrice: string;
     total: string;
-    product: { name: string; costPrice: string } | null;
+    product: { name: string; costPrice: string; categoryName: string } | null;
   }>;
 };
 
@@ -75,6 +75,7 @@ type CustomerRecord = {
 type ProductRecord = {
   id: string;
   name: string;
+  categoryName: string;
   costPrice: string;
   salePrice: string;
   stock: number;
@@ -131,38 +132,21 @@ type AllMetrics = {
   prevExpenses: number;
 };
 
-// ─── Category constants (identical to Inventory view) ─────────────────────────
-
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  Abarrotes: ["arroz", "azúcar", "aceite", "café", "harina", "frijol", "sal", "sopa", "pasta", "cereal", "galleta", "maíz", "lentejas", "atún"],
-  Bebidas: ["agua", "refresco", "jugo", "gaseosa", "bebida", "cerveza", "vino", "soda", "té"],
-  Lácteos: ["leche", "queso", "yogur", "mantequilla", "crema de leche", "manteca"],
-  Carnes: ["pollo", "carne", "res", "cerdo", "pescado", "jamón", "salchicha", "chorizo", "camarón"],
-  Limpieza: ["jabón", "detergente", "cloro", "limpiador", "escoba", "trapeador", "desinfectante"],
-  "Cuidado Personal": ["shampoo", "pasta dental", "desodorante", "loción", "gel capilar", "pañal"],
-  Hogar: ["papel", "servilleta", "bolsa", "foco", "pilas", "vela", "foil"],
-  Panadería: ["pan", "bizcocho", "torta", "rosca", "dona"],
-  Congelados: ["helado", "hielo", "congelado", "paleta"],
-  Snacks: ["papas", "chips", "cacahuate", "pistache", "nuez", "maní", "palomitas", "frituras"],
-};
+// ─── Category constants ───────────────────────────────────────────────────────
+// Los reportes usan la categoría real del producto (product.categoryName), no un
+// heurístico por nombre. Estos son los colores de cada categoría en los gráficos.
 
 const CHART_ENTRIES: [string, string][] = [
-  ["Abarrotes", "#7c3aed"],
+  ["Alimentos", "#7c3aed"],
   ["Bebidas", "#3b82f6"],
   ["Lácteos", "#22c55e"],
   ["Limpieza", "#f97316"],
   ["Cuidado Personal", "#ec4899"],
+  ["Hogar", "#14b8a6"],
   ["Panadería", "#f59e0b"],
+  ["Snacks", "#6366f1"],
   ["Otros", "#94a3b8"],
 ];
-
-function getProductCategory(name: string): string {
-  const lower = name.toLowerCase();
-  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((kw) => lower.includes(kw))) return cat;
-  }
-  return "Otros";
-}
 
 function getChartCategory(cat: string): string {
   return CHART_ENTRIES.some(([c]) => c === cat) ? cat : "Otros";
@@ -1159,7 +1143,7 @@ function CategoryDonutPanel({ sales }: { sales: SaleRecord[] }) {
     for (const sale of sales) {
       for (const item of sale.items) {
         if (!item.product) continue;
-        const rawCat = getProductCategory(item.product.name);
+        const rawCat = item.product.categoryName;
         const cat = getChartCategory(rawCat);
         totals[cat] = (totals[cat] ?? 0) + Number(item.total);
       }
@@ -1733,7 +1717,7 @@ function KeyIndicatorsPanel({ sales }: { sales: SaleRecord[] }) {
       byHour[d.getHours()] += saleNet(sale);
       for (const item of sale.items) {
         if (!item.product) continue;
-        const cat = getProductCategory(item.product.name);
+        const cat = item.product.categoryName;
         byCat[cat] = (byCat[cat] ?? 0) + Number(item.total);
       }
     }
@@ -1991,7 +1975,7 @@ function ProductosTab({ sales, products }: { sales: SaleRecord[]; products: Prod
       for (const item of sale.items) {
         if (!item.product) continue;
         const name = item.product.name;
-        const category = getProductCategory(name);
+        const category = item.product.categoryName;
         const existing = byName.get(name) ?? { name, category, units: 0, revenue: 0 };
         byName.set(name, {
           name,
@@ -2426,7 +2410,7 @@ function InventarioTab({ products }: { products: ProductRecord[] }) {
     () =>
       products
         .map((p) => {
-          const category = getProductCategory(p.name);
+          const category = p.categoryName;
           const cost = Number(p.costPrice);
           const sale = Number(p.salePrice);
           const value = cost * p.stock;
@@ -2680,7 +2664,7 @@ function RentabilidadTab({
       if (d < currStart || d > currEnd) continue;
       for (const item of sale.items) {
         if (!item.product) continue;
-        const cat = getChartCategory(getProductCategory(item.product.name));
+        const cat = getChartCategory(item.product.categoryName);
         byCat[cat] = (byCat[cat] ?? 0) + Number(item.total);
       }
     }
@@ -3414,7 +3398,7 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
         if (!item.product) continue;
         const name = item.product.name;
         const prod = productMap.get(name);
-        const category = getProductCategory(name);
+        const category = item.product.categoryName;
         const e = byName.get(name) ?? { name, category, units: 0, revenue: 0, costTotal: 0 };
         const costPerUnit = prod ? Number(prod.costPrice) : 0;
         byName.set(name, { name, category, units: e.units + item.quantity, revenue: e.revenue + Number(item.total), costTotal: e.costTotal + costPerUnit * item.quantity });
