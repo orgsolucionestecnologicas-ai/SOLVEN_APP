@@ -17,7 +17,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
-import { PRODUCT_UNITS } from "@/modules/products/product-validation";
+import { IVA_RATES, PRODUCT_UNITS } from "@/modules/products/product-validation";
 
 const SELECTABLE_CATEGORIES = [
   "Alimentos",
@@ -55,6 +55,7 @@ type InitialProductData = {
   productCode?: string | null;
   supplierId?: string | null;
   unit?: string;
+  ivaRate?: number;
 };
 
 type ProductFormProps = {
@@ -114,6 +115,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
     return "30";
   });
   const [salePrice, setSalePrice] = useState(initialData?.salePrice ?? "");
+  const [ivaRate, setIvaRate] = useState<number>(initialData?.ivaRate ?? 0.21);
   const [stock, setStock] = useState(initialData?.stock !== undefined ? String(initialData.stock) : "0");
   const [minStock, setMinStock] = useState(initialData?.minStock !== undefined ? String(initialData.minStock) : "0");
   const [maxStock, setMaxStock] = useState(
@@ -159,6 +161,19 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
     }
     void loadSuppliers();
   }, []);
+
+  useEffect(() => {
+    if (isEditMode || initialData?.ivaRate !== undefined) return;
+    async function loadDefaultIva() {
+      try {
+        const res = await fetch("/api/settings", { headers: { Accept: "application/json" } });
+        if (!res.ok) return;
+        const body = (await res.json()) as { data?: { defaultIvaRate?: number } };
+        if (typeof body.data?.defaultIvaRate === "number") setIvaRate(body.data.defaultIvaRate);
+      } catch {}
+    }
+    void loadDefaultIva();
+  }, [isEditMode, initialData?.ivaRate]);
 
   function handleSupplierCreated(newSupplier: SupplierApiRecord) {
     setApiSuppliers((prev) => [...prev, newSupplier].sort((a, b) => a.name.localeCompare(b.name)));
@@ -232,8 +247,8 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
       const maxStockValue = maxStock.trim() === "" ? undefined : parseInt(maxStock, 10);
       const supplierIdValue = supplierId.trim() === "" ? null : supplierId;
       const payload = isEditMode
-        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue, unit }
-        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue, unit };
+        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue, unit, ivaRate }
+        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue, unit, ivaRate };
 
       const response = await fetch(url, {
         method,
@@ -546,6 +561,28 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                         value={salePrice}
                       />
                     </div>
+                  </FormField>
+
+                  <FormField htmlFor="pf-iva" label="Alícuota de IVA">
+                    <select
+                      className={selectClass}
+                      disabled={isSubmitting}
+                      id="pf-iva"
+                      onChange={(e) => setIvaRate(parseFloat(e.target.value))}
+                      value={ivaRate}
+                    >
+                      {IVA_RATES.map((rate) => (
+                        <option key={rate} value={rate}>
+                          {rate === 0
+                            ? "0% Exento"
+                            : rate === 0.105
+                              ? "10,5%"
+                              : rate === 0.21
+                                ? "21% — Alícuota general"
+                                : "27%"}
+                        </option>
+                      ))}
+                    </select>
                   </FormField>
 
                   <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">

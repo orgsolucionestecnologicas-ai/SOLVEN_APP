@@ -17,6 +17,7 @@ type ProductData = {
   productCode: string | null;
   supplierId: string | null;
   unit: string;
+  ivaRate: number;
 };
 
 type ApiResponse = {
@@ -69,7 +70,8 @@ export function ProductEditView({ productId }: { productId: string }) {
           maxStock: product.maxStock,
           productCode: product.productCode,
           supplierId: product.supplierId,
-          unit: product.unit
+          unit: product.unit,
+          ivaRate: product.ivaRate
         }}
         productId={productId}
       />
