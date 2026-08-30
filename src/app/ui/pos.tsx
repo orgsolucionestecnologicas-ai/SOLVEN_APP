@@ -309,14 +309,24 @@ function normalizeCartItems(items: CartItem[]): CartItem[] {
   }));
 }
 
-function readDraft(): CartItem[] | null {
+function readSuspendedCarts(): CartItem[][] {
   try {
     const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as CartItem[];
-    return Array.isArray(parsed) && parsed.length > 0 ? normalizeCartItems(parsed) : null;
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed) || parsed.length === 0) return [];
+    // Formato nuevo: lista de carritos (arreglo de arreglos).
+    if (Array.isArray(parsed[0])) {
+      return (parsed as CartItem[][])
+        .map((cart) => normalizeCartItems(cart))
+        .filter((cart) => cart.length > 0)
+        .slice(0, MAX_SUSPENDED_CARTS);
+    }
+    // Formato heredado: un único borrador (arreglo de ítems).
+    const single = normalizeCartItems(parsed as CartItem[]);
+    return single.length > 0 ? [single] : [];
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -381,7 +391,6 @@ export function Pos() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const [showDraftBanner, setShowDraftBanner] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [cotizacionOpen, setCotizacionOpen] = useState(false);
@@ -389,6 +398,7 @@ export function Pos() {
 
   const [suspendedCarts, setSuspendedCarts] = useState<CartItem[][]>([]);
   const [suspendedCartsOpen, setSuspendedCartsOpen] = useState(false);
+  const suspendedHydratedRef = useRef(false);
 
   const [applyResult, setApplyResult] = useState<ApplyResultData | null>(null);
   const [manualCodes, setManualCodes] = useState<string[]>([]);
@@ -463,7 +473,7 @@ export function Pos() {
   useEffect(() => {
     const savedCart = readSavedCart();
     if (savedCart) setCartItems(savedCart);
-    if (readDraft()) setShowDraftBanner(true);
+    setSuspendedCarts(readSuspendedCarts());
     setSoundEnabled(readSoundEnabled());
     setDarkMode(readDarkModeEnabled());
     const params = new URLSearchParams(window.location.search);
@@ -473,6 +483,22 @@ export function Pos() {
       setPaymentSplits([{ id: localId(), method: "Efectivo", amount: "" }]);
     }
   }, []);
+
+  useEffect(() => {
+    if (!suspendedHydratedRef.current) {
+      suspendedHydratedRef.current = true;
+      return;
+    }
+    try {
+      if (suspendedCarts.length > 0) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(suspendedCarts));
+      } else {
+        localStorage.removeItem(DRAFT_KEY);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [suspendedCarts]);
 
   useEffect(() => {
     if (
@@ -1036,11 +1062,6 @@ export function Pos() {
   }
 
   function handleNewSale() {
-    const draft = readDraft();
-    if (draft) {
-      setShowDraftBanner(true);
-      return;
-    }
     clearSale();
     setSaleGateResult(null);
     setSaleGateOpen(true);
@@ -1052,22 +1073,17 @@ export function Pos() {
     setSaleGateOpen(false);
   }
 
-  function handleSuspend() {
-    if (cartItems.length === 0) return;
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(cartItems));
-    } catch {
-      // ignore storage errors
-    }
-    clearSale();
-    setSuccessMessage("Venta suspendida — puedes recuperarla con Nueva venta");
-    setTimeout(() => setSuccessMessage(null), 4000);
-  }
-
   function handleSuspendCart() {
-    if (cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS) return;
+    if (cartItems.length === 0) return;
+    if (suspendedCarts.length >= MAX_SUSPENDED_CARTS) {
+      setSuccessMessage(`Máximo ${MAX_SUSPENDED_CARTS} ventas suspendidas`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+      return;
+    }
     setSuspendedCarts((prev) => [...prev, cartItems]);
     clearSale();
+    setSuccessMessage("Venta suspendida — recuperala desde el ícono de pausa");
+    setTimeout(() => setSuccessMessage(null), 4000);
   }
 
   function handleRestoreSuspendedCart(index: number) {
@@ -1080,21 +1096,6 @@ export function Pos() {
 
   function getSuspendedCartTotal(cart: CartItem[]): number {
     return cart.reduce((sum, item) => sum + getLineFinalTotal(item, item.unitPrice), 0);
-  }
-
-  function handleRecoverDraft() {
-    const draft = readDraft();
-    if (draft) {
-      setCartItems(draft);
-      localStorage.removeItem(DRAFT_KEY);
-    }
-    setShowDraftBanner(false);
-  }
-
-  function handleDiscardDraft() {
-    localStorage.removeItem(DRAFT_KEY);
-    setShowDraftBanner(false);
-    clearSale();
   }
 
   function handleLimpiarVenta() {
@@ -1560,7 +1561,7 @@ export function Pos() {
                 </button>
                 <button
                   className="flex items-center gap-1.5 rounded-lg border border-orange-300 px-3 py-2 text-xs font-semibold text-orange-600 hover:bg-orange-50"
-                  onClick={handleSuspend}
+                  onClick={handleSuspendCart}
                   type="button"
                 >
                   <PauseCircle size={13} />
@@ -1973,7 +1974,7 @@ export function Pos() {
                 <QuickActionButton
                   Icon={PauseCircle}
                   label="Suspender"
-                  onClick={handleSuspend}
+                  onClick={handleSuspendCart}
                 />
                 <QuickActionButton
                   danger
@@ -1987,31 +1988,6 @@ export function Pos() {
 
           {/* ── RIGHT PANEL ── */}
           <div className="flex h-full w-96 flex-shrink-0 flex-col bg-white [.pos-dark_&]:bg-gray-900 lg:w-[480px]">
-
-            {/* Draft recovery banner */}
-            {showDraftBanner ? (
-              <div className="flex-shrink-0 border-b border-amber-100 bg-amber-50 px-5 py-3">
-                <p className="mb-2 text-xs font-semibold text-amber-800">
-                  Tienes una venta suspendida
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    className="rounded-lg bg-amber-500 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-600"
-                    onClick={handleRecoverDraft}
-                    type="button"
-                  >
-                    Recuperar
-                  </button>
-                  <button
-                    className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
-                    onClick={handleDiscardDraft}
-                    type="button"
-                  >
-                    Descartar
-                  </button>
-                </div>
-              </div>
-            ) : null}
 
             {/* Cart header */}
             <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 [.pos-dark_&]:border-gray-700 px-5 py-3">
@@ -2664,13 +2640,13 @@ export function Pos() {
                       <button
                         className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
                         onClick={() => {
-                          handleSuspend();
+                          handleSuspendCart();
                           setMoreDropdownOpen(false);
                         }}
                         type="button"
                       >
                         <PauseCircle size={14} className="text-slate-400" />
-                        Guardar como borrador
+                        Suspender venta
                       </button>
                       <button
                         className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 [.pos-dark_&]:text-slate-300 hover:bg-slate-50 [.pos-dark_&]:hover:bg-gray-800"
