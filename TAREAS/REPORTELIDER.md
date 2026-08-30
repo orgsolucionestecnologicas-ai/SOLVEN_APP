@@ -8,6 +8,9 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-08-30 — FIX-14 ejecutado y verificado (con 1 bug crítico corregido antes del cierre)
+El agente de VS Code ejecutó FIX-14 (commits `50eddaa`, `30eecc9`, `5fb870c`): monto neto en `CashMovement`/reportes/cierre de caja, y Ajustes oculto por defecto para CASHIER/INVENTORY/READONLY. Verificación del Ingeniero Líder contra el diff real (no el self-report) encontró que el helper `saleNet` agregado en `src/app/ui/reports.tsx` se llamaba a sí mismo en vez de leer `totalAmount` — recursión infinita que crashea cualquier tab de Reportes (RangeError: Maximum call stack size exceeded) en ~20 call sites. No lo detectaba typecheck/lint/tests porque es válido en tipos y no hay test de render para `reports.tsx`. Corregido en `62abb5a` (una línea), typecheck y lint verificados limpios de nuevo tras el fix. FIX-14 queda cerrado.
+
 ### 2026-08-30 — Verificación de los 13 hallazgos QA restantes (11 confirmados, 1 falso positivo, 1 no concluyente)
 Ingeniero Líder verificó contra código real (no solo el texto del QA_REPORTE) los 13 hallazgos Alto/Importante/Bajo que quedaron pendientes de QA-CHROME-01. 11 confirmados con causa raíz exacta — 7 pasaron a `FIX-15` (bugs menores independientes: categoría en Reportes, "Mi Negocio" 0/8 por 403 silencioso, placeholder de agradecimiento, SKU obligatorio, carrito sin confirmar, devoluciones no reflejadas en cierre de caja, indicador de caja sin refrescar tras evento sin listener) y 4 a `FIX-16` (cotización no limpia contacto, IVA por producto + ticket "0%", botón "Imprimir factura" sin distinguir de fiscal real, dos mecanismos de carrito suspendido inconsistentes). 1 falso positivo (selección de vendedor — el `disabled` sí funciona). 1 no concluyente (promo automática — el código parece correcto, necesita reproducción en vivo antes de ordenar un fix). Ver detalle completo en `PENDIENTES.md` (QA-CHROME-01-b/c).
 
