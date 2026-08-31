@@ -4,11 +4,13 @@ import { ReturnReasonCategory } from "@prisma/client";
 import {
   listReturns,
   processReturn,
+  ReturnConcurrentConflictError,
   RETURN_REASON_CATEGORIES,
   RETURN_REFUND_METHODS,
   ReturnValidationError,
   type ReturnItemInput
 } from "../../../modules/returns";
+import { SaleNoCashRegisterOpenError } from "../../../modules/sales";
 import {
   errorResponse,
   forbiddenResponse,
@@ -18,13 +20,15 @@ import {
   successResponse,
   unauthorizedResponse
 } from "../_shared/responses";
-import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function GET(request: Request) {
   let tenantId: string;
   try {
-    tenantId = await requireTenantId();
+    ({ tenantId } = await requireRole(["OWNER", "CASHIER"], "returns"));
   } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
     throw e;
   }
@@ -67,8 +71,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   let tenantId: string;
+  let userId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER", "CASHIER"], "returns"));
+    ({ tenantId, userId } = await requireRole(["OWNER", "CASHIER"], "returns"));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -154,10 +159,28 @@ export async function POST(request: Request) {
       input.reasonNote as string | undefined,
       input.refundMethod as string | undefined
     );
+    void logAudit({
+      tenantId,
+      userId,
+      action: "RETURN_CREATED",
+      entityType: "Return",
+      entityId: result.returnId,
+      metadata: {
+        saleId: result.saleId,
+        totalReturned: result.totalReturned,
+        refundMethod: input.refundMethod as string | undefined
+      }
+    });
     return successResponse(result, 201);
   } catch (error) {
     if (error instanceof ReturnValidationError) {
       return errorResponse(error.message, 400);
+    }
+    if (error instanceof SaleNoCashRegisterOpenError) {
+      return errorResponse(error.message, 409);
+    }
+    if (error instanceof ReturnConcurrentConflictError) {
+      return errorResponse(error.message, 409);
     }
     return errorResponse("No se pudo procesar la devolución.");
   }

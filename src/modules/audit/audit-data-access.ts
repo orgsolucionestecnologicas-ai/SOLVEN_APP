@@ -13,7 +13,8 @@ export type AuditAction =
   | "INVENTORY_ADJUSTED"
   | "USER_CREATED"
   | "USER_ROLE_CHANGED"
-  | "USER_DELETED";
+  | "USER_DELETED"
+  | "RETURN_CREATED";
 
 export type LogAuditInput = {
   tenantId: string;

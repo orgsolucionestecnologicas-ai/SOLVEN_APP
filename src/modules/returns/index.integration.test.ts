@@ -3,8 +3,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 
 import { createProduct } from "../products";
-import { createSale } from "../sales";
-import { processReturn, ReturnValidationError } from "./index";
+import { createSale, SaleNoCashRegisterOpenError } from "../sales";
+import { processReturn, ReturnConcurrentConflictError, ReturnValidationError } from "./index";
 
 const testProductNamePrefix = "SOLVEN_RETURN_TEST_PRODUCT_";
 const testCustomerNamePrefix = "SOLVEN_RETURN_TEST_CUSTOMER_";
@@ -136,6 +136,129 @@ describe("processReturn — refundMethod", () => {
 
     const returnRecord = await prisma.return.findUniqueOrThrow({ where: { id: result.returnId } });
     expect(returnRecord.refundMethod).toBeNull();
+  });
+
+  it("prorates the refund by the sale's discount", async () => {
+    const product = await createTestProduct();
+    const sale = await createSale(
+      {
+        paymentType: "CASH",
+        items: [{ productId: product.id, quantity: 2 }],
+        globalDiscountType: "percent",
+        globalDiscountValue: 20
+      },
+      testTenantId
+    );
+
+    const result = await processReturn(
+      sale.id,
+      [{ productId: product.id, quantity: 1 }],
+      testTenantId,
+      "OTRO",
+      undefined,
+      "Efectivo"
+    );
+
+    expect(result.totalReturned).toBe("20.00");
+  });
+
+  it("reduces the linked debt when returning a MIXED-payment sale", async () => {
+    const product = await createTestProduct();
+    const customer = await prisma.customer.create({
+      data: { tenantId: testTenantId, name: `${testCustomerNamePrefix}${Date.now()}` }
+    });
+    const sale = await createSale(
+      {
+        paymentType: "MIXED",
+        customerId: customer.id,
+        items: [{ productId: product.id, quantity: 4 }],
+        paymentDetails: [{ method: "Efectivo", amount: 60 }]
+      },
+      testTenantId
+    );
+
+    const debtBefore = await prisma.debt.findFirstOrThrow({ where: { customerId: customer.id } });
+    expect(debtBefore.remainingAmount.toString()).toBe("40");
+
+    await processReturn(
+      sale.id,
+      [{ productId: product.id, quantity: 1 }],
+      testTenantId,
+      "OTRO",
+      undefined,
+      "Efectivo"
+    );
+
+    const debtAfter = await prisma.debt.findUniqueOrThrow({ where: { id: debtBefore.id } });
+    expect(debtAfter.remainingAmount.toString()).toBe("15");
+  });
+
+  it("rejects a cash refund when no cash register session is open", async () => {
+    const product = await createTestProduct();
+    const sale = await createSale(
+      { paymentType: "CASH", items: [{ productId: product.id, quantity: 1 }] },
+      testTenantId
+    );
+
+    await prisma.cashRegisterSession.updateMany({
+      where: { tenantId: testTenantId, status: "OPEN" },
+      data: { status: "CLOSED", closedAt: new Date() }
+    });
+
+    await expect(
+      processReturn(
+        sale.id,
+        [{ productId: product.id, quantity: 1 }],
+        testTenantId,
+        "OTRO",
+        undefined,
+        "Efectivo"
+      )
+    ).rejects.toThrow(SaleNoCashRegisterOpenError);
+
+    const cashMovements = await prisma.cashMovement.findMany({
+      where: { source: "RETURN", referenceId: sale.id }
+    });
+    expect(cashMovements).toHaveLength(0);
+
+    const returnRecords = await prisma.return.findMany({ where: { saleId: sale.id } });
+    expect(returnRecords).toHaveLength(0);
+  });
+
+  it("rejects a concurrent duplicate return that would exceed the sold quantity", async () => {
+    const product = await createTestProduct();
+    const sale = await createSale(
+      { paymentType: "CASH", items: [{ productId: product.id, quantity: 2 }] },
+      testTenantId
+    );
+
+    const attempt = () =>
+      processReturn(
+        sale.id,
+        [{ productId: product.id, quantity: 2 }],
+        testTenantId,
+        "OTRO",
+        undefined,
+        "Tarjeta"
+      );
+
+    const results = await Promise.allSettled([attempt(), attempt()]);
+
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.filter(
+      (r): r is PromiseRejectedResult => r.status === "rejected"
+    );
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0].reason).toBeInstanceOf(ReturnConcurrentConflictError);
+
+    const returnItems = await prisma.returnItem.findMany({
+      where: { return: { saleId: sale.id } }
+    });
+    const totalReturnedQuantity = returnItems.reduce((sum, ri) => sum + ri.quantity, 0);
+    expect(totalReturnedQuantity).toBe(2);
+
+    const updatedProduct = await prisma.product.findUniqueOrThrow({ where: { id: product.id } });
+    expect(updatedProduct.stock).toBe(10);
   });
 });
 

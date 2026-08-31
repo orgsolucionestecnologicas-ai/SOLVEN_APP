@@ -5,13 +5,20 @@ vi.mock("@/lib/tenant", () => ({
   UnauthorizedError: class UnauthorizedError extends Error {}
 }));
 
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ForbiddenError, requireRole } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 import {
+  listReturns,
   processReturn,
-  ReturnValidationError
+  ReturnConcurrentConflictError,
+  ReturnValidationError,
+  type ReturnListRecord
 } from "../../../modules/returns";
-import { POST } from "./route";
+import { SaleNoCashRegisterOpenError } from "../../../modules/sales";
+import { GET, POST } from "./route";
 
 vi.mock("../../../modules/returns", () => ({
   processReturn: vi.fn(),
@@ -23,10 +30,34 @@ vi.mock("../../../modules/returns", () => ({
       super(message);
       this.name = "ReturnValidationError";
     }
+  },
+  ReturnConcurrentConflictError: class ReturnConcurrentConflictError extends Error {
+    constructor() {
+      super(
+        "La devolución no se pudo procesar porque otra operación modificó la misma venta al mismo tiempo. Volvé a intentarlo."
+      );
+      this.name = "ReturnConcurrentConflictError";
+    }
   }
 }));
 
+vi.mock("../../../modules/sales", () => ({
+  SaleNoCashRegisterOpenError: class SaleNoCashRegisterOpenError extends Error {
+    constructor() {
+      super("No hay una sesión de caja abierta. Abrí la caja antes de registrar una venta en efectivo.");
+      this.name = "SaleNoCashRegisterOpenError";
+    }
+  }
+}));
+
+vi.mock("@/modules/audit", () => ({
+  logAudit: vi.fn()
+}));
+
 const mockedProcessReturn = vi.mocked(processReturn);
+const mockedListReturns = vi.mocked(listReturns);
+const mockedRequireRole = vi.mocked(requireRole);
+const mockedLogAudit = vi.mocked(logAudit);
 
 describe("returns API route", () => {
   beforeEach(() => {
@@ -350,5 +381,111 @@ describe("returns API route", () => {
 
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ data: result });
+  });
+
+  it("returns 403 from GET when the role lacks access to returns", async () => {
+    mockedRequireRole.mockRejectedValueOnce(new ForbiddenError());
+
+    const response = await GET(new Request("http://localhost/api/returns"));
+
+    expect(response.status).toBe(403);
+    expect(mockedListReturns).not.toHaveBeenCalled();
+  });
+
+  it("returns a paginated list on GET", async () => {
+    const record: ReturnListRecord = {
+      id: "return-1",
+      saleId: "sale-1",
+      totalAmount: new Prisma.Decimal(15),
+      createdAt: new Date("2026-08-01T00:00:00.000Z"),
+      reasonCategory: "OTRO",
+      reasonNote: null,
+      refundMethod: "Efectivo",
+      sale: { id: "sale-1", folio: 1, saleDate: new Date("2026-08-01T00:00:00.000Z"), customerName: null },
+      items: [{ id: "ri-1", productId: "product-1", productName: "Producto 1", quantity: 1 }]
+    };
+    mockedListReturns.mockResolvedValueOnce({ data: [record], total: 1 });
+
+    const response = await GET(new Request("http://localhost/api/returns"));
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { data: unknown[]; pagination: { total: number } };
+    expect(body.data).toHaveLength(1);
+    expect(body.pagination.total).toBe(1);
+    expect(mockedListReturns).toHaveBeenCalled();
+  });
+
+  it("returns 409 when there is no open cash register for a cash refund", async () => {
+    mockedProcessReturn.mockRejectedValueOnce(new SaleNoCashRegisterOpenError());
+
+    const response = await POST(
+      new Request("http://localhost/api/returns", {
+        method: "POST",
+        body: JSON.stringify({
+          saleId: "sale-1",
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO",
+          refundMethod: "Efectivo"
+        })
+      })
+    );
+
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("caja abierta");
+  });
+
+  it("returns 409 on a concurrent modification conflict", async () => {
+    mockedProcessReturn.mockRejectedValueOnce(new ReturnConcurrentConflictError());
+
+    const response = await POST(
+      new Request("http://localhost/api/returns", {
+        method: "POST",
+        body: JSON.stringify({
+          saleId: "sale-1",
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO"
+        })
+      })
+    );
+
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("mismo tiempo");
+  });
+
+  it("logs a RETURN_CREATED audit entry after a successful return", async () => {
+    const result = {
+      returnId: "return-9",
+      saleId: "sale-1",
+      returnedItems: 1,
+      totalReturned: "15.00"
+    };
+    mockedProcessReturn.mockResolvedValueOnce(result);
+
+    await POST(
+      new Request("http://localhost/api/returns", {
+        method: "POST",
+        body: JSON.stringify({
+          saleId: "sale-1",
+          items: [{ productId: "product-1", quantity: 1 }],
+          reasonCategory: "OTRO",
+          refundMethod: "Tarjeta"
+        })
+      })
+    );
+
+    expect(mockedLogAudit).toHaveBeenCalledWith({
+      tenantId: "test-tenant-id",
+      userId: "test-user-id",
+      action: "RETURN_CREATED",
+      entityType: "Return",
+      entityId: "return-9",
+      metadata: {
+        saleId: "sale-1",
+        totalReturned: "15.00",
+        refundMethod: "Tarjeta"
+      }
+    });
   });
 });

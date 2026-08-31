@@ -1,6 +1,7 @@
 import { Prisma, ReturnReasonCategory } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { SaleNoCashRegisterOpenError } from "../sales";
 
 export type ReturnItemInput = {
   productId: string;
@@ -26,6 +27,15 @@ export class ReturnValidationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "ReturnValidationError";
+  }
+}
+
+export class ReturnConcurrentConflictError extends Error {
+  constructor() {
+    super(
+      "La devolución no se pudo procesar porque otra operación modificó la misma venta al mismo tiempo. Volvé a intentarlo."
+    );
+    this.name = "ReturnConcurrentConflictError";
   }
 }
 
@@ -213,6 +223,17 @@ export async function getReturnById(
   };
 }
 
+function proratedUnitPrice(
+  unitPrice: Prisma.Decimal,
+  saleTotalAmount: Prisma.Decimal,
+  saleDiscountAmount: Prisma.Decimal
+): Prisma.Decimal {
+  if (saleTotalAmount.isZero()) {
+    return unitPrice;
+  }
+  return unitPrice.mul(new Prisma.Decimal(1).minus(saleDiscountAmount.div(saleTotalAmount)));
+}
+
 export async function processReturn(
   saleId: string,
   items: ReturnItemInput[],
@@ -299,10 +320,18 @@ export async function processReturn(
         });
       }
 
-      returnTotal = returnTotal.plus(saleItem.unitPrice.mul(returnItem.quantity));
+      const netUnitPrice = proratedUnitPrice(saleItem.unitPrice, sale.totalAmount, sale.discountAmount);
+      returnTotal = returnTotal.plus(netUnitPrice.mul(returnItem.quantity));
     }
 
     if (refundMethod === "Efectivo") {
+      const openSession = await tx.cashRegisterSession.findFirst({
+        where: { status: "OPEN", tenantId }
+      });
+      if (!openSession) {
+        throw new SaleNoCashRegisterOpenError();
+      }
+
       await tx.cashMovement.create({
         data: {
           tenantId,
@@ -314,7 +343,7 @@ export async function processReturn(
       });
     }
 
-    if (sale.paymentType === "CREDIT" && sale.debtId) {
+    if ((sale.paymentType === "CREDIT" || sale.paymentType === "MIXED") && sale.debtId) {
       const debt = await tx.debt.findUnique({ where: { id: sale.debtId } });
       if (debt) {
         const newRemaining = debt.remainingAmount.minus(returnTotal);
@@ -352,5 +381,13 @@ export async function processReturn(
       returnedItems: items.length,
       totalReturned: returnTotal.toFixed(2)
     };
-  }, { timeout: 15000 });
+  }, { timeout: 15000, isolationLevel: "Serializable" }).catch((error) => {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === "P2034" || error.code === "P2028")
+    ) {
+      throw new ReturnConcurrentConflictError();
+    }
+    throw error;
+  });
 }

@@ -8,6 +8,11 @@
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
 
+### 2026-08-31 — RET-FIX-01..07: devoluciones — carrera de cantidad, reintegro con descuento, deuda MIXED, permisos GET, caja abierta, servicios, auditoría
+Ejecutados los 7 hallazgos de INGENIERODETESTEO en `ordenestest.md` sobre `src/modules/returns` y `src/app/api/returns`: transacción `Serializable` + error tipado para la carrera de cantidad devuelta, reintegro prorrateado por el descuento real de la venta, `Debt` de ventas MIXED ahora se reduce igual que CREDIT, `GET /api/returns` exige el mismo rol que `POST`, reintegro en efectivo exige caja abierta (mismo patrón que `createSale`), y devoluciones ahora quedan en `AuditLog`. RET-FIX-06 (devolver venta de Servicio) queda diferido — no es una decisión de código, es una pregunta de producto para Diego (¿es un caso de uso real?), documentada en `ordenestest.md` sin implementar. Detalle completo, incluyendo el código real de error de Prisma determinado empíricamente para el conflicto concurrente (`P2028`, no `P2034`), en `REPORTE_DE_CAMBIOS.md`.
+
+No autocalificado como "verificado" — queda para el Ingeniero Líder contra el diff real.
+
 ### 2026-08-31 — POS-FIX-01..04: descuentos, promociones, permisos GET /api/sales, doble confirmación de cotización (VERIFICADO)
 Ejecutados los 4 bugs confirmados por INGENIERODETESTEO en `ordenestest.md` (commit `481852f`), el primer ciclo completo de esta nueva dinámica. Los descuentos manuales de ítem y el descuento global del POS, que `pos.tsx` ya calculaba y mostraba pero el backend ignoraba, ahora se validan y aplican en `createSale`; `discountAmount`/`promotionIds` dejaron de confiarse del payload del cliente y se recalculan server-side contra promociones reales vía `promotion-engine.ts` (el mismo motor que ya usaba el preview `/api/promotions/apply`), descartando en silencio cualquier `promotionId` inválido sin rechazar la venta. `GET /api/sales` ahora exige el mismo `requireRole(["OWNER","CASHIER"], "pos")` que `POST`. `confirmQuote` pasó a un `updateMany` guardado por `status: {not: "CONFIRMED"}` + chequeo de `count`, y lanza `QuoteAlreadyConfirmedError` dentro de la misma transacción — Prisma revierte sale/stock/movimientos ya creados en ese intento si pierde la carrera.
 
