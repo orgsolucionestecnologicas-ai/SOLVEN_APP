@@ -12,9 +12,6 @@
 
 ### 🔴 Crítico
 
-#### QA-CHROME-01-a — Venta a crédito/fiado real — YA ORDENADA (`FEATURE-01`)
-Confirmado por el Ingeniero Líder contra código (29-07-2026): el schema soporta `SalePaymentType.CREDIT/MIXED` y `Sale.debtId`, pero `sale-validation.ts` fuerza siempre `CASH`. Diego decidió (29-07-2026) implementarla lo más completa posible: CREDIT + MIXED, stock descontado igual que en una venta de contado. Orden completa en `TAREAS/FEATURE-01_venta_a_credito.md`, con mapa de código investigado archivo:línea. Mover a Cerrados cuando se ejecute y verifique.
-
 #### T3 — Rotar token de GitHub expuesto
 Manual, no verificable desde este entorno (sandbox sin credenciales de git). `github.com/settings/tokens` → revocar el token actual → generar uno nuevo con permisos `repo` → actualizar donde se use. ~30 min.
 
@@ -54,6 +51,12 @@ Notion la marca "🚫 Bloqueada" sin especificar por qué. Confirmar con Diego c
 #### [Cotizaciones · UX] Indicador urgente (rojo) si la cotización vence en menos de 3 días
 Notion la marca "🚫 Bloqueada" sin especificar por qué. Confirmar con Diego cuál era el bloqueo antes de retomarla.
 
+#### [Venta a crédito · Producto] Vencimiento de deuda hardcodeado a 30 días
+`FEATURE-01` (31-08-2026): la `Debt` que se crea automáticamente al fiar una venta siempre queda con `dueDate` a 30 días desde la venta, sin que el cajero pueda elegirlo (a diferencia de la deuda manual en `debts-list.tsx`, que permite dejarlo vacío). No es un bug, es una decisión de producto no discutida — confirmar con Diego si 30 días fijo está bien o si conviene hacerlo configurable (por tenant o por venta).
+
+#### [Reportes · UX] Venta MIXED no se cuenta en "N ventas" de las tarjetas de Efectivo/Crédito
+`FEATURE-01` (31-08-2026): en `reports.tsx`, los montos de "Ventas al contado"/"Ventas a crédito" ya reparten bien la porción de una venta MIXED (verificado que reconcilia), pero el subtítulo "X ventas (Y%)" de esas tarjetas solo cuenta `paymentType === "CASH"` o `=== "CREDIT"` puro — una venta mixta no suma en ninguno de los dos conteos. Cosmético, no afecta ningún monto.
+
 ---
 
 ## Integraciones Externas
@@ -85,6 +88,11 @@ Requiere acceso manual de Diego al portal ARCA con Clave Fiscal nivel 3 — no s
 ---
 
 ## Cerrados
+
+### 2026-08-31 — FEATURE-01: venta a crédito/fiado real, CREDIT + MIXED (CERRADO — commits `cb45e3d`..`aa3ee45`)
+Implementación completa: `sale-validation.ts` acepta CASH/CREDIT/MIXED y exige cliente para los dos últimos; `createSale` deriva el monto cobrado en el servidor (`netTotal - collectedNow`, nunca confía en un "monto fiado" que mande el cliente), crea una `Debt` 1:1 por venta (`Sale.debtId`), genera `CashMovement` solo por lo efectivamente cobrado (ninguno en CREDIT puro), y baja stock igual que una venta de contado. Límite de crédito: rechaza si `Debt.remainingAmount` (no saldadas) + el nuevo monto fiado supera `Customer.creditLimit`; OWNER puede pasar por encima (usa `session.role` del servidor, no falseable por el cliente); `customerId` se valida contra `tenantId` antes de crear la deuda. POS: cualquier remanente sin asignar en "Cobrar" pasa a ser fiado (CREDIT si es todo, MIXED si es parcial), exige cliente seleccionado. Reportes: `saleCashPortion`/`saleCreditPortion` reparten la porción MIXED entre ambos totales — verificado que reconcilian exacto con el neto en los 3 casos. Se arrastró un fix menor: `CreateSaleModal` en `sales-list.tsx` nunca mandaba el `customerId` seleccionado.
+
+**Verificación del Ingeniero Líder commit por commit contra el diff real**, incluyendo el rollback del límite de crédito (hay test que confirma que un rechazo no deja deuda huérfana ni descuenta stock) y la reconciliación de montos. `typecheck`/`lint` reverificados limpios de forma independiente; no se pudo correr `npm test` en este sandbox (limitación conocida de `rollup` en Linux, ver `CLAUDE.md` sección 11) pero se leyeron los 4 tests de integración nuevos línea por línea contra lo que afirman cubrir. Dos notas menores sin bloquear el cierre, documentadas arriba en "Medio": vencimiento de deuda hardcodeado a 30 días, y una venta MIXED no se cuenta en el subtítulo "N ventas" de Reportes (el monto sí está bien repartido). Pendiente documentado por el propio agente: `CreateSaleModal` (modal secundario de ventas) no tiene UI de pago dividido, así que el fiado completo solo se opera desde el POS. Detalle completo en `TAREAS/REPORTELIDER.md`.
 
 ### 2026-08-30 — FIX-15 + FIX-16: 11 bugs menores/medianos de QA-CHROME-01 (CERRADO — 11 commits, `8677d2a`..`9200aa7`)
 Los 11 hallazgos confirmados y no críticos de QA-CHROME-01 (QA-CHROME-01-c) quedaron resueltos: **FIX-15** — categoría real de producto en Reportes (`categoryName` en vez de heurístico por nombre), "Mi Negocio" muestra mensaje de acceso en vez de 0/8 para no-Owner, placeholder de agradecimiento ya no se confunde con texto real, SKU deja de ser obligatorio en el form (el backend siempre lo autogenera), papelera del carrito del POS pide confirmación igual que "Limpiar venta", "Devoluciones" en Cierre de Caja muestra el monto real de la sesión (sin doble descuento — el "Total esperado" seguía usando `totalCashOut`, que ya las incluía), indicador de caja del sidebar se refresca con eventos `cash-register-closed`/`cash-register-opened`. **FIX-16** — cotización limpia Email/Teléfono al cambiar de cliente, selector de IVA agregado al formulario de producto (`IVA_RATES`, ya soportado por el backend) y el resumen del carrito del POS calcula el IVA real (mismo criterio que `handlePrintInvoice`, verificado línea por línea que es la fórmula idéntica), botón "Imprimir factura" se renombra a "Imprimir comprobante (no fiscal)" cuando no hay CAE real, y se unificaron los dos mecanismos de "Suspender venta" en uno solo persistido en `localStorage` (con migración automática del formato viejo de borrador único al nuevo formato de lista). Verificado por el Ingeniero Líder commit por commit contra el diff real — sin hallazgos, `typecheck`/`lint` reverificados limpios de forma independiente. Detalle completo en `TAREAS/REPORTELIDER.md`.
