@@ -1055,7 +1055,8 @@ function CreateSaleModal({ onClose, onSuccess }: CreateSaleModalProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paymentType: "CASH",
+          paymentType,
+          ...(selectedCustomerId ? { customerId: selectedCustomerId } : {}),
           items: lineItems.map((item) => ({
             productId: item.productId,
             quantity: item.quantity
