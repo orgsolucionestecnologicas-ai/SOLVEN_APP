@@ -1280,12 +1280,16 @@ function getPaymentBadgeInfo(sale: SaleRecord): PaymentBadgeInfo {
     return { label: "Crédito", className: "bg-blue-50 text-blue-800" };
   }
 
+  if (sale.paymentType === "MIXED") {
+    return { label: "Parcial", className: "bg-blue-50 text-blue-800", showIcon: true };
+  }
+
   const methods =
     Array.isArray(sale.paymentDetails) && sale.paymentDetails.length > 0
       ? Array.from(new Set(sale.paymentDetails.map((split) => split.method)))
       : [];
 
-  if (sale.paymentType === "MIXED" || methods.length > 1) {
+  if (methods.length > 1) {
     return { label: "Mixto", className: "bg-slate-100 text-slate-700", showIcon: true };
   }
 

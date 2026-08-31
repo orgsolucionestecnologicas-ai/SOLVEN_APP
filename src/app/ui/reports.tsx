@@ -33,9 +33,30 @@ function formatMoney(value: number | string): string {
   return formatARS(Number(value));
 }
 
-// Monto neto realmente cobrado por una venta: total de ítems menos el descuento por promoción.
+// Monto neto de una venta: total de ítems menos el descuento por promoción.
 function saleNet(sale: { totalAmount: string; discountAmount: string }): number {
   return Number(sale.totalAmount) - Number(sale.discountAmount);
+}
+
+type SalePortionInput = {
+  totalAmount: string;
+  discountAmount: string;
+  paymentType: "CASH" | "CREDIT" | "MIXED";
+  cashAmount: string | null;
+};
+
+// Porción realmente cobrada de una venta (efectivo/tarjeta/transferencia).
+function saleCashPortion(sale: SalePortionInput): number {
+  if (sale.paymentType === "CREDIT") return 0;
+  if (sale.paymentType === "MIXED") return Number(sale.cashAmount ?? 0);
+  return saleNet(sale);
+}
+
+// Porción fiada (a crédito) de una venta.
+function saleCreditPortion(sale: SalePortionInput): number {
+  if (sale.paymentType === "CASH") return 0;
+  if (sale.paymentType === "MIXED") return saleNet(sale) - Number(sale.cashAmount ?? 0);
+  return saleNet(sale);
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -45,7 +66,8 @@ type SaleRecord = {
   saleDate: string;
   totalAmount: string;
   discountAmount: string;
-  paymentType: "CASH" | "CREDIT";
+  paymentType: "CASH" | "CREDIT" | "MIXED";
+  cashAmount: string | null;
   customerId: string | null;
   customer: { name: string } | null;
   sellerCode: string | null;
@@ -1303,8 +1325,8 @@ function GrowthSummaryPanel({ metrics }: { metrics: AllMetrics }) {
 // ─── PaymentMethodPanel ───────────────────────────────────────────────────────
 
 function PaymentMethodPanel({ sales }: { sales: SaleRecord[] }) {
-  const cashTotal = sales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + saleNet(x), 0);
-  const creditTotal = sales.filter((s) => s.paymentType === "CREDIT").reduce((s, x) => s + saleNet(x), 0);
+  const cashTotal = sales.reduce((s, x) => s + saleCashPortion(x), 0);
+  const creditTotal = sales.reduce((s, x) => s + saleCreditPortion(x), 0);
   const total = cashTotal + creditTotal;
 
   const segmentData = [
@@ -1920,7 +1942,7 @@ function VentasTab({ sales }: { sales: SaleRecord[] }) {
                       {sale.items.length} ítem{sale.items.length !== 1 ? "s" : ""}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-slate-600">
-                      {sale.paymentType === "CASH" ? "Efectivo" : "Crédito"}
+                      {sale.paymentType === "CASH" ? "Efectivo" : sale.paymentType === "MIXED" ? "Mixto" : "Crédito"}
                     </td>
                     <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-900">
                       {formatMoney(saleNet(sale))}
@@ -2682,12 +2704,9 @@ function RentabilidadTab({
   }, [expenses, currStart, currEnd]);
 
   const paymentBreakdown = useMemo(() => {
-    const cash = sales
-      .filter((s) => { const d = new Date(s.saleDate); return d >= currStart && d <= currEnd && s.paymentType === "CASH"; })
-      .reduce((s, x) => s + saleNet(x), 0);
-    const credit = sales
-      .filter((s) => { const d = new Date(s.saleDate); return d >= currStart && d <= currEnd && s.paymentType === "CREDIT"; })
-      .reduce((s, x) => s + saleNet(x), 0);
+    const inRange = sales.filter((s) => { const d = new Date(s.saleDate); return d >= currStart && d <= currEnd; });
+    const cash = inRange.reduce((s, x) => s + saleCashPortion(x), 0);
+    const credit = inRange.reduce((s, x) => s + saleCreditPortion(x), 0);
     return { cash, credit };
   }, [sales, currStart, currEnd]);
 
@@ -2985,15 +3004,15 @@ function ReporteMensualTab({
   const [showComparison, setShowComparison] = useState(false);
 
   const totalAmount = useMemo(() => currentSales.reduce((s, x) => s + saleNet(x), 0), [currentSales]);
-  const cashAmount = useMemo(() => currentSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + saleNet(x), 0), [currentSales]);
-  const creditAmount = useMemo(() => currentSales.filter((s) => s.paymentType === "CREDIT").reduce((s, x) => s + saleNet(x), 0), [currentSales]);
+  const cashAmount = useMemo(() => currentSales.reduce((s, x) => s + saleCashPortion(x), 0), [currentSales]);
+  const creditAmount = useMemo(() => currentSales.reduce((s, x) => s + saleCreditPortion(x), 0), [currentSales]);
   const expensesTotal = useMemo(() => currentExpenses.reduce((s, e) => s + Number(e.amount), 0), [currentExpenses]);
   const grossProfit = totalAmount - expensesTotal;
   const grossMargin = totalAmount > 0 ? (grossProfit / totalAmount) * 100 : 0;
 
   const prevTotal = useMemo(() => previousSales.reduce((s, x) => s + saleNet(x), 0), [previousSales]);
-  const prevCash = useMemo(() => previousSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + saleNet(x), 0), [previousSales]);
-  const prevCredit = useMemo(() => previousSales.filter((s) => s.paymentType === "CREDIT").reduce((s, x) => s + saleNet(x), 0), [previousSales]);
+  const prevCash = useMemo(() => previousSales.reduce((s, x) => s + saleCashPortion(x), 0), [previousSales]);
+  const prevCredit = useMemo(() => previousSales.reduce((s, x) => s + saleCreditPortion(x), 0), [previousSales]);
   const prevExpensesTotal = useMemo(() => previousExpenses.reduce((s, e) => s + Number(e.amount), 0), [previousExpenses]);
   const prevGrossProfit = prevTotal - prevExpensesTotal;
 
@@ -3013,7 +3032,7 @@ function ReporteMensualTab({
     [daysInMonth, currentSales]
   );
   const dailyCash = useMemo(
-    () => daysInMonth.map((day) => currentSales.filter((s) => s.paymentType === "CASH" && isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + saleNet(x), 0)),
+    () => daysInMonth.map((day) => currentSales.filter((s) => isSameLocalDay(new Date(s.saleDate), day)).reduce((s, x) => s + saleCashPortion(x), 0)),
     [daysInMonth, currentSales]
   );
 
@@ -3043,7 +3062,7 @@ function ReporteMensualTab({
     [currentSales]
   );
   const creditCustomers = useMemo(
-    () => new Set(currentSales.filter((s) => s.paymentType === "CREDIT" && s.customerId).map((s) => s.customerId!)).size,
+    () => new Set(currentSales.filter((s) => (s.paymentType === "CREDIT" || s.paymentType === "MIXED") && s.customerId).map((s) => s.customerId!)).size,
     [currentSales]
   );
 
@@ -3702,7 +3721,7 @@ function RecomendacionesTab({
   }, [currentSales]);
 
   const totalRevenue = useMemo(() => currentSales.reduce((s, x) => s + saleNet(x), 0), [currentSales]);
-  const cashRevenue = useMemo(() => currentSales.filter((s) => s.paymentType === "CASH").reduce((s, x) => s + saleNet(x), 0), [currentSales]);
+  const cashRevenue = useMemo(() => currentSales.reduce((s, x) => s + saleCashPortion(x), 0), [currentSales]);
   const avgSalePrice = currentSales.length > 0 ? totalRevenue / currentSales.length : 0;
 
   const recommendations = useMemo<Rec[]>(() => {
