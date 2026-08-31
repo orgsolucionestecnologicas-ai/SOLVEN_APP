@@ -40,6 +40,18 @@ vi.mock("../../../modules/sales", () => ({
       super(`Product ${productId} was not found.`);
       this.name = "SaleProductNotFoundError";
     }
+  },
+  SaleCreditLimitExceededError: class SaleCreditLimitExceededError extends Error {
+    constructor() {
+      super("El monto fiado supera el límite de crédito del cliente.");
+      this.name = "SaleCreditLimitExceededError";
+    }
+  },
+  SaleCustomerNotFoundError: class SaleCustomerNotFoundError extends Error {
+    constructor() {
+      super("El cliente de la venta no existe.");
+      this.name = "SaleCustomerNotFoundError";
+    }
   }
 }));
 
@@ -117,7 +129,7 @@ describe("sales API route", () => {
           quantity: 2
         }
       ]
-    }, "test-tenant-id");
+    }, "test-tenant-id", { userRole: "OWNER" });
   });
 
   it("returns validation errors for invalid sale input", async () => {

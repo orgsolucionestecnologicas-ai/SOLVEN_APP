@@ -6,6 +6,7 @@ import { notifyLowStockIfEnabled } from "@/lib/email-alerts";
 import {
   type CreateSaleInput,
   SaleNoCashRegisterOpenError,
+  SaleValidationError,
   type ValidatedProductSaleItemInput,
   type ValidatedServiceSaleItemInput,
   type ValidatedSaleItemInput,
@@ -68,6 +69,20 @@ export class SaleNotFoundError extends Error {
   }
 }
 
+export class SaleCustomerNotFoundError extends Error {
+  constructor() {
+    super("El cliente de la venta no existe.");
+    this.name = "SaleCustomerNotFoundError";
+  }
+}
+
+export class SaleCreditLimitExceededError extends Error {
+  constructor() {
+    super("El monto fiado supera el límite de crédito del cliente.");
+    this.name = "SaleCreditLimitExceededError";
+  }
+}
+
 function isProductItem(
   item: ValidatedSaleItemInput
 ): item is ValidatedProductSaleItemInput {
@@ -82,9 +97,11 @@ function isServiceItem(
 
 export async function createSale(
   saleInput: CreateSaleWithPromotionsInput,
-  tenantId: string
+  tenantId: string,
+  options: { userRole?: string } = {}
 ): Promise<SaleWithItems> {
   const validatedSale = validateCreateSaleInput(saleInput);
+  const customerId = validatedSale.customerId ?? null;
 
   const openSession = await prisma.cashRegisterSession.findFirst({
     where: { status: "OPEN", tenantId }
@@ -132,6 +149,68 @@ export async function createSale(
       new Prisma.Decimal(0)
     );
 
+    const netTotal = totalAmount.minus(discountAmount);
+    const paymentType = validatedSale.paymentType;
+
+    const collectedNow =
+      paymentType === "CASH"
+        ? netTotal
+        : paymentType === "CREDIT"
+          ? new Prisma.Decimal(0)
+          : (validatedSale.paymentDetails ?? []).reduce(
+              (sum, split) =>
+                sum.plus(
+                  typeof split.amount === "number" && split.amount > 0
+                    ? new Prisma.Decimal(split.amount)
+                    : new Prisma.Decimal(0)
+                ),
+              new Prisma.Decimal(0)
+            );
+
+    if (collectedNow.gt(netTotal)) {
+      throw new SaleValidationError(["El monto cobrado supera el total de la venta."]);
+    }
+
+    const creditAmount = netTotal.minus(collectedNow);
+
+    if (paymentType === "MIXED" && (collectedNow.lte(0) || creditAmount.lte(0))) {
+      throw new SaleValidationError([
+        "Una venta mixta debe tener una parte cobrada y una parte fiada."
+      ]);
+    }
+
+    let debtId: string | null = null;
+    if (paymentType !== "CASH" && customerId) {
+      const customer = await transaction.customer.findFirst({
+        where: { id: customerId, tenantId }
+      });
+      if (!customer) {
+        throw new SaleCustomerNotFoundError();
+      }
+
+      if (customer.creditLimit !== null && options.userRole !== "OWNER") {
+        const outstanding = await transaction.debt.aggregate({
+          where: { customerId, tenantId, writtenOff: false },
+          _sum: { remainingAmount: true }
+        });
+        const currentDebt = outstanding._sum.remainingAmount ?? new Prisma.Decimal(0);
+        if (currentDebt.plus(creditAmount).gt(customer.creditLimit)) {
+          throw new SaleCreditLimitExceededError();
+        }
+      }
+
+      const debt = await transaction.debt.create({
+        data: {
+          tenantId,
+          customerId,
+          totalAmount: creditAmount,
+          remainingAmount: creditAmount,
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        }
+      });
+      debtId = debt.id;
+    }
+
     const lastSale = await transaction.sale.findFirst({
       where: { tenantId },
       orderBy: { folio: "desc" },
@@ -164,8 +243,9 @@ export async function createSale(
         sellerCode: validatedSale.sellerCode || null,
         sellerId: validatedSale.sellerId || null,
         paymentType: validatedSale.paymentType,
-        customerId: null,
-        cashAmount: null,
+        customerId,
+        debtId,
+        cashAmount: paymentType === "CASH" ? null : collectedNow,
         totalAmount,
         discountAmount,
         paymentDetails: validatedSale.paymentDetails
@@ -218,15 +298,17 @@ export async function createSale(
       });
     }
 
-    await transaction.cashMovement.create({
-      data: {
-        tenantId,
-        type: "IN",
-        amount: totalAmount.minus(discountAmount),
-        source: "SALE",
-        referenceId: sale.id
-      }
-    });
+    if (collectedNow.gt(0)) {
+      await transaction.cashMovement.create({
+        data: {
+          tenantId,
+          type: "IN",
+          amount: collectedNow,
+          source: "SALE",
+          referenceId: sale.id
+        }
+      });
+    }
 
     if (promotionIds.length > 0) {
       const perPromotionDiscount = discountAmount.div(promotionIds.length);

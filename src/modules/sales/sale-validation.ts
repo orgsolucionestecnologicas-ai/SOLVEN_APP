@@ -4,11 +4,11 @@ export type CreateSaleItemInput = {
   quantity: number;
 };
 
-export type SalePaymentType = "CASH" | "CREDIT" | "MIXED"; // CREDIT/MIXED solo para registros históricos en BD
+export type SalePaymentType = "CASH" | "CREDIT" | "MIXED";
 
 export type CreateSaleInput = {
   items: CreateSaleItemInput[];
-  paymentType?: "CASH";
+  paymentType?: SalePaymentType;
   customerId?: string;
   sellerCode?: string;
   sellerId?: string;
@@ -30,16 +30,33 @@ export type ValidatedSaleItemInput =
   | ValidatedProductSaleItemInput
   | ValidatedServiceSaleItemInput;
 
-export type ValidatedCashSaleInput = {
+type ValidatedSaleInputBase = {
   items: ValidatedSaleItemInput[];
-  paymentType: "CASH";
   sellerCode: string;
   sellerId: string;
   receiptType: "TICKET" | "INVOICE";
   paymentDetails?: { method: string; amount: number; reference?: string }[];
 };
 
-export type ValidatedSaleInput = ValidatedCashSaleInput;
+export type ValidatedCashSaleInput = ValidatedSaleInputBase & {
+  paymentType: "CASH";
+  customerId?: string;
+};
+
+export type ValidatedCreditSaleInput = ValidatedSaleInputBase & {
+  paymentType: "CREDIT";
+  customerId: string;
+};
+
+export type ValidatedMixedSaleInput = ValidatedSaleInputBase & {
+  paymentType: "MIXED";
+  customerId: string;
+};
+
+export type ValidatedSaleInput =
+  | ValidatedCashSaleInput
+  | ValidatedCreditSaleInput
+  | ValidatedMixedSaleInput;
 
 export class SaleNoCashRegisterOpenError extends Error {
   constructor() {
@@ -60,13 +77,19 @@ export function validateCreateSaleInput(
 ): ValidatedSaleInput {
   const validationErrors: string[] = [];
   const paymentType = saleInput.paymentType ?? "CASH";
+  const customerId =
+    typeof saleInput.customerId === "string" ? saleInput.customerId.trim() : "";
 
   if (!Array.isArray(saleInput.items) || saleInput.items.length === 0) {
     validationErrors.push("A sale must include at least one item.");
   }
 
-  if (paymentType !== "CASH") {
-    validationErrors.push("Sale payment type must be CASH.");
+  if (paymentType !== "CASH" && paymentType !== "CREDIT" && paymentType !== "MIXED") {
+    validationErrors.push("Sale payment type must be CASH, CREDIT or MIXED.");
+  }
+
+  if ((paymentType === "CREDIT" || paymentType === "MIXED") && customerId.length === 0) {
+    validationErrors.push("Una venta a crédito o mixta requiere un cliente.");
   }
 
   const items = Array.isArray(saleInput.items) ? saleInput.items : [];
@@ -106,12 +129,19 @@ export function validateCreateSaleInput(
   const sellerId = typeof saleInput.sellerId === "string" ? saleInput.sellerId.trim() : "";
   const receiptType = saleInput.receiptType === "INVOICE" ? "INVOICE" as const : "TICKET" as const;
 
-  return {
+  const base: ValidatedSaleInputBase = {
     items: validatedItems,
-    paymentType: "CASH",
     sellerCode,
     sellerId,
     receiptType,
     paymentDetails: saleInput.paymentDetails
   };
+
+  if (paymentType === "CREDIT") {
+    return { ...base, paymentType: "CREDIT", customerId };
+  }
+  if (paymentType === "MIXED") {
+    return { ...base, paymentType: "MIXED", customerId };
+  }
+  return { ...base, paymentType: "CASH", ...(customerId ? { customerId } : {}) };
 }

@@ -3,6 +3,8 @@ export {
   type CreateSaleWithPromotionsInput,
   getSaleById,
   listSales,
+  SaleCreditLimitExceededError,
+  SaleCustomerNotFoundError,
   SaleInsufficientStockError,
   SaleNotFoundError,
   SaleProductNotFoundError,

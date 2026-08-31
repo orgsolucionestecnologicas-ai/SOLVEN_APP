@@ -39,14 +39,59 @@ describe("validateCreateSaleInput", () => {
     });
   });
 
-  it("rejects non-CASH payment types", () => {
+  it("rejects a CREDIT sale without a customer", () => {
     expect(() =>
       validateCreateSaleInput({
-        // @ts-expect-error testing runtime rejection of non-CASH
         paymentType: "CREDIT",
         items: [{ productId: "product-1", quantity: 2 }]
       })
     ).toThrow(SaleValidationError);
+  });
+
+  it("rejects a MIXED sale without a customer", () => {
+    expect(() =>
+      validateCreateSaleInput({
+        paymentType: "MIXED",
+        items: [{ productId: "product-1", quantity: 2 }],
+        paymentDetails: [{ method: "Efectivo", amount: 10 }]
+      })
+    ).toThrow(SaleValidationError);
+  });
+
+  it("accepts a CREDIT sale with a customer", () => {
+    expect(
+      validateCreateSaleInput({
+        paymentType: "CREDIT",
+        customerId: " customer-1 ",
+        items: [{ productId: "product-1", quantity: 2 }]
+      })
+    ).toEqual({
+      items: [{ productId: "product-1", quantity: 2 }],
+      paymentType: "CREDIT",
+      customerId: "customer-1",
+      sellerCode: "",
+      sellerId: "",
+      receiptType: "TICKET"
+    });
+  });
+
+  it("accepts a MIXED sale with a customer and preserves payment details", () => {
+    expect(
+      validateCreateSaleInput({
+        paymentType: "MIXED",
+        customerId: "customer-1",
+        items: [{ productId: "product-1", quantity: 2 }],
+        paymentDetails: [{ method: "Efectivo", amount: 10 }]
+      })
+    ).toEqual({
+      items: [{ productId: "product-1", quantity: 2 }],
+      paymentType: "MIXED",
+      customerId: "customer-1",
+      sellerCode: "",
+      sellerId: "",
+      receiptType: "TICKET",
+      paymentDetails: [{ method: "Efectivo", amount: 10 }]
+    });
   });
 
   it("accepts sale input with sellerCode, sellerId and receiptType", () => {
@@ -150,11 +195,10 @@ describe("validateCreateSaleInput", () => {
     ).toThrow(SaleValidationError);
   });
 
-  it("rejects CREDIT paymentType at runtime", () => {
+  it("rejects an unknown paymentType at runtime", () => {
     expect(() =>
       validateCreateSaleInput({
-        // @ts-expect-error testing runtime rejection
-        paymentType: "CREDIT",
+        paymentType: "CARD" as "CASH",
         items: [{ productId: "product-1", quantity: 1 }]
       })
     ).toThrow(SaleValidationError);

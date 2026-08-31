@@ -71,10 +71,9 @@ describe("SOLVEN core business flow", () => {
     expect(expenseCashMovement).toMatchObject({ type: "OUT", source: "EXPENSE", referenceId: expense.id });
     expect(expenseCashMovement.amount.toString()).toBe("12.5");
 
-    // CREDIT sales are no longer allowed (Fiado removed). Only CASH is accepted.
+    // A CREDIT sale without a customer is rejected.
     await expect(
       createSale({
-        // @ts-expect-error testing runtime rejection of non-CASH
         paymentType: "CREDIT",
         items: [{ productId: cashProduct.id, quantity: 1 }]
       }, testTenantId)

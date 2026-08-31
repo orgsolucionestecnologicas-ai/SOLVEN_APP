@@ -3,6 +3,8 @@ import {
   createSale,
   type CreateSaleWithPromotionsInput,
   listSales,
+  SaleCreditLimitExceededError,
+  SaleCustomerNotFoundError,
   SaleInsufficientStockError,
   SaleNoCashRegisterOpenError,
   SaleProductNotFoundError
@@ -55,8 +57,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let tenantId: string;
   let userId: string;
+  let userRole: string;
   try {
-    ({ tenantId, userId } = await requireRole(["OWNER", "CASHIER"], "pos"));
+    ({ tenantId, userId, role: userRole } = await requireRole(["OWNER", "CASHIER"], "pos"));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -75,7 +78,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const sale = await createSale(requestBody as CreateSaleWithPromotionsInput, tenantId);
+    const sale = await createSale(requestBody as CreateSaleWithPromotionsInput, tenantId, { userRole });
     void logAudit({
       tenantId,
       userId,
@@ -99,9 +102,13 @@ export async function POST(request: Request) {
     if (error instanceof SaleValidationError) {
       return errorResponse("Invalid sale input.", 400, error.reasons);
     }
+    if (error instanceof SaleCreditLimitExceededError) {
+      return errorResponse(error.message, 409);
+    }
     if (
       error instanceof SaleProductNotFoundError ||
-      error instanceof SaleInsufficientStockError
+      error instanceof SaleInsufficientStockError ||
+      error instanceof SaleCustomerNotFoundError
     ) {
       return errorResponse(error.message, 400);
     }

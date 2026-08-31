@@ -87,15 +87,99 @@ describe("sale data access", () => {
     expect(cashMovement.amount.toString()).toBe("170");
   });
 
-  it("rejects CREDIT paymentType (only CASH accepted)", async () => {
+  it("rejects a CREDIT sale without a customer", async () => {
     const product = await createTestProduct("CREDIT_REJECT", 11, 7);
     await expect(
       createSale({
-        // @ts-expect-error testing runtime rejection of non-CASH
         paymentType: "CREDIT",
         items: [{ productId: product.id, quantity: 3 }]
       }, testTenantId)
     ).rejects.toThrow();
+  });
+
+  it("creates a full CREDIT sale: stock drops, a debt covers the whole net and no cash movement is created", async () => {
+    const product = await createTestProduct("CREDIT_FULL", 100, 5);
+    const customer = await createTestCustomer();
+
+    const sale = await createSale({
+      paymentType: "CREDIT",
+      customerId: customer.id,
+      items: [{ productId: product.id, quantity: 2 }]
+    }, testTenantId);
+
+    const persistedSale = await prisma.sale.findUniqueOrThrow({ where: { id: sale.id } });
+    const updatedProduct = await prisma.product.findUniqueOrThrow({ where: { id: product.id } });
+    const debt = await prisma.debt.findFirstOrThrow({ where: { customerId: customer.id } });
+    const cashMovements = await prisma.cashMovement.findMany({
+      where: { source: "SALE", referenceId: sale.id }
+    });
+
+    expect(persistedSale.paymentType).toBe("CREDIT");
+    expect(persistedSale.customerId).toBe(customer.id);
+    expect(persistedSale.debtId).toBe(debt.id);
+    expect(persistedSale.cashAmount?.toString()).toBe("0");
+    expect(updatedProduct.stock).toBe(3);
+    expect(debt.totalAmount.toString()).toBe("200");
+    expect(debt.remainingAmount.toString()).toBe("200");
+    expect(cashMovements).toHaveLength(0);
+  });
+
+  it("creates a MIXED sale: the debt covers the fiado portion and the cash movement only the collected portion", async () => {
+    const product = await createTestProduct("MIXED", 100, 5);
+    const customer = await createTestCustomer();
+
+    const sale = await createSale({
+      paymentType: "MIXED",
+      customerId: customer.id,
+      items: [{ productId: product.id, quantity: 2 }],
+      paymentDetails: [{ method: "Efectivo", amount: 120 }]
+    }, testTenantId);
+
+    const persistedSale = await prisma.sale.findUniqueOrThrow({ where: { id: sale.id } });
+    const debt = await prisma.debt.findFirstOrThrow({ where: { customerId: customer.id } });
+    const cashMovement = await prisma.cashMovement.findFirstOrThrow({
+      where: { source: "SALE", referenceId: sale.id }
+    });
+
+    expect(persistedSale.paymentType).toBe("MIXED");
+    expect(persistedSale.cashAmount?.toString()).toBe("120");
+    expect(persistedSale.debtId).toBe(debt.id);
+    expect(debt.totalAmount.toString()).toBe("80");
+    expect(debt.remainingAmount.toString()).toBe("80");
+    expect(cashMovement.amount.toString()).toBe("120");
+  });
+
+  it("rejects a credit sale that would exceed the customer credit limit for a non-owner", async () => {
+    const product = await createTestProduct("LIMIT", 100, 5);
+    const customer = await createTestCustomer(150);
+
+    await expect(
+      createSale({
+        paymentType: "CREDIT",
+        customerId: customer.id,
+        items: [{ productId: product.id, quantity: 2 }]
+      }, testTenantId, { userRole: "CASHIER" })
+    ).rejects.toThrow();
+
+    const debts = await prisma.debt.findMany({ where: { customerId: customer.id } });
+    const updatedProduct = await prisma.product.findUniqueOrThrow({ where: { id: product.id } });
+    expect(debts).toHaveLength(0);
+    expect(updatedProduct.stock).toBe(5);
+  });
+
+  it("lets an OWNER override the customer credit limit", async () => {
+    const product = await createTestProduct("LIMIT_OWNER", 100, 5);
+    const customer = await createTestCustomer(150);
+
+    const sale = await createSale({
+      paymentType: "CREDIT",
+      customerId: customer.id,
+      items: [{ productId: product.id, quantity: 2 }]
+    }, testTenantId, { userRole: "OWNER" });
+
+    const debt = await prisma.debt.findFirstOrThrow({ where: { customerId: customer.id } });
+    expect(sale.debtId).toBe(debt.id);
+    expect(debt.remainingAmount.toString()).toBe("200");
   });
 
   it("rejects a sale when a product does not exist", async () => {
@@ -173,9 +257,13 @@ async function createTestProduct(nameSuffix: string, salePrice: number, stock: n
   });
 }
 
-async function createTestCustomer() {
+async function createTestCustomer(creditLimit?: number) {
   return prisma.customer.create({
-    data: { tenantId: testTenantId, name: `${testCustomerNamePrefix}${Date.now()}` }
+    data: {
+      tenantId: testTenantId,
+      name: `${testCustomerNamePrefix}${Date.now()}`,
+      ...(creditLimit !== undefined ? { creditLimit } : {})
+    }
   });
 }
 
