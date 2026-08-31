@@ -862,6 +862,14 @@ export function Pos() {
   );
   const remaining = cartNet - totalAssigned;
 
+  const fiadoAmount = remaining > 0.01 ? remaining : 0;
+  const isFiado = fiadoAmount > 0.01;
+  const salePaymentType: "CASH" | "CREDIT" | "MIXED" = isFiado
+    ? totalAssigned > 0.01
+      ? "MIXED"
+      : "CREDIT"
+    : "CASH";
+
   useEffect(() => {
     if (!optionalCustomerOpen || customersLoaded) return;
 
@@ -1351,15 +1359,20 @@ export function Pos() {
       return;
     }
 
-    if (paymentSplits.length === 0) {
-      setSubmitError("Seleccioná al menos un método de pago.");
+    if (remaining < -0.01) {
+      setSubmitError(
+        `El monto asignado (${formatMoneyNum(totalAssigned)}) supera el total (${formatMoneyNum(cartNet)}). Diferencia: ${formatMoneyNum(Math.abs(remaining))}`
+      );
       return;
     }
 
-    if (Math.abs(remaining) > 0.01) {
-      setSubmitError(
-        `El monto asignado (${formatMoneyNum(totalAssigned)}) no coincide con el total (${formatMoneyNum(cartNet)}). Diferencia: ${formatMoneyNum(Math.abs(remaining))}`
-      );
+    if (isFiado) {
+      if (!selectedCustomer) {
+        setSubmitError("Seleccioná un cliente para registrar el saldo a fiar.");
+        return;
+      }
+    } else if (paymentSplits.length === 0) {
+      setSubmitError("Seleccioná al menos un método de pago.");
       return;
     }
 
@@ -1377,7 +1390,8 @@ export function Pos() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paymentType: "CASH",
+          paymentType: salePaymentType,
+          ...(selectedCustomerId ? { customerId: selectedCustomerId } : {}),
           sellerCode: saleGateResult?.sellerCode ?? "",
           sellerId: saleGateResult?.sellerId ?? "",
           receiptType: saleGateResult?.receiptType ?? "TICKET",
@@ -1428,7 +1442,12 @@ export function Pos() {
       const successFolio = body.data.folio;
       const successTotal = cartNet;
       const successCartItems = [...cartItems];
-      const successPaymentMethod = paymentSplits.map(s => s.method).join(" + ");
+      const successPaymentMethod =
+        salePaymentType === "CREDIT"
+          ? "Fiado"
+          : salePaymentType === "MIXED"
+            ? `${paymentSplits.map(s => s.method).join(" + ")} + Fiado`
+            : paymentSplits.map(s => s.method).join(" + ");
 
       try { localStorage.removeItem(CART_KEY); } catch { /* ignore */ }
 
@@ -3303,7 +3322,7 @@ export function Pos() {
               </button>
 
               {/* ── Balance ── */}
-              {paymentSplits.length > 0 && (
+              {paymentSplits.length > 0 && !isFiado && (
                 <div
                   className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold ${
                     Math.abs(remaining) < 0.01
@@ -3328,6 +3347,29 @@ export function Pos() {
                 </div>
               )}
 
+              {/* ── A fiar (crédito) ── */}
+              {isFiado && (
+                <div
+                  className={`rounded-xl px-4 py-3 ${
+                    selectedCustomer ? "bg-violet-50" : "bg-amber-50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-sm font-semibold">
+                    <span className={selectedCustomer ? "text-violet-700" : "text-amber-700"}>
+                      A fiar (crédito){selectedCustomer ? ` · ${selectedCustomer.name}` : ""}
+                    </span>
+                    <span className={`tabular-nums ${selectedCustomer ? "text-violet-700" : "text-amber-700"}`}>
+                      {formatMoneyNum(fiadoAmount)}
+                    </span>
+                  </div>
+                  {!selectedCustomer && (
+                    <p className="mt-1 text-xs text-amber-700">
+                      Seleccioná un cliente en el carrito para registrar el saldo a fiar.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* ── Error ── */}
               {submitError && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
@@ -3349,13 +3391,15 @@ export function Pos() {
                 type="button"
                 disabled={
                   isSubmitting ||
-                  paymentSplits.length === 0 ||
-                  Math.abs(remaining) > 0.01
+                  remaining < -0.01 ||
+                  (isFiado && !selectedCustomer) ||
+                  (!isFiado && paymentSplits.length === 0)
                 }
                 className={
                   isSubmitting ||
-                  paymentSplits.length === 0 ||
-                  Math.abs(remaining) > 0.01
+                  remaining < -0.01 ||
+                  (isFiado && !selectedCustomer) ||
+                  (!isFiado && paymentSplits.length === 0)
                     ? "flex flex-[2] cursor-not-allowed items-center justify-center rounded-xl bg-slate-200 py-3 text-sm font-bold text-slate-400"
                     : "flex flex-[2] items-center justify-center rounded-xl bg-violet-600 py-3 text-sm font-bold text-white transition-all hover:bg-violet-700 active:scale-[0.99]"
                 }
@@ -3363,9 +3407,13 @@ export function Pos() {
               >
                 {isSubmitting
                   ? "Procesando..."
-                  : Math.abs(remaining) < 0.01 && paymentSplits.length > 0
-                    ? `Confirmar cobro — ${formatMoneyNum(cartNet)}`
-                    : "Confirmar cobro"}
+                  : salePaymentType === "CREDIT"
+                    ? `Confirmar fiado — ${formatMoneyNum(fiadoAmount)}`
+                    : salePaymentType === "MIXED"
+                      ? `Cobrar ${formatMoneyNum(totalAssigned)} + fiar ${formatMoneyNum(fiadoAmount)}`
+                      : paymentSplits.length > 0
+                        ? `Confirmar cobro — ${formatMoneyNum(cartNet)}`
+                        : "Confirmar cobro"}
               </button>
             </div>
           </div>
