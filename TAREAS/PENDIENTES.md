@@ -12,6 +12,11 @@
 
 ### 🔴 Crítico
 
+#### [Devoluciones · Bug real] Devolución sobre venta MIXED no reduce la Debt asociada
+Encontrado por el Ingeniero Líder (31-08-2026) al pensar el caso "venta pagada mitad tarjeta / mitad efectivo, se devuelve un producto al día siguiente" — primer hallazgo de la nueva metodología de auditoría de edge cases (ver más abajo). `src/modules/returns/index.ts:317` — `processReturn` solo descuenta `Debt.remainingAmount` cuando `sale.paymentType === "CREDIT"`. Desde `FEATURE-01` (31-08-2026) una venta `MIXED` también tiene `Sale.debtId` por su porción fiada, pero el `if` no la contempla — si se devuelve un producto de una venta mixta, la deuda del cliente no se reduce, aunque devolvió mercadería. No es una hipótesis: la línea exacta y la condición incompleta están confirmadas. **Fix acotado:** cambiar la condición a `(sale.paymentType === "CREDIT" || sale.paymentType === "MIXED") && sale.debtId`, misma lógica de "no bajar de 0" que ya existe. Falta decidir con Diego si además hay que prorratear entre la porción cobrada y la fiada cuando el reintegro es en efectivo (hoy `refundMethod === "Efectivo"` genera un `CashMovement` por el total devuelto sin considerar que parte de esa venta nunca se cobró) — eso puede ser parte del mismo fix o uno aparte.
+
+**Relacionado, no confirmado como bug (gap de validación, no de datos):** `processReturn` exige un único `refundMethod` para toda la devolución, sin mostrar ni validar contra el desglose original de `Sale.paymentDetails` (pago dividido). Ej.: venta de $150 pagada $75 tarjeta + $75 efectivo, se devuelve un ítem de $50 — el sistema deja elegir "Efectivo" como reintegro completo sin advertir que el cliente pagó menos de $50 en efectivo. Puede ser una decisión de negocio válida (el comercio decide cómo reintegra, no tiene por qué ser proporcional), pero hoy no hay ninguna validación ni visibilidad del pago original al momento de elegir el método de reintegro. Confirmar con Diego si esto necesita cambiar o si es un problema real solo si el efectivo en caja se descuadra.
+
 #### T3 — Rotar token de GitHub expuesto
 Manual, no verificable desde este entorno (sandbox sin credenciales de git). `github.com/settings/tokens` → revocar el token actual → generar uno nuevo con permisos `repo` → actualizar donde se use. ~30 min.
 
