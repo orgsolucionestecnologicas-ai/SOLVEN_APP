@@ -1,7 +1,11 @@
+export type SaleItemDiscountType = "percent" | "fixed";
+
 export type CreateSaleItemInput = {
   productId?: string;
   serviceId?: string;
   quantity: number;
+  discount?: number;
+  discountType?: SaleItemDiscountType;
 };
 
 export type SalePaymentType = "CASH" | "CREDIT" | "MIXED";
@@ -19,11 +23,15 @@ export type CreateSaleInput = {
 export type ValidatedProductSaleItemInput = {
   productId: string;
   quantity: number;
+  discount?: number;
+  discountType?: SaleItemDiscountType;
 };
 
 export type ValidatedServiceSaleItemInput = {
   serviceId: string;
   quantity: number;
+  discount?: number;
+  discountType?: SaleItemDiscountType;
 };
 
 export type ValidatedSaleItemInput =
@@ -115,10 +123,22 @@ export function validateCreateSaleInput(
       validationErrors.push("Sale item quantity must be a positive integer.");
     }
 
-    if (hasService && !hasProduct) {
-      return { serviceId, quantity: item.quantity };
+    let discount: number | undefined;
+    let discountType: SaleItemDiscountType | undefined;
+    if (item.discount !== undefined) {
+      if (typeof item.discount !== "number" || !Number.isFinite(item.discount) || item.discount < 0) {
+        validationErrors.push("El descuento del ítem debe ser un número mayor o igual a cero.");
+      } else {
+        discountType = item.discountType === "fixed" ? "fixed" : "percent";
+        discount = discountType === "percent" ? Math.min(item.discount, 100) : item.discount;
+      }
     }
-    return { productId, quantity: item.quantity };
+    const discountFields = discount !== undefined ? { discount, discountType } : {};
+
+    if (hasService && !hasProduct) {
+      return { serviceId, quantity: item.quantity, ...discountFields };
+    }
+    return { productId, quantity: item.quantity, ...discountFields };
   });
 
   if (validationErrors.length > 0) {
@@ -144,4 +164,33 @@ export function validateCreateSaleInput(
     return { ...base, paymentType: "MIXED", customerId };
   }
   return { ...base, paymentType: "CASH", ...(customerId ? { customerId } : {}) };
+}
+
+export type GlobalDiscountType = "percent" | "fixed";
+
+export type ValidatedGlobalDiscount = {
+  type: GlobalDiscountType;
+  value: number;
+};
+
+export function validateGlobalDiscount(
+  globalDiscountType: unknown,
+  globalDiscountValue: unknown
+): ValidatedGlobalDiscount | null {
+  if (globalDiscountValue === undefined || globalDiscountValue === null) {
+    return null;
+  }
+  if (
+    typeof globalDiscountValue !== "number" ||
+    !Number.isFinite(globalDiscountValue) ||
+    globalDiscountValue < 0
+  ) {
+    throw new SaleValidationError(["El descuento global debe ser un número mayor o igual a cero."]);
+  }
+  if (globalDiscountValue === 0) {
+    return null;
+  }
+  const type: GlobalDiscountType = globalDiscountType === "fixed" ? "fixed" : "percent";
+  const value = type === "percent" ? Math.min(globalDiscountValue, 100) : globalDiscountValue;
+  return { type, value };
 }

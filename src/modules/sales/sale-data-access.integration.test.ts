@@ -11,6 +11,7 @@ import {
 
 const testProductNamePrefix = "SOLVEN_SALE_TEST_PRODUCT_";
 const testCustomerNamePrefix = "SOLVEN_SALE_TEST_CUSTOMER_";
+const testPromotionNamePrefix = "SOLVEN_SALE_TEST_PROMO_";
 const testCashierName = "SOLVEN_SALE_TEST_CASHIER";
 const testTenantEmail = "solven_sale_test@test.internal";
 
@@ -73,8 +74,7 @@ describe("sale data access", () => {
     const product = await createTestProduct("DISCOUNT", 100, 5);
 
     const sale = await createSale({
-      items: [{ productId: product.id, quantity: 2 }],
-      discountAmount: 30
+      items: [{ productId: product.id, quantity: 2, discount: 30, discountType: "fixed" }]
     }, testTenantId);
 
     const persistedSale = await prisma.sale.findUniqueOrThrow({ where: { id: sale.id } });
@@ -85,6 +85,105 @@ describe("sale data access", () => {
     expect(persistedSale.totalAmount.toString()).toBe("200");
     expect(persistedSale.discountAmount.toString()).toBe("30");
     expect(cashMovement.amount.toString()).toBe("170");
+  });
+
+  it("ignores a client-supplied discountAmount when no real discount backs it", async () => {
+    const product = await createTestProduct("FAKE_DISCOUNT", 100, 5);
+
+    const sale = await createSale({
+      items: [{ productId: product.id, quantity: 2 }],
+      discountAmount: 9999
+    }, testTenantId);
+
+    const persistedSale = await prisma.sale.findUniqueOrThrow({ where: { id: sale.id } });
+    expect(persistedSale.totalAmount.toString()).toBe("200");
+    expect(persistedSale.discountAmount.toString()).toBe("0");
+  });
+
+  it("clamps a manual fixed item discount so it never exceeds that line's own total", async () => {
+    const product = await createTestProduct("CLAMP", 50, 5);
+
+    const sale = await createSale({
+      items: [{ productId: product.id, quantity: 1, discount: 999, discountType: "fixed" }]
+    }, testTenantId);
+
+    const persistedSale = await prisma.sale.findUniqueOrThrow({ where: { id: sale.id } });
+    expect(persistedSale.totalAmount.toString()).toBe("50");
+    expect(persistedSale.discountAmount.toString()).toBe("50");
+  });
+
+  it("applies a global percent discount computed server-side", async () => {
+    const product = await createTestProduct("GLOBAL_PCT", 100, 5);
+
+    const sale = await createSale({
+      items: [{ productId: product.id, quantity: 2 }],
+      globalDiscountType: "percent",
+      globalDiscountValue: 10
+    }, testTenantId);
+
+    const persistedSale = await prisma.sale.findUniqueOrThrow({ where: { id: sale.id } });
+    expect(persistedSale.totalAmount.toString()).toBe("200");
+    expect(persistedSale.discountAmount.toString()).toBe("20");
+  });
+
+  it("stacks a manual percent item discount with a global fixed discount", async () => {
+    const product = await createTestProduct("STACK", 100, 5);
+
+    const sale = await createSale({
+      items: [{ productId: product.id, quantity: 2, discount: 10, discountType: "percent" }],
+      globalDiscountType: "fixed",
+      globalDiscountValue: 15
+    }, testTenantId);
+
+    const persistedSale = await prisma.sale.findUniqueOrThrow({ where: { id: sale.id } });
+    expect(persistedSale.totalAmount.toString()).toBe("200");
+    expect(persistedSale.discountAmount.toString()).toBe("35");
+  });
+
+  it("ignores promotion ids that do not exist, without rejecting the sale", async () => {
+    const product = await createTestProduct("BAD_PROMO", 50, 5);
+
+    const sale = await createSale({
+      items: [{ productId: product.id, quantity: 2 }],
+      promotionIds: ["nonexistent-promotion-id"]
+    }, testTenantId);
+
+    const persistedSale = await prisma.sale.findUniqueOrThrow({ where: { id: sale.id } });
+    const usages = await prisma.promotionUsage.findMany({ where: { saleId: sale.id } });
+
+    expect(persistedSale.totalAmount.toString()).toBe("100");
+    expect(persistedSale.discountAmount.toString()).toBe("0");
+    expect(usages).toHaveLength(0);
+  });
+
+  it("recalculates the real promotion discount server-side, ignoring a forged discountAmount", async () => {
+    const product = await createTestProduct("REAL_PROMO", 100, 5);
+    const promotion = await prisma.promotion.create({
+      data: {
+        tenantId: testTenantId,
+        name: `${testPromotionNamePrefix}10PCT_${Date.now()}`,
+        type: "PERCENTAGE",
+        discountValue: 10,
+        application: "ALL_PRODUCTS",
+        activationType: "AUTOMATIC",
+        startsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        endsAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      }
+    });
+
+    const sale = await createSale({
+      items: [{ productId: product.id, quantity: 2 }],
+      promotionIds: [promotion.id],
+      discountAmount: 999
+    }, testTenantId);
+
+    const persistedSale = await prisma.sale.findUniqueOrThrow({ where: { id: sale.id } });
+    const usage = await prisma.promotionUsage.findFirstOrThrow({ where: { saleId: sale.id } });
+
+    expect(persistedSale.totalAmount.toString()).toBe("200");
+    expect(persistedSale.discountAmount.toString()).toBe("20");
+    expect(usage.promotionId).toBe(promotion.id);
+    expect(usage.discountAmount.toString()).toBe("20");
   });
 
   it("rejects a CREDIT sale without a customer", async () => {
@@ -288,7 +387,16 @@ async function deleteSaleTestData() {
     select: { id: true }
   });
   const testDebtIds = testDebts.map((d) => d.id);
+  const testPromotions = await prisma.promotion.findMany({
+    where: { name: { startsWith: testPromotionNamePrefix } },
+    select: { id: true }
+  });
+  const testPromotionIds = testPromotions.map((p) => p.id);
 
+  await prisma.promotionUsage.deleteMany({
+    where: { OR: [{ saleId: { in: testSaleIds } }, { promotionId: { in: testPromotionIds } }] }
+  });
+  await prisma.promotion.deleteMany({ where: { id: { in: testPromotionIds } } });
   await prisma.inventoryMovement.deleteMany({ where: { productId: { in: testProductIds } } });
   await prisma.cashMovement.deleteMany({ where: { source: "SALE", referenceId: { in: testSaleIds } } });
   await prisma.debtPayment.deleteMany({ where: { debtId: { in: testDebtIds } } });

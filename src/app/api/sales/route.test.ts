@@ -8,6 +8,7 @@ vi.mock("@/lib/tenant", () => ({
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ForbiddenError, requireRole } from "@/lib/tenant";
 import {
   createSale,
   listSales,
@@ -57,6 +58,7 @@ vi.mock("../../../modules/sales", () => ({
 
 const mockedCreateSale = vi.mocked(createSale);
 const mockedListSales = vi.mocked(listSales);
+const mockedRequireRole = vi.mocked(requireRole);
 
 describe("sales API route", () => {
   beforeEach(() => {
@@ -71,6 +73,15 @@ describe("sales API route", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(expect.objectContaining({ data: [saleJson] }));
+  });
+
+  it("returns 403 when the role is not authorized to list sales", async () => {
+    mockedRequireRole.mockRejectedValueOnce(new ForbiddenError());
+
+    const response = await GET(new Request("http://localhost/api/sales"));
+
+    expect(response.status).toBe(403);
+    expect(mockedListSales).not.toHaveBeenCalled();
   });
 
   it("returns a server error when sales cannot be listed", async () => {

@@ -2,20 +2,25 @@ import { Prisma, type Product, type Sale, type SaleItem, type Service } from "@p
 
 import { prisma } from "@/lib/prisma";
 import { notifyLowStockIfEnabled } from "@/lib/email-alerts";
+import { applyPromotionsToCart, type AppliedPromotion, type CartItem } from "../promotions/promotion-engine";
 
 import {
   type CreateSaleInput,
+  type SaleItemDiscountType,
   SaleNoCashRegisterOpenError,
   SaleValidationError,
   type ValidatedProductSaleItemInput,
   type ValidatedServiceSaleItemInput,
   type ValidatedSaleItemInput,
-  validateCreateSaleInput
+  validateCreateSaleInput,
+  validateGlobalDiscount
 } from "./sale-validation";
 
 export type CreateSaleWithPromotionsInput = CreateSaleInput & {
   promotionIds?: string[];
   discountAmount?: number;
+  globalDiscountType?: "percent" | "fixed";
+  globalDiscountValue?: number;
 };
 
 export type SaleWithItems = Sale & {
@@ -113,10 +118,7 @@ export async function createSale(
   const promotionIds = Array.isArray(saleInput.promotionIds)
     ? saleInput.promotionIds.filter((id) => typeof id === "string" && id.trim())
     : [];
-  const discountAmount =
-    typeof saleInput.discountAmount === "number" && saleInput.discountAmount >= 0
-      ? new Prisma.Decimal(saleInput.discountAmount)
-      : new Prisma.Decimal(0);
+  const globalDiscount = validateGlobalDiscount(saleInput.globalDiscountType, saleInput.globalDiscountValue);
 
   const lowStockProducts: { name: string; stock: number }[] = [];
 
@@ -147,6 +149,62 @@ export async function createSale(
     const totalAmount = allSaleItems.reduce(
       (total, item) => total.plus(item.total),
       new Prisma.Decimal(0)
+    );
+
+    let promotionDiscountAmount = new Prisma.Decimal(0);
+    let appliedPromotions: AppliedPromotion[] = [];
+    const finalPriceByProductId = new Map<string, Prisma.Decimal>();
+
+    if (promotionIds.length > 0 && productSaleItems.length > 0) {
+      const validPromotions = await transaction.promotion.findMany({
+        where: { id: { in: promotionIds }, tenantId, isActive: true },
+        include: { usages: { select: { id: true, customerId: true } } }
+      });
+
+      const cartItems: CartItem[] = productSaleItems.map((item) => {
+        const product = productsById.get(item.productId)!;
+        return {
+          productId: item.productId,
+          productName: product.name,
+          categoryName: product.categoryName,
+          quantity: item.quantity,
+          unitPrice: product.salePrice.toNumber()
+        };
+      });
+
+      const cartResult = applyPromotionsToCart(cartItems, validPromotions, customerId ?? undefined);
+      promotionDiscountAmount = cartResult.totalDiscount;
+      appliedPromotions = cartResult.appliedPromotions;
+      for (const discountedItem of cartResult.discountedItems) {
+        finalPriceByProductId.set(discountedItem.productId, discountedItem.finalPrice);
+      }
+    }
+
+    const manualDiscountAmount = [...productItemInputs, ...serviceItemInputs].reduce(
+      (sum, item) => {
+        const basePrice = isProductItem(item)
+          ? finalPriceByProductId.get(item.productId) ?? productsById.get(item.productId)!.salePrice
+          : servicesById.get(item.serviceId)!.price;
+        return sum.plus(
+          computeManualLineDiscount(basePrice, item.quantity, item.discount, item.discountType)
+        );
+      },
+      new Prisma.Decimal(0)
+    );
+
+    const preGlobalNet = Prisma.Decimal.max(
+      0,
+      totalAmount.minus(promotionDiscountAmount).minus(manualDiscountAmount)
+    );
+    const globalDiscountAmount = globalDiscount
+      ? globalDiscount.type === "percent"
+        ? preGlobalNet.mul(globalDiscount.value).div(100)
+        : Prisma.Decimal.min(new Prisma.Decimal(globalDiscount.value), preGlobalNet)
+      : new Prisma.Decimal(0);
+
+    const discountAmount = Prisma.Decimal.min(
+      totalAmount,
+      promotionDiscountAmount.plus(manualDiscountAmount).plus(globalDiscountAmount)
     );
 
     const netTotal = totalAmount.minus(discountAmount);
@@ -310,15 +368,13 @@ export async function createSale(
       });
     }
 
-    if (promotionIds.length > 0) {
-      const perPromotionDiscount = discountAmount.div(promotionIds.length);
-
+    if (appliedPromotions.length > 0) {
       await transaction.promotionUsage.createMany({
-        data: promotionIds.map((promotionId) => ({
-          promotionId,
+        data: appliedPromotions.map((applied) => ({
+          promotionId: applied.promotionId,
           saleId: sale.id,
           customerId: null,
-          discountAmount: perPromotionDiscount
+          discountAmount: applied.discountAmount
         }))
       });
     }
@@ -471,6 +527,20 @@ function buildServiceSaleItem(
     ivaRate: service.ivaRate,
     total: service.price.mul(item.quantity)
   };
+}
+
+function computeManualLineDiscount(
+  basePrice: Prisma.Decimal,
+  quantity: number,
+  discount?: number,
+  discountType?: SaleItemDiscountType
+): Prisma.Decimal {
+  if (!discount) return new Prisma.Decimal(0);
+  const lineBaseTotal = basePrice.mul(quantity);
+  if (discountType === "fixed") {
+    return Prisma.Decimal.min(new Prisma.Decimal(discount), lineBaseTotal);
+  }
+  return lineBaseTotal.mul(discount).div(100);
 }
 
 function getQuantityByProductId(

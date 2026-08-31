@@ -322,10 +322,14 @@ export async function confirmQuote(
         },
       });
 
-      await tx.quote.update({
-        where: { id: quoteId },
+      const confirmation = await tx.quote.updateMany({
+        where: { id: quoteId, status: { not: "CONFIRMED" } },
         data: { status: "CONFIRMED", confirmedAt: now, saleId: sale.id },
       });
+
+      if (confirmation.count === 0) {
+        throw new QuoteAlreadyConfirmedError();
+      }
 
       return tx.sale.findUniqueOrThrow({
         where: { id: sale.id },
