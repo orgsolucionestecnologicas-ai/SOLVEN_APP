@@ -6,6 +6,203 @@
 > vacía entre ciclos como `REPORTE_DE_CAMBIOS.md` — es el historial completo
 > de todo lo auditado, para no repetir trabajo.
 
+## Cotizaciones — auditado 01-09-2026
+
+> Punto de partida: 20 escenarios hipotéticos de "día normal" para
+> Cotizaciones, discutidos con Diego antes de leer código. Contrastados
+> contra `src/modules/quotes` completo y las rutas de
+> `src/app/api/quotes` (incluidas `confirm`, `duplicate`, `send-reminder`,
+> `expiring`) y `src/app/api/cron/expire-quotes`. El módulo ya viene con
+> varios patrones bien resueltos de antes (POS-FIX-04: la confirmación de
+> cotización ya es atómica y a prueba de doble clic/doble pestaña). Lo que
+> encontramos ahora es más fino: confirmar una cotización arma una venta
+> que, en varios sentidos, no se comporta igual que una venta hecha directo
+> en el POS — cobra de más si había descuento, ignora cómo va a pagar
+> realmente el cliente, y no exige caja abierta. La mejor práctica acá es
+> que "cotización confirmada" y "venta de POS" terminen siendo la misma
+> cosa por dentro, no dos caminos que casi coinciden.
+
+### Bugs confirmados — ORDEN para el agente ejecutor (VS Code)
+
+**COT-FIX-01 (ALTO) — Confirmar una cotización no exige caja abierta**
+- Archivo: `src/modules/quotes/quote-data-access.ts`, función
+  `confirmQuote`.
+- Qué pasa: `confirmQuote` crea un `Sale` y un `CashMovement` (type IN,
+  source "SALE") sin pasar nunca por `requireOpenCashRegisterSession`, a
+  diferencia de `createSale` en `sale-data-access.ts` que sí la exige
+  (`SaleNoCashRegisterOpenError`). Se puede confirmar una cotización —y
+  que quede plata "cobrada" en el sistema— sin que haya ninguna caja
+  abierta ese día, rompiendo la reconciliación de cierre de caja.
+- Qué hacer: dentro de la transacción de `confirmQuote`, antes de crear el
+  `Sale`, llamar `await requireOpenCashRegisterSession(tenantId, tx)`
+  (mismo helper que ya usa `sale-data-access.ts` y
+  `debt-payment-data-access.ts`), y dejar que el `SaleNoCashRegisterOpenError`
+  se propague igual que en una venta común.
+
+**COT-FIX-02 (ALTO) — El movimiento de caja de una cotización confirmada cobra el monto bruto, no el neto de descuento**
+- Archivo: `src/modules/quotes/quote-data-access.ts`, función
+  `confirmQuote` (creación del `CashMovement`).
+- Qué pasa: `await tx.cashMovement.create({ data: { ..., amount: totalAmount, ... } })`
+  usa `quote.totalAmount`, que es el total BRUTO antes de descuento. El
+  propio `Sale` creado sí guarda `discountAmount` por separado, y en el
+  resto del sistema (`sale-data-access.ts`) el monto que realmente se
+  registra en caja es siempre `netTotal = totalAmount.minus(discountAmount)`
+  (variable `collectedNow`). Acá no: si la cotización tenía un descuento
+  de $10.000 sobre un total de $100.000, la caja registra un ingreso de
+  $100.000 en vez de $90.000 — el cajón queda esperando $10.000 de más al
+  cerrar.
+- Qué hacer: calcular `const netTotal = totalAmount.minus(discountAmount)`
+  igual que en `sale-data-access.ts` y usar `netTotal` como `amount` del
+  `CashMovement`. Ver también COT-FIX-05 (el `discountAmount` necesita un
+  tope) — sin ese tope, este cálculo podría dar negativo.
+
+**COT-FIX-03 (ALTO) — Toda cotización confirmada queda forzada como venta en efectivo**
+- Archivo: `src/modules/quotes/quote-data-access.ts` (`confirmQuote`),
+  `src/modules/quotes/quote-validation.ts` (`CreateQuoteInput`).
+- Qué pasa: `confirmQuote` crea el `Sale` con `paymentType: "CASH"` fijo,
+  siempre. Una cotización es, por naturaleza, el tipo de venta donde MÁS
+  común es que el cliente termine pagando por transferencia o a cuenta
+  corriente (crédito) — sobre todo en ventas B2B o de monto alto, que es
+  justamente para lo que existen las cotizaciones. Hoy el sistema no tiene
+  forma de capturarlo: siempre queda registrado como si hubiera entrado
+  efectivo real a la caja, aunque no haya sido así.
+- Qué hacer: seguir la misma mejor práctica ya aplicada en
+  `Return.refundMethod` / `Expense.method` / `DebtPayment.method` — que el
+  método real de pago se declare, no se asuma. Agregar un campo de método
+  de pago al confirmar la cotización (en el modal de confirmación del
+  frontend, con las mismas opciones que ya usa el POS: Efectivo,
+  Tarjeta, Transferencia, Crédito/Cuenta corriente), pasarlo a
+  `confirmQuote`, y sólo crear el `CashMovement` cuando el método elegido
+  sea Efectivo — igual que ya se resolvió en Devoluciones (RET-FIX de
+  refundMethod) y en Caja (CAJA-FIX-02). Si el método es crédito, seguir
+  el mismo camino que `createSale` para crédito (crear el `Debt`
+  correspondiente en vez de un `CashMovement`).
+
+**COT-FIX-04 (MEDIO) — La venta generada al confirmar pierde la asociación con el cliente de la cotización**
+- Archivo: `src/modules/quotes/quote-data-access.ts`, función
+  `confirmQuote`.
+- Qué pasa: el `Sale` se crea con `customerId: null` fijo, aunque
+  `quote.customerId` puede tener un cliente real asociado. La venta
+  resultante no aparece en el historial de compras de ese cliente
+  (`customer-detail.tsx`), y si en COT-FIX-03 se habilita el pago a
+  crédito, hace falta el cliente igual para poder generar la deuda.
+- Qué hacer: pasar `customerId: quote.customerId` al crear el `Sale` en
+  vez de `null`.
+
+**COT-FIX-05 (MEDIO) — El descuento de una cotización no tiene tope contra el total**
+- Archivo: `src/modules/quotes/quote-validation.ts`, función
+  `validateCreateQuoteInput` (o donde se resuelve `discountAmount` en
+  `quote-data-access.ts`, función `createQuote`).
+- Qué pasa: `discountAmount` solo se valida como `>= 0`, sin comparar
+  nunca contra el `total` calculado de los ítems. Se puede guardar una
+  cotización con un descuento mayor a su propio total. Hoy esto no se
+  nota (ver COT-FIX-02, el bug actual ignora el descuento al cobrar), pero
+  en cuanto se corrija COT-FIX-02 este caso generaría un `netTotal`
+  negativo — un "cobro" negativo en la caja.
+- Qué hacer: en `createQuote`, después de calcular `total` de los ítems,
+  acotar el descuento con
+  `Prisma.Decimal.min(discountAmountInput, total)` (mismo criterio que ya
+  usa `sale-data-access.ts` para el descuento global de una venta).
+
+**COT-FIX-06 (MEDIO) — La venta de una cotización confirmada queda sin vendedor asignado**
+- Archivo: `src/modules/quotes/quote-data-access.ts` (`confirmQuote`),
+  `prisma/schema.prisma` (modelo `Quote`, sin campo de vendedor).
+- Qué pasa: `Sale` tiene `sellerId`/`sellerCode` para saber quién hizo la
+  venta (usado en reportes/comisiones), pero `Quote` no tiene ningún campo
+  de vendedor, y `confirmQuote` no completa `sellerId`/`sellerCode` al
+  crear la venta. Una venta que nace de una cotización confirmada queda
+  sin vendedor, a diferencia de cualquier venta hecha directo en el POS.
+- Qué hacer: agregar `sellerId`/`sellerCode` a `Quote` (quién armó la
+  cotización), completarlos al crear la cotización (mismo dato que ya usa
+  el POS al armar una venta), y copiarlos al `Sale` dentro de
+  `confirmQuote`.
+
+**COT-FIX-07 (BAJO-MEDIO) — Listado y detalle de cotizaciones sin control de rol**
+- Archivos: `src/app/api/quotes/route.ts` (`GET`),
+  `src/app/api/quotes/[id]/route.ts` (`GET`).
+- Qué pasa: mismo patrón sistémico de siempre — ambos `GET` usan solo
+  `requireTenantId()` en vez de `requireRole(...)`, mientras que `POST`,
+  `DELETE` (cancelar), `confirm`, `duplicate` y `send-reminder` ya usan
+  correctamente `requireRole(["OWNER", "CASHIER"], "quotes")`.
+- Qué hacer: aplicar el mismo `requireRole(["OWNER", "CASHIER"], "quotes")`
+  a ambos `GET`, para consistencia con el resto de las rutas del módulo.
+
+**COT-FIX-08 (BAJO) — Sin registro de auditoría en todo el módulo de cotizaciones**
+- Archivos: `src/modules/quotes/quote-data-access.ts` (`createQuote`,
+  `confirmQuote`, `cancelQuote`).
+- Qué pasa: no hay ningún `logAudit(...)` en el módulo — ni al crear, ni
+  al confirmar, ni al cancelar una cotización. Mismo patrón ya encontrado
+  y corregido en Devoluciones, Inventario y Deudas.
+- Qué hacer: agregar `void logAudit({ tenantId, userId, action: "QUOTE_CREATED" | "QUOTE_CONFIRMED" | "QUOTE_CANCELLED", entityType: "Quote", entityId: quote.id, metadata: {...} })`
+  en las tres rutas correspondientes, que ya tienen `userId` disponible
+  vía `requireRole`.
+
+### Al terminar
+
+1. `npm run lint && npm run typecheck && npm test` — todo debe pasar antes
+   de commitear.
+2. Commit + push con mensaje descriptivo (ej.
+   `fix(quotes): caja abierta y monto neto al confirmar, método de pago real, cliente y vendedor asociados`).
+3. Agregar una entrada corta a `TAREAS/REPORTELIDER.md` — no es necesario
+   redactarla en detalle, solo dejar constancia de qué se tocó.
+4. Entregable breve acá mismo: archivos modificados, resultado de
+   typecheck, hash de commit.
+5. No te autocertifiques como "verificado" — eso lo revisa el Ingeniero
+   Líder mirando el diff real.
+
+### Verificado correcto (no ordenar fix)
+
+1. `confirmQuote` ya reduce el stock de forma atómica (`UPDATE ... WHERE stock >= quantity RETURNING ...`,
+   mismo patrón que `sale-data-access.ts`) y ya evita la doble confirmación
+   por carrera (`updateMany` con guard `status: { not: "CONFIRMED" }` +
+   chequeo de `count`) — POS-FIX-04 sigue funcionando correctamente acá.
+2. El precio, IVA y nombre de cada ítem quedan "congelados" en `QuoteItem`
+   al crear la cotización, y se usan tal cual al confirmar — una
+   cotización siempre respeta el precio que se le mostró al cliente, sin
+   importar que el producto haya cambiado de precio mientras tanto
+   (comportamiento de negocio esperado, no un bug).
+3. `validateCreateQuoteInput` exige cantidad entera positiva en cada
+   ítem, exige cliente (por id o por nombre libre) y valida el formato del
+   email si se informa.
+4. Todos los queries de `createQuote`, `getQuoteById`, `listQuotes`,
+   `cancelQuote`, `duplicateQuote` y la parte de stock/producto de
+   `confirmQuote` están correctamente scopeados por `tenantId` — a
+   diferencia de Inventario y Deudas, este módulo no repite el patrón de
+   aislamiento roto (la única falla real de `confirmQuote` es de negocio,
+   no de aislamiento entre comercios).
+5. No se puede confirmar una cotización vencida (`QuoteExpiredError`) ni
+   una ya cancelada/expirada, y el vencimiento se resuelve de forma
+   perezosa tanto al listar como al leer una cotización individual.
+6. No se puede cancelar una cotización ya confirmada
+   (`QuoteAlreadyConfirmedError`).
+7. El cron `GET /api/cron/expire-quotes` está protegido por
+   `CRON_SECRET` y no tiene el riesgo de aislamiento que sí tuvo el cron
+   de gastos recurrentes (visto en Caja), porque acá no hay ningún efecto
+   secundario por tenant (solo cambia `status`, una sola operación atómica
+   sobre todos los comercios a la vez, sin caja ni email de por medio).
+
+### Inconcluso (necesita reproducción en vivo o decisión de producto)
+
+1. El stock reservado por cotizaciones pendientes sigue siendo puramente
+   informativo (ya lo dejamos anotado en Inventario,
+   `getReservedStockByProduct`) — dos cotizaciones abiertas pueden seguir
+   prometiendo el mismo último producto; sigue siendo una decisión de
+   producto, no algo nuevo de esta sección.
+2. Dos ítems del mismo producto en la misma cotización no se fusionan en
+   una sola línea (a diferencia del carrito del POS, que sí mergea por
+   `productId`) — no genera ningún cálculo incorrecto, solo aparecen como
+   dos líneas separadas. Bajo impacto, lo dejo anotado por si en algún
+   momento se decide unificar el comportamiento con el POS.
+3. `quoteNumber` es único a nivel global igual que `productCode`
+   (INV-FIX-06) y `customerCode` (DEUDA-FIX-06), pero acá tampoco hay
+   ningún camino de importación con número propio — siempre es
+   autogenerado por `generateCode("COT")`, así que no hay forma práctica
+   de que colisione hoy. Se puede agrupar con esas dos migraciones si en
+   algún momento se decide encarar todos los `@unique` globales del schema
+   de una sola vez.
+
+---
+
 ## Deudas / Clientes — auditado 01-09-2026
 
 > Punto de partida: 20 escenarios hipotéticos de "día normal" para
@@ -20,138 +217,9 @@
 > sistema (POS, ficha del cliente, dashboard, backup), y que condonar o
 > cobrar una deuda de un comercio nunca pueda tocar la deuda de otro.
 
-### Bugs confirmados — ORDEN para el agente ejecutor (VS Code)
+### Bugs confirmados
 
-**DEUDA-FIX-01 (CRÍTICO) — Pago de deuda sin aislamiento por tenant**
-- Archivo: `src/modules/debts/debt-payment-data-access.ts`, función
-  `registerDebtPayment`.
-- Qué pasa: exactamente el mismo bug que INV-FIX-01 (ya corregido en
-  Inventario), pero acá con dinero de terceros. `transaction.debt.findUniqueOrThrow({ where: { id: validatedPayment.debtId } })`
-  y `transaction.debt.updateMany({ where: { id: validatedPayment.debtId, remainingAmount: { gte: paymentAmount } } })`
-  no filtran por `tenantId` en ningún momento. Un usuario de UN comercio
-  puede registrar un pago contra el `debtId` de OTRO comercio (si lo
-  conoce o lo adivina): el sistema le reduce el saldo a un cliente ajeno y
-  le crea un `DebtPayment`/`CashMovement` con el `tenantId` del que pagó,
-  mezclando la contabilidad de dos comercios distintos. El `tenantId`
-  llega correcto desde `POST /api/debt-payments` (usa `requireRole` bien)
-  — el bug está solo en la capa de datos, igual que en Inventario.
-- Qué hacer: agregar `tenantId` a ambos `where`:
-  `transaction.debt.findFirstOrThrow({ where: { id: validatedPayment.debtId, tenantId } })`
-  y `transaction.debt.updateMany({ where: { id: validatedPayment.debtId, tenantId, remainingAmount: { gte: paymentAmount } } })`.
-  Mismo patrón ya usado correctamente en `writeOffDebt` del mismo módulo
-  (`where: { id, tenantId }`) — sólo hay que aplicarlo también acá.
-
-**DEUDA-FIX-02 (ALTO) — Condonar una deuda no la saca de "deuda pendiente" en ningún otro lado**
-- Archivo: `src/modules/debts/debt-data-access.ts`, función `writeOffDebt`;
-  y todos los lugares que suman/filtran `remainingAmount` sin excluir
-  `writtenOff: true`.
-- Qué pasa: `writeOffDebt` pone `writtenOff: true` pero deja
-  `remainingAmount` intacto (con el saldo que tenía antes de condonarla).
-  El único lugar del código que filtra correctamente `writtenOff: false`
-  al sumar deuda es el chequeo de límite de crédito en
-  `sale-data-access.ts:251`. Todo lo demás NO filtra, así que una deuda
-  condonada sigue apareciendo como "pendiente" en:
-  `DELETE /api/customers/[id]` (línea 86, el guard que bloquea borrar un
-  cliente con deuda — un cliente con la deuda YA condonada queda
-  bloqueado para siempre, "No podés eliminar un cliente con deudas
-  pendientes" sobre una deuda que ya se perdonó),
-  `GET /api/export` (línea 32, el backup exporta la deuda condonada como
-  si siguiera activa), y `dashboard-summary.ts` (línea 51, el total de
-  "deuda pendiente" del dashboard suma también lo condonado). El único
-  lugar donde SÍ se filtra a mano es el frontend de `debts-list.tsx`
-  (`!d.writtenOff` repetido en varios puntos) — pero `customer-detail.tsx`,
-  `customer-payment-form.tsx`, `customers-list.tsx` y
-  `cash-register-close.tsx` tampoco lo filtran.
-- Qué hacer: la mejor práctica acá es arreglarlo en la fuente, no parchar
-  cada consumidor uno por uno (son al menos 8 lugares distintos). En
-  `writeOffDebt`, además de `writtenOff: true`, poner
-  `remainingAmount: new Prisma.Decimal(0)`. Así "cuánto debe" es
-  automáticamente correcto en cualquier pantalla, reporte o backup que ya
-  exista o que se agregue en el futuro, sin depender de que cada uno se
-  acuerde de excluir `writtenOff`. El campo `writtenOff` queda igual para
-  poder mostrar "Incobrable" en vez de "Pagada" en la UI (ya lo hace
-  `debts-list.tsx`).
-
-**DEUDA-FIX-03 (MEDIO) — Ni crear una deuda, ni pagarla, ni condonarla queda en el registro de auditoría**
-- Archivos: `src/modules/debts/debt-data-access.ts` (`createDebt`,
-  `writeOffDebt`), `src/modules/debts/debt-payment-data-access.ts`
-  (`registerDebtPayment`).
-- Qué pasa: no hay ningún `logAudit(...)` en todo el módulo. A diferencia
-  de otras acciones financieras del sistema (cambios de precio de
-  producto, devoluciones antes de RET-FIX-07), acá no queda ningún rastro
-  de auditoría general de quién generó una deuda, quién cobró un pago, y
-  sobre todo quién decidió condonarla — esta última es la más sensible de
-  las tres, porque "perdonarle" una deuda a un cliente es una decisión
-  económica que un dueño va a querer poder auditar más adelante.
-- Qué hacer: agregar `void logAudit({ tenantId, userId, action: "DEBT_CREATED" | "DEBT_PAYMENT_REGISTERED" | "DEBT_WRITTEN_OFF", entityType: "Debt", entityId: debt.id, metadata: {...} })`
-  en las tres rutas (`POST /api/debts`, `POST /api/debt-payments`,
-  `PATCH /api/debts/[id]/write-off`), que ya tienen `userId` disponible vía
-  `requireRole`, siguiendo el mismo patrón usado en
-  `PRODUCT_PRICE_CHANGE`/`PRODUCT_UPDATED`.
-
-**DEUDA-FIX-04 (BAJO-MEDIO) — Listados de deudas, pagos y clientes sin control de rol**
-- Archivos: `src/app/api/debts/route.ts` (`GET`),
-  `src/app/api/debt-payments/route.ts` (`GET`),
-  `src/app/api/customers/route.ts` (`GET`).
-- Qué pasa: mismo patrón sistémico ya encontrado y corregido en todas las
-  secciones anteriores (POS, Devoluciones, Caja, Inventario): los tres
-  `GET` usan solo `requireTenantId()` en vez de `requireRole(...)`, así
-  que cualquier usuario autenticado del comercio puede ver el historial
-  completo de deudas, pagos y clientes (incluyendo datos de contacto y
-  límites de crédito) sin importar si su rol tiene acceso a la sección
-  "customers".
-- Qué hacer: cambiar los tres a
-  `requireRole(["OWNER", "CASHIER", "SUPERVISOR"], "customers")`, el mismo
-  set de roles que ya usan correctamente los `POST` de esas mismas rutas
-  y `PUT /api/customers/[id]`.
-
-**DEUDA-FIX-05 (MEDIO) — Cliente nuevo sin límite de crédito configurado queda con crédito ilimitado, sin ningún aviso**
-- Archivos: `src/modules/customers/customer-validation.ts`,
-  `src/modules/sales/sale-data-access.ts:249-255`.
-- Qué pasa: `creditLimit` es `null` por defecto en un cliente nuevo (nunca
-  se setea en `createCustomer`), y el chequeo de crédito en la venta
-  (`if (customer.creditLimit !== null && ...)`) interpreta `null` como
-  "sin límite", no como "límite cero". En la práctica: cualquier cajero
-  puede cargar un cliente nuevo y venderle a crédito CUALQUIER monto, sin
-  tope, sin que nadie lo note, porque el sistema nunca avisa que ese
-  cliente "no tiene límite configurado" — se ve exactamente igual que un
-  cliente con límite alto a propósito.
-- Qué hacer: no bloquear la venta (puede ser una decisión real del dueño
-  tener clientes de confianza sin tope), pero sí hacerlo visible: en el
-  formulario de alta de cliente, dejar el campo de límite de crédito con
-  un estado explícito "Sin límite (requiere aprobación)" en vez de vacío
-  por omisión, y en el POS, cuando se selecciona un cliente con
-  `creditLimit === null` para una venta a crédito, mostrar un aviso visible
-  ("Este cliente no tiene límite de crédito configurado") en vez de dejarlo
-  pasar en silencio como si fuera lo normal.
-
-**DEUDA-FIX-06 (BAJO) — `customerCode` único a nivel global, mismo patrón que `productCode` (INV-FIX-06)**
-- Archivo: `prisma/schema.prisma`, modelo `Customer` (línea con
-  `customerCode String? @unique`).
-- Qué pasa: mismo defecto de diseño que INV-FIX-06, pero acá el riesgo
-  real es menor porque no existe ningún endpoint de importación masiva de
-  clientes con código propio — `createCustomer` siempre usa
-  `generateCode("CLI")` (secuencial, autogenerado), así que la colisión
-  entre comercios no tiene forma de dispararse hoy. Lo dejo igual como
-  bug de diseño para prolijidad y consistencia con el resto del schema
-  (`Supplier` ya usa `@@unique([name, tenantId])` correctamente).
-- Qué hacer: cambiar a `@@unique([tenantId, customerCode])` en el mismo
-  commit/migración que INV-FIX-06 si todavía no se aplicó, o como
-  follow-up de una línea si INV-FIX-06 ya se hizo — no urge por separado,
-  se puede agrupar.
-
-### Al terminar
-
-1. `npm run lint && npm run typecheck && npm test` — todo debe pasar antes
-   de commitear.
-2. Commit + push con mensaje descriptivo (ej.
-   `fix(debts): tenant isolation on debt payments, write-off zeroes balance, credit limit visibility`).
-3. Agregar una entrada corta a `TAREAS/REPORTELIDER.md` — no es necesario
-   redactarla en detalle, solo dejar constancia de qué se tocó.
-4. Entregable breve acá mismo: archivos modificados, resultado de
-   typecheck, hash de commit.
-5. No te autocertifiques como "verificado" — eso lo revisa el Ingeniero
-   Líder mirando el diff real.
+> Orden ya entregada al agente ejecutor (DEUDA-FIX-01 a 06) y removida de acá para que no se repita. Resultado real: ver commits + TAREAS/REPORTELIDER.md.
 
 ### Verificado correcto (no ordenar fix)
 
