@@ -943,7 +943,8 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
             category: category.trim(),
             amount: Number(amount),
             description: description.trim(),
-            dayOfMonth: new Date().getDate()
+            dayOfMonth: new Date().getDate(),
+            method
           })
         });
       }

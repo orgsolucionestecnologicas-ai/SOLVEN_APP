@@ -55,7 +55,12 @@ export async function generateDueRecurringExpenses(): Promise<GenerateDueRecurri
 
   for (const recurringExpense of dueRecurringExpenses) {
     const effectiveDay = Math.min(recurringExpense.dayOfMonth, daysInMonth);
-    if (effectiveDay !== currentDay) continue;
+    // No generar antes de que llegue el día — pero si ya pasó y todavía no se
+    // generó este mes (falló antes, el cron no corrió ese día, etc.), lo toma
+    // ahora en vez de esperar hasta el mes que viene. Es "catch up", no genera
+    // dos veces: el filtro de arriba (`lastGeneratedMonth !== currentMonthKey`)
+    // ya excluye lo que se generó con éxito este mes.
+    if (currentDay < effectiveDay) continue;
 
     // Aislado por tenant a propósito: si un tenant no tiene caja abierta (o
     // falla por cualquier otro motivo), no debe cortar el procesamiento del
@@ -66,7 +71,8 @@ export async function generateDueRecurringExpenses(): Promise<GenerateDueRecurri
         {
           amount: recurringExpense.amount.toNumber(),
           category: recurringExpense.category,
-          description: recurringExpense.description ?? recurringExpense.category
+          description: recurringExpense.description ?? recurringExpense.category,
+          method: recurringExpense.method ?? undefined
         },
         recurringExpense.tenantId
       );

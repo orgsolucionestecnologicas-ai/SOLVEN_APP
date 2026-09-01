@@ -18,50 +18,9 @@
 > número que un dueño puede confiar de memoria, sin tener que auditar cada
 > diferencia a mano.
 
-### Bugs confirmados — ORDEN para el agente ejecutor (VS Code)
+### Bugs confirmados
 
-> Los 5 hallazgos de abajo son una orden lista para ejecutar, no un reporte
-> para discutir. Corregir cada uno donde se indica. Si al implementar un fix
-> aparece una ambigüedad de producto real (no de código), parar ese ítem
-> puntual y dejarlo anotado en el entregable — no improvisar una decisión de
-> negocio. El resto se sigue ejecutando igual.
-
-#### CAJA-FIX-01 — Se pueden abrir dos sesiones de caja OPEN al mismo tiempo para el mismo tenant
-
-`src/modules/cash-register/cash-register-data-access.ts:39-46` (`openSession`) hace `findFirst` (¿hay una sesión OPEN?) y después `create`, sin ningún guard atómico entre los dos pasos. El schema tampoco tiene ningún constraint que lo impida: `model CashRegisterSession` (`prisma/schema.prisma:404-426`) solo tiene `@@index([tenantId])`, no una unicidad parcial por `(tenantId, status)`. Doble click en "Abrir caja", o dos personas abriendo casi al mismo tiempo al empezar el día en dos dispositivos, generan DOS sesiones abiertas — y todo el resto del sistema (el chequeo de `createSale`, el de devoluciones desde RET-FIX-05, el cierre) asume que hay una sola.
-
-**Qué hacer — la mejor práctica acá es que la base de datos, no el código de aplicación, sea la que garantice el invariante.** Agregar un índice único parcial en Postgres sobre `CashRegisterSession` que impida más de una fila con `status = 'OPEN'` por `tenantId` (en Prisma esto se hace con una migración SQL cruda, ya que Prisma no soporta índices parciales condicionales nativamente: `CREATE UNIQUE INDEX ... ON "CashRegisterSession" (tenantId) WHERE status = 'OPEN'`). Con eso, un segundo intento de `create` falla con una constraint violation (`P2002`) que `openSession` debe capturar y traducir al mismo `CashRegisterAlreadyOpenError` que ya usa el chequeo de aplicación — así queda protegido tanto el caso normal (mensaje claro al cajero) como la carrera (la base de datos no permite el estado inconsistente aunque el código de aplicación falle en detectarlo a tiempo).
-
-#### CAJA-FIX-02 — Gastos y pagos de deuda siempre se registran como si fueran 100% efectivo, sin importar cómo se cobraron/pagaron realmente
-
-`src/modules/expenses/expense-data-access.ts:27-34` y `src/modules/debts/debt-payment-data-access.ts:52-58` crean un `CashMovement` (`OUT` e `IN` respectivamente) siempre, incondicionalmente. Ni `Expense` ni `DebtPayment` tienen un campo de método de pago en el schema. Un gasto pagado por transferencia (alquiler, proveedores — muy común en Argentina) resta plata del efectivo esperado que en realidad nunca salió del cajón; un pago de deuda cobrado por transferencia suma plata que nunca entró. En ambos casos el arqueo de caja da diferencia todos los días que esto pase, y el cajero termina cargando con un "faltante"/"sobrante" que es un problema del software, no suyo.
-
-**Qué hacer — la mejor práctica es la misma que ya existe para devoluciones (`Return.refundMethod`, agregado en FIX-07): que cada movimiento de dinero declare CÓMO se movió la plata, y que solo el efectivo real impacte el cajón.** Agregar un campo de método de pago a `Expense` y a `DebtPayment` (mismo enfoque que `RETURN_REFUND_METHODS` en `src/modules/returns/index.ts`: Efectivo/Tarjeta/Transferencia/Otro), y condicionar la creación del `CashMovement` a que el método elegido sea "Efectivo" — igual que ya hace `processReturn` desde FIX-07. Actualizar los formularios de Gastos y de Pago de Deuda para pedir el método. Esto es exactamente el mismo patrón que el negocio ya validó y aprobó para devoluciones — aplicarlo acá cierra el mismo tipo de agujero en las otras dos vías de entrada/salida de plata que no pasan por una venta.
-
-#### CAJA-FIX-03 — Ninguna función que crea `CashMovement` fuera de una venta verifica que haya una caja abierta
-
-Confirmado en `POST /api/cash-movements` (ajuste manual, `src/app/api/cash-movements/route.ts` → `createCashMovement`), en `createExpense` (`expense-data-access.ts:27-34`) y en `registerDebtPayment` (`debt-payment-data-access.ts:52-58`). Solo `createSale` (`sale-data-access.ts:106-110`) y, desde RET-FIX-05, `processReturn` verifican una `CashRegisterSession` abierta antes de mover plata. Un movimiento de caja creado sin sesión abierta (por ejemplo, un ajuste manual hecho fuera de horario, o un gasto cargado antes de abrir la caja a la mañana) nunca se cuenta en ningún cierre — ni el anterior (ya cerrado) ni el próximo (`createdAt >= session.openedAt` lo deja afuera) — la plata queda contablemente perdida para siempre.
-
-**Qué hacer:** que todo lo que cree un `CashMovement` de tipo `IN`/`OUT` real (no aplica a ajustes que Diego decida que son "fuera de caja" a propósito) pase por el mismo chequeo que `createSale`. Lo más prolijo es sacar ese chequeo a una función compartida (ej. `requireOpenCashRegisterSession(tenantId)` en `src/modules/cash-register` o en un lugar común) que reutilicen `createSale`, `processReturn`, `createCashMovement`, `createExpense` y `registerDebtPayment`, en vez de reimplementarlo suelto en cada módulo — mismo error, un solo lugar para corregirlo la próxima vez.
-
-#### CAJA-FIX-04 — `GET /api/cash-register/[id]` y `GET /api/cash-register/sessions` (historial de cierres) no tienen control de rol
-
-`src/app/api/cash-register/[id]/route.ts:14-17` y `src/app/api/cash-register/sessions/route.ts:6-9` usan solo `requireTenantId()`. El resto de los endpoints de Caja sí exige `requireRole([...], "cashMovements")` (apertura, cierre, `GET`/`POST /api/cash-movements`) — estos dos quedaron afuera. Mismo patrón sistémico ya encontrado y corregido en POS y Devoluciones.
-
-**Qué hacer:** cambiar ambos `GET` para usar `requireRole([...], "cashMovements")` con los mismos roles que ya usa el resto de los endpoints de Caja, respetando el override de `RolePermission`.
-
-#### CAJA-FIX-05 — Cerrar caja tiene la misma condición de carrera de doble ejecución que ya se corrigió en Devoluciones y Cotizaciones
-
-`src/modules/cash-register/cash-register-data-access.ts:75` — el chequeo `session.status === "CLOSED"` se hace sobre un `findFirst` leído dentro de la transacción pero ANTES del `update` (línea 93), sin condición de estado en el `where` del `update` ni verificación de filas afectadas. Dos "cerrar caja" casi simultáneos (doble click, o dos personas cerrando desde dos pantallas) pueden pasar ambos el chequeo, calcular cada uno su propio `expectedAmount`/`difference` — potencialmente distintos si un movimiento nuevo entra justo en el medio de los dos — y el `update` que corre último pisa silenciosamente al primero, además de disparar el email de diferencia (`notifyCashDifferenceIfEnabled`) dos veces con números distintos.
-
-**Qué hacer:** mismo criterio que RET-FIX-01/POS-FIX-04 — agregar `status: "OPEN"` al `where` del `update` (o `updateMany` + chequear `count`), y si no afectó ninguna fila, lanzar `CashRegisterAlreadyClosedError` antes de mandar cualquier notificación o log de auditoría.
-
-### Al terminar (aplica a los 5 fixes de arriba, CAJA-FIX-01 a 05)
-
-1. Correr `npm run lint && npm run typecheck && npm test` — no commitear si algo falla.
-2. Commit + push: `git add -A && git commit -m "fix: CAJA-FIX-01..05 — doble apertura de caja, método de pago en gastos/deuda, caja abierta obligatoria, permisos GET, doble cierre" && git push origin main`.
-3. Agregar una entrada corta a `TAREAS/REPORTELIDER.md`: `### DD-MM-AAAA — CAJA-FIX-01..05: [título corto]` + 2-4 líneas de resumen.
-4. Entregable breve: archivos modificados, resultado de `typecheck`, hash del commit. No autocalificar el trabajo como "verificado" — eso lo hace el Ingeniero Líder contra el diff real.
+> Orden ya entregada al agente ejecutor (CAJA-FIX-01 a 05) y removida de acá para que no se repita. Efecto colateral real detectado y ya resuelto por separado: el cron de gastos recurrentes no aislaba fallas por tenant (ver `REPORTELIDER.md`, 01-09-2026). Resultado real: ver commits + `TAREAS/REPORTELIDER.md`.
 
 ### Verificado correcto (no ordenar fix)
 
