@@ -6,6 +6,83 @@
 > vacía entre ciclos como `REPORTE_DE_CAMBIOS.md` — es el historial completo
 > de todo lo auditado, para no repetir trabajo.
 
+## Caja — auditado 31-08-2026
+
+> Punto de partida: 20 escenarios hipotéticos de "día normal" para Caja,
+> discutidos con Diego antes de leer código. Contrastados contra
+> `src/modules/cash-register`, `src/modules/cash`, `src/modules/expenses`,
+> `src/modules/debts` y las rutas de `src/app/api/cash-register` y
+> `src/app/api/cash-movements`. Los fixes de abajo están pensados no solo
+> para tapar el bug sino como la mejor práctica contable para un comercio
+> real: que el número que el sistema espera en el cajón sea siempre el
+> número que un dueño puede confiar de memoria, sin tener que auditar cada
+> diferencia a mano.
+
+### Bugs confirmados — ORDEN para el agente ejecutor (VS Code)
+
+> Los 5 hallazgos de abajo son una orden lista para ejecutar, no un reporte
+> para discutir. Corregir cada uno donde se indica. Si al implementar un fix
+> aparece una ambigüedad de producto real (no de código), parar ese ítem
+> puntual y dejarlo anotado en el entregable — no improvisar una decisión de
+> negocio. El resto se sigue ejecutando igual.
+
+#### CAJA-FIX-01 — Se pueden abrir dos sesiones de caja OPEN al mismo tiempo para el mismo tenant
+
+`src/modules/cash-register/cash-register-data-access.ts:39-46` (`openSession`) hace `findFirst` (¿hay una sesión OPEN?) y después `create`, sin ningún guard atómico entre los dos pasos. El schema tampoco tiene ningún constraint que lo impida: `model CashRegisterSession` (`prisma/schema.prisma:404-426`) solo tiene `@@index([tenantId])`, no una unicidad parcial por `(tenantId, status)`. Doble click en "Abrir caja", o dos personas abriendo casi al mismo tiempo al empezar el día en dos dispositivos, generan DOS sesiones abiertas — y todo el resto del sistema (el chequeo de `createSale`, el de devoluciones desde RET-FIX-05, el cierre) asume que hay una sola.
+
+**Qué hacer — la mejor práctica acá es que la base de datos, no el código de aplicación, sea la que garantice el invariante.** Agregar un índice único parcial en Postgres sobre `CashRegisterSession` que impida más de una fila con `status = 'OPEN'` por `tenantId` (en Prisma esto se hace con una migración SQL cruda, ya que Prisma no soporta índices parciales condicionales nativamente: `CREATE UNIQUE INDEX ... ON "CashRegisterSession" (tenantId) WHERE status = 'OPEN'`). Con eso, un segundo intento de `create` falla con una constraint violation (`P2002`) que `openSession` debe capturar y traducir al mismo `CashRegisterAlreadyOpenError` que ya usa el chequeo de aplicación — así queda protegido tanto el caso normal (mensaje claro al cajero) como la carrera (la base de datos no permite el estado inconsistente aunque el código de aplicación falle en detectarlo a tiempo).
+
+#### CAJA-FIX-02 — Gastos y pagos de deuda siempre se registran como si fueran 100% efectivo, sin importar cómo se cobraron/pagaron realmente
+
+`src/modules/expenses/expense-data-access.ts:27-34` y `src/modules/debts/debt-payment-data-access.ts:52-58` crean un `CashMovement` (`OUT` e `IN` respectivamente) siempre, incondicionalmente. Ni `Expense` ni `DebtPayment` tienen un campo de método de pago en el schema. Un gasto pagado por transferencia (alquiler, proveedores — muy común en Argentina) resta plata del efectivo esperado que en realidad nunca salió del cajón; un pago de deuda cobrado por transferencia suma plata que nunca entró. En ambos casos el arqueo de caja da diferencia todos los días que esto pase, y el cajero termina cargando con un "faltante"/"sobrante" que es un problema del software, no suyo.
+
+**Qué hacer — la mejor práctica es la misma que ya existe para devoluciones (`Return.refundMethod`, agregado en FIX-07): que cada movimiento de dinero declare CÓMO se movió la plata, y que solo el efectivo real impacte el cajón.** Agregar un campo de método de pago a `Expense` y a `DebtPayment` (mismo enfoque que `RETURN_REFUND_METHODS` en `src/modules/returns/index.ts`: Efectivo/Tarjeta/Transferencia/Otro), y condicionar la creación del `CashMovement` a que el método elegido sea "Efectivo" — igual que ya hace `processReturn` desde FIX-07. Actualizar los formularios de Gastos y de Pago de Deuda para pedir el método. Esto es exactamente el mismo patrón que el negocio ya validó y aprobó para devoluciones — aplicarlo acá cierra el mismo tipo de agujero en las otras dos vías de entrada/salida de plata que no pasan por una venta.
+
+#### CAJA-FIX-03 — Ninguna función que crea `CashMovement` fuera de una venta verifica que haya una caja abierta
+
+Confirmado en `POST /api/cash-movements` (ajuste manual, `src/app/api/cash-movements/route.ts` → `createCashMovement`), en `createExpense` (`expense-data-access.ts:27-34`) y en `registerDebtPayment` (`debt-payment-data-access.ts:52-58`). Solo `createSale` (`sale-data-access.ts:106-110`) y, desde RET-FIX-05, `processReturn` verifican una `CashRegisterSession` abierta antes de mover plata. Un movimiento de caja creado sin sesión abierta (por ejemplo, un ajuste manual hecho fuera de horario, o un gasto cargado antes de abrir la caja a la mañana) nunca se cuenta en ningún cierre — ni el anterior (ya cerrado) ni el próximo (`createdAt >= session.openedAt` lo deja afuera) — la plata queda contablemente perdida para siempre.
+
+**Qué hacer:** que todo lo que cree un `CashMovement` de tipo `IN`/`OUT` real (no aplica a ajustes que Diego decida que son "fuera de caja" a propósito) pase por el mismo chequeo que `createSale`. Lo más prolijo es sacar ese chequeo a una función compartida (ej. `requireOpenCashRegisterSession(tenantId)` en `src/modules/cash-register` o en un lugar común) que reutilicen `createSale`, `processReturn`, `createCashMovement`, `createExpense` y `registerDebtPayment`, en vez de reimplementarlo suelto en cada módulo — mismo error, un solo lugar para corregirlo la próxima vez.
+
+#### CAJA-FIX-04 — `GET /api/cash-register/[id]` y `GET /api/cash-register/sessions` (historial de cierres) no tienen control de rol
+
+`src/app/api/cash-register/[id]/route.ts:14-17` y `src/app/api/cash-register/sessions/route.ts:6-9` usan solo `requireTenantId()`. El resto de los endpoints de Caja sí exige `requireRole([...], "cashMovements")` (apertura, cierre, `GET`/`POST /api/cash-movements`) — estos dos quedaron afuera. Mismo patrón sistémico ya encontrado y corregido en POS y Devoluciones.
+
+**Qué hacer:** cambiar ambos `GET` para usar `requireRole([...], "cashMovements")` con los mismos roles que ya usa el resto de los endpoints de Caja, respetando el override de `RolePermission`.
+
+#### CAJA-FIX-05 — Cerrar caja tiene la misma condición de carrera de doble ejecución que ya se corrigió en Devoluciones y Cotizaciones
+
+`src/modules/cash-register/cash-register-data-access.ts:75` — el chequeo `session.status === "CLOSED"` se hace sobre un `findFirst` leído dentro de la transacción pero ANTES del `update` (línea 93), sin condición de estado en el `where` del `update` ni verificación de filas afectadas. Dos "cerrar caja" casi simultáneos (doble click, o dos personas cerrando desde dos pantallas) pueden pasar ambos el chequeo, calcular cada uno su propio `expectedAmount`/`difference` — potencialmente distintos si un movimiento nuevo entra justo en el medio de los dos — y el `update` que corre último pisa silenciosamente al primero, además de disparar el email de diferencia (`notifyCashDifferenceIfEnabled`) dos veces con números distintos.
+
+**Qué hacer:** mismo criterio que RET-FIX-01/POS-FIX-04 — agregar `status: "OPEN"` al `where` del `update` (o `updateMany` + chequear `count`), y si no afectó ninguna fila, lanzar `CashRegisterAlreadyClosedError` antes de mandar cualquier notificación o log de auditoría.
+
+### Al terminar (aplica a los 5 fixes de arriba, CAJA-FIX-01 a 05)
+
+1. Correr `npm run lint && npm run typecheck && npm test` — no commitear si algo falla.
+2. Commit + push: `git add -A && git commit -m "fix: CAJA-FIX-01..05 — doble apertura de caja, método de pago en gastos/deuda, caja abierta obligatoria, permisos GET, doble cierre" && git push origin main`.
+3. Agregar una entrada corta a `TAREAS/REPORTELIDER.md`: `### DD-MM-AAAA — CAJA-FIX-01..05: [título corto]` + 2-4 líneas de resumen.
+4. Entregable breve: archivos modificados, resultado de `typecheck`, hash del commit. No autocalificar el trabajo como "verificado" — eso lo hace el Ingeniero Líder contra el diff real.
+
+### Verificado correcto (no ordenar fix)
+
+- Apertura/cierre de caja con monto negativo o no numérico — validado explícitamente (`Number.isFinite`, `>= 0`) en `cash-register-validation.ts:47-52` y `:82-86`.
+- Doble cierre de la misma sesión, caso simple (no concurrente) — bloqueado explícitamente por `CashRegisterAlreadyClosedError` (la falla es solo bajo concurrencia real, ver CAJA-FIX-05).
+- Ajuste manual de caja sin motivo — bloqueado: `source === "MANUAL"` exige `note` no vacía, `cash-movement-validation.ts:56-58`.
+- Gastos y pagos de deuda generan movimiento de caja (no quedan invisibles del arqueo, más allá del problema de método de pago de CAJA-FIX-02) — `expense-data-access.ts:27-34`, `debt-payment-data-access.ts:52-58`.
+- Pagos de deuda concurrentes sobre el mismo saldo — protegidos con `updateMany` condicionado (`remainingAmount: { gte: paymentAmount }`) más reintento ante conflicto de transacción (`P2028`/`P2034`) — `debt-payment-data-access.ts:35-42,66-73`.
+- Alerta por diferencia de caja al cierre — existe, opt-in por tenant (`StoreSettings.cashDifferenceEmailAlerts`), con umbral que ignora diferencias de centavos por redondeo (`< 0.005`) — `email-alerts.ts:29-40`.
+- Movimientos de caja de otro tenant filtrándose en la agregación de un cierre — todas las queries de `closeSession` están correctamente scoped por `tenantId`.
+- Negocio que opera cruzando medianoche — `closeSession` agrega movimientos por `createdAt >= session.openedAt` sin ningún corte de "día calendario", así que una sesión larga que cruza la medianoche no tiene ningún problema de corte de fecha.
+- `GET /api/cash-movements` y `POST /api/cash-movements` — sí exigen `requireRole([...], "cashMovements")` correctamente.
+
+### Inconcluso (necesita reproducción en vivo o decisión de producto)
+
+- El desglose por denominación (`openingBreakdown`/`closingBreakdown`) se guarda como JSON libre (`unknown`) sin validar que la suma de billetes/monedas coincida con `openingAmount`/`closingAmount`. Puede ser intencional (el desglose es solo referencia visual para quien cuenta el cajón, no una fuente de verdad) — confirmar con Diego si vale la pena validarlo o si arruinaría la flexibilidad de cargarlo.
+- Cambio de turno sin cerrar caja — `cashierName` es texto libre, no una relación a `User`, así que no se pudo determinar leyendo el backend si el cajero entrante ve alguna advertencia de que la sesión abierta es de otra persona. Requiere revisión de la UI en vivo (`app-shell.tsx` / la pantalla de apertura de caja).
+- Reporte/PDF de cierre de caja — no se revisó el componente de impresión para confirmar que reutiliza los mismos números guardados en `CashRegisterSession` en vez de recalcularlos aparte (mismo tipo de riesgo que ya vimos con reportes duplicando lógica en otras secciones). A revisar si se prioriza.
+
+---
+
 ## Devoluciones — auditado 31-08-2026
 
 > Punto de partida: 20 escenarios hipotéticos de "día normal" para
@@ -16,62 +93,9 @@
 > `src/app/api/returns`, y lo necesario de `sales`, `cash-register`,
 > `invoices`/ARCA y `audit`.
 
-### Bugs confirmados — ORDEN para el agente ejecutor (VS Code)
+### Bugs confirmados
 
-> Los 7 hallazgos de abajo son una orden lista para ejecutar, no un reporte
-> para discutir. Corregir cada uno donde se indica. Si al implementar un fix
-> aparece una ambigüedad de producto real (no de código), parar ese ítem
-> puntual y dejarlo anotado en el entregable — no improvisar una decisión de
-> negocio. El resto se sigue ejecutando igual.
-
-#### RET-FIX-01 — Condición de carrera en la validación de "cantidad ya devuelta": se puede devolver de más y reponer stock de más
-
-`src/modules/returns/index.ts:247-254` lee `existingReturnItems` y arma `alreadyReturnedByProductId` con un simple `findMany` dentro de la transacción; el chequeo de tope (`:258-273`) compara contra `saleItem.quantity`. A diferencia de la reducción de stock en `sale-data-access.ts:511` (`UPDATE "Product" ... WHERE stock >= quantity`, atómico en una sola sentencia SQL), acá no hay ningún guard atómico ni `SELECT ... FOR UPDATE`: bajo el nivel de aislamiento por defecto de Postgres (Read Committed), dos `processReturn` casi simultáneos sobre la misma venta/producto (doble click, reintento de red, dos sesiones) pueden leer ambos el mismo `alreadyReturnedByProductId` ANTES de que cualquiera cree su `ReturnItem`, pasar los dos el chequeo, y terminar devolviendo en conjunto más de lo que esa línea vendió — con la reposición de stock (`:277-300`) duplicada también.
-
-**Qué hacer:** aplicar el mismo criterio defensivo que ya se usa para stock. Opción más simple: envolver la lectura+chequeo+escritura de `ReturnItem` en un nivel de aislamiento `Serializable` o `RepeatableRead` para esta transacción (`prisma.$transaction(..., { isolationLevel: "Serializable" })`) y manejar el error de conflicto de serialización reintentando o devolviendo un error claro; o agregar una constraint/consulta atómica equivalente al patrón `WHERE stock >= quantity` que impida commitear un `ReturnItem` que lleve la suma devuelta por encima de `saleItem.quantity`.
-
-#### RET-FIX-02 — El reintegro se calcula al precio de lista completo, ignorando cualquier descuento de la venta original
-
-`src/modules/returns/index.ts:302` — `returnTotal = returnTotal.plus(saleItem.unitPrice.mul(returnItem.quantity))`. `SaleItem.unitPrice`/`total` son siempre el precio de lista sin descontar (confirmado en `sale-data-access.ts:438-462`, `buildProductSaleItem`/`buildServiceSaleItem`); cualquier descuento de la venta (hoy: promociones vía `Sale.discountAmount`; después de POS-FIX-01/02: también el descuento manual) vive a nivel de la venta completa, no prorateado por ítem. Una devolución parcial de una venta con descuento reintegra de más — el cliente recibe más plata de la que efectivamente pagó por esa unidad.
-
-**Qué hacer:** en `processReturn`, calcular el `returnTotal` proporcional al descuento real de la venta: `unitPrice efectivo = saleItem.unitPrice * (1 - sale.discountAmount / totalAmount de la venta)` (o el criterio equivalente que ya use `netTotal` en `sale-data-access.ts`), y usar ese precio neto por unidad en vez de `saleItem.unitPrice` a secas. Si POS-FIX-01 termina agregando un descuento manual separado del de promociones, este cálculo tiene que sumar ambos, no solo el de promociones.
-
-#### RET-FIX-03 — Devolución sobre venta con pago MIXED no reduce la `Debt` asociada
-
-`src/modules/returns/index.ts:317` — `if (sale.paymentType === "CREDIT" && sale.debtId)` solo contempla `CREDIT`. Una venta `MIXED` también tiene `Sale.debtId` por su porción fiada (desde `FEATURE-01`), pero la condición no la contempla — al devolver un producto de una venta mixta, la deuda del cliente no baja aunque devolvió mercadería. *(Reconfirmado — este bug ya estaba anotado antes de que existiera el rol formal; sigue sin corregirse en el código actual.)*
-
-**Qué hacer:** cambiar la condición a `(sale.paymentType === "CREDIT" || sale.paymentType === "MIXED") && sale.debtId`, manteniendo la misma lógica de "no bajar de 0" que ya existe en las líneas siguientes (`:319-325`).
-
-#### RET-FIX-04 — `GET /api/returns` no tiene ningún control de rol
-
-`src/app/api/returns/route.ts:23-26` usa solo `requireTenantId()`. El `POST` de la misma ruta sí exige `requireRole(["OWNER","CASHIER"], "returns")` (línea 71), respetando `RolePermission` para la sección `returns`, pero el `GET` deja pasar a cualquier rol autenticado del tenant — mismo patrón ya corregido para `/api/sales` en POS-FIX-03.
-
-**Qué hacer:** cambiar `GET /api/returns` para usar `requireRole([...], "returns")` con los mismos roles habilitados que el `POST` (o los que correspondan para solo-lectura), respetando el override de `RolePermission`.
-
-#### RET-FIX-05 — `processReturn` no exige una sesión de caja abierta
-
-A diferencia de `createSale` (`sale-data-access.ts:106-110`, lanza `SaleNoCashRegisterOpenError` sin sesión abierta), `src/modules/returns/index.ts` no verifica en ningún punto que haya una `CashRegisterSession` con `status: "OPEN"` antes de procesar la devolución. Un reintegro en efectivo (`:305-312`, crea `CashMovement` tipo `OUT`) puede quedar registrado sin ninguna sesión de caja abierta que lo capture — y como `closeSession` (`cash-register-data-access.ts:73-84`) agrega movimientos por `createdAt >= session.openedAt`, ese movimiento anterior a la apertura de la próxima sesión nunca se cuenta en ningún cierre: la plata sale (queda registrada) pero jamás se reconcilia contra un arqueo real.
-
-**Qué hacer:** agregar el mismo chequeo que `createSale` — buscar una `CashRegisterSession` abierta para el tenant antes de crear el `CashMovement` de tipo `OUT`, y si no hay ninguna, lanzar un error equivalente a `SaleNoCashRegisterOpenError` (puede ser la misma clase, reutilizada). Si Diego decide que las devoluciones sin reintegro en efectivo (tarjeta/transferencia/etc.) no necesitan caja abierta, limitar el chequeo solo al caso `refundMethod === "Efectivo"`.
-
-#### RET-FIX-06 — No existe forma de devolver la venta de un Servicio
-
-`src/modules/returns/index.ts:5-9` — `ReturnItemInput` solo tiene `productId` (obligatorio), sin ningún campo `serviceId`. SOLVEN vende Servicios por POS (`Service`, con su propio `ivaRate`), pero el módulo de Devoluciones no tiene ninguna vía para reembolsar uno — ni la API ni la validación lo contemplan.
-
-**Qué hacer:** extender `ReturnItemInput` para aceptar `serviceId` como alternativa a `productId` (mismo patrón que `ValidatedSaleItemInput` en `sale-validation.ts`), y ajustar `processReturn` para matchear contra `SaleItem.serviceId` cuando corresponda, calculando el reintegro igual que para productos pero sin tocar stock/`InventoryMovement` (los servicios no tienen stock). Si Diego confirma que devolver un servicio no es un caso de negocio real para SOLVEN, dejar esto anotado como decisión de producto en vez de implementarlo — no asumir.
-
-#### RET-FIX-07 — Las devoluciones no quedan registradas en `AuditLog`
-
-`POST /api/returns` (`src/app/api/returns/route.ts`) nunca llama a `logAudit`, a diferencia de `POST /api/sales` (`src/app/api/sales/route.ts:83`, acción `SALE_CREATED`). No queda ningún rastro de qué usuario procesó una devolución, sobre qué venta, ni por qué monto — un dato sensible para auditar plata que sale de la caja.
-
-**Qué hacer:** agregar un `logAudit({ tenantId, userId, action: "RETURN_CREATED", entityType: "Return", entityId: result.returnId, metadata: { saleId, totalReturned, refundMethod } })` en el `POST` de `/api/returns`, mismo patrón que ya usa `/api/sales`. Va a hacer falta pasar `userId` desde `requireRole` (ya lo devuelve, solo hay que desestructurarlo).
-
-### Al terminar (aplica a los 7 fixes de arriba, RET-FIX-01 a 07)
-
-1. Correr `npm run lint && npm run typecheck && npm test` — no commitear si algo falla.
-2. Commit + push: `git add -A && git commit -m "fix: RET-FIX-01..07 — devoluciones: carrera de cantidad, reintegro con descuento, deuda MIXED, permisos GET, caja abierta, servicios, auditoría" && git push origin main`.
-3. Agregar una entrada corta a `TAREAS/REPORTELIDER.md`: `### DD-MM-AAAA — RET-FIX-01..07: [título corto]` + 2-4 líneas de resumen.
-4. Entregable breve: archivos modificados, resultado de `typecheck`, hash del commit. No autocalificar el trabajo como "verificado" — eso lo hace el Ingeniero Líder contra el diff real.
+> Orden ya entregada al agente ejecutor (RET-FIX-01 a 07) y removida de acá para que no se repita. RET-FIX-06 (devolver venta de Servicio) quedó diferido como pregunta de producto, no implementado — sigue pendiente si Diego confirma que es un caso real. Resultado real: ver commits + `TAREAS/REPORTELIDER.md`.
 
 ### Verificado correcto (no ordenar fix)
 

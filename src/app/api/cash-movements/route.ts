@@ -7,6 +7,7 @@ import {
   CashMovementValidationError,
   type CreateCashMovementInput
 } from "../../../modules/cash/cash-movement-validation";
+import { CashRegisterNoSessionOpenError } from "../../../modules/cash-register";
 import {
   errorResponse,
   forbiddenResponse,
@@ -72,6 +73,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof CashMovementValidationError) {
       return errorResponse("Invalid cash movement input.", 400, error.reasons);
+    }
+    if (error instanceof CashRegisterNoSessionOpenError) {
+      return errorResponse(error.message, 409);
     }
     return errorResponse("Could not save cash movement.");
   }

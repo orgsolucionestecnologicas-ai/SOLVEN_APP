@@ -7,15 +7,18 @@ import {
   getSessionById
 } from "../../../../modules/cash-register";
 import { errorResponse, forbiddenResponse, successResponse, unauthorizedResponse } from "../../_shared/responses";
-import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 import { logAudit } from "@/modules/audit";
 import { notifyCashDifferenceIfEnabled } from "@/lib/email-alerts";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   let id: string, tenantId: string;
   try {
-    ([{ id }, tenantId] = await Promise.all([params, requireTenantId()]));
+    let role: { tenantId: string };
+    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER", "CASHIER"], "cashMovements")]));
+    ({ tenantId } = role);
   } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
     throw e;
   }

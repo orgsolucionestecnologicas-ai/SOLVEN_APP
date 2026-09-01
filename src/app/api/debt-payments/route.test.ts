@@ -14,6 +14,7 @@ import {
   registerDebtPayment
 } from "../../../modules/debts";
 import { DebtPaymentValidationError } from "../../../modules/debts/debt-payment-validation";
+import { CashRegisterNoSessionOpenError } from "../../../modules/cash-register";
 import { GET, POST } from "./route";
 
 vi.mock("../../../modules/debts", () => ({
@@ -127,6 +128,22 @@ describe("debt payments API route", () => {
         message: "Debt payment amount cannot exceed remaining debt amount."
       }
     });
+  });
+
+  it("returns 409 when there is no open cash register for a cash payment", async () => {
+    mockedRegisterDebtPayment.mockRejectedValueOnce(new CashRegisterNoSessionOpenError());
+
+    const response = await POST(
+      new Request("http://localhost/api/debt-payments", {
+        method: "POST",
+        body: JSON.stringify({
+          debtId: "debt-1",
+          amount: 30
+        })
+      })
+    );
+
+    expect(response.status).toBe(409);
   });
 
   it("returns an error when the debt does not exist", async () => {

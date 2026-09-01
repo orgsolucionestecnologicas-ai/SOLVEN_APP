@@ -18,8 +18,38 @@ describe("validateCreateExpenseInput", () => {
       category: "Supplies",
       description: "Printer paper",
       receiptUrl: null,
-      supplierId: null
+      supplierId: null,
+      method: "Efectivo"
     });
+  });
+
+  it("accepts an explicit valid payment method", () => {
+    expect(
+      validateCreateExpenseInput({
+        amount: 25.5,
+        category: "Supplies",
+        description: "Printer paper",
+        method: "Tarjeta"
+      })
+    ).toEqual({
+      amount: 25.5,
+      category: "Supplies",
+      description: "Printer paper",
+      receiptUrl: null,
+      supplierId: null,
+      method: "Tarjeta"
+    });
+  });
+
+  it("rejects an invalid payment method", () => {
+    expect(() =>
+      validateCreateExpenseInput({
+        amount: 25.5,
+        category: "Supplies",
+        description: "Printer paper",
+        method: "Cripto"
+      })
+    ).toThrow(ExpenseValidationError);
   });
 
   it("rejects a receipt that is not a valid image or PDF data URL", () => {
@@ -46,7 +76,8 @@ describe("validateCreateExpenseInput", () => {
       category: "Supplies",
       description: "Printer paper",
       receiptUrl: "data:image/png;base64,aGVsbG8=",
-      supplierId: null
+      supplierId: null,
+      method: "Efectivo"
     });
   });
 
@@ -63,7 +94,8 @@ describe("validateCreateExpenseInput", () => {
       category: "Supplies",
       description: "Printer paper",
       receiptUrl: null,
-      supplierId: "supplier_123"
+      supplierId: "supplier_123",
+      method: "Efectivo"
     });
   });
 
@@ -80,7 +112,8 @@ describe("validateCreateExpenseInput", () => {
       category: "Supplies",
       description: "Printer paper",
       receiptUrl: null,
-      supplierId: null
+      supplierId: null,
+      method: "Efectivo"
     });
   });
 

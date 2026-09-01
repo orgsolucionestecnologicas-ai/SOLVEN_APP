@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createExpense, listExpenses } from "../../../modules/expenses";
 import { ExpenseValidationError } from "../../../modules/expenses/expense-validation";
+import { CashRegisterNoSessionOpenError } from "../../../modules/cash-register";
 import { GET, POST } from "./route";
 
 vi.mock("../../../modules/expenses", () => ({
@@ -92,6 +93,23 @@ describe("expenses API route", () => {
         details: ["Expense amount must be a positive number."]
       }
     });
+  });
+
+  it("returns 409 when there is no open cash register for a cash expense", async () => {
+    mockedCreateExpense.mockRejectedValueOnce(new CashRegisterNoSessionOpenError());
+
+    const response = await POST(
+      new Request("http://localhost/api/expenses", {
+        method: "POST",
+        body: JSON.stringify({
+          amount: 25.5,
+          category: "Supplies",
+          description: "Printer paper"
+        })
+      })
+    );
+
+    expect(response.status).toBe(409);
   });
 });
 

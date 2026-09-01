@@ -30,6 +30,26 @@ export class CashRegisterAlreadyClosedError extends Error {
   }
 }
 
+export class CashRegisterNoSessionOpenError extends Error {
+  constructor() {
+    super("No hay una sesión de caja abierta. Abrí la caja antes de registrar este movimiento.");
+    this.name = "CashRegisterNoSessionOpenError";
+  }
+}
+
+export async function requireOpenCashRegisterSession(
+  tenantId: string,
+  tx: Prisma.TransactionClient = prisma
+): Promise<CashRegisterSession> {
+  const openSession = await tx.cashRegisterSession.findFirst({
+    where: { status: "OPEN", tenantId }
+  });
+  if (!openSession) {
+    throw new CashRegisterNoSessionOpenError();
+  }
+  return openSession;
+}
+
 export async function openSession(
   input: OpenSessionInput,
   tenantId: string
@@ -42,21 +62,28 @@ export async function openSession(
 
   if (existingOpen) throw new CashRegisterAlreadyOpenError();
 
-  return prisma.cashRegisterSession.create({
-    data: {
-      tenantId,
-      cashierName: validated.cashierName,
-      branchName: validated.branchName,
-      ...(validated.shift !== undefined ? { shift: validated.shift } : {}),
-      openingAmount: validated.openingAmount,
-      ...(validated.openingNotes !== undefined
-        ? { openingNotes: validated.openingNotes }
-        : {}),
-      ...(validated.openingBreakdown !== undefined
-        ? { openingBreakdown: validated.openingBreakdown as Prisma.InputJsonValue }
-        : {})
+  try {
+    return await prisma.cashRegisterSession.create({
+      data: {
+        tenantId,
+        cashierName: validated.cashierName,
+        branchName: validated.branchName,
+        ...(validated.shift !== undefined ? { shift: validated.shift } : {}),
+        openingAmount: validated.openingAmount,
+        ...(validated.openingNotes !== undefined
+          ? { openingNotes: validated.openingNotes }
+          : {}),
+        ...(validated.openingBreakdown !== undefined
+          ? { openingBreakdown: validated.openingBreakdown as Prisma.InputJsonValue }
+          : {})
+      }
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new CashRegisterAlreadyOpenError();
     }
-  });
+    throw error;
+  }
 }
 
 export async function closeSession(
@@ -72,7 +99,6 @@ export async function closeSession(
     });
 
     if (!session) throw new CashRegisterSessionNotFoundError(id);
-    if (session.status === "CLOSED") throw new CashRegisterAlreadyClosedError();
 
     const inResult = await tx.cashMovement.aggregate({
       where: { tenantId, createdAt: { gte: session.openedAt }, type: "IN" },
@@ -90,8 +116,8 @@ export async function closeSession(
     const closingDecimal = new Prisma.Decimal(validated.closingAmount);
     const difference = closingDecimal.minus(expectedAmount);
 
-    return tx.cashRegisterSession.update({
-      where: { id },
+    const closeResult = await tx.cashRegisterSession.updateMany({
+      where: { id, status: "OPEN" },
       data: {
         status: "CLOSED",
         closedAt: new Date(),
@@ -106,6 +132,10 @@ export async function closeSession(
           : {})
       }
     });
+
+    if (closeResult.count === 0) throw new CashRegisterAlreadyClosedError();
+
+    return tx.cashRegisterSession.findFirstOrThrow({ where: { id } });
   });
 }
 

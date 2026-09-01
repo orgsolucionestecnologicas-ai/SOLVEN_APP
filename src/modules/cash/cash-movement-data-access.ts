@@ -1,6 +1,7 @@
 import type { CashMovement } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { requireOpenCashRegisterSession } from "@/modules/cash-register";
 
 import {
   type CreateCashMovementInput,
@@ -12,6 +13,8 @@ export async function createCashMovement(
   tenantId: string
 ): Promise<CashMovement> {
   const validatedMovement = validateCreateCashMovementInput(movementInput);
+
+  await requireOpenCashRegisterSession(tenantId);
 
   return prisma.cashMovement.create({
     data: { ...validatedMovement, tenantId }

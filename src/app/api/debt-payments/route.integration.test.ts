@@ -29,6 +29,9 @@ describe("debt payments API database integration", () => {
     testTenantId = tenant.id;
     mockedRequireTenantId.mockResolvedValue(testTenantId);
     mockedRequireRole.mockResolvedValue({ tenantId: testTenantId, userId: "integration-user-id", role: "OWNER" });
+    await prisma.cashRegisterSession.create({
+      data: { tenantId: testTenantId, cashierName: "Test Cashier", openingAmount: 0, status: "OPEN" }
+    });
   });
 
   afterAll(async () => {
@@ -137,5 +140,7 @@ async function deleteIntegrationDebtPaymentData() {
   await prisma.debtPayment.deleteMany({ where: { debtId: { in: testDebtIds } } });
   await prisma.debt.deleteMany({ where: { id: { in: testDebtIds } } });
   await prisma.customer.deleteMany({ where: { id: { in: testCustomerIds } } });
+  const testTenants = await prisma.tenant.findMany({ where: { email: testTenantEmail }, select: { id: true } });
+  await prisma.cashRegisterSession.deleteMany({ where: { tenantId: { in: testTenants.map((t) => t.id) } } });
   await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }

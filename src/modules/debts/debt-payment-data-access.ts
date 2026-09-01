@@ -1,6 +1,7 @@
 import { Prisma, type DebtPayment } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { requireOpenCashRegisterSession } from "@/modules/cash-register";
 
 import { validateCreateCashMovementInput } from "../cash/cash-movement-validation";
 import {
@@ -49,19 +50,25 @@ export async function registerDebtPayment(
           data: {
             tenantId,
             debtId: validatedPayment.debtId,
-            amount: validatedPayment.amount
+            amount: validatedPayment.amount,
+            method: validatedPayment.method
           }
         });
-        const cashMovement = validateCreateCashMovementInput({
-          type: "IN",
-          amount: validatedPayment.amount,
-          source: "DEBT_PAYMENT",
-          referenceId: debtPayment.id
-        });
 
-        await transaction.cashMovement.create({
-          data: { ...cashMovement, tenantId }
-        });
+        if (validatedPayment.method === "Efectivo") {
+          await requireOpenCashRegisterSession(tenantId, transaction);
+
+          const cashMovement = validateCreateCashMovementInput({
+            type: "IN",
+            amount: validatedPayment.amount,
+            source: "DEBT_PAYMENT",
+            referenceId: debtPayment.id
+          });
+
+          await transaction.cashMovement.create({
+            data: { ...cashMovement, tenantId }
+          });
+        }
 
         return debtPayment;
       });

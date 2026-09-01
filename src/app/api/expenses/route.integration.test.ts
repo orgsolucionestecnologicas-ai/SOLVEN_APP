@@ -23,6 +23,9 @@ describe("expenses API database integration", () => {
     testTenantId = tenant.id;
     mockedRequireTenantId.mockResolvedValue(testTenantId);
     mockedRequireRole.mockResolvedValue({ tenantId: testTenantId, userId: "test-user-id", role: "OWNER" });
+    await prisma.cashRegisterSession.create({
+      data: { tenantId: testTenantId, cashierName: "Test Cashier", openingAmount: 0, status: "OPEN" }
+    });
   });
 
   afterAll(async () => {
@@ -84,5 +87,7 @@ async function deleteIntegrationExpenses() {
 
   await prisma.cashMovement.deleteMany({ where: { source: "EXPENSE", referenceId: { in: testExpenseIds } } });
   await prisma.expense.deleteMany({ where: { description: { startsWith: testExpenseDescriptionPrefix } } });
+  const testTenants = await prisma.tenant.findMany({ where: { email: testTenantEmail }, select: { id: true } });
+  await prisma.cashRegisterSession.deleteMany({ where: { tenantId: { in: testTenants.map((t) => t.id) } } });
   await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }

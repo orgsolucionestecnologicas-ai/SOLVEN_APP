@@ -244,6 +244,7 @@ model Expense {
   receiptUrl  String?
   supplierId  String?
   supplier    Supplier? @relation(fields: [supplierId], references: [id])
+  method      String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -332,6 +333,7 @@ model DebtPayment {
   amount      Decimal  @db.Decimal(12, 2)
   paymentDate DateTime @default(now())
   debt        Debt     @relation(fields: [debtId], references: [id])
+  method      String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

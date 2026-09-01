@@ -4,6 +4,7 @@ import {
   type CreateExpenseInput,
   ExpenseValidationError
 } from "../../../modules/expenses/expense-validation";
+import { CashRegisterNoSessionOpenError } from "../../../modules/cash-register";
 import {
   errorResponse,
   forbiddenResponse,
@@ -65,6 +66,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ExpenseValidationError) {
       return errorResponse("Invalid expense input.", 400, error.reasons);
+    }
+    if (error instanceof CashRegisterNoSessionOpenError) {
+      return errorResponse(error.message, 409);
     }
     return errorResponse("Could not save expense.");
   }

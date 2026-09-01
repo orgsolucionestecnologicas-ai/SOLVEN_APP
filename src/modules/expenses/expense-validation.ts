@@ -1,11 +1,21 @@
 const MAX_RECEIPT_BASE64_LENGTH = Math.ceil((2 * 1024 * 1024 * 4) / 3) + 100;
 
+export const EXPENSE_PAYMENT_METHODS = [
+  "Efectivo",
+  "Tarjeta",
+  "Transferencia",
+  "Otro"
+] as const;
+
+export type ExpensePaymentMethod = (typeof EXPENSE_PAYMENT_METHODS)[number];
+
 export type CreateExpenseInput = {
   amount: number;
   category: string;
   description: string;
   receiptUrl?: string | null;
   supplierId?: string | null;
+  method?: string;
 };
 
 export type ValidatedExpenseInput = {
@@ -14,6 +24,7 @@ export type ValidatedExpenseInput = {
   description: string;
   receiptUrl: string | null;
   supplierId: string | null;
+  method: ExpensePaymentMethod;
 };
 
 export class ExpenseValidationError extends Error {
@@ -67,6 +78,11 @@ export function validateCreateExpenseInput(
       ? expenseInput.supplierId.trim()
       : null;
 
+  const method = expenseInput.method === undefined ? "Efectivo" : expenseInput.method;
+  if (!EXPENSE_PAYMENT_METHODS.includes(method as ExpensePaymentMethod)) {
+    validationErrors.push("Expense payment method is invalid.");
+  }
+
   if (validationErrors.length > 0) {
     throw new ExpenseValidationError(validationErrors);
   }
@@ -76,7 +92,8 @@ export function validateCreateExpenseInput(
     category,
     description,
     receiptUrl,
-    supplierId
+    supplierId,
+    method: method as ExpensePaymentMethod
   };
 }
 

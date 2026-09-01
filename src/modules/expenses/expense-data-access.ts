@@ -1,6 +1,7 @@
 import type { Expense } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { requireOpenCashRegisterSession } from "@/modules/cash-register";
 
 import { validateCreateCashMovementInput } from "../cash/cash-movement-validation";
 import {
@@ -25,16 +26,21 @@ export async function createExpense(
     const expense = await transaction.expense.create({
       data: { ...validatedExpense, tenantId }
     });
-    const cashMovement = validateCreateCashMovementInput({
-      type: "OUT",
-      amount: validatedExpense.amount,
-      source: "EXPENSE",
-      referenceId: expense.id
-    });
 
-    await transaction.cashMovement.create({
-      data: { ...cashMovement, tenantId }
-    });
+    if (validatedExpense.method === "Efectivo") {
+      await requireOpenCashRegisterSession(tenantId, transaction);
+
+      const cashMovement = validateCreateCashMovementInput({
+        type: "OUT",
+        amount: validatedExpense.amount,
+        source: "EXPENSE",
+        referenceId: expense.id
+      });
+
+      await transaction.cashMovement.create({
+        data: { ...cashMovement, tenantId }
+      });
+    }
 
     return expense;
   });

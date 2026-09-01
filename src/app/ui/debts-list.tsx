@@ -765,6 +765,7 @@ function QuickActionButton({ Icon, label, onClick }: { Icon: LucideIcon; label: 
 
 function RegisterDebtPaymentModal({ debt, onClose, onSuccess }: { debt: DebtRecord; onClose: () => void; onSuccess: () => void }) {
   const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState("Efectivo");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const remaining = Number(debt.remainingAmount);
@@ -780,7 +781,7 @@ function RegisterDebtPaymentModal({ debt, onClose, onSuccess }: { debt: DebtReco
       const response = await fetch("/api/debt-payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ debtId: debt.id, amount: paymentAmount })
+        body: JSON.stringify({ debtId: debt.id, amount: paymentAmount, method })
       });
       const body = (await response.json()) as ApiResponse<{ id: string }>;
       if (!response.ok || !body.data) {
@@ -827,6 +828,21 @@ function RegisterDebtPaymentModal({ debt, onClose, onSuccess }: { debt: DebtReco
               value={amount}
             />
             <p className="mt-1 text-xs text-slate-500">Máximo: {formatMoney(remaining)}</p>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="payment-method">Método de pago</label>
+            <select
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-950 focus:border-slate-500 focus:outline-none"
+              disabled={isSubmitting}
+              id="payment-method"
+              onChange={(e) => setMethod(e.target.value)}
+              value={method}
+            >
+              <option value="Efectivo">Efectivo</option>
+              <option value="Tarjeta">Tarjeta</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Otro">Otro</option>
+            </select>
           </div>
           {submitError ? <div className="rounded-lg border border-rose-200 bg-rose-50 p-3"><p className="text-sm font-medium text-rose-900">{submitError}</p></div> : null}
           <div className="flex justify-end gap-3 pt-2">

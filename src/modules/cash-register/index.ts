@@ -7,7 +7,9 @@ export {
   listClosedSessions,
   CashRegisterSessionNotFoundError,
   CashRegisterAlreadyOpenError,
-  CashRegisterAlreadyClosedError
+  CashRegisterAlreadyClosedError,
+  CashRegisterNoSessionOpenError,
+  requireOpenCashRegisterSession
 } from "./cash-register-data-access";
 
 export {

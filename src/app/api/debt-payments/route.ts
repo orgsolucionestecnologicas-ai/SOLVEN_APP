@@ -8,6 +8,7 @@ import {
   DebtPaymentValidationError,
   type RegisterDebtPaymentInput
 } from "../../../modules/debts/debt-payment-validation";
+import { CashRegisterNoSessionOpenError } from "../../../modules/cash-register";
 import {
   errorResponse,
   forbiddenResponse,
@@ -71,6 +72,9 @@ export async function POST(request: Request) {
     }
     if (isPrismaRecordNotFoundError(error)) {
       return errorResponse("Debt was not found.", 400);
+    }
+    if (error instanceof CashRegisterNoSessionOpenError) {
+      return errorResponse(error.message, 409);
     }
     return errorResponse("Could not save debt payment.");
   }

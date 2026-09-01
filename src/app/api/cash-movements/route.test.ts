@@ -13,6 +13,7 @@ import {
   listCashMovements
 } from "../../../modules/cash";
 import { CashMovementValidationError } from "../../../modules/cash/cash-movement-validation";
+import { CashRegisterNoSessionOpenError } from "../../../modules/cash-register";
 import { GET, POST } from "./route";
 
 vi.mock("../../../modules/cash", () => ({
@@ -113,6 +114,24 @@ describe("cash movements API route", () => {
         details: ["Cash movement type must be IN or OUT."]
       }
     });
+  });
+
+  it("returns 409 when there is no open cash register", async () => {
+    mockedCreateCashMovement.mockRejectedValueOnce(new CashRegisterNoSessionOpenError());
+
+    const response = await POST(
+      new Request("http://localhost/api/cash-movements", {
+        method: "POST",
+        body: JSON.stringify({
+          type: "IN",
+          amount: 30.5,
+          source: "Manual",
+          referenceId: "manual-1"
+        })
+      })
+    );
+
+    expect(response.status).toBe(409);
   });
 });
 

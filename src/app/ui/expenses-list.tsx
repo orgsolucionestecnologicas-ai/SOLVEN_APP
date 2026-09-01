@@ -854,6 +854,7 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [expenseDate, setExpenseDate] = useState(todayAsInputValue());
+  const [method, setMethod] = useState("Efectivo");
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [receiptFileName, setReceiptFileName] = useState<string | null>(null);
   const [isRecurring, setIsRecurring] = useState(false);
@@ -927,7 +928,7 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
       const response = await fetch("/api/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(amount), category: category.trim(), description: description.trim(), receiptUrl, supplierId: supplierId || null })
+        body: JSON.stringify({ amount: Number(amount), category: category.trim(), description: description.trim(), receiptUrl, supplierId: supplierId || null, method })
       });
       const body = (await response.json()) as ApiResponse<ExpenseRecord>;
       if (!response.ok || !body.data) {
@@ -980,6 +981,15 @@ function CreateExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSuc
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="expense-date">Fecha</label>
             <input className={inputCls} disabled={isSubmitting} id="expense-date" onChange={(e) => setExpenseDate(e.target.value)} required type="date" value={expenseDate} />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="expense-method">Método de pago</label>
+            <select className={inputCls} disabled={isSubmitting} id="expense-method" onChange={(e) => setMethod(e.target.value)} value={method}>
+              <option value="Efectivo">Efectivo</option>
+              <option value="Tarjeta">Tarjeta</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Otro">Otro</option>
+            </select>
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="expense-receipt">Comprobante (opcional, máx. 2MB)</label>

@@ -8,6 +8,7 @@ import {
   listDebtPayments,
   registerDebtPayment
 } from "./debt-payment-data-access";
+import { CashRegisterNoSessionOpenError } from "@/modules/cash-register";
 
 const testCustomerNamePrefix = "SOLVEN_DEBT_PAYMENT_TEST_CUSTOMER_";
 const testTenantEmail = "solven_debt_payment_test@test.internal";
@@ -21,6 +22,9 @@ describe("debt payment data access", () => {
       data: { businessName: "Debt Payment Test Tenant", email: testTenantEmail }
     });
     testTenantId = tenant.id;
+    await prisma.cashRegisterSession.create({
+      data: { tenantId: testTenantId, cashierName: "Test Cashier", openingAmount: 0, status: "OPEN" }
+    });
   });
 
   afterAll(async () => {
@@ -91,6 +95,37 @@ describe("debt payment data access", () => {
     expect(cashMovements[0]).toMatchObject({ type: "IN", source: "DEBT_PAYMENT", referenceId: payments[0].id });
   });
 
+  it("rejects a cash payment when there is no open cash register", async () => {
+    await prisma.cashRegisterSession.updateMany({
+      where: { tenantId: testTenantId, status: "OPEN" },
+      data: { status: "CLOSED", closedAt: new Date() }
+    });
+    const debt = await createTestDebt(50);
+
+    await expect(
+      registerDebtPayment({ debtId: debt.id, amount: 10 }, testTenantId)
+    ).rejects.toThrow(CashRegisterNoSessionOpenError);
+  });
+
+  it("does not require an open cash register for a non-cash payment method", async () => {
+    await prisma.cashRegisterSession.updateMany({
+      where: { tenantId: testTenantId, status: "OPEN" },
+      data: { status: "CLOSED", closedAt: new Date() }
+    });
+    const debt = await createTestDebt(50);
+
+    const payment = await registerDebtPayment(
+      { debtId: debt.id, amount: 10, method: "Transferencia" },
+      testTenantId
+    );
+
+    expect(payment.method).toBe("Transferencia");
+    const cashMovements = await prisma.cashMovement.findMany({
+      where: { source: "DEBT_PAYMENT", referenceId: payment.id }
+    });
+    expect(cashMovements).toHaveLength(0);
+  });
+
   it("lists debt payments after registration", async () => {
     const debt = await createTestDebt(80);
     const payment = await registerDebtPayment({ debtId: debt.id, amount: 25 }, testTenantId);
@@ -136,5 +171,7 @@ async function deleteDebtPaymentTestData() {
   await prisma.debtPayment.deleteMany({ where: { debtId: { in: testDebtIds } } });
   await prisma.debt.deleteMany({ where: { id: { in: testDebtIds } } });
   await prisma.customer.deleteMany({ where: { id: { in: testCustomerIds } } });
+  const testTenants = await prisma.tenant.findMany({ where: { email: testTenantEmail }, select: { id: true } });
+  await prisma.cashRegisterSession.deleteMany({ where: { tenantId: { in: testTenants.map((t) => t.id) } } });
   await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }
