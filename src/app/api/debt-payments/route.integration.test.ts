@@ -27,8 +27,17 @@ describe("debt payments API database integration", () => {
       data: { businessName: "Debt Payment API Test Tenant", email: testTenantEmail }
     });
     testTenantId = tenant.id;
+    const user = await prisma.user.create({
+      data: {
+        tenantId: testTenantId,
+        name: "Integration Tester",
+        email: `solven_integration_debt_payment_user_${Date.now()}@test.internal`,
+        password: "test-password",
+        role: "OWNER"
+      }
+    });
     mockedRequireTenantId.mockResolvedValue(testTenantId);
-    mockedRequireRole.mockResolvedValue({ tenantId: testTenantId, userId: "integration-user-id", role: "OWNER" });
+    mockedRequireRole.mockResolvedValue({ tenantId: testTenantId, userId: user.id, role: "OWNER" });
     await prisma.cashRegisterSession.create({
       data: { tenantId: testTenantId, cashierName: "Test Cashier", openingAmount: 0, status: "OPEN" }
     });
@@ -141,6 +150,9 @@ async function deleteIntegrationDebtPaymentData() {
   await prisma.debt.deleteMany({ where: { id: { in: testDebtIds } } });
   await prisma.customer.deleteMany({ where: { id: { in: testCustomerIds } } });
   const testTenants = await prisma.tenant.findMany({ where: { email: testTenantEmail }, select: { id: true } });
-  await prisma.cashRegisterSession.deleteMany({ where: { tenantId: { in: testTenants.map((t) => t.id) } } });
+  const testTenantIds = testTenants.map((t) => t.id);
+  await prisma.cashRegisterSession.deleteMany({ where: { tenantId: { in: testTenantIds } } });
+  await prisma.auditLog.deleteMany({ where: { tenantId: { in: testTenantIds } } });
+  await prisma.user.deleteMany({ where: { tenantId: { in: testTenantIds } } });
   await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }

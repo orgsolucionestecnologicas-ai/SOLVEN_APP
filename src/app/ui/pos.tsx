@@ -86,6 +86,7 @@ type ProductsResponse = {
 type CustomerRecord = {
   id: string;
   name: string;
+  creditLimit?: string | null;
 };
 
 type CustomersResponse = {
@@ -3365,6 +3366,11 @@ export function Pos() {
                   {!selectedCustomer && (
                     <p className="mt-1 text-xs text-amber-700">
                       Seleccioná un cliente en el carrito para registrar el saldo a fiar.
+                    </p>
+                  )}
+                  {selectedCustomer && selectedCustomer.creditLimit == null && (
+                    <p className="mt-1 text-xs text-violet-700">
+                      Este cliente no tiene límite de crédito configurado.
                     </p>
                   )}
                 </div>

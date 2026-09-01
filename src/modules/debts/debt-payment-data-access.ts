@@ -25,8 +25,8 @@ export async function registerDebtPayment(
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       return await prisma.$transaction(async (transaction) => {
-        const debt = await transaction.debt.findUniqueOrThrow({
-          where: { id: validatedPayment.debtId }
+        const debt = await transaction.debt.findFirstOrThrow({
+          where: { id: validatedPayment.debtId, tenantId }
         });
         const paymentAmount = new Prisma.Decimal(validatedPayment.amount);
 
@@ -37,6 +37,7 @@ export async function registerDebtPayment(
         const debtUpdate = await transaction.debt.updateMany({
           where: {
             id: validatedPayment.debtId,
+            tenantId,
             remainingAmount: { gte: paymentAmount }
           },
           data: { remainingAmount: { decrement: paymentAmount } }

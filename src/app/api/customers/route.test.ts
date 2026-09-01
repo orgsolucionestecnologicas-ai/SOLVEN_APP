@@ -7,9 +7,12 @@ vi.mock("@/lib/tenant", () => ({
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ForbiddenError, requireRole } from "@/lib/tenant";
 import { createCustomer, listCustomers } from "../../../modules/customers";
 import { CustomerValidationError } from "../../../modules/customers/customer-validation";
 import { GET, POST } from "./route";
+
+const mockedRequireRole = vi.mocked(requireRole);
 
 vi.mock("../../../modules/customers", () => ({
   createCustomer: vi.fn(),
@@ -45,6 +48,15 @@ describe("customers API route", () => {
         message: "No se pudieron cargar los clientes."
       }
     });
+  });
+
+  it("returns 403 when the role is not authorized to list customers", async () => {
+    mockedRequireRole.mockRejectedValueOnce(new ForbiddenError());
+
+    const response = await GET(new Request("http://localhost/api/customers"));
+
+    expect(response.status).toBe(403);
+    expect(mockedListCustomers).not.toHaveBeenCalled();
   });
 
   it("creates a customer", async () => {

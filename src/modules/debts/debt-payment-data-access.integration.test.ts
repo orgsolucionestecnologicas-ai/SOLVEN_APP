@@ -126,6 +126,24 @@ describe("debt payment data access", () => {
     expect(cashMovements).toHaveLength(0);
   });
 
+  it("does not allow registering a payment against another tenant's debt", async () => {
+    const debt = await createTestDebt(50);
+    const otherTenant = await prisma.tenant.create({
+      data: { businessName: "Other Debt Payment Tenant", email: `other_${testTenantEmail}` }
+    });
+
+    try {
+      await expect(
+        registerDebtPayment({ debtId: debt.id, amount: 10 }, otherTenant.id)
+      ).rejects.toThrow();
+
+      const updatedDebt = await prisma.debt.findUniqueOrThrow({ where: { id: debt.id } });
+      expect(updatedDebt.remainingAmount.toString()).toBe("50");
+    } finally {
+      await prisma.tenant.delete({ where: { id: otherTenant.id } });
+    }
+  });
+
   it("lists debt payments after registration", async () => {
     const debt = await createTestDebt(80);
     const payment = await registerDebtPayment({ debtId: debt.id, amount: 25 }, testTenantId);

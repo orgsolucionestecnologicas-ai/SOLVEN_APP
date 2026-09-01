@@ -8,6 +8,8 @@ vi.mock("@/lib/tenant", () => ({
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ForbiddenError, requireRole } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 import {
   DebtPaymentAmountError,
   listDebtPayments,
@@ -16,6 +18,12 @@ import {
 import { DebtPaymentValidationError } from "../../../modules/debts/debt-payment-validation";
 import { CashRegisterNoSessionOpenError } from "../../../modules/cash-register";
 import { GET, POST } from "./route";
+
+const mockedRequireRole = vi.mocked(requireRole);
+
+vi.mock("@/modules/audit", () => ({
+  logAudit: vi.fn()
+}));
 
 vi.mock("../../../modules/debts", () => ({
   DebtPaymentAmountError: class DebtPaymentAmountError extends Error {
@@ -30,6 +38,7 @@ vi.mock("../../../modules/debts", () => ({
 
 const mockedListDebtPayments = vi.mocked(listDebtPayments);
 const mockedRegisterDebtPayment = vi.mocked(registerDebtPayment);
+const mockedLogAudit = vi.mocked(logAudit);
 
 describe("debt payments API route", () => {
   beforeEach(() => {
@@ -59,6 +68,15 @@ describe("debt payments API route", () => {
     });
   });
 
+  it("returns 403 when the role is not authorized to list debt payments", async () => {
+    mockedRequireRole.mockRejectedValueOnce(new ForbiddenError());
+
+    const response = await GET();
+
+    expect(response.status).toBe(403);
+    expect(mockedListDebtPayments).not.toHaveBeenCalled();
+  });
+
   it("registers a debt payment", async () => {
     const debtPayment = buildDebtPaymentRecord();
     mockedRegisterDebtPayment.mockResolvedValueOnce(debtPayment);
@@ -79,6 +97,15 @@ describe("debt payments API route", () => {
       debtId: "debt-1",
       amount: 30
     }, "test-tenant-id");
+    expect(mockedLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "test-tenant-id",
+        userId: "test-user-id",
+        action: "DEBT_PAYMENT_REGISTERED",
+        entityType: "Debt",
+        entityId: "debt-1"
+      })
+    );
   });
 
   it("returns validation errors for invalid debt payment input", async () => {

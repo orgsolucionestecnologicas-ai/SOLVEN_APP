@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "@/lib/prisma";
 
-import { createDebt, listDebts } from "./debt-data-access";
+import { createDebt, listDebts, writeOffDebt } from "./debt-data-access";
 
 const testCustomerNamePrefix = "SOLVEN_DEBT_TEST_CUSTOMER_";
 const testTenantEmail = "solven_debt_test_tenant@test.internal";
@@ -54,6 +54,19 @@ describe("debt data access", () => {
         expect.objectContaining({ id: debt.id, customerId: customer.id })
       ])
     );
+  });
+
+  it("zeroes remaining amount when writing off a debt", async () => {
+    const customer = await createTestCustomer();
+    const debt = await createDebt({
+      customerId: customer.id,
+      totalAmount: 60
+    }, testTenantId);
+
+    const writtenOffDebt = await writeOffDebt(debt.id, "Cliente insolvente", testTenantId);
+
+    expect(writtenOffDebt.writtenOff).toBe(true);
+    expect(writtenOffDebt.remainingAmount.toString()).toBe("0");
   });
 });
 

@@ -9,11 +9,16 @@ import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ForbiddenError, requireRole } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 import { createDebt, type DebtWithCustomer, listDebts } from "../../../modules/debts";
 import { DebtValidationError } from "../../../modules/debts/debt-validation";
 import { GET, POST } from "./route";
 
 const mockedRequireRole = vi.mocked(requireRole);
+
+vi.mock("@/modules/audit", () => ({
+  logAudit: vi.fn()
+}));
 
 vi.mock("../../../modules/debts", () => ({
   createDebt: vi.fn(),
@@ -22,6 +27,7 @@ vi.mock("../../../modules/debts", () => ({
 
 const mockedCreateDebt = vi.mocked(createDebt);
 const mockedListDebts = vi.mocked(listDebts);
+const mockedLogAudit = vi.mocked(logAudit);
 
 describe("debts API route", () => {
   beforeEach(() => {
@@ -51,6 +57,15 @@ describe("debts API route", () => {
     });
   });
 
+  it("returns 403 when the role is not authorized to list debts", async () => {
+    mockedRequireRole.mockRejectedValueOnce(new ForbiddenError());
+
+    const response = await GET(new Request("http://localhost/api/debts"));
+
+    expect(response.status).toBe(403);
+    expect(mockedListDebts).not.toHaveBeenCalled();
+  });
+
   it("creates a debt", async () => {
     const debt = buildDebtRecord();
     mockedCreateDebt.mockResolvedValueOnce(debt);
@@ -71,6 +86,15 @@ describe("debts API route", () => {
       customerId: "customer-1",
       totalAmount: 90
     }, "test-tenant-id");
+    expect(mockedLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "test-tenant-id",
+        userId: "test-user-id",
+        action: "DEBT_CREATED",
+        entityType: "Debt",
+        entityId: "debt-1"
+      })
+    );
   });
 
   it("returns validation errors for invalid debt input", async () => {

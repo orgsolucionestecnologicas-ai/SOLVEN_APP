@@ -219,6 +219,15 @@ export function CustomerNewForm() {
                     />
                   </div>
                 </div>
+                {/* Credit limit notice */}
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm font-medium text-amber-900">
+                    Límite de crédito: Sin límite (requiere aprobación)
+                  </p>
+                  <p className="mt-1 text-xs text-amber-700">
+                    Podés configurar un límite de crédito para este cliente luego, desde su ficha.
+                  </p>
+                </div>
               </div>
 
               {submitError ? (

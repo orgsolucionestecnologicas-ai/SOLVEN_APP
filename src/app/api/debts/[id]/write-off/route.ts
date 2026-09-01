@@ -11,16 +11,18 @@ import {
   unauthorizedResponse
 } from "../../../_shared/responses";
 import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let id: string, tenantId: string;
+  let id: string, tenantId: string, userId: string;
   try {
     const [paramsResult, role] = await Promise.all([params, requireRole(["OWNER"])]);
     id = paramsResult.id;
     tenantId = role.tenantId;
+    userId = role.userId;
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -40,6 +42,14 @@ export async function PATCH(
 
   try {
     const debt = await writeOffDebt(id, (requestBody as { note: string }).note, tenantId);
+    void logAudit({
+      tenantId,
+      userId,
+      action: "DEBT_WRITTEN_OFF",
+      entityType: "Debt",
+      entityId: debt.id,
+      metadata: { note: debt.writeOffNote }
+    });
     return successResponse(debt);
   } catch (error) {
     if (error instanceof DebtValidationError) {

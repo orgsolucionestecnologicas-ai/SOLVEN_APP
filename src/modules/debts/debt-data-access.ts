@@ -1,4 +1,4 @@
-import type { Debt } from "@prisma/client";
+import { Prisma, type Debt } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -42,7 +42,8 @@ export async function writeOffDebt(
     data: {
       writtenOff: true,
       writeOffNote: trimmedNote,
-      writeOffAt: new Date()
+      writeOffAt: new Date(),
+      remainingAmount: new Prisma.Decimal(0)
     }
   });
 }

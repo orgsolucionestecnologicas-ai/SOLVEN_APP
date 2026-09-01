@@ -26,8 +26,17 @@ describe("debts API database integration", () => {
       data: { businessName: "Debt API Test Tenant", email: testTenantEmail }
     });
     testTenantId = tenant.id;
+    const user = await prisma.user.create({
+      data: {
+        tenantId: testTenantId,
+        name: "Integration Tester",
+        email: `solven_integration_debt_user_${Date.now()}@test.internal`,
+        password: "test-password",
+        role: "OWNER"
+      }
+    });
     mockedRequireTenantId.mockResolvedValue(testTenantId);
-    mockedRequireRole.mockResolvedValue({ tenantId: testTenantId, userId: "integration-user-id", role: "OWNER" });
+    mockedRequireRole.mockResolvedValue({ tenantId: testTenantId, userId: user.id, role: "OWNER" });
   });
 
   afterAll(async () => {
@@ -92,5 +101,9 @@ async function deleteIntegrationDebtData() {
 
   await prisma.debt.deleteMany({ where: { customerId: { in: testCustomerIds } } });
   await prisma.customer.deleteMany({ where: { id: { in: testCustomerIds } } });
+  const testTenants = await prisma.tenant.findMany({ where: { email: testTenantEmail }, select: { id: true } });
+  const testTenantIds = testTenants.map((t) => t.id);
+  await prisma.auditLog.deleteMany({ where: { tenantId: { in: testTenantIds } } });
+  await prisma.user.deleteMany({ where: { tenantId: { in: testTenantIds } } });
   await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }
