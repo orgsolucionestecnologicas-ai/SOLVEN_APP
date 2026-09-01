@@ -1,9 +1,23 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getSalePriceBelowCostWarning,
   ProductValidationError,
   validateCreateProductInput
 } from "./product-validation";
+
+describe("getSalePriceBelowCostWarning", () => {
+  it("returns a warning when salePrice is below costPrice", () => {
+    expect(getSalePriceBelowCostWarning(10, 8)).toBe(
+      "El precio de venta es menor al costo del producto."
+    );
+  });
+
+  it("returns null when salePrice is equal to or above costPrice", () => {
+    expect(getSalePriceBelowCostWarning(10, 10)).toBeNull();
+    expect(getSalePriceBelowCostWarning(10, 15)).toBeNull();
+  });
+});
 
 describe("validateCreateProductInput", () => {
   it("accepts valid product input", () => {

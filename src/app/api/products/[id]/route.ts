@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import {
   getProductById,
+  getSalePriceBelowCostWarning,
   updateProduct,
   ProductValidationError,
   type UpdateProductInput
@@ -15,7 +16,7 @@ import {
   unauthorizedResponse
 } from "../../_shared/responses";
 import { prisma } from "@/lib/prisma";
-import { ForbiddenError, getSession, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
 import { logAudit } from "@/modules/audit";
 
 export async function GET(
@@ -75,7 +76,8 @@ export async function PUT(
       entityId: product.id,
       metadata: { name: product.name }
     });
-    return successResponse(product);
+    const warning = getSalePriceBelowCostWarning(Number(product.costPrice), Number(product.salePrice));
+    return successResponse(product, 200, warning ?? undefined);
   } catch (error) {
     if (error instanceof ProductValidationError) {
       return errorResponse("Invalid product input.", 400, error.reasons);
@@ -91,10 +93,14 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let id: string, tenantId: string;
+  let id: string, tenantId: string, userId: string;
   try {
-    ([{ id }, tenantId] = await Promise.all([params, requireTenantId()]));
+    let role: { tenantId: string; userId: string; role: string };
+    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER", "INVENTORY"], "products")]));
+    tenantId = role.tenantId;
+    userId = role.userId;
   } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
     throw e;
   }
@@ -103,18 +109,31 @@ export async function DELETE(
     const product = await prisma.product.findFirst({ where: { id, tenantId } });
     if (!product) return errorResponse("Producto no encontrado.", 404);
 
-    await prisma.product.delete({ where: { id } });
-    const session = await getSession();
-    if (session) {
-      void logAudit({
-        tenantId,
-        userId: session.userId,
-        action: "PRODUCT_DELETED",
-        entityType: "Product",
-        entityId: product.id,
-        metadata: { name: product.name }
-      });
+    const hasSales = await prisma.saleItem.findFirst({ where: { productId: id } });
+    if (hasSales) {
+      return errorResponse(
+        "Este producto tiene ventas registradas. Para dejar de venderlo, desactivalo en vez de eliminarlo.",
+        400
+      );
     }
+
+    const hasInventoryMovements = await prisma.inventoryMovement.findFirst({ where: { productId: id } });
+    if (hasInventoryMovements) {
+      return errorResponse(
+        "Este producto tiene movimientos de stock registrados. Para dejar de venderlo, desactivalo en vez de eliminarlo.",
+        400
+      );
+    }
+
+    await prisma.product.delete({ where: { id, tenantId } });
+    void logAudit({
+      tenantId,
+      userId,
+      action: "PRODUCT_DELETED",
+      entityType: "Product",
+      entityId: product.id,
+      metadata: { name: product.name }
+    });
     return successResponse({ deleted: true });
   } catch {
     return errorResponse("No se pudo eliminar el producto.");

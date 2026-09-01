@@ -1,8 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-export function successResponse(data: unknown, status = 200) {
-  return NextResponse.json({ data }, { status });
+export function successResponse(data: unknown, status = 200, warning?: string) {
+  return NextResponse.json({ data, ...(warning ? { warning } : {}) }, { status });
 }
 
 export function errorResponse(

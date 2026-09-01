@@ -111,6 +111,7 @@ model Tenant {
   arcaTokenCache       ARCATokenCache?
   invoices             Invoice[]
   rolePermissions      RolePermission[]
+  productLowStockAlerts ProductLowStockAlert[]
 }
 
 model User {
@@ -153,7 +154,7 @@ model Product {
   tenantId           String
   tenant             Tenant              @relation(fields: [tenantId], references: [id])
   name               String
-  productCode        String?             @unique
+  productCode        String?
   categoryName       String              @default("Otros")
   costPrice          Decimal             @db.Decimal(12, 2)
   salePrice          Decimal             @db.Decimal(12, 2)
@@ -175,6 +176,7 @@ model Product {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
+  @@unique([tenantId, productCode])
   @@index([tenantId])
   @@index([categoryId])
   @@index([subcategoryId])
@@ -444,6 +446,18 @@ model InventoryMovement {
 
   @@index([tenantId])
   @@index([productId])
+}
+
+model ProductLowStockAlert {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  productId      String   @unique
+  lastNotifiedAt DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 model Category {

@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
-import { createProduct, listProducts } from "../../../modules/products";
+import { createProduct, getSalePriceBelowCostWarning, listProducts } from "../../../modules/products";
 import {
   type CreateProductInput,
   ProductValidationError
@@ -69,7 +69,8 @@ export async function POST(request: Request) {
       entityId: product.id,
       metadata: { name: product.name }
     });
-    return successResponse(product, 201);
+    const warning = getSalePriceBelowCostWarning(Number(product.costPrice), Number(product.salePrice));
+    return successResponse(product, 201, warning ?? undefined);
   } catch (error) {
     if (error instanceof ProductValidationError) {
       return errorResponse("Invalid product input.", 400, error.reasons);

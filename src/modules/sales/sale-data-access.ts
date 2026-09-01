@@ -120,7 +120,7 @@ export async function createSale(
     : [];
   const globalDiscount = validateGlobalDiscount(saleInput.globalDiscountType, saleInput.globalDiscountValue);
 
-  const lowStockProducts: { name: string; stock: number }[] = [];
+  const lowStockProducts: { id: string; name: string; stock: number }[] = [];
 
   const sale = await prisma.$transaction(async (transaction) => {
     const productItemInputs = validatedSale.items.filter(isProductItem);
@@ -337,7 +337,7 @@ export async function createSale(
       stockReductionsByProductId.set(productId, reduction);
 
       if (reduction.newStock <= product.minStock) {
-        lowStockProducts.push({ name: product.name, stock: reduction.newStock });
+        lowStockProducts.push({ id: product.id, name: product.name, stock: reduction.newStock });
       }
     }
 

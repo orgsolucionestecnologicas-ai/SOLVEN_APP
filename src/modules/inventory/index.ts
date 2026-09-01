@@ -1,6 +1,7 @@
 export { listInventoryMovements, listInventoryMovementsByProduct, recordInventoryMovement } from "./inventory-movement-data-access";
 export {
   adjustProductStock,
+  StockAdjustmentConcurrentConflictError,
   type ProductStockAdjustment
 } from "./stock-adjustment";
 export {

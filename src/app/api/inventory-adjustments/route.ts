@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import {
   adjustProductStock,
   type AdjustProductStockInput,
+  StockAdjustmentConcurrentConflictError,
   StockAdjustmentValidationError
 } from "../../../modules/inventory";
 import {
@@ -16,9 +17,9 @@ import {
 import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 
 export async function POST(request: Request) {
-  let tenantId: string;
+  let tenantId: string, userId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER", "INVENTORY"], "products"));
+    ({ tenantId, userId } = await requireRole(["OWNER", "INVENTORY"], "products"));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -39,12 +40,16 @@ export async function POST(request: Request) {
   try {
     const result = await adjustProductStock(
       requestBody as AdjustProductStockInput,
-      tenantId
+      tenantId,
+      userId
     );
     return successResponse(result, 201);
   } catch (error) {
     if (error instanceof StockAdjustmentValidationError) {
       return errorResponse("Los datos del ajuste de stock son inválidos.", 400, error.reasons);
+    }
+    if (error instanceof StockAdjustmentConcurrentConflictError) {
+      return errorResponse(error.message, 409);
     }
     if (isPrismaRecordNotFoundError(error)) {
       return errorResponse("El producto no fue encontrado.", 400);

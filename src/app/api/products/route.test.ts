@@ -11,7 +11,8 @@ import { GET, POST } from "./route";
 
 vi.mock("../../../modules/products", () => ({
   createProduct: vi.fn(),
-  listProducts: vi.fn()
+  listProducts: vi.fn(),
+  getSalePriceBelowCostWarning: vi.fn().mockReturnValue(null)
 }));
 
 const mockedCreateProduct = vi.mocked(createProduct);

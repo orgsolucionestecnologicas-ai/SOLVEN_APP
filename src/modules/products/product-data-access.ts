@@ -19,8 +19,25 @@ export async function createProduct(
   const validatedProduct = validateCreateProductInput(productInput);
   const productCode = await generateCode("PROD");
 
-  return prisma.product.create({
-    data: { ...validatedProduct, productCode, tenantId }
+  return prisma.$transaction(async (transaction) => {
+    const product = await transaction.product.create({
+      data: { ...validatedProduct, productCode, tenantId }
+    });
+
+    if (validatedProduct.stock > 0) {
+      await transaction.inventoryMovement.create({
+        data: {
+          tenantId,
+          productId: product.id,
+          reason: "Stock inicial de alta de producto",
+          previousStock: 0,
+          newStock: validatedProduct.stock,
+          quantityChange: validatedProduct.stock
+        }
+      });
+    }
+
+    return product;
   });
 }
 

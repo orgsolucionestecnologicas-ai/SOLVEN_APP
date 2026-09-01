@@ -165,6 +165,15 @@ function isValidNonNegativeNumber(value: number) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
+export function getSalePriceBelowCostWarning(
+  costPrice: number,
+  salePrice: number
+): string | null {
+  return salePrice < costPrice
+    ? "El precio de venta es menor al costo del producto."
+    : null;
+}
+
 export type UpdateProductInput = {
   name?: string;
   categoryName?: string;

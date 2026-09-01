@@ -78,6 +78,14 @@ describe("products API database integration", () => {
 });
 
 async function deleteIntegrationProducts() {
+  const testProducts = await prisma.product.findMany({
+    where: { name: { startsWith: testProductNamePrefix } },
+    select: { id: true }
+  });
+  const testProductIds = testProducts.map((product) => product.id);
+  if (testProductIds.length > 0) {
+    await prisma.inventoryMovement.deleteMany({ where: { productId: { in: testProductIds } } });
+  }
   await prisma.product.deleteMany({ where: { name: { startsWith: testProductNamePrefix } } });
   const tenants = await prisma.tenant.findMany({ where: { email: testTenantEmail }, select: { id: true } });
   const tenantIds = tenants.map((tenant) => tenant.id);

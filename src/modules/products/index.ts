@@ -8,6 +8,7 @@ export {
   type ImportProductsResult
 } from "./product-data-access";
 export {
+  getSalePriceBelowCostWarning,
   IVA_RATES,
   PRODUCT_CATEGORIES,
   ProductValidationError,
