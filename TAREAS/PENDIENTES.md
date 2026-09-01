@@ -85,6 +85,11 @@ Requiere acceso manual de Diego al portal ARCA con Clave Fiscal nivel 3 — no s
 *(Reformulada respecto a la tarjeta original de Notion, que pedía testear en homologación antes de habilitar producción — esa condición ya no aplica porque producción está live desde antes.)* Documentar casos de prueba reales (distintos tipos de comprobante, montos, escenarios de error) con el CAE obtenido como evidencia, directamente en producción.
 **Por qué importa:** en este mismo ciclo encontramos y corregimos FIX-08 (vulnerabilidad de confianza-de-cliente en la emisión de facturas ARCA) — sugiere que la superficie de ARCA no tuvo todavía una pasada de QA rigurosa y documentada.
 
+### 🟢 Bajo
+
+#### COT-FOLLOWUP-01 — Método real de pago al confirmar cotización no queda registrado en la venta — 🟢 Bajo
+Detectado al verificar COT-FIX-01..08 (02-09-2026). `confirmQuote` ya usa el método elegido (Efectivo/Tarjeta/Transferencia/Crédito) para decidir si crea un `CashMovement` o una `Debt` — eso está bien y los montos son correctos. Pero el método específico no se persiste en ningún lado de la `Sale` resultante: `paymentType` sólo distingue `CASH` de `CREDIT` (Efectivo/Tarjeta/Transferencia quedan todas como `CASH`), y no se llena `Sale.paymentDetails` con el desglose real. No es un bug de plata — es un hueco de trazabilidad: hoy no se puede responder "cuánto vendimos por transferencia vía cotizaciones confirmadas". Si en algún momento hace falta ese reporte, habría que pasar el `paymentMethod` elegido también a `paymentDetails` al crear la `Sale` en `confirmQuote`.
+
 ---
 
 ## Cerrados
