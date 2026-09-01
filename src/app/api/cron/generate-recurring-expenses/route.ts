@@ -13,8 +13,15 @@ export async function GET(request: Request) {
   }
 
   try {
-    const generated = await generateDueRecurringExpenses();
-    return successResponse({ generated });
+    const { generatedCount, failures } = await generateDueRecurringExpenses();
+
+    if (failures.length > 0) {
+      // Cada falla ya está aislada por tenant (ver recurring-expense-data-access.ts) —
+      // esto es solo para que quede visible en los logs del cron, no para abortar la respuesta.
+      console.error("generate-recurring-expenses: fallas por tenant", failures);
+    }
+
+    return successResponse({ generated: generatedCount, failures });
   } catch {
     return errorResponse("Error al generar gastos recurrentes.");
   }

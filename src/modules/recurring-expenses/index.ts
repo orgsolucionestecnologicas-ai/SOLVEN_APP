@@ -1,6 +1,8 @@
 export {
   createRecurringExpense,
   generateDueRecurringExpenses,
+  type GenerateDueRecurringExpensesFailure,
+  type GenerateDueRecurringExpensesResult,
   listRecurringExpenses
 } from "./recurring-expense-data-access";
 export {

@@ -26,7 +26,18 @@ export async function listRecurringExpenses(tenantId: string): Promise<Recurring
   });
 }
 
-export async function generateDueRecurringExpenses(): Promise<number> {
+export type GenerateDueRecurringExpensesFailure = {
+  recurringExpenseId: string;
+  tenantId: string;
+  message: string;
+};
+
+export type GenerateDueRecurringExpensesResult = {
+  generatedCount: number;
+  failures: GenerateDueRecurringExpensesFailure[];
+};
+
+export async function generateDueRecurringExpenses(): Promise<GenerateDueRecurringExpensesResult> {
   const now = new Date();
   const currentDay = now.getDate();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -40,27 +51,40 @@ export async function generateDueRecurringExpenses(): Promise<number> {
   });
 
   let generatedCount = 0;
+  const failures: GenerateDueRecurringExpensesFailure[] = [];
 
   for (const recurringExpense of dueRecurringExpenses) {
     const effectiveDay = Math.min(recurringExpense.dayOfMonth, daysInMonth);
     if (effectiveDay !== currentDay) continue;
 
-    await createExpense(
-      {
-        amount: recurringExpense.amount.toNumber(),
-        category: recurringExpense.category,
-        description: recurringExpense.description ?? recurringExpense.category
-      },
-      recurringExpense.tenantId
-    );
+    // Aislado por tenant a propósito: si un tenant no tiene caja abierta (o
+    // falla por cualquier otro motivo), no debe cortar el procesamiento del
+    // resto de los tenants en la misma corrida del cron. Ver TAREAS/PENDIENTES.md
+    // ("Cron de gastos recurrentes puede abortar para TODOS los tenants").
+    try {
+      await createExpense(
+        {
+          amount: recurringExpense.amount.toNumber(),
+          category: recurringExpense.category,
+          description: recurringExpense.description ?? recurringExpense.category
+        },
+        recurringExpense.tenantId
+      );
 
-    await prisma.recurringExpense.update({
-      where: { id: recurringExpense.id },
-      data: { lastGeneratedMonth: currentMonthKey }
-    });
+      await prisma.recurringExpense.update({
+        where: { id: recurringExpense.id },
+        data: { lastGeneratedMonth: currentMonthKey }
+      });
 
-    generatedCount++;
+      generatedCount++;
+    } catch (error) {
+      failures.push({
+        recurringExpenseId: recurringExpense.id,
+        tenantId: recurringExpense.tenantId,
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
   }
 
-  return generatedCount;
+  return { generatedCount, failures };
 }

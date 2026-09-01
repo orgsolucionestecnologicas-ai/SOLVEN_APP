@@ -12,11 +12,6 @@
 
 ### 🔴 Crítico
 
-#### [Caja · Bug real] Cron de gastos recurrentes puede abortar para TODOS los tenants si uno no tiene caja abierta
-`CAJA-FIX-03` (01-09-2026) agregó `requireOpenCashRegisterSession` a `createExpense` cuando el método es "Efectivo" (default si no se especifica). El cron `generate-recurring-expenses` (`vercel.json`, 4:00 UTC diario, `generateDueRecurringExpenses()`) llama `createExpense` sin pasar `method`, así que cae al default "Efectivo" y ahora exige caja abierta. El problema no es solo ese tenant: `generateDueRecurringExpenses()` es un `for` simple sin `try/catch` por tenant, así que si el tenant N no tiene caja abierta a esa hora, el loop corta ahí y ningún tenant después de N en el orden de iteración recibe sus gastos recurrentes esa noche. No es una hipótesis — está confirmado leyendo `recurring-expense-data-access.ts:44-51` (loop) contra `expense-data-access.ts` (guard nuevo). **Dos partes separadas:**
-1. **Pregunta de producto para Diego (no la resolví por mi cuenta):** ¿el gasto recurrente en efectivo debe bloquearse sin caja abierta, o generarse igual como hacía antes de CAJA-FIX-03?
-2. **Arreglo de resiliencia que no depende de la respuesta anterior:** aislar el loop del cron con `try/catch` por tenant (o `Promise.allSettled`), para que un tenant sin caja abierta no le rompa el día a los demás. Esto se puede y se debería hacer ya, sin esperar la decisión de producto.
-
 #### T3 — Rotar token de GitHub expuesto
 Manual, no verificable desde este entorno (sandbox sin credenciales de git). `github.com/settings/tokens` → revocar el token actual → generar uno nuevo con permisos `repo` → actualizar donde se use. ~30 min.
 
@@ -40,6 +35,9 @@ Venta → devolución parcial → verificar que el stock sube y la caja refleja 
 **Por qué importa:** con FIX-07 (selector de método de reintegro) ya en producción, conviene verificar también que el método elegido se refleje bien en caja.
 
 ### 🟡 Medio
+
+#### [Caja · Producto] ¿El gasto recurrente en efectivo debe bloquearse sin caja abierta, o generarse igual como antes?
+`CAJA-FIX-03` (01-09-2026) agregó `requireOpenCashRegisterSession` a `createExpense` cuando el método es "Efectivo" (default si no se especifica, y el cron `generate-recurring-expenses` nunca pasa `method`). La parte de resiliencia (que un tenant sin caja abierta no le rompa el día a los demás) ya se corrigió — ver Cerrados, ya no es urgente. Queda pendiente solo la decisión de fondo: si un tenant no abrió la caja a las 4:00 UTC, ¿su gasto recurrente en efectivo debe quedar sin generar ese día (comportamiento actual, aislado por tenant) o generarse igual como hacía antes de CAJA-FIX-03?
 
 #### [Devoluciones · UX] Mostrar detalle completo de la venta original antes de confirmar
 Mejora de UX en el flujo de devoluciones. Sin archivos específicos anotados en Notion.
@@ -93,6 +91,9 @@ Requiere acceso manual de Diego al portal ARCA con Clave Fiscal nivel 3 — no s
 ---
 
 ## Cerrados
+
+### 2026-09-01 — Aislado por tenant el cron de gastos recurrentes (CERRADO — Ingeniero Líder, sin espera a la decisión de producto)
+`generateDueRecurringExpenses()` (`src/modules/recurring-expenses/recurring-expense-data-access.ts`) ahora envuelve cada gasto recurrente en su propio `try/catch` dentro del loop — si un tenant falla (típicamente `CashRegisterNoSessionOpenError` desde `CAJA-FIX-03`), se registra en un array `failures` y el loop sigue con el resto de los tenants, en vez de cortar ahí. La función pasó de devolver un `number` a `{ generatedCount, failures }`; el cron (`route.ts`) loguea las fallas con `console.error` para que queden visibles en Vercel y las devuelve en la respuesta, sin abortar. El tenant que falla no marca `lastGeneratedMonth`, así que sigue "due" (mismo comportamiento que ya existía ante cualquier otra interrupción del cron, no se cambió esa semántica). Agregado `recurring-expense-data-access.test.ts` (3 tests, con `prisma` y `createExpense` mockeados — no toca la DB real ni tenants reales) probando: generación exitosa simple, que un tenant que falla no bloquea al siguiente, y que un gasto no debido hoy se saltea. `typecheck`/`lint` verificados; no se pudo correr `npm test` en este sandbox (limitación conocida de este entorno, no del código — ver `CLAUDE.md` sección 11), se releyeron los mocks y aserciones línea por línea contra la implementación real. Queda pendiente solo la pregunta de producto de arriba (🔴 Crítico → movida a 🟡 Medio, ya no es urgente porque el riesgo cross-tenant está resuelto).
 
 ### 2026-08-31 — RET-FIX-01..07: 7 hallazgos de INGENIERODETESTEO sobre Devoluciones (CERRADO — commit `6a36a95`)
 Incluye el bug que estaba abierto acá desde antes de que existiera el rol formal: `processReturn` no reducía la `Debt` de una venta `MIXED` (solo `CREDIT`) — corregido con `(sale.paymentType === "CREDIT" || sale.paymentType === "MIXED") && sale.debtId`. Además: carrera de concurrencia en la cantidad ya devuelta (transacción `Serializable` + `ReturnConcurrentConflictError`), reintegro ya no era a precio de lista sino prorrateado por el descuento real de la venta, `GET /api/returns` sin rol, reintegro en efectivo sin exigir caja abierta, y devoluciones sin quedar en `AuditLog`. Un ítem quedó diferido por decisión de producto, no de código (RET-FIX-06, devolución de venta de Servicio) y otro sigue abierto como pregunta para Diego (ver `TAREAS/ordenestest.md`, sección Devoluciones → Inconcluso: si el método de reintegro debería validarse contra `Sale.paymentDetails` cuando la venta original fue con pago dividido). Verificado por el Ingeniero Líder contra el diff real, `typecheck`/`lint` limpios. Detalle completo en `TAREAS/REPORTELIDER.md`.
