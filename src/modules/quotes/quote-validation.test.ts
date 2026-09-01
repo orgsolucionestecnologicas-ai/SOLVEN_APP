@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { QuoteValidationError, validateCreateQuoteInput } from "./quote-validation";
+import {
+  QuoteValidationError,
+  validateCreateQuoteInput,
+  validateQuoteConfirmPaymentMethod
+} from "./quote-validation";
 
 describe("validateCreateQuoteInput", () => {
   it("accepts a valid input with a product item", () => {
@@ -77,5 +81,19 @@ describe("validateCreateQuoteInput", () => {
         items: [{ productId: "product-1", quantity: 0 }]
       })
     ).toThrow(QuoteValidationError);
+  });
+});
+
+describe("validateQuoteConfirmPaymentMethod", () => {
+  it.each(["Efectivo", "Tarjeta", "Transferencia", "Credito"])("accepts %s", (method) => {
+    expect(validateQuoteConfirmPaymentMethod(method)).toBe(method);
+  });
+
+  it("rejects an invalid method", () => {
+    expect(() => validateQuoteConfirmPaymentMethod("Bitcoin")).toThrow(QuoteValidationError);
+  });
+
+  it("rejects a non-string method", () => {
+    expect(() => validateQuoteConfirmPaymentMethod(undefined)).toThrow(QuoteValidationError);
   });
 });

@@ -43,6 +43,20 @@ export class QuoteExpiredError extends Error {
   }
 }
 
+export const QUOTE_CONFIRM_PAYMENT_METHODS = ["Efectivo", "Tarjeta", "Transferencia", "Credito"] as const;
+
+export type QuoteConfirmPaymentMethod = (typeof QUOTE_CONFIRM_PAYMENT_METHODS)[number];
+
+export function validateQuoteConfirmPaymentMethod(method: unknown): QuoteConfirmPaymentMethod {
+  if (
+    typeof method !== "string" ||
+    !QUOTE_CONFIRM_PAYMENT_METHODS.includes(method as QuoteConfirmPaymentMethod)
+  ) {
+    throw new QuoteValidationError(["El método de pago no es válido."]);
+  }
+  return method as QuoteConfirmPaymentMethod;
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validateCreateQuoteInput(input: CreateQuoteInput): void {

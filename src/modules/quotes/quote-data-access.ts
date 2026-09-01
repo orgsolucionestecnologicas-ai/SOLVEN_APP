@@ -1,12 +1,16 @@
 import { Prisma, type Quote, type QuoteItem, type Sale, type SaleItem } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateCode } from "@/lib/generate-code";
+import { requireOpenCashRegisterSession } from "@/modules/cash-register";
 import {
   type CreateQuoteInput,
+  type QuoteConfirmPaymentMethod,
   QuoteAlreadyConfirmedError,
   QuoteExpiredError,
   QuoteNotFoundError,
+  QuoteValidationError,
   validateCreateQuoteInput,
+  validateQuoteConfirmPaymentMethod,
 } from "./quote-validation";
 
 export type QuoteWithItems = Quote & {
@@ -23,7 +27,8 @@ export type SaleWithItems = Sale & { items: SaleItem[] };
 
 export async function createQuote(
   input: CreateQuoteInput,
-  tenantId: string
+  tenantId: string,
+  sellerId: string
 ): Promise<QuoteWithItems> {
   validateCreateQuoteInput(input);
 
@@ -103,14 +108,17 @@ export async function createQuote(
       }
     }
 
-    const discountAmount =
+    const requestedDiscountAmount =
       typeof input.discountAmount === "number" && input.discountAmount >= 0
         ? new Prisma.Decimal(input.discountAmount)
         : new Prisma.Decimal(0);
+    const discountAmount = Prisma.Decimal.min(requestedDiscountAmount, total);
 
     const resolvedCustomerName = customerId
       ? ((await tx.customer.findUnique({ where: { id: customerId } }))?.name ?? input.customerName ?? "")
       : (input.customerName ?? "");
+
+    const seller = await tx.user.findFirst({ where: { id: sellerId, tenantId } });
 
     const quote = await tx.quote.create({
       data: {
@@ -125,6 +133,8 @@ export async function createQuote(
         notes: input.notes ?? null,
         paymentTerms: input.paymentTerms?.trim() || null,
         validUntil,
+        sellerId: seller?.id ?? null,
+        sellerCode: seller?.userCode ?? null,
         items: {
           create: itemsData,
         },
@@ -231,8 +241,11 @@ export async function getQuoteById(quoteId: string, tenantId: string): Promise<Q
 
 export async function confirmQuote(
   quoteId: string,
-  tenantId: string
+  tenantId: string,
+  paymentMethod: unknown = "Efectivo"
 ): Promise<SaleWithItems> {
+  const method: QuoteConfirmPaymentMethod = validateQuoteConfirmPaymentMethod(paymentMethod);
+
   const quote = await getQuoteById(quoteId, tenantId);
 
   if (quote.status === "CONFIRMED") throw new QuoteAlreadyConfirmedError();
@@ -243,8 +256,16 @@ export async function confirmQuote(
   const now = new Date();
   if (quote.validUntil < now) throw new QuoteExpiredError();
 
+  if (method === "Credito" && !quote.customerId) {
+    throw new QuoteValidationError([
+      "La cotización necesita un cliente asociado para confirmarse a crédito.",
+    ]);
+  }
+
   return prisma.$transaction(
     async (tx) => {
+      await requireOpenCashRegisterSession(tenantId, tx);
+
       const productItems = quote.items.filter((i) => i.productId !== null);
 
       for (const item of productItems) {
@@ -268,13 +289,31 @@ export async function confirmQuote(
 
       const totalAmount = quote.totalAmount;
       const discountAmount = quote.discountAmount;
+      const netTotal = totalAmount.minus(discountAmount);
+
+      let debtId: string | null = null;
+      if (method === "Credito") {
+        const debt = await tx.debt.create({
+          data: {
+            tenantId,
+            customerId: quote.customerId as string,
+            totalAmount: netTotal,
+            remainingAmount: netTotal,
+            dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
+        });
+        debtId = debt.id;
+      }
 
       const sale = await tx.sale.create({
         data: {
           tenantId,
           folio: nextFolio,
-          paymentType: "CASH",
-          customerId: null,
+          paymentType: method === "Credito" ? "CREDIT" : "CASH",
+          customerId: quote.customerId,
+          debtId,
+          sellerId: quote.sellerId,
+          sellerCode: quote.sellerCode,
           totalAmount,
           discountAmount,
         },
@@ -312,15 +351,17 @@ export async function confirmQuote(
         });
       }
 
-      await tx.cashMovement.create({
-        data: {
-          tenantId,
-          type: "IN",
-          amount: totalAmount,
-          source: "SALE",
-          referenceId: sale.id,
-        },
-      });
+      if (method !== "Credito") {
+        await tx.cashMovement.create({
+          data: {
+            tenantId,
+            type: "IN",
+            amount: netTotal,
+            source: "SALE",
+            referenceId: sale.id,
+          },
+        });
+      }
 
       const confirmation = await tx.quote.updateMany({
         where: { id: quoteId, status: { not: "CONFIRMED" } },
@@ -386,7 +427,8 @@ export async function getExpiringQuotes(
 
 export async function duplicateQuote(
   quoteId: string,
-  tenantId: string
+  tenantId: string,
+  sellerId: string
 ): Promise<QuoteWithItems> {
   const original = await getQuoteById(quoteId, tenantId);
 
@@ -405,7 +447,7 @@ export async function duplicateQuote(
     discountAmount: original.discountAmount.toNumber(),
   };
 
-  return createQuote(input, tenantId);
+  return createQuote(input, tenantId, sellerId);
 }
 
 export async function getReservedStockByProduct(

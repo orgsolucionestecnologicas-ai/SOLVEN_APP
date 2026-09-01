@@ -621,6 +621,8 @@ model Quote {
   confirmedAt     DateTime?
   cancelledAt     DateTime?
   saleId          String?     @unique
+  sellerId        String?
+  sellerCode      String?
   reminderSentAt  DateTime?
   items           QuoteItem[]
   createdAt       DateTime    @default(now())

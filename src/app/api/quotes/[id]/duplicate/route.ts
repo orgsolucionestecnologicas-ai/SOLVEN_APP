@@ -13,8 +13,9 @@ import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let tenantId: string;
+  let userId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER", "CASHIER"], "quotes"));
+    ({ tenantId, userId } = await requireRole(["OWNER", "CASHIER"], "quotes"));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -24,7 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
 
   try {
-    const quote = await duplicateQuote(id, tenantId);
+    const quote = await duplicateQuote(id, tenantId, userId);
     return successResponse(quote, 201);
   } catch (error) {
     if (error instanceof QuoteNotFoundError) return errorResponse(error.message, 404);

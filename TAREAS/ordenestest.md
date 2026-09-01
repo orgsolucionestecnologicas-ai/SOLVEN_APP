@@ -6,6 +6,208 @@
 > vacía entre ciclos como `REPORTE_DE_CAMBIOS.md` — es el historial completo
 > de todo lo auditado, para no repetir trabajo.
 
+## Deudas / Clientes — auditado 01-09-2026
+
+> Punto de partida: 20 escenarios hipotéticos de "día normal" para
+> Deudas/Cuenta Corriente y Clientes, discutidos con Diego antes de leer
+> código. Contrastados contra `src/modules/debts`, `src/modules/customers`,
+> `src/modules/sales` (chequeo de límite de crédito),
+> `src/modules/returns` (impacto de una devolución sobre una venta a
+> crédito) y las rutas de `src/app/api/debts`, `src/app/api/debt-payments`,
+> `src/app/api/customers` y `src/app/api/export`. El mismo criterio de
+> siempre: la mejor práctica para un comercio real es que "cuánto me debe
+> este cliente" sea SIEMPRE el mismo número en cualquier pantalla del
+> sistema (POS, ficha del cliente, dashboard, backup), y que condonar o
+> cobrar una deuda de un comercio nunca pueda tocar la deuda de otro.
+
+### Bugs confirmados — ORDEN para el agente ejecutor (VS Code)
+
+**DEUDA-FIX-01 (CRÍTICO) — Pago de deuda sin aislamiento por tenant**
+- Archivo: `src/modules/debts/debt-payment-data-access.ts`, función
+  `registerDebtPayment`.
+- Qué pasa: exactamente el mismo bug que INV-FIX-01 (ya corregido en
+  Inventario), pero acá con dinero de terceros. `transaction.debt.findUniqueOrThrow({ where: { id: validatedPayment.debtId } })`
+  y `transaction.debt.updateMany({ where: { id: validatedPayment.debtId, remainingAmount: { gte: paymentAmount } } })`
+  no filtran por `tenantId` en ningún momento. Un usuario de UN comercio
+  puede registrar un pago contra el `debtId` de OTRO comercio (si lo
+  conoce o lo adivina): el sistema le reduce el saldo a un cliente ajeno y
+  le crea un `DebtPayment`/`CashMovement` con el `tenantId` del que pagó,
+  mezclando la contabilidad de dos comercios distintos. El `tenantId`
+  llega correcto desde `POST /api/debt-payments` (usa `requireRole` bien)
+  — el bug está solo en la capa de datos, igual que en Inventario.
+- Qué hacer: agregar `tenantId` a ambos `where`:
+  `transaction.debt.findFirstOrThrow({ where: { id: validatedPayment.debtId, tenantId } })`
+  y `transaction.debt.updateMany({ where: { id: validatedPayment.debtId, tenantId, remainingAmount: { gte: paymentAmount } } })`.
+  Mismo patrón ya usado correctamente en `writeOffDebt` del mismo módulo
+  (`where: { id, tenantId }`) — sólo hay que aplicarlo también acá.
+
+**DEUDA-FIX-02 (ALTO) — Condonar una deuda no la saca de "deuda pendiente" en ningún otro lado**
+- Archivo: `src/modules/debts/debt-data-access.ts`, función `writeOffDebt`;
+  y todos los lugares que suman/filtran `remainingAmount` sin excluir
+  `writtenOff: true`.
+- Qué pasa: `writeOffDebt` pone `writtenOff: true` pero deja
+  `remainingAmount` intacto (con el saldo que tenía antes de condonarla).
+  El único lugar del código que filtra correctamente `writtenOff: false`
+  al sumar deuda es el chequeo de límite de crédito en
+  `sale-data-access.ts:251`. Todo lo demás NO filtra, así que una deuda
+  condonada sigue apareciendo como "pendiente" en:
+  `DELETE /api/customers/[id]` (línea 86, el guard que bloquea borrar un
+  cliente con deuda — un cliente con la deuda YA condonada queda
+  bloqueado para siempre, "No podés eliminar un cliente con deudas
+  pendientes" sobre una deuda que ya se perdonó),
+  `GET /api/export` (línea 32, el backup exporta la deuda condonada como
+  si siguiera activa), y `dashboard-summary.ts` (línea 51, el total de
+  "deuda pendiente" del dashboard suma también lo condonado). El único
+  lugar donde SÍ se filtra a mano es el frontend de `debts-list.tsx`
+  (`!d.writtenOff` repetido en varios puntos) — pero `customer-detail.tsx`,
+  `customer-payment-form.tsx`, `customers-list.tsx` y
+  `cash-register-close.tsx` tampoco lo filtran.
+- Qué hacer: la mejor práctica acá es arreglarlo en la fuente, no parchar
+  cada consumidor uno por uno (son al menos 8 lugares distintos). En
+  `writeOffDebt`, además de `writtenOff: true`, poner
+  `remainingAmount: new Prisma.Decimal(0)`. Así "cuánto debe" es
+  automáticamente correcto en cualquier pantalla, reporte o backup que ya
+  exista o que se agregue en el futuro, sin depender de que cada uno se
+  acuerde de excluir `writtenOff`. El campo `writtenOff` queda igual para
+  poder mostrar "Incobrable" en vez de "Pagada" en la UI (ya lo hace
+  `debts-list.tsx`).
+
+**DEUDA-FIX-03 (MEDIO) — Ni crear una deuda, ni pagarla, ni condonarla queda en el registro de auditoría**
+- Archivos: `src/modules/debts/debt-data-access.ts` (`createDebt`,
+  `writeOffDebt`), `src/modules/debts/debt-payment-data-access.ts`
+  (`registerDebtPayment`).
+- Qué pasa: no hay ningún `logAudit(...)` en todo el módulo. A diferencia
+  de otras acciones financieras del sistema (cambios de precio de
+  producto, devoluciones antes de RET-FIX-07), acá no queda ningún rastro
+  de auditoría general de quién generó una deuda, quién cobró un pago, y
+  sobre todo quién decidió condonarla — esta última es la más sensible de
+  las tres, porque "perdonarle" una deuda a un cliente es una decisión
+  económica que un dueño va a querer poder auditar más adelante.
+- Qué hacer: agregar `void logAudit({ tenantId, userId, action: "DEBT_CREATED" | "DEBT_PAYMENT_REGISTERED" | "DEBT_WRITTEN_OFF", entityType: "Debt", entityId: debt.id, metadata: {...} })`
+  en las tres rutas (`POST /api/debts`, `POST /api/debt-payments`,
+  `PATCH /api/debts/[id]/write-off`), que ya tienen `userId` disponible vía
+  `requireRole`, siguiendo el mismo patrón usado en
+  `PRODUCT_PRICE_CHANGE`/`PRODUCT_UPDATED`.
+
+**DEUDA-FIX-04 (BAJO-MEDIO) — Listados de deudas, pagos y clientes sin control de rol**
+- Archivos: `src/app/api/debts/route.ts` (`GET`),
+  `src/app/api/debt-payments/route.ts` (`GET`),
+  `src/app/api/customers/route.ts` (`GET`).
+- Qué pasa: mismo patrón sistémico ya encontrado y corregido en todas las
+  secciones anteriores (POS, Devoluciones, Caja, Inventario): los tres
+  `GET` usan solo `requireTenantId()` en vez de `requireRole(...)`, así
+  que cualquier usuario autenticado del comercio puede ver el historial
+  completo de deudas, pagos y clientes (incluyendo datos de contacto y
+  límites de crédito) sin importar si su rol tiene acceso a la sección
+  "customers".
+- Qué hacer: cambiar los tres a
+  `requireRole(["OWNER", "CASHIER", "SUPERVISOR"], "customers")`, el mismo
+  set de roles que ya usan correctamente los `POST` de esas mismas rutas
+  y `PUT /api/customers/[id]`.
+
+**DEUDA-FIX-05 (MEDIO) — Cliente nuevo sin límite de crédito configurado queda con crédito ilimitado, sin ningún aviso**
+- Archivos: `src/modules/customers/customer-validation.ts`,
+  `src/modules/sales/sale-data-access.ts:249-255`.
+- Qué pasa: `creditLimit` es `null` por defecto en un cliente nuevo (nunca
+  se setea en `createCustomer`), y el chequeo de crédito en la venta
+  (`if (customer.creditLimit !== null && ...)`) interpreta `null` como
+  "sin límite", no como "límite cero". En la práctica: cualquier cajero
+  puede cargar un cliente nuevo y venderle a crédito CUALQUIER monto, sin
+  tope, sin que nadie lo note, porque el sistema nunca avisa que ese
+  cliente "no tiene límite configurado" — se ve exactamente igual que un
+  cliente con límite alto a propósito.
+- Qué hacer: no bloquear la venta (puede ser una decisión real del dueño
+  tener clientes de confianza sin tope), pero sí hacerlo visible: en el
+  formulario de alta de cliente, dejar el campo de límite de crédito con
+  un estado explícito "Sin límite (requiere aprobación)" en vez de vacío
+  por omisión, y en el POS, cuando se selecciona un cliente con
+  `creditLimit === null` para una venta a crédito, mostrar un aviso visible
+  ("Este cliente no tiene límite de crédito configurado") en vez de dejarlo
+  pasar en silencio como si fuera lo normal.
+
+**DEUDA-FIX-06 (BAJO) — `customerCode` único a nivel global, mismo patrón que `productCode` (INV-FIX-06)**
+- Archivo: `prisma/schema.prisma`, modelo `Customer` (línea con
+  `customerCode String? @unique`).
+- Qué pasa: mismo defecto de diseño que INV-FIX-06, pero acá el riesgo
+  real es menor porque no existe ningún endpoint de importación masiva de
+  clientes con código propio — `createCustomer` siempre usa
+  `generateCode("CLI")` (secuencial, autogenerado), así que la colisión
+  entre comercios no tiene forma de dispararse hoy. Lo dejo igual como
+  bug de diseño para prolijidad y consistencia con el resto del schema
+  (`Supplier` ya usa `@@unique([name, tenantId])` correctamente).
+- Qué hacer: cambiar a `@@unique([tenantId, customerCode])` en el mismo
+  commit/migración que INV-FIX-06 si todavía no se aplicó, o como
+  follow-up de una línea si INV-FIX-06 ya se hizo — no urge por separado,
+  se puede agrupar.
+
+### Al terminar
+
+1. `npm run lint && npm run typecheck && npm test` — todo debe pasar antes
+   de commitear.
+2. Commit + push con mensaje descriptivo (ej.
+   `fix(debts): tenant isolation on debt payments, write-off zeroes balance, credit limit visibility`).
+3. Agregar una entrada corta a `TAREAS/REPORTELIDER.md` — no es necesario
+   redactarla en detalle, solo dejar constancia de qué se tocó.
+4. Entregable breve acá mismo: archivos modificados, resultado de
+   typecheck, hash de commit.
+5. No te autocertifiques como "verificado" — eso lo revisa el Ingeniero
+   Líder mirando el diff real.
+
+### Verificado correcto (no ordenar fix)
+
+1. `validateCreateDebtInput` y `validateRegisterDebtPaymentInput` exigen
+   montos positivos (> 0) — no se puede crear una deuda ni registrar un
+   pago con monto negativo o cero.
+2. `registerDebtPayment` ya es concurrency-safe: `updateMany` con guard
+   `remainingAmount: { gte: paymentAmount }` + reintento ante
+   `P2028`/`P2034` (mismo patrón confirmado en Caja) — dos pagos
+   simultáneos no pueden dejar el saldo en negativo.
+3. `registerDebtPayment` exige caja abierta (`requireOpenCashRegisterSession`)
+   cuando el método es "Efectivo", y ya captura el método real en
+   `DebtPayment.method` (mismo patrón de CAJA-FIX-02, ya implementado acá
+   desde el vamos, no hace falta ordenarlo de nuevo).
+4. `DELETE /api/customers/[id]` bloquea el borrado si el cliente tiene
+   deuda pendiente (antes de que exista DEUDA-FIX-02, esto incluye
+   erróneamente deuda condonada — una vez aplicado DEUDA-FIX-02 este
+   chequeo queda perfecto sin tocarlo).
+5. `createDebt`, `listDebts`, `createCustomer`, `listCustomers`,
+   `updateCustomer` están correctamente scopeados por `tenantId` — el bug
+   de aislamiento de DEUDA-FIX-01 es puntual de
+   `debt-payment-data-access.ts`, no un patrón general del módulo.
+6. El chequeo de límite de crédito en la venta
+   (`sale-data-access.ts:249-255`) ya suma solo deuda vigente
+   (`writtenOff: false`) — el bug de DEUDA-FIX-02 es de los OTROS
+   consumidores de `remainingAmount`, no de este chequeo.
+7. Una devolución sobre una venta a crédito/mixta descuenta correctamente
+   contra la deuda asociada (`returns/index.ts:346-356`), con piso en 0
+   (`Prisma.Decimal.max`-equivalente vía `lessThan(0) ? 0 : newRemaining`)
+   — no puede quedar un saldo negativo por una devolución.
+8. `validateRegisterDebtPaymentInput` valida el método contra una lista
+   cerrada (`DEBT_PAYMENT_METHODS`) y usa "Efectivo" como default
+   razonable si no se especifica.
+
+### Inconcluso (necesita reproducción en vivo o decisión de producto)
+
+1. No hay ninguna validación ni aviso de clientes duplicados por
+   teléfono/email/DNI (`taxId`) — se pueden cargar dos fichas de cliente
+   con el mismo contacto sin que el sistema lo note. Pregunta de producto:
+   ¿es aceptable (hogares que comparten teléfono, por ejemplo) o
+   convendría al menos un aviso no bloqueante al cargar un dato que ya
+   existe en otro cliente del mismo comercio?
+2. Cuando un cliente tiene varias deudas abiertas a la vez, no llegué a
+   confirmar en profundidad la lógica exacta de a cuál se aplica un pago
+   nuevo (`customer-payment-form.tsx` tiene lógica de selección/orden en
+   el frontend, pero el backend simplemente recibe un `debtId` puntual) —
+   no parece haber ningún camino donde se pierda plata, pero si se decide
+   más adelante permitir "pago genérico distribuido entre varias deudas"
+   convendría revisarlo con más detalle en ese momento.
+3. No existe ningún recargo o interés automático por mora en deudas
+   vencidas — confirmado que no hay nada de esto en el código, pero es
+   100% una decisión de producto (¿SOLVEN quiere ese feature o no?), no un
+   bug.
+
+---
+
 ## Inventario — auditado 01-09-2026
 
 > Punto de partida: 20 escenarios hipotéticos de "día normal" para
@@ -21,200 +223,9 @@
 > comporte como en Categorías (que ya bloquea el borrado correctamente) en
 > vez de romper silenciosamente los registros de ventas pasadas.
 
-### Bugs confirmados — ORDEN para el agente ejecutor (VS Code)
+### Bugs confirmados
 
-**INV-FIX-01 (CRÍTICO) — Ajuste manual de stock sin aislamiento por tenant**
-- Archivo: `src/modules/inventory/stock-adjustment.ts`, función `adjustProductStock`.
-- Qué pasa: recibe `tenantId` como parámetro pero nunca lo usa para filtrar
-  el producto. `transaction.product.findUniqueOrThrow({ where: { id: ... } })`
-  y `transaction.product.update({ where: { id: ... }, data: { stock: ... } })`
-  solo filtran por `id`. Cualquier usuario con permiso de ajuste de stock en
-  SU comercio puede ajustar el stock de un producto de OTRO comercio si
-  adivina o reutiliza un `productId` ajeno (viola la regla de oro de
-  CLAUDE.md: "TODOS los queries Prisma deben tener `where: { tenantId }`.
-  Sin excepción"). El `tenantId` sí llega correcto desde
-  `src/app/api/inventory-adjustments/route.ts` (usa `requireRole` bien) —
-  el bug está solo en la capa de datos, que lo ignora.
-- Qué hacer: agregar `tenantId` al `where` de ambos queries:
-  `transaction.product.findFirstOrThrow({ where: { id: validatedAdjustment.productId, tenantId } })`
-  y el `update` correspondiente con `where: { id: validatedAdjustment.productId, tenantId }`.
-  Esto ya es el patrón correcto usado en `product-data-access.ts`
-  (`getProductById`, `updateProduct`) — solo hay que aplicarlo acá también.
-
-**INV-FIX-02 (ALTO) — Ajuste de stock no es atómico, puede perder cambios concurrentes**
-- Archivo: `src/modules/inventory/stock-adjustment.ts`, misma función.
-- Qué pasa: lee `previousStock`, calcula `quantityChange`, y hace
-  `update({ data: { stock: newStock } })` como un SET absoluto. Si entre la
-  lectura y la escritura una venta o devolución modifica el stock del mismo
-  producto, ese cambio se pisa silenciosamente (el ajuste manual "gana" sin
-  saberlo, y el `InventoryMovement` queda con un `previousStock` que ya no
-  es real). Es el mismo patrón de carrera ya resuelto en
-  `sale-data-access.ts` (UPDATE condicional con `WHERE stock >= quantity`).
-- Qué hacer: la mejor práctica acá es tratar el ajuste manual como una
-  corrección declarativa protegida por optimistic locking, no como un SET
-  ciego. Releer el `stock` actual dentro de la misma transacción justo
-  antes de escribir (ya se hace) pero usar un UPDATE condicional:
-  `UPDATE "Product" SET stock = $newStock WHERE id = $id AND tenantId = $tenantId AND stock = $previousStockLeídoEnLaMismaTx RETURNING *`
-  (raw SQL, mismo estilo que `reduceProductStock`); si `RETURNING` no
-  devuelve fila, relanzar con stock recién leído (retry) o devolver un error
-  claro de "el stock cambió mientras ajustabas, volvé a intentar" en vez de
-  pisar el dato en silencio.
-
-**INV-FIX-03 (MEDIO) — Ajuste manual de stock sin registro de auditoría**
-- Archivo: `src/modules/inventory/stock-adjustment.ts`.
-- Qué pasa: no hay ningún `logAudit(...)` en toda la función. Un ajuste
-  manual de stock (que puede ocultar mermas, robos o errores de conteo) no
-  queda en el `AuditLog`, solo en `InventoryMovement` (que registra el
-  cambio de stock pero no quién lo hizo desde la perspectiva de auditoría
-  general del sistema).
-- Qué hacer: agregar `void logAudit({ tenantId, userId, action: "STOCK_ADJUSTED", entityType: "Product", entityId: product.id, metadata: { previousStock, newStock, reason } })`
-  siguiendo el mismo patrón ya usado en `updateProduct` (`PRODUCT_PRICE_CHANGE`).
-  Va a requerir agregar `userId` como parámetro de `adjustProductStock` (ya
-  está disponible en la ruta vía `requireRole`).
-
-**INV-FIX-04 (ALTO) — Borrar un producto usa solo `requireTenantId()`, no `requireRole()`**
-- Archivo: `src/app/api/products/[id]/route.ts`, handler `DELETE`.
-- Qué pasa: a diferencia de `PUT` en el mismo archivo (que correctamente
-  exige `requireRole(["OWNER", "INVENTORY"], "products")`), el `DELETE`
-  solo llama `requireTenantId()` — cualquier usuario autenticado del
-  comercio (por ejemplo un CASHIER sin permiso de inventario) puede borrar
-  productos, no solo editarlos. Es más grave que el patrón de solo-lectura
-  ya visto en otras secciones porque acá es una acción destructiva.
-- Qué hacer: cambiar el `DELETE` para usar
-  `requireRole(["OWNER", "INVENTORY"], "products")` igual que `PUT`, y
-  registrar el `logAudit` de `PRODUCT_DELETED` con el `userId` que ya
-  devuelve `requireRole` (hoy lo saca de `getSession()` aparte, se puede
-  simplificar).
-
-**INV-FIX-05 (ALTO) — Borrar un producto con historial de ventas rompe o corrompe datos**
-- Archivo: `src/app/api/products/[id]/route.ts` (`DELETE`),
-  `prisma/schema.prisma` (relación `SaleItem.product`, migración
-  `20260515201138`, cambiada a `ON DELETE SET NULL`); relación
-  `InventoryMovement.product` sigue en `ON DELETE RESTRICT`.
-- Qué pasa: hoy `DELETE` borra el producto sin ninguna validación previa.
-  Si el producto ya tiene ventas asociadas pero ningún `InventoryMovement`
-  registrado, el borrado "funciona" pero deja los `SaleItem.productId` de
-  esas ventas en `NULL` — se pierde para siempre qué producto se vendió en
-  esa venta pasada (afecta reportes, ARCA/facturación histórica y
-  devoluciones, que buscan por `productId`). Si el producto sí tiene
-  `InventoryMovement` (ajustes de stock previos), el borrado falla por la
-  restricción de la base de datos con un error crudo, que el `catch` de la
-  ruta convierte en un mensaje genérico ("No se pudo eliminar el
-  producto.") sin explicarle al dueño por qué ni qué hacer. El sistema ya
-  tiene la solución correcta implementada para Categorías
-  (`deleteCategory` bloquea el borrado si `_count.products > 0`) y el
-  propio modelo `Product` ya tiene un campo `active: Boolean` pensado
-  exactamente para este caso (desactivar en vez de borrar).
-- Qué hacer: en `DELETE`, antes de borrar, verificar si el producto tiene
-  historial real: `const hasSales = await prisma.saleItem.findFirst({ where: { productId: id } })`.
-  Si existe, no borrar: devolver un error claro
-  ("Este producto tiene ventas registradas. Para dejar de venderlo, desactivalo en vez de eliminarlo.")
-  y, si el frontend lo permite, ofrecer directamente hacer
-  `updateProduct(id, { active: false }, tenantId, userId)` como acción
-  alternativa desde el mismo botón. El borrado físico (`prisma.product.delete`)
-  queda reservado solo para productos sin ningún `SaleItem` ni
-  `InventoryMovement` (creados por error, nunca vendidos ni ajustados).
-
-**INV-FIX-06 (MEDIO-ALTO) — `productCode` es único a nivel global, no por comercio**
-- Archivo: `prisma/schema.prisma`, modelo `Product` (línea ~156:
-  `productCode String? @unique`); `src/modules/products/product-data-access.ts`,
-  función `importProducts`.
-- Qué pasa: la restricción es `@unique` global sobre toda la plataforma,
-  no `@@unique([tenantId, productCode])` como sí está bien hecho en
-  `Supplier` (`@@unique([name, tenantId])`). En el día a día esto no se
-  nota con los códigos autogenerados (`generateCode`, secuenciales), pero
-  `importProducts` permite subir un `productCode` propio por fila (para
-  importación masiva/CSV). Si dos comercios distintos de la plataforma
-  eligen el mismo código (algo totalmente plausible: "COD001", "P-01",
-  etc.), el `INSERT` del segundo comercio falla por violación de constraint
-  a nivel de base de datos, y ese error cae en el `catch` genérico de
-  `importProducts` como "Error desconocido al procesar la fila." — sin
-  ninguna pista de que la causa real es una colisión con OTRO comercio, algo
-  que el dueño no tiene forma de saber ni de solucionar por su cuenta.
-- Qué hacer: cambiar el schema a
-  `@@unique([tenantId, productCode])` (eliminando el `@unique` suelto en el
-  campo) y generar la migración correspondiente. Revisar que no haya datos
-  existentes que ya colisionen entre tenants antes de aplicar la migración
-  en producción (si los hay, resolver con un `productCode` sufijado antes
-  del `ALTER TABLE`).
-
-**INV-FIX-07 (MEDIO) — Alta de producto no genera movimiento de inventario para el stock inicial**
-- Archivo: `src/modules/products/product-data-access.ts`, función `createProduct`.
-- Qué pasa: al crear un producto con `stock` inicial > 0, ese stock queda
-  guardado en `Product.stock` pero no se crea ningún `InventoryMovement`
-  que lo explique. Comparado contra cualquier otro cambio de stock del
-  sistema (venta, devolución, ajuste manual), el stock inicial es el único
-  que "aparece de la nada" sin dejar rastro en el historial de movimientos
-  que ve el dueño.
-- Qué hacer: dentro de `createProduct`, después de crear el producto, si
-  `validatedProduct.stock > 0` crear un `InventoryMovement` con
-  `reason: "Stock inicial de alta de producto"`, `previousStock: 0`,
-  `newStock: validatedProduct.stock`, `quantityChange: validatedProduct.stock`.
-  Envolver la creación del producto + el movimiento en un
-  `prisma.$transaction` para que ambos queden o ninguno.
-
-**INV-FIX-08 (BAJO-MEDIO) — Listado de movimientos de inventario sin control de rol**
-- Archivo: `src/app/api/inventory-movements/route.ts`, handler `GET`.
-- Qué pasa: mismo patrón sistémico ya encontrado y corregido en POS
-  (`GET /api/sales`), Devoluciones (`GET /api/returns`) y Caja
-  (`GET /api/cash-register/[id]`, `GET /api/cash-register/sessions`): usa
-  solo `requireTenantId()` en vez de `requireRole(...)`, así que cualquier
-  usuario autenticado del comercio puede ver el historial completo de
-  movimientos de stock, incluso si su rol no tiene permiso de sección
-  "products"/inventario.
-- Qué hacer: cambiar a
-  `requireRole(["OWNER", "INVENTORY"], "products")` (o el set de roles que
-  ya usa `POST /api/inventory-adjustments` para consistencia), igual que se
-  hizo en las secciones anteriores.
-
-**INV-FIX-09 (BAJO) — Alerta de stock bajo sin throttling, puede spamear al dueño**
-- Archivo: `src/lib/email-alerts.ts`, función `notifyLowStockIfEnabled`;
-  `src/modules/sales/sale-data-access.ts` (dispara en cada venta que deja
-  un producto por debajo de `minStock`).
-- Qué pasa: a diferencia de la alerta de diferencia de caja (que ya tiene
-  un umbral de 0.005 para evitar ruido), la de stock bajo no tiene ninguna
-  deduplicación: si un producto con poco stock se sigue vendiendo durante
-  el día (por ejemplo, quedan 2 unidades y entran ventas de a 1), el dueño
-  recibe un email por cada venta que lo mantenga bajo mínimo, pudiendo
-  llegar a decenas de emails el mismo día por el mismo producto.
-- Qué hacer: la mejor práctica es no alertar dos veces por el mismo
-  producto en la misma ventana de tiempo. Agregar un `StoreSettings` o
-  campo simple tipo `lastLowStockAlertAt` por producto (o una tabla liviana
-  `productId -> lastNotifiedAt`), y en `notifyLowStockIfEnabled` filtrar
-  los productos que ya fueron notificados en las últimas, por ejemplo, 12
-  horas antes de mandar el email. Alternativa más simple si no se quiere
-  tocar el schema: agrupar el envío en un resumen diario (cron) en vez de
-  en tiempo real por venta.
-
-**INV-FIX-10 (MEDIO) — Se puede vender/guardar un producto con precio de venta por debajo del costo, sin ninguna advertencia**
-- Archivo: `src/modules/products/product-validation.ts`, funciones
-  `validateCreateProductInput` y `validateUpdateProductInput`.
-- Qué pasa: ambas funciones validan que `costPrice` y `salePrice` sean
-  números no negativos, pero nunca comparan uno contra el otro. Se puede
-  crear o editar un producto con `salePrice < costPrice` (por ejemplo, un
-  error de tipeo al cargar precios) sin ningún aviso, y el sistema lo va a
-  vender a pérdida silenciosamente en cada venta.
-- Qué hacer: esto no debería bloquear la operación (puede haber
-  liquidaciones intencionales), pero sí la mejor práctica es avisar. Igual
-  que ya se hace con `PRODUCT_PRICE_CHANGE` vía `logAudit`, devolver desde
-  `validateCreateProductInput`/`validateUpdateProductInput` (o desde la
-  ruta que las llama) una advertencia no bloqueante en la respuesta cuando
-  `salePrice < costPrice`, para que el frontend la muestre como
-  confirmación ("Este precio de venta es menor al costo, ¿confirmás?") en
-  vez de dejarlo pasar sin que nadie lo note.
-
-### Al terminar
-
-1. `npm run lint && npm run typecheck && npm test` — todo debe pasar antes
-   de commitear.
-2. Commit + push con mensaje descriptivo (ej.
-   `fix(inventory): tenant isolation, atomic stock adjustment, safe product deletion`).
-3. Agregar una entrada corta a `TAREAS/REPORTELIDER.md` — no es necesario
-   redactarla en detalle, solo dejar constancia de qué se tocó.
-4. Entregable breve acá mismo: archivos modificados, resultado de
-   typecheck, hash de commit.
-5. No te autocertifiques como "verificado" — eso lo revisa el Ingeniero
-   Líder mirando el diff real.
+> Orden ya entregada al agente ejecutor (INV-FIX-01 a 10) y removida de acá para que no se repita. Resultado real: ver commits + TAREAS/REPORTELIDER.md.
 
 ### Verificado correcto (no ordenar fix)
 

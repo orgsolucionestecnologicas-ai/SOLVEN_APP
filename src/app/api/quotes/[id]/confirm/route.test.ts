@@ -8,7 +8,22 @@ vi.mock("../../../../../modules/quotes", () => ({
   confirmQuote: vi.fn(),
   QuoteNotFoundError: class QuoteNotFoundError extends Error {},
   QuoteAlreadyConfirmedError: class QuoteAlreadyConfirmedError extends Error {},
-  QuoteExpiredError: class QuoteExpiredError extends Error {}
+  QuoteExpiredError: class QuoteExpiredError extends Error {},
+  QuoteValidationError: class QuoteValidationError extends Error {
+    reasons: string[];
+    constructor(reasons: string[]) {
+      super(reasons.join(" "));
+      this.reasons = reasons;
+    }
+  }
+}));
+
+vi.mock("../../../../../modules/cash-register", () => ({
+  CashRegisterNoSessionOpenError: class CashRegisterNoSessionOpenError extends Error {}
+}));
+
+vi.mock("@/modules/audit", () => ({
+  logAudit: vi.fn()
 }));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +34,7 @@ import {
   QuoteExpiredError,
   QuoteNotFoundError
 } from "../../../../../modules/quotes";
+import { CashRegisterNoSessionOpenError } from "../../../../../modules/cash-register";
 import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 import { POST } from "./route";
 
@@ -87,14 +103,28 @@ describe("POST /api/quotes/[id]/confirm", () => {
     expect(response.status).toBe(409);
   });
 
-  it("confirms the quote and returns the resulting sale on the happy path", async () => {
-    const sale = { id: "sale-1", totalAmount: 500 };
-    mockedConfirmQuote.mockResolvedValueOnce(sale as never);
+  it("returns 409 when there is no open cash register session", async () => {
+    mockedConfirmQuote.mockRejectedValueOnce(new CashRegisterNoSessionOpenError());
 
     const response = await POST(makeRequest(), makeParams("quote-1"));
 
+    expect(response.status).toBe(409);
+  });
+
+  it("confirms the quote and returns the resulting sale on the happy path", async () => {
+    const sale = { id: "sale-1", totalAmount: 500, sellerCode: "S1", folio: 1, paymentType: "CASH" };
+    mockedConfirmQuote.mockResolvedValueOnce(sale as never);
+
+    const response = await POST(
+      new Request("http://localhost/api/quotes/quote-1/confirm", {
+        method: "POST",
+        body: JSON.stringify({ paymentMethod: "Tarjeta" })
+      }),
+      makeParams("quote-1")
+    );
+
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ data: sale });
-    expect(mockedConfirmQuote).toHaveBeenCalledWith("quote-1", "test-tenant-id");
+    expect(mockedConfirmQuote).toHaveBeenCalledWith("quote-1", "test-tenant-id", "Tarjeta");
   });
 });

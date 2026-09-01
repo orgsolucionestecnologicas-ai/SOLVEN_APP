@@ -11,13 +11,15 @@ import {
   successResponse,
   unauthorizedResponse,
 } from "../../_shared/responses";
-import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let tenantId: string;
   try {
-    tenantId = await requireTenantId();
+    ({ tenantId } = await requireRole(["OWNER", "CASHIER"], "quotes"));
   } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
     throw e;
   }
@@ -35,8 +37,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let tenantId: string;
+  let userId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER", "CASHIER"], "quotes"));
+    ({ tenantId, userId } = await requireRole(["OWNER", "CASHIER"], "quotes"));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -47,6 +50,14 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
   try {
     const quote = await cancelQuote(id, tenantId);
+    void logAudit({
+      tenantId,
+      userId,
+      action: "QUOTE_CANCELLED",
+      entityType: "Quote",
+      entityId: quote.id,
+      metadata: { quoteNumber: quote.quoteNumber },
+    });
     return successResponse(quote);
   } catch (error) {
     if (error instanceof QuoteNotFoundError) return errorResponse(error.message, 404);

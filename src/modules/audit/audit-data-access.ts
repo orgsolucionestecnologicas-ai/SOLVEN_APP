@@ -17,7 +17,10 @@ export type AuditAction =
   | "RETURN_CREATED"
   | "DEBT_CREATED"
   | "DEBT_PAYMENT_REGISTERED"
-  | "DEBT_WRITTEN_OFF";
+  | "DEBT_WRITTEN_OFF"
+  | "QUOTE_CREATED"
+  | "QUOTE_CONFIRMED"
+  | "QUOTE_CANCELLED";
 
 export type LogAuditInput = {
   tenantId: string;

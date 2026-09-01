@@ -17,8 +17,11 @@ export {
 export {
   type CreateQuoteInput,
   type CreateQuoteItemInput,
+  type QuoteConfirmPaymentMethod,
+  QUOTE_CONFIRM_PAYMENT_METHODS,
   QuoteValidationError,
   QuoteNotFoundError,
   QuoteAlreadyConfirmedError,
   QuoteExpiredError,
+  validateQuoteConfirmPaymentMethod,
 } from "./quote-validation";

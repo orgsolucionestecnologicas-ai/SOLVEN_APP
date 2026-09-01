@@ -520,7 +520,7 @@ function QuoteDetailModal({
 }) {
   const [sending, setSending] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [paymentType] = useState<"CASH">("CASH");
+  const [paymentMethod, setPaymentMethod] = useState<"Efectivo" | "Tarjeta" | "Transferencia" | "Credito">("Efectivo");
   const [cancelling, setCancelling] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -563,7 +563,7 @@ function QuoteDetailModal({
       const res = await fetch(`/api/quotes/${quote.id}/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentType }),
+        body: JSON.stringify({ paymentMethod }),
       });
       const body = (await res.json()) as { error?: { message: string } };
       if (!res.ok) throw new Error(body.error?.message ?? "Error al confirmar");
@@ -778,6 +778,22 @@ function QuoteDetailModal({
 
             <div className="rounded-lg border border-slate-200 p-3">
               <p className="mb-2 text-sm font-medium text-slate-700">Confirmar cotización</p>
+              <div className="mb-2 grid grid-cols-4 gap-1">
+                {(["Efectivo", "Tarjeta", "Transferencia", "Credito"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    className={`rounded-lg border px-2 py-1.5 text-xs font-medium ${
+                      paymentMethod === m
+                        ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                        : "border-slate-300 text-slate-600 hover:bg-slate-50"
+                    }`}
+                    onClick={() => setPaymentMethod(m)}
+                  >
+                    {m === "Credito" ? "Crédito" : m}
+                  </button>
+                ))}
+              </div>
               <button
                 className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
                 disabled={confirming}

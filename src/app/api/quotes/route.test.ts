@@ -1,5 +1,4 @@
 vi.mock("@/lib/tenant", () => ({
-  requireTenantId: vi.fn(),
   requireRole: vi.fn(),
   ForbiddenError: class ForbiddenError extends Error {},
   UnauthorizedError: class UnauthorizedError extends Error {}
@@ -17,13 +16,16 @@ vi.mock("../../../modules/quotes", () => ({
   }
 }));
 
+vi.mock("@/modules/audit", () => ({
+  logAudit: vi.fn()
+}));
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createQuote, listQuotes, QuoteValidationError } from "../../../modules/quotes";
-import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 import { GET, POST } from "./route";
 
-const mockedRequireTenantId = vi.mocked(requireTenantId);
 const mockedRequireRole = vi.mocked(requireRole);
 const mockedCreateQuote = vi.mocked(createQuote);
 const mockedListQuotes = vi.mocked(listQuotes);
@@ -46,7 +48,7 @@ describe("quotes API route", () => {
 
   describe("GET", () => {
     it("returns 401 without a session", async () => {
-      mockedRequireTenantId.mockRejectedValueOnce(new UnauthorizedError());
+      mockedRequireRole.mockRejectedValueOnce(new UnauthorizedError());
 
       const response = await GET(makeGetRequest());
 
@@ -54,8 +56,21 @@ describe("quotes API route", () => {
       expect(mockedListQuotes).not.toHaveBeenCalled();
     });
 
+    it("returns 403 when the role is not authorized", async () => {
+      mockedRequireRole.mockRejectedValueOnce(new ForbiddenError());
+
+      const response = await GET(makeGetRequest());
+
+      expect(response.status).toBe(403);
+      expect(mockedListQuotes).not.toHaveBeenCalled();
+    });
+
     it("returns paginated quotes on success", async () => {
-      mockedRequireTenantId.mockResolvedValueOnce("test-tenant-id");
+      mockedRequireRole.mockResolvedValueOnce({
+        tenantId: "test-tenant-id",
+        userId: "test-user-id",
+        role: "OWNER"
+      });
       mockedListQuotes.mockResolvedValueOnce({ data: [{ id: "quote-1" }], total: 1 } as never);
 
       const response = await GET(makeGetRequest());
@@ -103,17 +118,24 @@ describe("quotes API route", () => {
         userId: "test-user-id",
         role: "OWNER"
       });
-      mockedCreateQuote.mockResolvedValueOnce({ id: "quote-1" } as never);
+      mockedCreateQuote.mockResolvedValueOnce({
+        id: "quote-1",
+        quoteNumber: "COT-1",
+        sellerCode: "S1",
+        totalAmount: 100
+      } as never);
 
       const response = await POST(
         makePostRequest({ customerId: "customer-1", items: [{ productId: "product-1", quantity: 1 }] })
       );
 
       expect(response.status).toBe(201);
-      expect(await response.json()).toEqual({ data: { id: "quote-1" } });
+      const body = (await response.json()) as { data: { id: string } };
+      expect(body.data.id).toBe("quote-1");
       expect(mockedCreateQuote).toHaveBeenCalledWith(
         expect.objectContaining({ customerId: "customer-1" }),
-        "test-tenant-id"
+        "test-tenant-id",
+        "test-user-id"
       );
     });
   });
