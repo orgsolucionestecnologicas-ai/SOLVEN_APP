@@ -6,6 +6,280 @@
 > vacía entre ciclos como `REPORTE_DE_CAMBIOS.md` — es el historial completo
 > de todo lo auditado, para no repetir trabajo.
 
+## Inventario — auditado 01-09-2026
+
+> Punto de partida: 20 escenarios hipotéticos de "día normal" para
+> Inventario/Productos, discutidos con Diego antes de leer código.
+> Contrastados contra `src/modules/inventory`, `src/modules/products`,
+> `src/modules/categories`, `src/modules/suppliers`, `prisma/schema.prisma`
+> y las rutas de `src/app/api/inventory-adjustments`,
+> `src/app/api/inventory-movements` y `src/app/api/products`. Los fixes de
+> abajo buscan la mejor práctica para un comercio real con múltiples
+> locales/clientes en la misma plataforma: que ajustar o borrar un producto
+> nunca pueda tocar el stock de otro comercio, nunca pueda perder el rastro
+> de qué pasó con el stock, y que borrar algo con historial de ventas se
+> comporte como en Categorías (que ya bloquea el borrado correctamente) en
+> vez de romper silenciosamente los registros de ventas pasadas.
+
+### Bugs confirmados — ORDEN para el agente ejecutor (VS Code)
+
+**INV-FIX-01 (CRÍTICO) — Ajuste manual de stock sin aislamiento por tenant**
+- Archivo: `src/modules/inventory/stock-adjustment.ts`, función `adjustProductStock`.
+- Qué pasa: recibe `tenantId` como parámetro pero nunca lo usa para filtrar
+  el producto. `transaction.product.findUniqueOrThrow({ where: { id: ... } })`
+  y `transaction.product.update({ where: { id: ... }, data: { stock: ... } })`
+  solo filtran por `id`. Cualquier usuario con permiso de ajuste de stock en
+  SU comercio puede ajustar el stock de un producto de OTRO comercio si
+  adivina o reutiliza un `productId` ajeno (viola la regla de oro de
+  CLAUDE.md: "TODOS los queries Prisma deben tener `where: { tenantId }`.
+  Sin excepción"). El `tenantId` sí llega correcto desde
+  `src/app/api/inventory-adjustments/route.ts` (usa `requireRole` bien) —
+  el bug está solo en la capa de datos, que lo ignora.
+- Qué hacer: agregar `tenantId` al `where` de ambos queries:
+  `transaction.product.findFirstOrThrow({ where: { id: validatedAdjustment.productId, tenantId } })`
+  y el `update` correspondiente con `where: { id: validatedAdjustment.productId, tenantId }`.
+  Esto ya es el patrón correcto usado en `product-data-access.ts`
+  (`getProductById`, `updateProduct`) — solo hay que aplicarlo acá también.
+
+**INV-FIX-02 (ALTO) — Ajuste de stock no es atómico, puede perder cambios concurrentes**
+- Archivo: `src/modules/inventory/stock-adjustment.ts`, misma función.
+- Qué pasa: lee `previousStock`, calcula `quantityChange`, y hace
+  `update({ data: { stock: newStock } })` como un SET absoluto. Si entre la
+  lectura y la escritura una venta o devolución modifica el stock del mismo
+  producto, ese cambio se pisa silenciosamente (el ajuste manual "gana" sin
+  saberlo, y el `InventoryMovement` queda con un `previousStock` que ya no
+  es real). Es el mismo patrón de carrera ya resuelto en
+  `sale-data-access.ts` (UPDATE condicional con `WHERE stock >= quantity`).
+- Qué hacer: la mejor práctica acá es tratar el ajuste manual como una
+  corrección declarativa protegida por optimistic locking, no como un SET
+  ciego. Releer el `stock` actual dentro de la misma transacción justo
+  antes de escribir (ya se hace) pero usar un UPDATE condicional:
+  `UPDATE "Product" SET stock = $newStock WHERE id = $id AND tenantId = $tenantId AND stock = $previousStockLeídoEnLaMismaTx RETURNING *`
+  (raw SQL, mismo estilo que `reduceProductStock`); si `RETURNING` no
+  devuelve fila, relanzar con stock recién leído (retry) o devolver un error
+  claro de "el stock cambió mientras ajustabas, volvé a intentar" en vez de
+  pisar el dato en silencio.
+
+**INV-FIX-03 (MEDIO) — Ajuste manual de stock sin registro de auditoría**
+- Archivo: `src/modules/inventory/stock-adjustment.ts`.
+- Qué pasa: no hay ningún `logAudit(...)` en toda la función. Un ajuste
+  manual de stock (que puede ocultar mermas, robos o errores de conteo) no
+  queda en el `AuditLog`, solo en `InventoryMovement` (que registra el
+  cambio de stock pero no quién lo hizo desde la perspectiva de auditoría
+  general del sistema).
+- Qué hacer: agregar `void logAudit({ tenantId, userId, action: "STOCK_ADJUSTED", entityType: "Product", entityId: product.id, metadata: { previousStock, newStock, reason } })`
+  siguiendo el mismo patrón ya usado en `updateProduct` (`PRODUCT_PRICE_CHANGE`).
+  Va a requerir agregar `userId` como parámetro de `adjustProductStock` (ya
+  está disponible en la ruta vía `requireRole`).
+
+**INV-FIX-04 (ALTO) — Borrar un producto usa solo `requireTenantId()`, no `requireRole()`**
+- Archivo: `src/app/api/products/[id]/route.ts`, handler `DELETE`.
+- Qué pasa: a diferencia de `PUT` en el mismo archivo (que correctamente
+  exige `requireRole(["OWNER", "INVENTORY"], "products")`), el `DELETE`
+  solo llama `requireTenantId()` — cualquier usuario autenticado del
+  comercio (por ejemplo un CASHIER sin permiso de inventario) puede borrar
+  productos, no solo editarlos. Es más grave que el patrón de solo-lectura
+  ya visto en otras secciones porque acá es una acción destructiva.
+- Qué hacer: cambiar el `DELETE` para usar
+  `requireRole(["OWNER", "INVENTORY"], "products")` igual que `PUT`, y
+  registrar el `logAudit` de `PRODUCT_DELETED` con el `userId` que ya
+  devuelve `requireRole` (hoy lo saca de `getSession()` aparte, se puede
+  simplificar).
+
+**INV-FIX-05 (ALTO) — Borrar un producto con historial de ventas rompe o corrompe datos**
+- Archivo: `src/app/api/products/[id]/route.ts` (`DELETE`),
+  `prisma/schema.prisma` (relación `SaleItem.product`, migración
+  `20260515201138`, cambiada a `ON DELETE SET NULL`); relación
+  `InventoryMovement.product` sigue en `ON DELETE RESTRICT`.
+- Qué pasa: hoy `DELETE` borra el producto sin ninguna validación previa.
+  Si el producto ya tiene ventas asociadas pero ningún `InventoryMovement`
+  registrado, el borrado "funciona" pero deja los `SaleItem.productId` de
+  esas ventas en `NULL` — se pierde para siempre qué producto se vendió en
+  esa venta pasada (afecta reportes, ARCA/facturación histórica y
+  devoluciones, que buscan por `productId`). Si el producto sí tiene
+  `InventoryMovement` (ajustes de stock previos), el borrado falla por la
+  restricción de la base de datos con un error crudo, que el `catch` de la
+  ruta convierte en un mensaje genérico ("No se pudo eliminar el
+  producto.") sin explicarle al dueño por qué ni qué hacer. El sistema ya
+  tiene la solución correcta implementada para Categorías
+  (`deleteCategory` bloquea el borrado si `_count.products > 0`) y el
+  propio modelo `Product` ya tiene un campo `active: Boolean` pensado
+  exactamente para este caso (desactivar en vez de borrar).
+- Qué hacer: en `DELETE`, antes de borrar, verificar si el producto tiene
+  historial real: `const hasSales = await prisma.saleItem.findFirst({ where: { productId: id } })`.
+  Si existe, no borrar: devolver un error claro
+  ("Este producto tiene ventas registradas. Para dejar de venderlo, desactivalo en vez de eliminarlo.")
+  y, si el frontend lo permite, ofrecer directamente hacer
+  `updateProduct(id, { active: false }, tenantId, userId)` como acción
+  alternativa desde el mismo botón. El borrado físico (`prisma.product.delete`)
+  queda reservado solo para productos sin ningún `SaleItem` ni
+  `InventoryMovement` (creados por error, nunca vendidos ni ajustados).
+
+**INV-FIX-06 (MEDIO-ALTO) — `productCode` es único a nivel global, no por comercio**
+- Archivo: `prisma/schema.prisma`, modelo `Product` (línea ~156:
+  `productCode String? @unique`); `src/modules/products/product-data-access.ts`,
+  función `importProducts`.
+- Qué pasa: la restricción es `@unique` global sobre toda la plataforma,
+  no `@@unique([tenantId, productCode])` como sí está bien hecho en
+  `Supplier` (`@@unique([name, tenantId])`). En el día a día esto no se
+  nota con los códigos autogenerados (`generateCode`, secuenciales), pero
+  `importProducts` permite subir un `productCode` propio por fila (para
+  importación masiva/CSV). Si dos comercios distintos de la plataforma
+  eligen el mismo código (algo totalmente plausible: "COD001", "P-01",
+  etc.), el `INSERT` del segundo comercio falla por violación de constraint
+  a nivel de base de datos, y ese error cae en el `catch` genérico de
+  `importProducts` como "Error desconocido al procesar la fila." — sin
+  ninguna pista de que la causa real es una colisión con OTRO comercio, algo
+  que el dueño no tiene forma de saber ni de solucionar por su cuenta.
+- Qué hacer: cambiar el schema a
+  `@@unique([tenantId, productCode])` (eliminando el `@unique` suelto en el
+  campo) y generar la migración correspondiente. Revisar que no haya datos
+  existentes que ya colisionen entre tenants antes de aplicar la migración
+  en producción (si los hay, resolver con un `productCode` sufijado antes
+  del `ALTER TABLE`).
+
+**INV-FIX-07 (MEDIO) — Alta de producto no genera movimiento de inventario para el stock inicial**
+- Archivo: `src/modules/products/product-data-access.ts`, función `createProduct`.
+- Qué pasa: al crear un producto con `stock` inicial > 0, ese stock queda
+  guardado en `Product.stock` pero no se crea ningún `InventoryMovement`
+  que lo explique. Comparado contra cualquier otro cambio de stock del
+  sistema (venta, devolución, ajuste manual), el stock inicial es el único
+  que "aparece de la nada" sin dejar rastro en el historial de movimientos
+  que ve el dueño.
+- Qué hacer: dentro de `createProduct`, después de crear el producto, si
+  `validatedProduct.stock > 0` crear un `InventoryMovement` con
+  `reason: "Stock inicial de alta de producto"`, `previousStock: 0`,
+  `newStock: validatedProduct.stock`, `quantityChange: validatedProduct.stock`.
+  Envolver la creación del producto + el movimiento en un
+  `prisma.$transaction` para que ambos queden o ninguno.
+
+**INV-FIX-08 (BAJO-MEDIO) — Listado de movimientos de inventario sin control de rol**
+- Archivo: `src/app/api/inventory-movements/route.ts`, handler `GET`.
+- Qué pasa: mismo patrón sistémico ya encontrado y corregido en POS
+  (`GET /api/sales`), Devoluciones (`GET /api/returns`) y Caja
+  (`GET /api/cash-register/[id]`, `GET /api/cash-register/sessions`): usa
+  solo `requireTenantId()` en vez de `requireRole(...)`, así que cualquier
+  usuario autenticado del comercio puede ver el historial completo de
+  movimientos de stock, incluso si su rol no tiene permiso de sección
+  "products"/inventario.
+- Qué hacer: cambiar a
+  `requireRole(["OWNER", "INVENTORY"], "products")` (o el set de roles que
+  ya usa `POST /api/inventory-adjustments` para consistencia), igual que se
+  hizo en las secciones anteriores.
+
+**INV-FIX-09 (BAJO) — Alerta de stock bajo sin throttling, puede spamear al dueño**
+- Archivo: `src/lib/email-alerts.ts`, función `notifyLowStockIfEnabled`;
+  `src/modules/sales/sale-data-access.ts` (dispara en cada venta que deja
+  un producto por debajo de `minStock`).
+- Qué pasa: a diferencia de la alerta de diferencia de caja (que ya tiene
+  un umbral de 0.005 para evitar ruido), la de stock bajo no tiene ninguna
+  deduplicación: si un producto con poco stock se sigue vendiendo durante
+  el día (por ejemplo, quedan 2 unidades y entran ventas de a 1), el dueño
+  recibe un email por cada venta que lo mantenga bajo mínimo, pudiendo
+  llegar a decenas de emails el mismo día por el mismo producto.
+- Qué hacer: la mejor práctica es no alertar dos veces por el mismo
+  producto en la misma ventana de tiempo. Agregar un `StoreSettings` o
+  campo simple tipo `lastLowStockAlertAt` por producto (o una tabla liviana
+  `productId -> lastNotifiedAt`), y en `notifyLowStockIfEnabled` filtrar
+  los productos que ya fueron notificados en las últimas, por ejemplo, 12
+  horas antes de mandar el email. Alternativa más simple si no se quiere
+  tocar el schema: agrupar el envío en un resumen diario (cron) en vez de
+  en tiempo real por venta.
+
+**INV-FIX-10 (MEDIO) — Se puede vender/guardar un producto con precio de venta por debajo del costo, sin ninguna advertencia**
+- Archivo: `src/modules/products/product-validation.ts`, funciones
+  `validateCreateProductInput` y `validateUpdateProductInput`.
+- Qué pasa: ambas funciones validan que `costPrice` y `salePrice` sean
+  números no negativos, pero nunca comparan uno contra el otro. Se puede
+  crear o editar un producto con `salePrice < costPrice` (por ejemplo, un
+  error de tipeo al cargar precios) sin ningún aviso, y el sistema lo va a
+  vender a pérdida silenciosamente en cada venta.
+- Qué hacer: esto no debería bloquear la operación (puede haber
+  liquidaciones intencionales), pero sí la mejor práctica es avisar. Igual
+  que ya se hace con `PRODUCT_PRICE_CHANGE` vía `logAudit`, devolver desde
+  `validateCreateProductInput`/`validateUpdateProductInput` (o desde la
+  ruta que las llama) una advertencia no bloqueante en la respuesta cuando
+  `salePrice < costPrice`, para que el frontend la muestre como
+  confirmación ("Este precio de venta es menor al costo, ¿confirmás?") en
+  vez de dejarlo pasar sin que nadie lo note.
+
+### Al terminar
+
+1. `npm run lint && npm run typecheck && npm test` — todo debe pasar antes
+   de commitear.
+2. Commit + push con mensaje descriptivo (ej.
+   `fix(inventory): tenant isolation, atomic stock adjustment, safe product deletion`).
+3. Agregar una entrada corta a `TAREAS/REPORTELIDER.md` — no es necesario
+   redactarla en detalle, solo dejar constancia de qué se tocó.
+4. Entregable breve acá mismo: archivos modificados, resultado de
+   typecheck, hash de commit.
+5. No te autocertifiques como "verificado" — eso lo revisa el Ingeniero
+   Líder mirando el diff real.
+
+### Verificado correcto (no ordenar fix)
+
+1. `stock-adjustment-validation.ts`: `reason` es obligatorio (no vacío) y
+   `newStock` debe ser entero no negativo — motivo obligatorio y stock
+   negativo ya están cubiertos.
+2. `deleteCategory` (`category-data-access.ts`) bloquea correctamente el
+   borrado si la categoría tiene productos o subcategorías asociadas —
+   patrón correcto que debería replicarse en el borrado de productos (ver
+   INV-FIX-05).
+3. El precio y el IVA de una venta quedan "congelados" por línea en
+   `SaleItem` (`unitPrice`, `ivaRate`, `total` son campos propios,
+   independientes de `Product`) — cambiar el precio o el IVA de un producto
+   hoy nunca afecta retroactivamente ventas ya facturadas.
+4. `product-data-access.ts`: `listProducts`, `getProductById`,
+   `updateProduct` (y la parte de creación/edición de `importProducts`)
+   están correctamente scopeados por `tenantId` en sus queries — el bug de
+   aislamiento de INV-FIX-01 es una excepción puntual de
+   `stock-adjustment.ts`, no un patrón general del módulo de productos.
+5. `updateProduct` ya registra en `AuditLog` los cambios de `costPrice`/
+   `salePrice` vía `logAudit` (`PRODUCT_PRICE_CHANGE`) — buena base para
+   extender el mismo criterio a INV-FIX-03 y INV-FIX-10.
+6. `importProducts` procesa cada fila del CSV dentro de un único
+   `$transaction`, pero aísla los errores por fila (`try/catch` individual,
+   acumulando en `errors: []`) en vez de abortar toda la importación por un
+   solo error — permite importar 500 filas y que solo fallen las 3
+   problemáticas.
+7. `POST /api/inventory-adjustments` y `PUT /api/products/[id]` usan
+   correctamente `requireRole(["OWNER", "INVENTORY"], "products")`.
+8. `Supplier` no tiene endpoint de borrado implementado (`supplier-data-access.ts`
+   solo tiene `listSuppliers`/`createSupplier`) — no aplica el escenario de
+   borrar un proveedor con productos asociados porque esa acción no existe
+   todavía.
+
+### Inconcluso (necesita reproducción en vivo o decisión de producto)
+
+1. El "stock reservado" por cotizaciones pendientes
+   (`getReservedStockByProduct`, `src/modules/quotes`) es puramente
+   informativo: se calcula y se muestra en `quotes-list.tsx` y en
+   `GET /api/quotes/reserved-stock`, pero no se usa en ningún lado para
+   bloquear o descontar stock al crear una venta o confirmar otra
+   cotización. Pregunta de producto: ¿está bien que dos cotizaciones
+   puedan "prometer" la misma última unidad a dos clientes distintos (el
+   que confirme primero se la lleva, el otro se entera recién al intentar
+   confirmar), o debería reservarse stock de verdad al emitir la
+   cotización?
+2. El contador global de `productCode` autogenerado (`CodeCounter`, en
+   `src/lib/generate-code.ts`) es compartido entre TODOS los comercios de
+   la plataforma (no por tenant) — no rompe nada funcionalmente, pero un
+   comercio nuevo puede ver que sus primeros productos arrancan en
+   "PROD-0347" en vez de "PROD-0001", lo cual puede generar dudas de
+   soporte ("¿por qué mi primer producto no es el 0001?"). No lo marco
+   como bug porque no causa ningún error real, solo lo dejo anotado por si
+   en algún momento se decide que valga la pena que cada comercio tenga su
+   propia numeración.
+3. No llegué a confirmar en un entorno vivo el comportamiento exacto del
+   `DELETE` de producto cuando el producto SÍ tiene `InventoryMovement`
+   (debería fallar por `ON DELETE RESTRICT` a nivel de base de datos) —
+   está confirmado por el SQL de la migración pero no reproducido con una
+   llamada real a la API. Si INV-FIX-05 se implementa como se describe, este
+   punto queda resuelto de una — no debería ser necesario reproducirlo por
+   separado.
+
+---
+
 ## Caja — auditado 31-08-2026
 
 > Punto de partida: 20 escenarios hipotéticos de "día normal" para Caja,
