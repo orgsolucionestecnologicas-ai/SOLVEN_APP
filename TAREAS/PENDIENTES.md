@@ -12,6 +12,11 @@
 
 ### 🔴 Crítico
 
+#### [Caja · Bug real] Cron de gastos recurrentes puede abortar para TODOS los tenants si uno no tiene caja abierta
+`CAJA-FIX-03` (01-09-2026) agregó `requireOpenCashRegisterSession` a `createExpense` cuando el método es "Efectivo" (default si no se especifica). El cron `generate-recurring-expenses` (`vercel.json`, 4:00 UTC diario, `generateDueRecurringExpenses()`) llama `createExpense` sin pasar `method`, así que cae al default "Efectivo" y ahora exige caja abierta. El problema no es solo ese tenant: `generateDueRecurringExpenses()` es un `for` simple sin `try/catch` por tenant, así que si el tenant N no tiene caja abierta a esa hora, el loop corta ahí y ningún tenant después de N en el orden de iteración recibe sus gastos recurrentes esa noche. No es una hipótesis — está confirmado leyendo `recurring-expense-data-access.ts:44-51` (loop) contra `expense-data-access.ts` (guard nuevo). **Dos partes separadas:**
+1. **Pregunta de producto para Diego (no la resolví por mi cuenta):** ¿el gasto recurrente en efectivo debe bloquearse sin caja abierta, o generarse igual como hacía antes de CAJA-FIX-03?
+2. **Arreglo de resiliencia que no depende de la respuesta anterior:** aislar el loop del cron con `try/catch` por tenant (o `Promise.allSettled`), para que un tenant sin caja abierta no le rompa el día a los demás. Esto se puede y se debería hacer ya, sin esperar la decisión de producto.
+
 #### T3 — Rotar token de GitHub expuesto
 Manual, no verificable desde este entorno (sandbox sin credenciales de git). `github.com/settings/tokens` → revocar el token actual → generar uno nuevo con permisos `repo` → actualizar donde se use. ~30 min.
 
