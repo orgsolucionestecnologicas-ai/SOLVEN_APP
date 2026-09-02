@@ -29,11 +29,91 @@ type SessionRecord = {
 type SaleRecord = {
   id: string;
   saleDate: string;
-  paymentType: "CASH" | "CREDIT";
+  paymentType: "CASH" | "CREDIT" | "MIXED";
   totalAmount: string;
   discountAmount: string;
+  paymentDetails: unknown;
   customer: { name: string } | null;
 };
+
+type PaymentDetail = { method: string; amount: number; reference?: string };
+
+// Mismo patrón que parsePaymentDetails en returns.tsx / parsePaymentDetailsServerSide en modules/returns.
+function parsePaymentDetails(value: unknown): PaymentDetail[] | null {
+  if (!Array.isArray(value)) return null;
+  const parsed = value.filter(
+    (v): v is PaymentDetail =>
+      typeof v === "object" &&
+      v !== null &&
+      typeof (v as PaymentDetail).method === "string" &&
+      typeof (v as PaymentDetail).amount === "number"
+  );
+  return parsed.length > 0 ? parsed : null;
+}
+
+const PAYMENT_METHOD_ORDER = ["Efectivo", "Tarjeta", "Transferencia", "VentaWeb", "Otro"] as const;
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  Efectivo: "Efectivo",
+  Tarjeta: "Tarjeta",
+  Transferencia: "Transferencia",
+  VentaWeb: "Venta web",
+  Otro: "Otro"
+};
+
+export type PaymentMethodRow = { label: string; amount: number; count: number };
+export type PaymentMethodBreakdown = {
+  rows: PaymentMethodRow[];
+  creditAmount: number;
+  creditCount: number;
+};
+
+// Suma paymentDetails de TODAS las ventas (no solo CASH/CREDIT): una venta puede repartirse
+// entre efectivo, tarjeta y transferencia a la vez, y una MIXED además deja un resto a crédito.
+// Ventas sin paymentDetails cargado (dato viejo) se excluyen del desglose por método, salvo que
+// sean 100% CREDIT (ahí van enteras a la fila Crédito) — igual criterio que costPrice: null.
+export function computePaymentMethodBreakdown(
+  sales: Pick<SaleRecord, "paymentType" | "totalAmount" | "discountAmount" | "paymentDetails">[]
+): PaymentMethodBreakdown {
+  const buckets = new Map<string, { amount: number; count: number }>();
+  let creditAmount = 0;
+  let creditCount = 0;
+
+  for (const sale of sales) {
+    const net = saleNet(sale);
+    const details = parsePaymentDetails(sale.paymentDetails);
+
+    if (!details) {
+      if (sale.paymentType === "CREDIT") {
+        creditAmount += net;
+        creditCount += 1;
+      }
+      continue;
+    }
+
+    let collected = 0;
+    for (const detail of details) {
+      if (detail.amount <= 0) continue;
+      const bucket = buckets.get(detail.method) ?? { amount: 0, count: 0 };
+      buckets.set(detail.method, { amount: bucket.amount + detail.amount, count: bucket.count + 1 });
+      collected += detail.amount;
+    }
+
+    if (sale.paymentType === "CREDIT" || sale.paymentType === "MIXED") {
+      const remainder = Math.max(0, net - collected);
+      if (remainder > 0.005) {
+        creditAmount += remainder;
+        creditCount += 1;
+      }
+    }
+  }
+
+  const rows = PAYMENT_METHOD_ORDER.map((method, index) => {
+    const bucket = buckets.get(method);
+    return { label: PAYMENT_METHOD_LABELS[method], amount: bucket?.amount ?? 0, count: bucket?.count ?? 0, index };
+  }).filter((row) => row.index < 3 || row.count > 0);
+
+  return { rows: rows.map(({ label, amount, count }) => ({ label, amount, count })), creditAmount, creditCount };
+}
 
 type ExpenseRecord = {
   id: string;
@@ -137,7 +217,7 @@ export function CashRegisterClose({
     setIsDataLoading(true);
     try {
       const [salesRes, expensesRes, movementsRes, debtsRes] = await Promise.all([
-        fetch("/api/sales"),
+        fetch("/api/sales?limit=1000"),
         fetch("/api/expenses"),
         fetch("/api/cash-movements"),
         fetch("/api/debts"),
@@ -184,6 +264,10 @@ export function CashRegisterClose({
   const totalCreditSales = useMemo(
     () => creditSales.reduce((acc, s) => acc + saleNet(s), 0),
     [creditSales]
+  );
+  const paymentMethodBreakdown = useMemo(
+    () => computePaymentMethodBreakdown(sessionSales),
+    [sessionSales]
   );
 
   const sessionExpenses = useMemo(
@@ -340,11 +424,11 @@ export function CashRegisterClose({
   const creditPct = totalSales > 0 ? Math.round((totalCreditSales / totalSales) * 100) : 0;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col print:block">
       {/* Header */}
-      <div className="border-b border-slate-200 px-5 py-5 sm:px-8">
+      <div className="border-b border-slate-200 px-5 py-5 sm:px-8 print:border-0 print:px-0 print:py-0">
         <button
-          className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800"
+          className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 print:hidden"
           onClick={onBack}
           type="button"
         >
@@ -356,11 +440,11 @@ export function CashRegisterClose({
             <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
               Cierre de caja
             </h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 print:hidden">
               Revisa el resumen del día y registra el efectivo en caja.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 print:hidden">
             <button
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               onClick={() => window.print()}
@@ -383,7 +467,7 @@ export function CashRegisterClose({
       </div>
 
       {/* Info bar */}
-      <div className="border-b border-slate-200 bg-slate-50 px-5 py-2.5 sm:px-8">
+      <div className="border-b border-slate-200 bg-slate-50 px-5 py-2.5 sm:px-8 print:border-0 print:bg-transparent print:px-0 print:py-3">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-600">
           <span>
             <span className="font-medium text-slate-500">Caja:</span> Caja 1
@@ -404,16 +488,16 @@ export function CashRegisterClose({
         </div>
       </div>
 
-      <form className="flex min-h-0 flex-1 flex-col" onSubmit={requestClose}>
+      <form className="flex min-h-0 flex-1 flex-col print:block" onSubmit={requestClose}>
         {error ? (
-          <div className="mx-5 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 sm:mx-8">
+          <div className="mx-5 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 sm:mx-8 print:hidden">
             <p className="text-sm text-rose-800">{error}</p>
           </div>
         ) : null}
 
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 print:block">
           {/* Main content */}
-          <div className="min-w-0 flex-1 overflow-y-auto px-5 py-6 sm:px-8">
+          <div className="min-w-0 flex-1 overflow-y-auto px-5 py-6 sm:px-8 print:overflow-visible print:px-0 print:py-4">
 
             {/* Section 1 — Resumen de ventas */}
             <section className="mb-8">
@@ -485,19 +569,17 @@ export function CashRegisterClose({
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {[
-                      {
-                        label: "Efectivo",
-                        count: cashSales.length,
-                        amount: totalCashSales,
-                        pct: totalSales > 0 ? (totalCashSales / totalSales) * 100 : 0,
-                      },
-                      { label: "Tarjeta", count: 0, amount: 0, pct: 0 },
-                      { label: "Transferencia", count: 0, amount: 0, pct: 0 },
+                      ...paymentMethodBreakdown.rows.map((row) => ({
+                        label: row.label,
+                        count: row.count,
+                        amount: row.amount,
+                        pct: totalSales > 0 ? (row.amount / totalSales) * 100 : 0,
+                      })),
                       {
                         label: "Crédito",
-                        count: creditSales.length,
-                        amount: totalCreditSales,
-                        pct: totalSales > 0 ? (totalCreditSales / totalSales) * 100 : 0,
+                        count: paymentMethodBreakdown.creditCount,
+                        amount: paymentMethodBreakdown.creditAmount,
+                        pct: totalSales > 0 ? (paymentMethodBreakdown.creditAmount / totalSales) * 100 : 0,
                       },
                     ].map((row) => (
                       <tr className="hover:bg-slate-50" key={row.label}>
@@ -556,7 +638,7 @@ export function CashRegisterClose({
                           </td>
                           <td className="px-4 py-2.5">
                             <input
-                              className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm focus:border-violet-500 focus:outline-none"
+                              className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm focus:border-violet-500 focus:outline-none print:hidden"
                               min="0"
                               onChange={(e) =>
                                 setDenomCount(denom.key, parseInt(e.target.value) || 0)
@@ -565,6 +647,7 @@ export function CashRegisterClose({
                               type="number"
                               value={count === 0 ? "" : count}
                             />
+                            <span className="hidden text-center text-sm print:block">{count}</span>
                           </td>
                           <td className="px-4 py-2.5 text-sm text-slate-600">
                             {denom.label}
@@ -572,7 +655,7 @@ export function CashRegisterClose({
                           <td className="px-4 py-2.5 text-sm font-semibold text-slate-900">
                             {fmt(rowTotal)}
                           </td>
-                          <td className="px-4 py-2.5 text-center">
+                          <td className="px-4 py-2.5 text-center print:hidden">
                             <button
                               className="rounded p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-500"
                               onClick={() => clearDenom(denom.key)}
@@ -595,13 +678,16 @@ export function CashRegisterClose({
                       <td />
                       <td className="px-4 py-3">
                         <input
-                          className="w-32 rounded-lg border border-emerald-300 bg-white px-2 py-1.5 text-right text-base font-bold text-emerald-700 focus:border-violet-500 focus:outline-none"
+                          className="w-32 rounded-lg border border-emerald-300 bg-white px-2 py-1.5 text-right text-base font-bold text-emerald-700 focus:border-violet-500 focus:outline-none print:hidden"
                           min="0"
                           onChange={(e) => setManualTotal(e.target.value)}
                           step="0.01"
                           type="number"
                           value={manualTotal ?? String(breakdownTotal)}
                         />
+                        <span className="hidden text-right text-base font-bold text-emerald-700 print:block">
+                          {fmt(Number(manualTotal ?? breakdownTotal))}
+                        </span>
                       </td>
                       <td />
                     </tr>
@@ -617,7 +703,7 @@ export function CashRegisterClose({
                   Gastos y retiros del día
                 </h2>
                 <button
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 print:hidden"
                   onClick={() => setShowAddExpense(true)}
                   type="button"
                 >
@@ -658,7 +744,7 @@ export function CashRegisterClose({
                           <td className="px-4 py-3 text-sm font-semibold text-rose-700">
                             -{fmt(Number(expense.amount))}
                           </td>
-                          <td className="px-4 py-3 text-center">
+                          <td className="px-4 py-3 text-center print:hidden">
                             <button
                               className="rounded p-1 text-slate-300 hover:bg-rose-50 hover:text-rose-500"
                               onClick={() =>
@@ -703,7 +789,7 @@ export function CashRegisterClose({
           </div>
 
           {/* Right sidebar */}
-          <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-slate-200 px-4 py-5 xl:block">
+          <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-slate-200 px-4 py-5 xl:block print:block print:w-full print:overflow-visible print:border-l-0 print:border-t print:px-0 print:py-4">
             {/* Panel 1 — Resumen del cierre */}
             <div className="mb-5">
               <h3 className="mb-4 text-sm font-semibold text-slate-950">
@@ -812,7 +898,7 @@ export function CashRegisterClose({
                     </div>
                   )}
                   <Link
-                    className="mt-3 block text-xs font-medium text-violet-600 hover:text-violet-800"
+                    className="mt-3 block text-xs font-medium text-violet-600 hover:text-violet-800 print:hidden"
                     href="/debts"
                   >
                     Ver todas las ventas a crédito →
@@ -831,7 +917,7 @@ export function CashRegisterClose({
                   Observaciones {!differenceIsZero ? <span className="text-rose-500">*</span> : null}
                 </label>
                 <textarea
-                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none ${
+                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none print:hidden ${
                     noteRequiredForDifference
                       ? "border-rose-300 focus:border-rose-500"
                       : "border-slate-200 focus:border-violet-500"
@@ -842,8 +928,9 @@ export function CashRegisterClose({
                   rows={3}
                   value={closingNotes}
                 />
+                <p className="hidden text-sm text-slate-700 print:block">{closingNotes || "—"}</p>
                 {noteRequiredForDifference ? (
-                  <p className="mt-1 text-xs text-rose-600">
+                  <p className="mt-1 text-xs text-rose-600 print:hidden">
                     Explicá el motivo de la diferencia antes de cerrar la caja.
                   </p>
                 ) : null}
@@ -867,7 +954,7 @@ export function CashRegisterClose({
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-8">
+        <div className="border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-8 print:hidden">
           <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
             <button
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

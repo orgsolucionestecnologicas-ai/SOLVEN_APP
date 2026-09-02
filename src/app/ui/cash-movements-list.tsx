@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Download,
   Eye,
-  Filter,
   History,
   Info,
   MoreHorizontal,
@@ -24,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { downloadCsv } from "@/lib/csv";
 import { formatARS } from "@/lib/format-currency";
 import { CashRegisterClose } from "./cash-register-close";
 import { CashRegisterOpen } from "./cash-register-open";
@@ -142,13 +142,6 @@ function getSourceLabel(source: string): string {
   }
 }
 
-function escapeCsvValue(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
 function exportCashMovementsToCsv(movements: CashMovementRecord[]) {
   const header = ["Fecha", "Tipo", "Monto", "Origen", "Referencia"];
   const rows = movements.map((m) => [
@@ -158,19 +151,7 @@ function exportCashMovementsToCsv(movements: CashMovementRecord[]) {
     getSourceLabel(m.source),
     m.referenceId ?? "",
   ]);
-  const csvContent = [header, ...rows]
-    .map((row) => row.map(escapeCsvValue).join(","))
-    .join("\r\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `caja_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadCsv(`caja_${new Date().toISOString().slice(0, 10)}.csv`, header, rows);
 }
 
 function getPageNumbers(current: number, total: number): (number | "...")[] {
@@ -376,7 +357,7 @@ export function CashMovementsList() {
           </button>
           <button
             className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => alert("Exportar estará disponible próximamente.")}
+            onClick={() => exportCashMovementsToCsv(filteredMovements)}
             type="button"
           >
             <Download size={13} />
@@ -497,13 +478,6 @@ export function CashMovementsList() {
                 value={searchQuery}
               />
             </div>
-            <button
-              className="hidden items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-              type="button"
-            >
-              <Filter size={13} />
-              Filtros avanzados
-            </button>
           </div>
 
           {/* Table */}
@@ -717,9 +691,6 @@ export function CashMovementsList() {
             <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="mb-3 text-sm font-semibold text-slate-950">Categorías más usadas</h3>
               <CategoryBreakdown categorySums={categorySums} />
-              <button className="mt-3 hidden text-xs font-medium text-violet-600 hover:text-violet-800" type="button">
-                Ver todas las categorías →
-              </button>
             </div>
           </div>
         </aside>

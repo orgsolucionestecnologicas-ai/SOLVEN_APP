@@ -163,7 +163,7 @@ export function CashRegisterOpen({ onOpened }: { onOpened: () => void }) {
           <Info className="mt-0.5 flex-shrink-0 text-violet-600" size={16} />
           <div>
             <p className="text-sm font-medium text-violet-900">
-              Para comenzar a vender, debes abrir la caja con un monto de efectivo inicial.
+              Para comenzar a vender, debés abrir la caja con un monto de efectivo inicial.
             </p>
             <p className="text-xs text-violet-700">
               Este dinero será tu fondo de caja para dar cambios y cubrir operaciones del día.
@@ -282,7 +282,7 @@ export function CashRegisterOpen({ onOpened }: { onOpened: () => void }) {
                 Monto de efectivo inicial
               </h2>
               <p className="mb-4 text-sm text-slate-500">
-                Ingresa el monto de efectivo con el que inicias la caja.
+                Ingresá el monto de efectivo con el que inicias la caja.
               </p>
               <div className="mb-4">
                 <div className="flex overflow-hidden rounded-lg border-2 border-slate-200 focus-within:border-violet-500">
@@ -408,9 +408,9 @@ export function CashRegisterOpen({ onOpened }: { onOpened: () => void }) {
                 <p className="text-xs font-semibold text-amber-900">Ten en cuenta</p>
               </div>
               <ul className="space-y-1.5 text-xs text-amber-800">
-                <li>• Verifica el efectivo antes de abrir la caja.</li>
+                <li>• Verificá el efectivo antes de abrir la caja.</li>
                 <li>• Una vez abierta, el monto no se puede cambiar.</li>
-                <li>• Guarda los billetes ordenados por denominación.</li>
+                <li>• Guardá los billetes ordenados por denominación.</li>
               </ul>
             </div>
 
@@ -420,9 +420,9 @@ export function CashRegisterOpen({ onOpened }: { onOpened: () => void }) {
               </p>
               <div className="space-y-3">
                 {[
-                  "Completa la información del cajero",
-                  "Define el monto inicial de efectivo",
-                  "Confirma la apertura de caja",
+                  "Completá la información del cajero",
+                  "Definí el monto inicial de efectivo",
+                  "Confirmá la apertura de caja",
                 ].map((step, i) => (
                   <div className="flex items-start gap-2.5" key={i}>
                     <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">
