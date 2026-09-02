@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       action: "INVOICE_EMITTED",
       entityType: "Invoice",
       entityId: invoice.id,
-      metadata: { saleId, cae: invoice.cae, voucherNumber: invoice.voucherNumber },
+      metadata: { saleId, cae: invoice.cae, voucherType: invoice.voucherType, voucherNumber: invoice.voucherNumber },
     });
 
     return successResponse(invoice, 201);
