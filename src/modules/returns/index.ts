@@ -375,6 +375,18 @@ export async function processReturn(
       }
     });
 
+    const isFullReturn = sale.items.every((saleItem) => {
+      if (!saleItem.productId) return true;
+      const alreadyReturned = alreadyReturnedByProductId.get(saleItem.productId) ?? 0;
+      const returningNow =
+        items.find((item) => item.productId === saleItem.productId)?.quantity ?? 0;
+      return alreadyReturned + returningNow >= saleItem.quantity;
+    });
+
+    if (isFullReturn) {
+      await tx.promotionUsage.deleteMany({ where: { saleId } });
+    }
+
     return {
       returnId: returnRecord.id,
       saleId,

@@ -101,10 +101,13 @@ export async function updatePromotion(
   input: UpdatePromotionInput,
   tenantId: string
 ): Promise<Promotion> {
-  const data = validateUpdatePromotion(input);
-
   const existing = await prisma.promotion.findFirst({ where: { id, tenantId } });
   if (!existing) throw new PromotionNotFoundError(id);
+
+  const data = validateUpdatePromotion(input, {
+    type: existing.type,
+    application: existing.application
+  });
 
   return prisma.promotion.update({ where: { id }, data });
 }
@@ -238,25 +241,61 @@ export async function findOverlappingPromotions(
   tenantId: string,
   excludeId?: string
 ): Promise<Promotion[]> {
-  const where: Prisma.PromotionWhereInput = {
+  const dateOverlap: Prisma.PromotionWhereInput = {
     tenantId,
     isActive: true,
-    application: input.application,
     startsAt: { lt: input.endsAt },
     endsAt: { gt: input.startsAt }
   };
 
   if (excludeId) {
-    where.id = { not: excludeId };
+    dateOverlap.id = { not: excludeId };
   }
 
-  if (input.application === "CATEGORY") {
-    where.categoryName = input.categoryName;
-  } else if (input.application === "SPECIFIC_PRODUCT" || input.application === "BUNDLED") {
-    where.productAId = input.productAId;
+  // ALL_PRODUCTS siempre compite con CATEGORY/SPECIFIC_PRODUCT, y CATEGORY
+  // compite con un SPECIFIC_PRODUCT cuyo producto pertenezca a esa categoría.
+  const orConditions: Prisma.PromotionWhereInput[] = [];
+
+  if (input.application === "ALL_PRODUCTS") {
+    orConditions.push({ application: "ALL_PRODUCTS" });
+    orConditions.push({ application: { in: ["CATEGORY", "SPECIFIC_PRODUCT"] } });
+  } else if (input.application === "CATEGORY") {
+    orConditions.push({ application: "ALL_PRODUCTS" });
+    orConditions.push({ application: "CATEGORY", categoryName: input.categoryName });
+
+    if (input.categoryName) {
+      const productsInCategory = await prisma.product.findMany({
+        where: { tenantId, categoryName: input.categoryName },
+        select: { id: true }
+      });
+      if (productsInCategory.length > 0) {
+        orConditions.push({
+          application: "SPECIFIC_PRODUCT",
+          productAId: { in: productsInCategory.map((p) => p.id) }
+        });
+      }
+    }
+  } else if (input.application === "SPECIFIC_PRODUCT") {
+    orConditions.push({ application: "ALL_PRODUCTS" });
+    orConditions.push({ application: "SPECIFIC_PRODUCT", productAId: input.productAId });
+
+    const product = input.productAId
+      ? await prisma.product.findFirst({
+          where: { id: input.productAId, tenantId },
+          select: { categoryName: true }
+        })
+      : null;
+    if (product) {
+      orConditions.push({ application: "CATEGORY", categoryName: product.categoryName });
+    }
+  } else {
+    orConditions.push({ application: input.application, productAId: input.productAId });
   }
 
-  return prisma.promotion.findMany({ where, orderBy: { startsAt: "asc" } });
+  return prisma.promotion.findMany({
+    where: { ...dateOverlap, OR: orConditions },
+    orderBy: { startsAt: "asc" }
+  });
 }
 
 export async function getActivePromotions(

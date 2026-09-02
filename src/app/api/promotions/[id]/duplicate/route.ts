@@ -10,16 +10,17 @@ import {
   unauthorizedResponse
 } from "../../../_shared/responses";
 import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let id: string, tenantId: string;
+  let id: string, tenantId: string, userId: string;
   try {
     let role: { tenantId: string; userId: string; role: string };
     ([{ id }, role] = await Promise.all([params, requireRole(["OWNER"])]));
-    ({ tenantId } = role);
+    ({ tenantId, userId } = role);
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -28,6 +29,14 @@ export async function POST(
 
   try {
     const promotion = await duplicatePromotion(id, tenantId);
+    void logAudit({
+      tenantId,
+      userId,
+      action: "PROMOTION_DUPLICATED",
+      entityType: "Promotion",
+      entityId: promotion.id,
+      metadata: { sourcePromotionId: id, name: promotion.name }
+    });
     return successResponse(promotion, 201);
   } catch (error) {
     if (error instanceof PromotionNotFoundError) {

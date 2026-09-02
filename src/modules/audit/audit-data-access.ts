@@ -21,7 +21,11 @@ export type AuditAction =
   | "QUOTE_CREATED"
   | "QUOTE_CONFIRMED"
   | "QUOTE_CANCELLED"
-  | "INVOICE_EMITTED";
+  | "INVOICE_EMITTED"
+  | "PROMOTION_CREATED"
+  | "PROMOTION_UPDATED"
+  | "PROMOTION_DELETED"
+  | "PROMOTION_DUPLICATED";
 
 export type LogAuditInput = {
   tenantId: string;

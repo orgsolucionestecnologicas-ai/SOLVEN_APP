@@ -16,7 +16,8 @@ import {
   successResponse,
   unauthorizedResponse
 } from "../../_shared/responses";
-import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function GET(
   _request: Request,
@@ -24,8 +25,11 @@ export async function GET(
 ) {
   let id: string, tenantId: string;
   try {
-    ([{ id }, tenantId] = await Promise.all([params, requireTenantId()]));
+    let role: { tenantId: string; userId: string; role: string };
+    ([{ id }, role] = await Promise.all([params, requireRole(["OWNER"])]));
+    ({ tenantId } = role);
   } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
     throw e;
   }
@@ -44,11 +48,11 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let id: string, tenantId: string;
+  let id: string, tenantId: string, userId: string;
   try {
     let role: { tenantId: string; userId: string; role: string };
     ([{ id }, role] = await Promise.all([params, requireRole(["OWNER"])]));
-    ({ tenantId } = role);
+    ({ tenantId, userId } = role);
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -68,6 +72,14 @@ export async function PUT(
 
   try {
     const promotion = await updatePromotion(id, body as UpdatePromotionInput, tenantId);
+    void logAudit({
+      tenantId,
+      userId,
+      action: "PROMOTION_UPDATED",
+      entityType: "Promotion",
+      entityId: promotion.id,
+      metadata: { name: promotion.name }
+    });
     return successResponse(promotion);
   } catch (error) {
     if (error instanceof PromotionValidationError) {
@@ -84,11 +96,11 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let id: string, tenantId: string;
+  let id: string, tenantId: string, userId: string;
   try {
     let role: { tenantId: string; userId: string; role: string };
     ([{ id }, role] = await Promise.all([params, requireRole(["OWNER"])]));
-    ({ tenantId } = role);
+    ({ tenantId, userId } = role);
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -96,6 +108,14 @@ export async function DELETE(
   }
   try {
     await deletePromotion(id, tenantId);
+    void logAudit({
+      tenantId,
+      userId,
+      action: "PROMOTION_DELETED",
+      entityType: "Promotion",
+      entityId: id,
+      metadata: {}
+    });
     return successResponse({ deleted: true });
   } catch (error) {
     if (error instanceof PromotionNotFoundError) {

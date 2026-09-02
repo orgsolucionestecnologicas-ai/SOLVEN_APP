@@ -321,20 +321,89 @@ function applyBundledPromotion(
   return totalDiscount;
 }
 
+type ItemProposal = {
+  promotionId: string;
+  promotionName: string;
+  itemIndex: number;
+  finalUnitPrice: Prisma.Decimal;
+  itemDiscountTotal: Prisma.Decimal;
+};
+
+function runPromotionInIsolation(
+  baseItems: WorkingItem[],
+  promotion: EnginePromotion
+): ItemProposal[] {
+  const trialItems: WorkingItem[] = baseItems.map((item) => ({
+    ...item,
+    currentUnitPrice: item.unitPrice,
+    appliedTypes: new Set<PromotionType>()
+  }));
+
+  switch (promotion.type) {
+    case "PERCENTAGE":
+      applyPercentagePromotion(trialItems, promotion);
+      break;
+    case "FIXED_AMOUNT":
+      applyFixedAmountPromotion(trialItems, promotion);
+      break;
+    case "SPECIAL_PRICE":
+      applySpecialPricePromotion(trialItems, promotion);
+      break;
+    case "TWO_FOR_ONE":
+      applyNForMPromotion(trialItems, promotion, 2, 1);
+      break;
+    case "THREE_FOR_TWO":
+      applyNForMPromotion(trialItems, promotion, 3, 1);
+      break;
+    case "MINIMUM_PURCHASE":
+      applyMinimumPurchasePromotion(trialItems, promotion);
+      break;
+    case "BUNDLED_PRODUCTS":
+      applyBundledPromotion(trialItems, promotion);
+      break;
+    default:
+      break;
+  }
+
+  const proposals: ItemProposal[] = [];
+  trialItems.forEach((item, itemIndex) => {
+    if (!item.currentUnitPrice.lessThan(item.unitPrice)) return;
+    const itemDiscountTotal = item.unitPrice
+      .minus(item.currentUnitPrice)
+      .mul(item.quantity);
+    if (itemDiscountTotal.lessThanOrEqualTo(ZERO)) return;
+    proposals.push({
+      promotionId: promotion.id,
+      promotionName: promotion.name,
+      itemIndex,
+      finalUnitPrice: item.currentUnitPrice,
+      itemDiscountTotal
+    });
+  });
+
+  return proposals;
+}
+
 export function applyPromotionsToCart(
   cartItems: CartItem[],
   promotions: EnginePromotion[],
   customerId?: string,
   customerSegment?: CustomerSegment
 ): CartResult {
-  const workingItems: WorkingItem[] = cartItems.map((item) => ({
+  const baseItems: WorkingItem[] = cartItems.map((item) => ({
     ...item,
     unitPrice: new Prisma.Decimal(item.unitPrice),
     currentUnitPrice: new Prisma.Decimal(item.unitPrice),
     appliedTypes: new Set<PromotionType>()
   }));
 
-  const appliedPromotions: AppliedPromotion[] = [];
+  // Cada promoción vigente se evalúa de forma aislada contra los precios
+  // originales. Después, por producto, gana la propuesta con mayor
+  // descuento — las promociones nunca se acumulan sobre el mismo producto.
+  const proposalsByPromotion: Array<{
+    promotion: EnginePromotion;
+    proposals: ItemProposal[];
+  }> = [];
 
   for (const promotion of promotions) {
     if (!isPromotionTimeValid(promotion)) continue;
@@ -347,44 +416,45 @@ export function applyPromotionsToCart(
       continue;
     }
 
-    let promotionDiscount: Prisma.Decimal;
-
-    switch (promotion.type) {
-      case "PERCENTAGE":
-        promotionDiscount = applyPercentagePromotion(workingItems, promotion);
-        break;
-      case "FIXED_AMOUNT":
-        promotionDiscount = applyFixedAmountPromotion(workingItems, promotion);
-        break;
-      case "SPECIAL_PRICE":
-        promotionDiscount = applySpecialPricePromotion(workingItems, promotion);
-        break;
-      case "TWO_FOR_ONE":
-        promotionDiscount = applyNForMPromotion(workingItems, promotion, 2, 1);
-        break;
-      case "THREE_FOR_TWO":
-        promotionDiscount = applyNForMPromotion(workingItems, promotion, 3, 1);
-        break;
-      case "MINIMUM_PURCHASE":
-        promotionDiscount = applyMinimumPurchasePromotion(workingItems, promotion);
-        break;
-      case "BUNDLED_PRODUCTS":
-        promotionDiscount = applyBundledPromotion(workingItems, promotion);
-        break;
-      default:
-        promotionDiscount = ZERO;
+    const proposals = runPromotionInIsolation(baseItems, promotion);
+    if (proposals.length > 0) {
+      proposalsByPromotion.push({ promotion, proposals });
     }
+  }
 
-    if (promotionDiscount.greaterThan(ZERO)) {
+  const winners = new Map<number, ItemProposal>();
+  for (const { proposals } of proposalsByPromotion) {
+    for (const proposal of proposals) {
+      const current = winners.get(proposal.itemIndex);
+      if (!current || proposal.itemDiscountTotal.greaterThan(current.itemDiscountTotal)) {
+        winners.set(proposal.itemIndex, proposal);
+      }
+    }
+  }
+
+  baseItems.forEach((item, itemIndex) => {
+    const winner = winners.get(itemIndex);
+    if (!winner) return;
+    item.currentUnitPrice = winner.finalUnitPrice;
+    item.lastPromotionId = winner.promotionId;
+  });
+
+  const appliedPromotions: AppliedPromotion[] = [];
+  for (const { promotion } of proposalsByPromotion) {
+    const winningDiscount = Array.from(winners.values())
+      .filter((w) => w.promotionId === promotion.id)
+      .reduce((s, w) => s.plus(w.itemDiscountTotal), ZERO);
+
+    if (winningDiscount.greaterThan(ZERO)) {
       appliedPromotions.push({
         promotionId: promotion.id,
         name: promotion.name,
-        discountAmount: promotionDiscount
+        discountAmount: winningDiscount
       });
     }
   }
 
-  const discountedItems: DiscountedItem[] = workingItems.map((item) => {
+  const discountedItems: DiscountedItem[] = baseItems.map((item) => {
     const finalPrice = clampToZero(item.currentUnitPrice);
     const discountAmount = item.unitPrice
       .minus(finalPrice)

@@ -172,7 +172,21 @@ export async function createSale(
         };
       });
 
-      const cartResult = applyPromotionsToCart(cartItems, validPromotions, customerId ?? undefined);
+      const customerSegment = customerId
+        ? (
+            await transaction.customer.findFirst({
+              where: { id: customerId, tenantId },
+              select: { segment: true }
+            })
+          )?.segment
+        : undefined;
+
+      const cartResult = applyPromotionsToCart(
+        cartItems,
+        validPromotions,
+        customerId ?? undefined,
+        customerSegment
+      );
       promotionDiscountAmount = cartResult.totalDiscount;
       appliedPromotions = cartResult.appliedPromotions;
       for (const discountedItem of cartResult.discountedItems) {

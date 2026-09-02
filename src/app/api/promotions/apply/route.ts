@@ -12,6 +12,7 @@ import {
   successResponse
 } from "../../_shared/responses";
 import { requireTenantId } from "@/lib/tenant";
+import { prisma } from "@/lib/prisma";
 
 type ApplyRequest = {
   cartItems: CartItem[];
@@ -52,10 +53,20 @@ export async function POST(request: Request) {
       }
     }
 
+    const customerSegment = body.customerId
+      ? (
+          await prisma.customer.findFirst({
+            where: { id: body.customerId, tenantId },
+            select: { segment: true }
+          })
+        )?.segment
+      : undefined;
+
     const result = applyPromotionsToCart(
       body.cartItems,
       [...promotionSet.values()],
-      body.customerId
+      body.customerId,
+      customerSegment
     );
 
     return successResponse(result);

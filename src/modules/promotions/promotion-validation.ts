@@ -151,6 +151,15 @@ export function validateCreatePromotion(
         "El precio especial es requerido y debe ser un número no negativo."
       );
     }
+    if (input.application !== "SPECIFIC_PRODUCT") {
+      errors.push(
+        "Las promociones de precio especial solo pueden aplicarse a un producto específico."
+      );
+    }
+  }
+
+  if (input.application === "SPECIFIC_PRODUCT" && !input.productAId?.trim()) {
+    errors.push("El producto es requerido para promociones de producto específico.");
   }
 
   if (type === "MINIMUM_PURCHASE") {
@@ -249,10 +258,19 @@ export function validateCreatePromotion(
 }
 
 export function validateUpdatePromotion(
-  input: UpdatePromotionInput
+  input: UpdatePromotionInput,
+  existing: { type: PromotionType; application: PromotionApplication }
 ): ValidatedUpdatePromotionInput {
   const errors: string[] = [];
   const result: ValidatedUpdatePromotionInput = {};
+
+  if (
+    existing.application === "SPECIFIC_PRODUCT" &&
+    input.productAId !== undefined &&
+    !input.productAId?.trim()
+  ) {
+    errors.push("El producto es requerido para promociones de producto específico.");
+  }
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";

@@ -13,13 +13,15 @@ import {
   successResponse,
   unauthorizedResponse
 } from "../_shared/responses";
-import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function GET() {
   let tenantId: string;
   try {
-    tenantId = await requireTenantId();
+    ({ tenantId } = await requireRole(["OWNER"]));
   } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
     throw e;
   }
@@ -32,9 +34,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  let tenantId: string;
+  let tenantId: string, userId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER"]));
+    ({ tenantId, userId } = await requireRole(["OWNER"]));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -54,6 +56,14 @@ export async function POST(request: Request) {
 
   try {
     const promotion = await createPromotion(requestBody as CreatePromotionInput, tenantId);
+    void logAudit({
+      tenantId,
+      userId,
+      action: "PROMOTION_CREATED",
+      entityType: "Promotion",
+      entityId: promotion.id,
+      metadata: { name: promotion.name, type: promotion.type, application: promotion.application }
+    });
     return successResponse(promotion, 201);
   } catch (error) {
     if (error instanceof PromotionValidationError) {

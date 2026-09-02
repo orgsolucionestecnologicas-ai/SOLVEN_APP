@@ -473,7 +473,7 @@ describe("applyPromotionsToCart", () => {
     expect(result.totalDiscount.toNumber()).toBe(10);
   });
 
-  it("does not stack the same promotion type twice on the same item", () => {
+  it("does not accumulate two promotions of the same type on the same item — only the best discount wins", () => {
     const items = [makeCartItem({ quantity: 1, unitPrice: 100 })];
     const promo1 = makePromotion({
       id: "promo-1",
@@ -490,8 +490,84 @@ describe("applyPromotionsToCart", () => {
 
     const result = applyPromotionsToCart(items, [promo1, promo2]);
 
-    expect(result.discountedItems[0].finalPrice.toNumber()).toBe(90);
-    expect(result.totalDiscount.toNumber()).toBe(10);
+    expect(result.discountedItems[0].finalPrice.toNumber()).toBe(80);
+    expect(result.totalDiscount.toNumber()).toBe(20);
     expect(result.appliedPromotions).toHaveLength(1);
+    expect(result.appliedPromotions[0].promotionId).toBe("promo-2");
+    expect(result.discountedItems[0].promotionId).toBe("promo-2");
+  });
+
+  it("does not accumulate two promotions of different types on the same item — only the best discount wins", () => {
+    const items = [makeCartItem({ quantity: 1, unitPrice: 100 })];
+    const promoPercentage = makePromotion({
+      id: "promo-pct",
+      type: "PERCENTAGE",
+      discountValue: new Prisma.Decimal(10),
+      application: "ALL_PRODUCTS"
+    });
+    const promoFixed = makePromotion({
+      id: "promo-fixed",
+      type: "FIXED_AMOUNT",
+      discountValue: new Prisma.Decimal(30),
+      application: "ALL_PRODUCTS"
+    });
+
+    const result = applyPromotionsToCart(items, [promoPercentage, promoFixed]);
+
+    expect(result.discountedItems[0].finalPrice.toNumber()).toBe(70);
+    expect(result.totalDiscount.toNumber()).toBe(30);
+    expect(result.appliedPromotions).toHaveLength(1);
+    expect(result.appliedPromotions[0].promotionId).toBe("promo-fixed");
+  });
+
+  it("keeps the earlier promotion when two proposals tie exactly on discount amount", () => {
+    const items = [makeCartItem({ quantity: 1, unitPrice: 100 })];
+    const promo1 = makePromotion({
+      id: "promo-1",
+      type: "PERCENTAGE",
+      discountValue: new Prisma.Decimal(10),
+      application: "ALL_PRODUCTS"
+    });
+    const promo2 = makePromotion({
+      id: "promo-2",
+      type: "FIXED_AMOUNT",
+      discountValue: new Prisma.Decimal(10),
+      application: "ALL_PRODUCTS"
+    });
+
+    const result = applyPromotionsToCart(items, [promo1, promo2]);
+
+    expect(result.discountedItems[0].finalPrice.toNumber()).toBe(90);
+    expect(result.appliedPromotions[0].promotionId).toBe("promo-1");
+  });
+
+  it("lets two promotions apply independently when they target different products, each keeping its own best offer", () => {
+    const items = [
+      makeCartItem({ productId: "a", quantity: 1, unitPrice: 100 }),
+      makeCartItem({ productId: "b", quantity: 1, unitPrice: 50 })
+    ];
+    const promoA = makePromotion({
+      id: "promo-a",
+      type: "PERCENTAGE",
+      discountValue: new Prisma.Decimal(10),
+      application: "SPECIFIC_PRODUCT",
+      productAId: "a"
+    });
+    const promoB = makePromotion({
+      id: "promo-b",
+      type: "FIXED_AMOUNT",
+      discountValue: new Prisma.Decimal(5),
+      application: "SPECIFIC_PRODUCT",
+      productAId: "b"
+    });
+
+    const result = applyPromotionsToCart(items, [promoA, promoB]);
+
+    const itemA = result.discountedItems.find((i) => i.productId === "a")!;
+    const itemB = result.discountedItems.find((i) => i.productId === "b")!;
+
+    expect(itemA.finalPrice.toNumber()).toBe(90);
+    expect(itemB.finalPrice.toNumber()).toBe(45);
+    expect(result.appliedPromotions).toHaveLength(2);
   });
 });

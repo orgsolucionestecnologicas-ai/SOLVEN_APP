@@ -345,8 +345,8 @@ function buildSubmitPayload(form: PromotionFormData): Record<string, unknown> {
     discountValue: Number(form.discountValue) || 0,
     application: form.application,
     activationType: form.activationType,
-    startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : undefined,
-    endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : undefined,
+    startsAt: form.startsAt ? new Date(`${form.startsAt}T00:00:00-03:00`).toISOString() : undefined,
+    endsAt: form.endsAt ? new Date(`${form.endsAt}T23:59:59.999-03:00`).toISOString() : undefined,
   };
 
   if (form.code.trim()) payload.code = form.code.trim();
@@ -1643,8 +1643,8 @@ function PromotionModal({
           application: effectiveApplication,
           categoryName: form.categoryName || undefined,
           productAId: form.productAId || undefined,
-          startsAt: new Date(form.startsAt).toISOString(),
-          endsAt: new Date(form.endsAt).toISOString(),
+          startsAt: new Date(`${form.startsAt}T00:00:00-03:00`).toISOString(),
+          endsAt: new Date(`${form.endsAt}T23:59:59.999-03:00`).toISOString(),
           excludeId: editing?.id,
         }),
       })
