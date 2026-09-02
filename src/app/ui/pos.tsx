@@ -10,6 +10,7 @@ import {
   ChevronUp,
   Copy,
   FileText,
+  LayoutGrid,
   MessageCircle,
   MoreHorizontal,
   Package,
@@ -374,6 +375,11 @@ export function Pos() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("Todos");
+  // Controla si ya se eligió una categoría para ver sus productos (o si se está buscando).
+  // Por defecto, la sección de productos solo muestra las categorías — así un local sin
+  // pistola lectora de código de barras no tiene que scrollear una lista plana de todo
+  // el catálogo para encontrar lo que busca.
+  const [categorySelected, setCategorySelected] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -1551,7 +1557,7 @@ export function Pos() {
             {cashRegisterStatus === "closed" ? (
               <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-5 py-3">
                 <p className="text-sm font-medium text-amber-800">
-                  Debes abrir la caja antes de realizar ventas.
+                  Debés abrir la caja antes de realizar ventas.
                 </p>
                 <Link
                   className="flex-shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600"
@@ -1567,7 +1573,7 @@ export function Pos() {
               <div>
                 <h1 className="text-lg font-bold text-slate-950 [.pos-dark_&]:text-slate-100">Ventas</h1>
                 <p className="text-xs text-slate-500">
-                  Realiza ventas rápidas y eficientes
+                  Realizá ventas rápidas y eficientes
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -1580,8 +1586,18 @@ export function Pos() {
                   Nueva venta
                 </button>
                 <button
-                  className="flex items-center gap-1.5 rounded-lg border border-orange-300 px-3 py-2 text-xs font-semibold text-orange-600 hover:bg-orange-50"
+                  className={
+                    cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS
+                      ? "flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 px-3 py-2 text-xs font-semibold text-slate-300"
+                      : "flex items-center gap-1.5 rounded-lg border border-orange-300 px-3 py-2 text-xs font-semibold text-orange-600 hover:bg-orange-50"
+                  }
+                  disabled={cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS}
                   onClick={handleSuspendCart}
+                  title={
+                    suspendedCarts.length >= MAX_SUSPENDED_CARTS
+                      ? "Máximo 3 carritos suspendidos"
+                      : undefined
+                  }
                   type="button"
                 >
                   <PauseCircle size={13} />
@@ -1684,7 +1700,11 @@ export function Pos() {
                         ? "flex-shrink-0 rounded-full bg-violet-600 px-3 py-1 text-xs font-medium text-white"
                         : "flex-shrink-0 rounded-full border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 px-3 py-1 text-xs font-medium text-slate-600 [.pos-dark_&]:text-slate-300 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600 hover:text-slate-900 [.pos-dark_&]:hover:text-slate-100"
                     }
-                    onClick={() => setActiveCategory(cat)}
+                    onClick={() => {
+                      setActiveCategory(cat);
+                      setCategorySelected(true);
+                      setCurrentPage(1);
+                    }}
                     type="button"
                   >
                     {cat}
@@ -1781,7 +1801,36 @@ export function Pos() {
                 </div>
               ) : null}
 
-              {productsLoading ? <ProductsLoadingState /> : null}
+              {!categorySelected && !searchQuery.trim() ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-violet-50 [.pos-dark_&]:bg-gray-800">
+                    <LayoutGrid size={20} className="text-violet-400" />
+                  </div>
+                  <p className="text-sm font-semibold text-slate-950 [.pos-dark_&]:text-slate-100">
+                    Elegí una categoría para ver sus productos
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    O buscá por nombre o código en la barra de arriba.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {categorySelected && !searchQuery.trim() ? (
+                    <button
+                      className="mb-3 flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-violet-600"
+                      onClick={() => {
+                        setCategorySelected(false);
+                        setActiveCategory("Todos");
+                        setCurrentPage(1);
+                      }}
+                      type="button"
+                    >
+                      <ChevronLeft size={13} />
+                      Ver categorías
+                    </button>
+                  ) : null}
+
+                  {productsLoading ? <ProductsLoadingState /> : null}
 
               {!productsLoading && productsError ? (
                 <div className="rounded-lg border border-rose-200 bg-rose-50 p-5">
@@ -1805,6 +1854,7 @@ export function Pos() {
                       onClick={() => {
                         setSearchQuery("");
                         setActiveCategory("Todos");
+                        setCategorySelected(false);
                       }}
                       type="button"
                     >
@@ -1921,6 +1971,8 @@ export function Pos() {
                   ) : null}
                 </>
               ) : null}
+                </>
+              )}
 
               {/* Services section */}
               {servicesError ? (
@@ -1994,6 +2046,7 @@ export function Pos() {
                 <QuickActionButton
                   Icon={PauseCircle}
                   label="Suspender"
+                  disabled={cartItems.length === 0 || suspendedCarts.length >= MAX_SUSPENDED_CARTS}
                   onClick={handleSuspendCart}
                 />
                 <QuickActionButton
@@ -3434,6 +3487,7 @@ type QuickActionButtonProps = {
   label: string;
   danger?: boolean;
   indicator?: boolean;
+  disabled?: boolean;
   onClick?: () => void;
 };
 
@@ -3442,15 +3496,19 @@ function QuickActionButton({
   label,
   danger = false,
   indicator = false,
+  disabled = false,
   onClick,
 }: QuickActionButtonProps) {
   return (
     <button
       className={
-        danger
-          ? "flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-500 hover:bg-rose-50"
-          : "flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+        disabled
+          ? "flex flex-shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-300"
+          : danger
+            ? "flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-500 hover:bg-rose-50"
+            : "flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
       }
+      disabled={disabled}
       onClick={onClick}
       type="button"
     >
