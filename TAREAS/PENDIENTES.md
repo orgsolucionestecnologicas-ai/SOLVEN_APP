@@ -41,6 +41,27 @@ Verificado por el Ingeniero Líder (02-09-2026) sólo por lectura de código —
 #### T20 — Decisión de producto: ¿2 minutos es el TTL correcto para revalidar una sesión desactivada?
 `requireRole` (USER-FIX-03, 02-09-2026) revalida contra la DB si el usuario sigue activo/con el mismo rol, cacheado 2 minutos por `userId` para no pegarle a la base en cada request. En la práctica: un empleado que el OWNER desactiva puede seguir operando con su sesión ya abierta hasta 2 minutos más. La orden original sugería un rango de 2-3 min como razonable para un POS (no banca), y el valor implementado cae ahí, pero es una decisión de negocio, no algo que el código deba decidir solo. Si 2 minutos es demasiado (o muy poco), es un solo número para ajustar en `src/lib/tenant.ts` (`SESSION_REVALIDATE_TTL_MS`).
 
+#### ARCA-NC-01 — Sin Nota de Crédito AFIP para devoluciones de ventas ya facturadas
+Anotado por INGENIERODETESTEO al auditar Devoluciones (31-08-2026), reconfirmado al auditar Reportes/ARCA. Solo existe `src/app/ui/return-credit-note-pdf.tsx`, un comprobante interno impreso — ninguna llamada real a `src/lib/arca`/WSFE para emitir una Nota de Crédito fiscal. Para un negocio en producción que ya emite facturas reales a clientes reales, esto es un gap de cumplimiento: AFIP espera una Nota de Crédito real contra el comprobante original, no solo un PDF interno. No es un fix chico — es una feature completa (nuevo tipo de comprobante WSFE, análogo al flujo ya existente de `emitInvoice`). Pregunta de priorización para Diego, aparte del resto del backlog.
+
+#### RET-DEV-METODO — Método de reintegro no se valida contra el desglose real de pago de la venta
+`Return.refundMethod` (FIX-07) no se contrasta contra `Sale.paymentDetails`. En una venta MIXED se puede elegir reintegrar "Efectivo" aunque esa venta se haya cobrado por tarjeta+fiado, generando un `CashMovement` OUT que no corresponde a plata que realmente entró en el cajón por esa venta (rompe el arqueo). Puede ser una decisión de negocio válida (el comercio decide cómo reintegra, sin importar cómo cobró) — confirmar con Diego si el sistema debería restringir el método de reintegro a los métodos realmente usados en la venta original. `src/modules/returns/index.ts:305-312`.
+
+#### USER-RATELIMIT — Rate limiting de login en memoria no escala a múltiples instancias serverless
+El `Map` en memoria de `src/middleware.ts` que limita `/api/auth/login` (10/min) vive por instancia de función — en Vercel, con múltiples instancias concurrentes, el límite real efectivo es mayor al declarado (cada instancia cuenta aparte). No es una vulnerabilidad nueva (ya existía), solo quedó reconfirmado durante USER-FIX. Requiere decisión de infraestructura (ej. mover el contador a una store compartida) si se considera prioritario antes de tener volumen real de tráfico.
+
+#### DEUDA-DUP — Sin detección de cliente duplicado por teléfono/email/CUIT
+Anotado por INGENIERODETESTEO al auditar Deudas/Clientes (31-08-2026). Se puede crear un `Customer` nuevo con el mismo teléfono/email/CUIT que uno existente, fragmentando el historial de deuda de una misma persona en dos registros. No es un bug de plata, es una decisión de producto (¿bloquear, avisar, o dejar como está?).
+
+#### DEUDA-PAGO-MULTI — Lógica de a qué deuda se aplica un pago cuando el cliente tiene varias abiertas, no verificada a fondo
+Anotado por INGENIERODETESTEO. No se encontró ningún camino de pérdida de dinero al leer el código, pero tampoco se verificó en profundidad cuál de las deudas abiertas de un mismo cliente recibe el pago cuando hay más de una. Requiere una pasada dedicada si se prioriza (no es urgente, no hay riesgo de plata identificado).
+
+#### CAJA-BREAKDOWN — Desglose de denominación no se valida contra el monto declarado
+Anotado por INGENIERODETESTEO al auditar Caja (31-08-2026). `openingBreakdown`/`closingBreakdown` se guardan como JSON libre sin validar que la suma de billetes/monedas coincida con `openingAmount`/`closingAmount`. Puede ser intencional (el desglose es solo referencia visual para quien cuenta el cajón, no una fuente de verdad) — confirmar con Diego si vale la pena validarlo o si arruinaría la flexibilidad de cargarlo.
+
+#### CAJA-TURNO — Cambio de turno sin cerrar caja, sin aviso al cajero entrante
+Anotado por INGENIERODETESTEO. `cashierName` es texto libre, no una relación a `User`, así que no se pudo determinar leyendo el backend si el cajero entrante ve alguna advertencia de que la sesión abierta es de otra persona. Requiere revisión de la UI en vivo (`app-shell.tsx` / pantalla de apertura de caja).
+
 ### 🟡 Medio
 
 #### [Devoluciones · UX] Mostrar detalle completo de la venta original antes de confirmar
@@ -63,6 +84,39 @@ Notion la marca "🚫 Bloqueada" sin especificar por qué. Confirmar con Diego c
 
 #### [Reportes · UX] Venta MIXED no se cuenta en "N ventas" de las tarjetas de Efectivo/Crédito
 `FEATURE-01` (31-08-2026): en `reports.tsx`, los montos de "Ventas al contado"/"Ventas a crédito" ya reparten bien la porción de una venta MIXED (verificado que reconcilia), pero el subtítulo "X ventas (Y%)" de esas tarjetas solo cuenta `paymentType === "CASH"` o `=== "CREDIT"` puro — una venta mixta no suma en ninguno de los dos conteos. Cosmético, no afecta ningún monto.
+
+#### [Inventario/Cotizaciones · Producto] Stock reservado por cotizaciones pendientes es puramente informativo
+Anotado por INGENIERODETESTEO en ambas secciones (Inventario y Cotizaciones, 31-08-2026). `getReservedStockByProduct` se calcula y se muestra en `quotes-list.tsx` y `GET /api/quotes/reserved-stock`, pero no se usa para bloquear ni descontar stock al crear una venta o confirmar otra cotización. Pregunta de producto: ¿está bien que dos cotizaciones puedan "prometer" la misma última unidad a dos clientes distintos (el que confirme primero se la lleva), o debería reservarse stock de verdad al emitir la cotización?
+
+#### [Inventario · Cosmético] `CodeCounter` de productos es global entre tenants, no por comercio
+Anotado por INGENIERODETESTEO. El contador autogenerado de `productCode` (`src/lib/generate-code.ts`) es compartido por TODA la plataforma, no por tenant — un comercio nuevo puede ver que sus primeros productos arrancan en "PROD-0347" en vez de "PROD-0001". No causa ningún error real, solo puede generar dudas de soporte. No prioritario.
+
+#### [Promociones · Producto] `PromotionUsage` en devoluciones parciales (no totales) sin definir
+Anotado por INGENIERODETESTEO al auditar Promociones (02-09-2026). PROMO-FIX-05 libera el cupo de uso en una devolución **total** de una venta con promoción. El caso de una devolución **parcial** (que no vacía la venta) queda sin definir si debe liberar cupo proporcional o no tocar nada. Decisión de producto, no bug.
+
+#### [POS · Verificación] Redondeo de IVA con tasas mixtas en un mismo carrito, no verificado
+Anotado por INGENIERODETESTEO al auditar POS (31-08-2026). No se confirmó si puede aparecer un centavo de diferencia entre la suma de `SaleItem.total` y el total mostrado cuando el carrito mezcla ítems al 10.5%/21%/27% de IVA. Requiere prueba con casos reales, no solo lectura de código.
+
+#### [POS · UX] Cambio de precio de un producto mientras está en el carrito, sin aviso al cajero
+Anotado por INGENIERODETESTEO. El backend recalcula el precio real al confirmar (correcto, evita cobrar de más/de menos), pero si el precio cambió entre agregar al carrito y confirmar, el cajero no recibe ningún aviso de que el monto cobrado en pantalla ya no coincide con lo que el backend va a registrar — relevante sobre todo en ventas MIXED.
+
+#### [POS · Producto] Una sola sesión de caja abierta por tenant, no por cajero/terminal
+Anotado por INGENIERODETESTEO. Si el negocio real llega a operar con más de una caja física en simultáneo, todos los movimientos se mezclan en una sola sesión. No está claro si es una limitación conocida o una decisión de producto deliberada — pregunta para Diego, no bug.
+
+#### [POS · Feature ausente] No existe función de anular/cancelar una venta ya impactada en caja y stock
+Anotado por INGENIERODETESTEO. Solo aparece nombrada en un test, no implementada en `src/modules/sales` ni en la API. La única forma de revertir una venta hoy es por Devoluciones. No es un bug, es una función que podría faltar si Diego la considera necesaria.
+
+#### Hallazgos menores confirmados durante el ciclo de INGENIERODETESTEO, sin prioridad asignada
+Agrupados acá para no perderlos (todos de bajo impacto, ninguno con riesgo de plata):
+- Dos líneas de `SaleItem`/línea de cotización para el mismo producto no se fusionan si llegaran a coexistir (hoy el carrito del POS ya fusiona por `productId`, así que no se pudo reproducir desde la UI actual).
+- `Quote.quoteNumber` es único globalmente (como `productCode`/`customerCode` eran antes) — sin riesgo de colisión real hoy, candidato a agruparse en una futura migración batch si se decide hacerlo por tenant.
+- `docNro`/CUIT en la config de ARCA no tiene validación de formato — AFIP lo rechaza con su propio error crudo (problema de UX, no de datos).
+- No existe un reporte de "ventas sin facturar" — idea de feature, no bug.
+- No se revisó el componente de impresión de cierre de caja para confirmar que reutiliza los mismos números guardados en `CashRegisterSession` en vez de recalcularlos aparte.
+- Ventana de carrera muy angosta entre el chequeo de "caja abierta" (antes de abrir la transacción de venta) y un cierre de caja concurrente desde otro dispositivo — demasiado angosta para confirmar solo leyendo código.
+- Doble click en "Emitir factura" con AFIP tardando en responder: el `@unique` de `Invoice.saleId` evita el duplicado local, pero si AFIP ya emitió un CAE real para el segundo intento antes de que el `INSERT` local falle, ese comprobante queda "vivo" en AFIP sin registro local — requiere reproducción contra homologación (ver `ARCA-02`).
+- Pérdida del carrito en curso al cambiar de pestaña dentro del POS (Venta actual → Historial → Devoluciones) — no se revisó el manejo de estado de React, requiere prueba manual en vivo.
+- Corte de sesión de otro usuario mientras un cajero tiene una venta a medio cobrar — depende del comportamiento del middleware/sesión en vivo, no se puede confirmar solo con lectura de código.
 
 ---
 
