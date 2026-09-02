@@ -20,7 +20,7 @@ type ProductRecord = {
   id: string;
   name: string;
   categoryName: string;
-  costPrice: string;
+  costPrice: string | null;
   salePrice: string;
   stock: number;
 };
@@ -157,7 +157,7 @@ export function InventoryEntryForm() {
         productName: product.name,
         currentStock: product.stock,
         quantity: 1,
-        unitCost: parseFloat(product.costPrice) || 0,
+        unitCost: product.costPrice !== null ? parseFloat(product.costPrice) || 0 : 0,
         taxRate: 0.21
       }
     ]);

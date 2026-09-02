@@ -93,7 +93,7 @@ export async function GET(request: Request) {
         p.name,
         p.productCode ?? "",
         p.categoryName ?? "",
-        p.costPrice.toString(),
+        p.costPrice?.toString() ?? "",
         p.salePrice.toString(),
         p.stock.toString(),
         p.minStock.toString(),

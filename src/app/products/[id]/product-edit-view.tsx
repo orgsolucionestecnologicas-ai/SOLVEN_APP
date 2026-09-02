@@ -9,12 +9,14 @@ type ProductData = {
   id: string;
   name: string;
   categoryName: string;
-  costPrice: string;
+  costPrice: string | null;
   salePrice: string;
   stock: number;
   minStock: number;
   maxStock: number | null;
   productCode: string | null;
+  barcode: string | null;
+  subcategoryName: string | null;
   supplierId: string | null;
   unit: string;
   ivaRate: number;
@@ -69,6 +71,8 @@ export function ProductEditView({ productId }: { productId: string }) {
           minStock: product.minStock,
           maxStock: product.maxStock,
           productCode: product.productCode,
+          barcode: product.barcode,
+          subcategoryName: product.subcategoryName,
           supplierId: product.supplierId,
           unit: product.unit,
           ivaRate: product.ivaRate

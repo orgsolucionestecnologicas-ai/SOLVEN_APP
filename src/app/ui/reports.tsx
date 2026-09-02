@@ -76,7 +76,7 @@ type SaleRecord = {
     quantity: number;
     unitPrice: string;
     total: string;
-    product: { name: string; costPrice: string; categoryName: string } | null;
+    product: { name: string; costPrice: string | null; categoryName: string } | null;
   }>;
 };
 
@@ -98,7 +98,7 @@ type ProductRecord = {
   id: string;
   name: string;
   categoryName: string;
-  costPrice: string;
+  costPrice: string | null;
   salePrice: string;
   stock: number;
 };
@@ -2433,9 +2433,9 @@ function InventarioTab({ products }: { products: ProductRecord[] }) {
       products
         .map((p) => {
           const category = p.categoryName;
-          const cost = Number(p.costPrice);
+          const cost = p.costPrice !== null ? Number(p.costPrice) : null;
           const sale = Number(p.salePrice);
-          const value = cost * p.stock;
+          const value = cost !== null ? cost * p.stock : null;
           const status =
             p.stock === 0
               ? { label: "Agotado", color: "#ef4444" }
@@ -2448,7 +2448,7 @@ function InventarioTab({ products }: { products: ProductRecord[] }) {
     [products]
   );
 
-  const totalValue = rows.reduce((s, r) => s + r.value, 0);
+  const totalValue = rows.reduce((s, r) => s + (r.value ?? 0), 0);
   const lowStock = rows.filter((r) => r.stock < 5).length;
   const outOfStock = rows.filter((r) => r.stock === 0).length;
 
@@ -2496,9 +2496,9 @@ function InventarioTab({ products }: { products: ProductRecord[] }) {
                     <td className="px-4 py-2.5 text-xs font-medium text-slate-800">{row.name}</td>
                     <td className="px-4 py-2.5 text-xs text-slate-500">{row.category}</td>
                     <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-900">{row.stock}</td>
-                    <td className="px-4 py-2.5 text-right text-xs text-slate-600">{formatMoney(row.cost)}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-slate-600">{row.cost !== null ? formatMoney(row.cost) : "—"}</td>
                     <td className="px-4 py-2.5 text-right text-xs text-slate-600">{formatMoney(row.sale)}</td>
-                    <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-900">{formatMoney(row.value)}</td>
+                    <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-900">{row.value !== null ? formatMoney(row.value) : "—"}</td>
                     <td className="px-4 py-2.5">
                       <span
                         className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
@@ -2711,7 +2711,10 @@ function RentabilidadTab({
   }, [sales, currStart, currEnd]);
 
   const productProfitability = useMemo(() => {
-    const byProduct: Record<string, { name: string; revenue: number; cost: number; qty: number }> = {};
+    const byProduct: Record<
+      string,
+      { name: string; revenue: number; cost: number; qty: number; hasUnknownCost: boolean }
+    > = {};
     for (const sale of sales) {
       const d = new Date(sale.saleDate);
       if (d < currStart || d > currEnd) continue;
@@ -2719,11 +2722,15 @@ function RentabilidadTab({
         if (!item.product) continue;
         const key = item.product.name;
         const rev = Number(item.total);
-        const cost = Number(item.product.costPrice) * item.quantity;
-        if (!byProduct[key]) byProduct[key] = { name: key, revenue: 0, cost: 0, qty: 0 };
+        const costKnown = item.product.costPrice !== null;
+        const cost = costKnown ? Number(item.product.costPrice) * item.quantity : 0;
+        if (!byProduct[key]) {
+          byProduct[key] = { name: key, revenue: 0, cost: 0, qty: 0, hasUnknownCost: false };
+        }
         byProduct[key].revenue += rev;
         byProduct[key].cost += cost;
         byProduct[key].qty += item.quantity;
+        if (!costKnown) byProduct[key].hasUnknownCost = true;
       }
     }
     return Object.values(byProduct)
@@ -2951,12 +2958,14 @@ function RentabilidadTab({
                     <td className="px-4 py-2.5 text-xs font-medium text-slate-800">{p.name}</td>
                     <td className="px-4 py-2.5 text-right text-xs text-slate-600">{p.qty}</td>
                     <td className="px-4 py-2.5 text-right text-xs text-slate-700">{formatMoney(p.revenue)}</td>
-                    <td className="px-4 py-2.5 text-right text-xs text-slate-700">{formatMoney(p.cost)}</td>
-                    <td className={`px-4 py-2.5 text-right text-xs font-semibold ${p.profit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
-                      {formatMoney(p.profit)}
+                    <td className="px-4 py-2.5 text-right text-xs text-slate-700">
+                      {p.hasUnknownCost ? "—" : formatMoney(p.cost)}
                     </td>
-                    <td className={`px-4 py-2.5 text-right text-xs font-semibold ${p.margin >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
-                      {p.margin.toFixed(1)}%
+                    <td className={`px-4 py-2.5 text-right text-xs font-semibold ${p.hasUnknownCost ? "text-slate-400" : p.profit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                      {p.hasUnknownCost ? "—" : formatMoney(p.profit)}
+                    </td>
+                    <td className={`px-4 py-2.5 text-right text-xs font-semibold ${p.hasUnknownCost ? "text-slate-400" : p.margin >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                      {p.hasUnknownCost ? "—" : `${p.margin.toFixed(1)}%`}
                     </td>
                   </tr>
                 ))}
@@ -3411,16 +3420,27 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
     const productMap = new Map<string, ProductRecord>();
     for (const p of products) productMap.set(p.name, p);
 
-    const byName = new Map<string, { name: string; category: string; units: number; revenue: number; costTotal: number }>();
+    const byName = new Map<
+      string,
+      { name: string; category: string; units: number; revenue: number; costTotal: number; hasUnknownCost: boolean }
+    >();
     for (const sale of sales) {
       for (const item of sale.items) {
         if (!item.product) continue;
         const name = item.product.name;
         const prod = productMap.get(name);
         const category = item.product.categoryName;
-        const e = byName.get(name) ?? { name, category, units: 0, revenue: 0, costTotal: 0 };
-        const costPerUnit = prod ? Number(prod.costPrice) : 0;
-        byName.set(name, { name, category, units: e.units + item.quantity, revenue: e.revenue + Number(item.total), costTotal: e.costTotal + costPerUnit * item.quantity });
+        const e = byName.get(name) ?? { name, category, units: 0, revenue: 0, costTotal: 0, hasUnknownCost: false };
+        const costUnknown = prod ? prod.costPrice === null : false;
+        const costPerUnit = prod && prod.costPrice !== null ? Number(prod.costPrice) : 0;
+        byName.set(name, {
+          name,
+          category,
+          units: e.units + item.quantity,
+          revenue: e.revenue + Number(item.total),
+          costTotal: e.costTotal + costPerUnit * item.quantity,
+          hasUnknownCost: e.hasUnknownCost || costUnknown
+        });
       }
     }
 
@@ -3440,7 +3460,7 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
   const avgUnits = productStats.length > 0 ? totalUnits / productStats.length : 0;
 
   const topByUnits = productStats[0];
-  const topByGross = [...productStats].sort((a, b) => b.gross - a.gross)[0];
+  const topByGross = [...productStats].filter((p) => !p.hasUnknownCost).sort((a, b) => b.gross - a.gross)[0];
   const bottomByUnits = productStats[productStats.length - 1];
   const top5Revenue = productStats.slice(0, 5).reduce((s, p) => s + p.revenue, 0);
   const top5Pct = totalRevenue > 0 ? (top5Revenue / totalRevenue) * 100 : 0;
@@ -3568,8 +3588,8 @@ function TopProductosTab({ sales, products }: { sales: SaleRecord[]; products: P
                           </td>
                           <td className="px-3 py-2.5 text-right text-xs text-slate-700">{prod.units}</td>
                           <td className="px-3 py-2.5 text-right text-xs font-semibold text-slate-900">{formatMoney(prod.revenue)}</td>
-                          <td className="px-3 py-2.5 text-right text-xs font-semibold text-emerald-600">{formatMoney(prod.gross)}</td>
-                          <td className="px-3 py-2.5 text-right text-xs text-slate-600">{prod.margin.toFixed(1)}%</td>
+                          <td className="px-3 py-2.5 text-right text-xs font-semibold text-emerald-600">{prod.hasUnknownCost ? "—" : formatMoney(prod.gross)}</td>
+                          <td className="px-3 py-2.5 text-right text-xs text-slate-600">{prod.hasUnknownCost ? "—" : `${prod.margin.toFixed(1)}%`}</td>
                           <td className="px-3 py-2.5 text-right text-xs text-slate-600">{prod.stock}</td>
                           <td className="px-3 py-2.5">
                             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: status.bg, color: status.color }}>
@@ -3732,7 +3752,7 @@ function RecomendacionesTab({
       recs.push({ id: "low-stock", icon: Package, iconColor: "text-violet-600", title: "Aumenta el stock de tus productos más vendidos", subtitle: `${lowStockTopSellers.length} producto${lowStockTopSellers.length !== 1 ? "s" : ""} con stock bajo y alta demanda`, tipo: "Inventario", tipoColor: "#7c3aed", prioridad: "Alta", impacto: lowStockTopSellers.length * avgSalePrice });
     }
 
-    const lowMarginProducts = products.filter((p) => { const cost = Number(p.costPrice); const sale = Number(p.salePrice); return sale > 0 && ((sale - cost) / sale) * 100 < 20; });
+    const lowMarginProducts = products.filter((p) => { if (p.costPrice === null) return false; const cost = Number(p.costPrice); const sale = Number(p.salePrice); return sale > 0 && ((sale - cost) / sale) * 100 < 20; });
     if (lowMarginProducts.length > 0) {
       recs.push({ id: "low-margin", icon: TrendingUp, iconColor: "text-orange-600", title: "Revisa los precios de estos productos", subtitle: `${lowMarginProducts.length} producto${lowMarginProducts.length !== 1 ? "s" : ""} con margen menor al 20%`, tipo: "Precios", tipoColor: "#f97316", prioridad: "Media", impacto: lowMarginProducts.reduce((s, p) => s + Number(p.salePrice) * 0.05, 0) });
     }
@@ -3759,7 +3779,7 @@ function RecomendacionesTab({
       recs.push({ id: "customer-concentration", icon: Users, iconColor: "text-blue-600", title: "Enfócate en tus mejores clientes", subtitle: "El 60%+ de tus ventas proviene de 10 clientes — fidelízalos con descuentos y atención personalizada", tipo: "Clientes", tipoColor: "#3b82f6", prioridad: "Media", impacto: top10CustRev * 0.1 });
     }
 
-    const negMarginProducts = products.filter((p) => Number(p.salePrice) > 0 && Number(p.salePrice) < Number(p.costPrice));
+    const negMarginProducts = products.filter((p) => p.costPrice !== null && Number(p.salePrice) > 0 && Number(p.salePrice) < Number(p.costPrice));
     if (negMarginProducts.length > 0) {
       recs.push({ id: "negative-margin", icon: AlertTriangle, iconColor: "text-rose-600", title: "Reduce productos de baja rentabilidad", subtitle: `${negMarginProducts.length} producto${negMarginProducts.length !== 1 ? "s" : ""} se venden a pérdida`, tipo: "Productos", tipoColor: "#ef4444", prioridad: "Alta", impacto: negMarginProducts.reduce((s, p) => s + (Number(p.costPrice) - Number(p.salePrice)), 0) });
     }
@@ -3770,7 +3790,7 @@ function RecomendacionesTab({
 
     const overstockLowSales = products.filter((p) => { const sold = productSalesMap.get(p.name); return p.stock > 50 && (!sold || sold.units < 5); });
     if (overstockLowSales.length > 0) {
-      recs.push({ id: "overstock", icon: Package, iconColor: "text-amber-600", title: "Compra más inteligente", subtitle: `${overstockLowSales.length} producto${overstockLowSales.length !== 1 ? "s" : ""} con exceso de stock y ventas bajas`, tipo: "Compras", tipoColor: "#d97706", prioridad: "Media", impacto: overstockLowSales.reduce((s, p) => s + Number(p.costPrice) * Math.max(0, p.stock - 20), 0) });
+      recs.push({ id: "overstock", icon: Package, iconColor: "text-amber-600", title: "Compra más inteligente", subtitle: `${overstockLowSales.length} producto${overstockLowSales.length !== 1 ? "s" : ""} con exceso de stock y ventas bajas`, tipo: "Compras", tipoColor: "#d97706", prioridad: "Media", impacto: overstockLowSales.reduce((s, p) => s + (p.costPrice !== null ? Number(p.costPrice) * Math.max(0, p.stock - 20) : 0), 0) });
     }
 
     recs.push({ id: "combos", icon: ShoppingBag, iconColor: "text-emerald-600", title: "Crea combos con productos relacionados", subtitle: "Combina tus productos más vendidos con complementarios para aumentar el ticket promedio", tipo: "Ventas", tipoColor: "#10b981", prioridad: "Baja", impacto: avgSalePrice * 0.15 * currentSales.length });
@@ -3793,7 +3813,7 @@ function RecomendacionesTab({
 
   const maxCatImpact = Math.max(...Object.values(categoryImpact), 1);
   const lowStockCount = products.filter((p) => p.stock <= 5).length;
-  const negMarginCount = products.filter((p) => Number(p.salePrice) > 0 && Number(p.salePrice) < Number(p.costPrice)).length;
+  const negMarginCount = products.filter((p) => p.costPrice !== null && Number(p.salePrice) > 0 && Number(p.salePrice) < Number(p.costPrice)).length;
   const lowRotationCount = products.filter((p) => { const sold = productSalesMap.get(p.name); return !sold || sold.units < 3; }).length;
 
   const totalPages = Math.ceil(recommendations.length / PAGE_SIZE);

@@ -28,7 +28,7 @@ type ProductRecord = {
   name: string;
   productCode: string | null;
   categoryName: string;
-  costPrice: string;
+  costPrice: string | null;
   salePrice: string;
   ivaRate: number;
   stock: number;
@@ -199,7 +199,7 @@ function toImportRow(raw: Record<string, string>) {
     productCode: raw.productCode || undefined,
     name: raw.name || "",
     categoryName: raw.categoryName || undefined,
-    costPrice: Number(raw.costPrice),
+    costPrice: raw.costPrice ? Number(raw.costPrice) : undefined,
     salePrice: Number(raw.salePrice),
     ivaRate: raw.ivaRate ? Number(raw.ivaRate) : undefined,
     unit: raw.unit || undefined,
@@ -374,7 +374,7 @@ export function ProductsInventory() {
 
   const inventorySummary = useMemo(() => {
     const totalStockValue = products.reduce(
-      (sum, p) => sum + Number(p.costPrice) * p.stock,
+      (sum, p) => sum + (p.costPrice !== null ? Number(p.costPrice) * p.stock : 0),
       0
     );
     const outOfStockCount = products.filter((p) => p.stock === 0).length;
@@ -1486,14 +1486,15 @@ function getUnitAbbreviation(unit: string): string {
   return match ? match[1] : unit;
 }
 
-function calculateMarginPercent(costPrice: string, salePrice: string): number | null {
+function calculateMarginPercent(costPrice: string | null, salePrice: string): number | null {
+  if (costPrice === null) return null;
   const cost = Number(costPrice);
   const sale = Number(salePrice);
   if (!cost) return null;
   return ((sale - cost) / cost) * 100;
 }
 
-function MarginWarningBadge({ costPrice, salePrice }: { costPrice: string; salePrice: string }) {
+function MarginWarningBadge({ costPrice, salePrice }: { costPrice: string | null; salePrice: string }) {
   const margin = calculateMarginPercent(costPrice, salePrice);
   if (margin === null || margin >= 10) return null;
   if (margin < 0) {
@@ -1510,7 +1511,7 @@ function MarginWarningBadge({ costPrice, salePrice }: { costPrice: string; saleP
   );
 }
 
-function MarginBadge({ costPrice, salePrice }: { costPrice: string; salePrice: string }) {
+function MarginBadge({ costPrice, salePrice }: { costPrice: string | null; salePrice: string }) {
   const margin = calculateMarginPercent(costPrice, salePrice);
   if (margin === null) {
     return <span className="text-sm text-slate-400">—</span>;
@@ -1964,7 +1965,7 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
         body: JSON.stringify({
           name: name.trim(),
           categoryName,
-          costPrice: Number(costPrice),
+          costPrice: costPrice.trim() === "" ? undefined : Number(costPrice),
           salePrice: Number(salePrice),
           ivaRate,
           stock: Number(stock),
@@ -2057,7 +2058,6 @@ function CreateProductModal({ onClose, onSuccess, categories }: CreateProductMod
               min="0"
               onChange={(e) => setCostPrice(e.target.value)}
               placeholder="0.00"
-              required
               step="0.01"
               type="number"
               value={costPrice}
@@ -2173,7 +2173,7 @@ type EditProductModalProps = {
 function EditProductModal({ product, onClose, onSuccess, categories }: EditProductModalProps) {
   const [name, setName] = useState(product.name);
   const [categoryName, setCategoryName] = useState(product.categoryName);
-  const [costPrice, setCostPrice] = useState(product.costPrice);
+  const [costPrice, setCostPrice] = useState(product.costPrice ?? "");
   const [salePrice, setSalePrice] = useState(product.salePrice);
   const [ivaRate, setIvaRate] = useState<number>(Number(product.ivaRate) ?? 0.21);
   const [imageUrl, setImageUrl] = useState<string | null>(product.imageUrl);
@@ -2192,7 +2192,7 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
         body: JSON.stringify({
           name: name.trim(),
           categoryName,
-          costPrice: Number(costPrice),
+          costPrice: costPrice.trim() === "" ? null : Number(costPrice),
           salePrice: Number(salePrice),
           ivaRate,
           imageUrl
@@ -2289,7 +2289,6 @@ function EditProductModal({ product, onClose, onSuccess, categories }: EditProdu
               id="edit-product-cost-price"
               min="0"
               onChange={(e) => setCostPrice(e.target.value)}
-              required
               step="0.01"
               type="number"
               value={costPrice}

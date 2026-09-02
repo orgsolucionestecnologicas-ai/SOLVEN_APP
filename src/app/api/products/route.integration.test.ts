@@ -92,6 +92,7 @@ async function deleteIntegrationProducts() {
   if (tenantIds.length > 0) {
     await prisma.auditLog.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await prisma.user.deleteMany({ where: { tenantId: { in: tenantIds } } });
+    await prisma.productSkuCounter.deleteMany({ where: { tenantId: { in: tenantIds } } });
   }
   await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }

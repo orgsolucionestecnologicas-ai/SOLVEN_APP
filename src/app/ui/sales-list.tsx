@@ -14,7 +14,7 @@ type SaleItemRecord = {
   quantity: number;
   unitPrice: string;
   total: string;
-  product: { name: string; costPrice: string } | null;
+  product: { name: string; costPrice: string | null } | null;
   service: { name: string } | null;
   createdAt: string;
   updatedAt: string;
@@ -468,13 +468,18 @@ function SaleCard({
                 : "text-xs font-medium text-rose-600"
             }
             title={
-              grossProfit.hasNonProductItems
-                ? "No incluye ítems de servicio (sin costo definido)"
+              grossProfit.hasNonProductItems || grossProfit.hasUnknownCost
+                ? `No incluye ${[
+                    grossProfit.hasNonProductItems && "ítems de servicio",
+                    grossProfit.hasUnknownCost && "productos sin costo cargado",
+                  ]
+                    .filter(Boolean)
+                    .join(" ni ")}`
                 : undefined
             }
           >
             Ganancia: {formatARS(grossProfit.profit)}
-            {grossProfit.hasNonProductItems ? "*" : ""}
+            {grossProfit.hasNonProductItems || grossProfit.hasUnknownCost ? "*" : ""}
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -717,7 +722,7 @@ function ReturnModal({
 }) {
   const [returnItems, setReturnItems] = useState<ReturnItemState[]>(
     sale.items
-      .filter((item): item is typeof item & { productId: string; product: { name: string; costPrice: string } } =>
+      .filter((item): item is typeof item & { productId: string; product: { name: string; costPrice: string | null } } =>
         item.productId !== null && item.product !== null
       )
       .map((item) => ({
@@ -1486,17 +1491,24 @@ function getPaymentMethodLabel(sale: SaleRecord): string {
   return "Contado";
 }
 
-function getSaleGrossProfit(sale: SaleRecord): { profit: number; hasNonProductItems: boolean } {
+function getSaleGrossProfit(
+  sale: SaleRecord
+): { profit: number; hasNonProductItems: boolean; hasUnknownCost: boolean } {
   let profit = 0;
   let hasNonProductItems = false;
+  let hasUnknownCost = false;
   for (const item of sale.items) {
     if (item.product) {
-      profit += (Number(item.unitPrice) - Number(item.product.costPrice)) * item.quantity;
+      if (item.product.costPrice === null) {
+        hasUnknownCost = true;
+      } else {
+        profit += (Number(item.unitPrice) - Number(item.product.costPrice)) * item.quantity;
+      }
     } else {
       hasNonProductItems = true;
     }
   }
-  return { profit, hasNonProductItems };
+  return { profit, hasNonProductItems, hasUnknownCost };
 }
 
 function escapeCsvValue(value: string): string {

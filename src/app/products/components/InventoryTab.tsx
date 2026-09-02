@@ -23,7 +23,7 @@ import { formatARS } from "@/lib/format-currency";
 type ProductRecord = {
   id: string;
   name: string;
-  costPrice: string;
+  costPrice: string | null;
   salePrice: string;
   stock: number;
   minStock: number;
@@ -221,7 +221,10 @@ const dateFormatter = new Intl.DateTimeFormat("es-419", {
 const numberFormatter = new Intl.NumberFormat("es-419", { maximumFractionDigits: 0 });
 
 function calculateInventoryValue(products: ProductRecord[]): number {
-  return products.reduce((sum, p) => sum + p.stock * Number(p.costPrice), 0);
+  return products.reduce(
+    (sum, p) => sum + (p.costPrice !== null ? p.stock * Number(p.costPrice) : 0),
+    0
+  );
 }
 
 function getLowStockThreshold(minStock: number): number {
@@ -1028,7 +1031,9 @@ function StockRow({
       </td>
       <td className="px-4 py-3 text-right">
         <span className="text-sm text-slate-700">
-          {formatARS(calculateInventoryValue([product]))}
+          {product.costPrice !== null
+            ? formatARS(product.stock * Number(product.costPrice))
+            : "—"}
         </span>
       </td>
       <td className="px-4 py-3">

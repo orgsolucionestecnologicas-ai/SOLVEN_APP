@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AlertTriangle,
   ArrowLeft,
   ArrowUpCircle,
   Barcode,
@@ -47,12 +46,14 @@ type CreateProductResponse = {
 type InitialProductData = {
   name: string;
   categoryName: string;
-  costPrice: string;
+  costPrice: string | null;
   salePrice: string;
   stock: number;
   minStock?: number;
   maxStock?: number | null;
   productCode?: string | null;
+  barcode?: string | null;
+  subcategoryName?: string | null;
   supplierId?: string | null;
   unit?: string;
   ivaRate?: number;
@@ -76,44 +77,16 @@ type SupplierApiRecord = {
   email: string | null;
 };
 
-function generateSku(productName: string): string {
-  return productName
-    .toUpperCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^A-Z0-9\s]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .slice(0, 24);
-}
-
-function formatMoney(value: string | number): string {
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return "0.00";
-  return num.toFixed(2);
-}
-
 export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
   const router = useRouter();
   const isEditMode = Boolean(productId);
 
   const [name, setName] = useState(initialData?.name ?? "");
-  const [sku, setSku] = useState(initialData?.productCode ?? "");
-  const [barcode, setBarcode] = useState("");
+  const [barcode, setBarcode] = useState(initialData?.barcode ?? "");
   const [categoryName, setCategoryName] = useState(initialData?.categoryName ?? "");
   const [brand, setBrand] = useState("");
   const [unit, setUnit] = useState<string>(initialData?.unit ?? "Unidad (ud)");
   const [costPrice, setCostPrice] = useState(initialData?.costPrice ?? "");
-  const [margin, setMargin] = useState(() => {
-    if (initialData) {
-      const cost = parseFloat(initialData.costPrice);
-      const sale = parseFloat(initialData.salePrice);
-      if (!isNaN(cost) && cost > 0 && !isNaN(sale)) {
-        return (((sale - cost) / cost) * 100).toFixed(1);
-      }
-    }
-    return "30";
-  });
   const [salePrice, setSalePrice] = useState(initialData?.salePrice ?? "");
   const [ivaRate, setIvaRate] = useState<number>(initialData?.ivaRate ?? 0.21);
   const [stock, setStock] = useState(initialData?.stock !== undefined ? String(initialData.stock) : "0");
@@ -129,7 +102,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
   const [isActive, setIsActive] = useState(true);
   const [allowSaleWithoutStock, setAllowSaleWithoutStock] = useState(false);
 
-  const [subcategoryName, setSubcategoryName] = useState("");
+  const [subcategoryName, setSubcategoryName] = useState(initialData?.subcategoryName ?? "");
   const [apiCategories, setApiCategories] = useState<CategoryApiRecord[]>([]);
   const [apiSuppliers, setApiSuppliers] = useState<SupplierApiRecord[]>([]);
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
@@ -186,43 +159,20 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
 
   function handleCostPriceChange(value: string) {
     setCostPrice(value);
-    const cost = parseFloat(value);
-    const m = parseFloat(margin);
-    if (!isNaN(cost) && cost > 0 && !isNaN(m)) {
-      setSalePrice((cost * (1 + m / 100)).toFixed(2));
-    }
-  }
-
-  function handleMarginChange(value: string) {
-    setMargin(value);
-    const cost = parseFloat(costPrice);
-    const m = parseFloat(value);
-    if (!isNaN(cost) && cost > 0 && !isNaN(m)) {
-      setSalePrice((cost * (1 + m / 100)).toFixed(2));
-    }
   }
 
   function handleSalePriceChange(value: string) {
     setSalePrice(value);
-    const cost = parseFloat(costPrice);
-    const sale = parseFloat(value);
-    if (!isNaN(cost) && cost > 0 && !isNaN(sale)) {
-      setMargin((((sale - cost) / cost) * 100).toFixed(1));
-    }
-  }
-
-  function handleGenerateSku() {
-    if (name.trim()) {
-      setSku(generateSku(name));
-    }
   }
 
   function validate(): string | null {
     if (!name.trim()) return "El nombre del producto es obligatorio.";
     if (!categoryName) return "La categoría es obligatoria.";
-    const cost = parseFloat(costPrice);
-    if (!costPrice || isNaN(cost) || cost < 0)
-      return "El precio de compra es obligatorio y debe ser válido.";
+    if (costPrice.trim() !== "") {
+      const cost = parseFloat(costPrice);
+      if (isNaN(cost) || cost < 0)
+        return "El precio de compra debe ser un valor válido.";
+    }
     const sale = parseFloat(salePrice);
     if (!salePrice || isNaN(sale) || sale < 0)
       return "El precio de venta es obligatorio y debe ser válido.";
@@ -246,9 +196,12 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
       const method = isEditMode ? "PUT" : "POST";
       const maxStockValue = maxStock.trim() === "" ? undefined : parseInt(maxStock, 10);
       const supplierIdValue = supplierId.trim() === "" ? null : supplierId;
+      const costPriceValue = costPrice.trim() === "" ? undefined : parseFloat(costPrice);
+      const barcodeValue = barcode.trim() === "" ? null : barcode.trim();
+      const subcategoryNameValue = subcategoryName.trim();
       const payload = isEditMode
-        ? { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue, unit, ivaRate }
-        : { name: name.trim(), categoryName, costPrice: parseFloat(costPrice), salePrice: parseFloat(salePrice), stock: parseInt(stock, 10), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue, unit, ivaRate };
+        ? { name: name.trim(), categoryName, costPrice: costPriceValue, salePrice: parseFloat(salePrice), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue, unit, ivaRate, barcode: barcodeValue, subcategoryName: subcategoryNameValue }
+        : { name: name.trim(), categoryName, costPrice: costPriceValue, salePrice: parseFloat(salePrice), stock: parseInt(stock, 10), minStock: parseInt(minStock, 10) || 0, maxStock: maxStockValue, supplierId: supplierIdValue, unit, ivaRate, barcode: barcodeValue, subcategoryName: subcategoryNameValue };
 
       const response = await fetch(url, {
         method,
@@ -275,11 +228,6 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
     }
   }
 
-  const costNum = parseFloat(costPrice) || 0;
-  const saleNum = parseFloat(salePrice) || 0;
-  const marginNum = parseFloat(margin) || 0;
-  const profitPerUnit = saleNum - costNum;
-  const isLossOrZeroMargin = costNum > 0 && saleNum <= costNum;
   const stockNum = parseInt(stock, 10) || 0;
   const minStockNum = parseInt(minStock, 10) || 0;
   const stockAlertNum = parseInt(stockAlert, 10) || 0;
@@ -373,35 +321,12 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                     />
                   </FormField>
 
-                  <FormField htmlFor="pf-sku" label="Código / SKU">
-                    <div className="flex gap-2">
-                      <input
-                        className={`${inputClass} flex-1`}
-                        disabled={isSubmitting}
-                        id="pf-sku"
-                        onChange={(e) => setSku(e.target.value)}
-                        placeholder="Ej. ARROZ-5KG"
-                        type="text"
-                        value={sku}
-                      />
-                      <button
-                        className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                        onClick={handleGenerateSku}
-                        title="Generar SKU desde nombre"
-                        type="button"
-                      >
-                        <Barcode size={14} />
-                        Auto
-                      </button>
-                    </div>
-                  </FormField>
-
                   <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                     <p className="text-xs text-slate-500">Código del producto</p>
                     {isEditMode && initialData?.productCode ? (
                       <p className="font-mono text-sm font-semibold text-slate-700">{initialData.productCode}</p>
                     ) : (
-                      <p className="text-xs text-slate-400">Se generará al guardar (ej. PROD-0001)</p>
+                      <p className="text-xs text-slate-400">Se generará según la categoría, ej. BEB-0001</p>
                     )}
                   </div>
 
@@ -509,7 +434,7 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                 </div>
 
                 <div className="space-y-4">
-                  <FormField htmlFor="pf-cost" label="Precio de compra" required>
+                  <FormField htmlFor="pf-cost" label="Precio de compra">
                     <div className="flex">
                       <span className="flex items-center rounded-l-md border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">
                         AR$
@@ -521,26 +446,11 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                         min="0"
                         onChange={(e) => handleCostPriceChange(e.target.value)}
                         placeholder="0.00"
-                        required
                         step="0.01"
                         type="number"
                         value={costPrice}
                       />
                     </div>
-                  </FormField>
-
-                  <FormField htmlFor="pf-margin" label="Margen de ganancia %">
-                    <input
-                      className={inputClass}
-                      disabled={isSubmitting}
-                      id="pf-margin"
-                      min="0"
-                      onChange={(e) => handleMarginChange(e.target.value)}
-                      placeholder="30"
-                      step="0.1"
-                      type="number"
-                      value={margin}
-                    />
                   </FormField>
 
                   <FormField htmlFor="pf-sale" label="Precio de venta" required>
@@ -584,13 +494,6 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                       ))}
                     </select>
                   </FormField>
-
-                  <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
-                    <p className="text-xs text-violet-700">
-                      El precio de venta se calcula automáticamente según el
-                      margen de ganancia.
-                    </p>
-                  </div>
                 </div>
               </div>
 
@@ -861,67 +764,16 @@ export function ProductForm({ initialData, productId }: ProductFormProps = {}) {
                         {isEditMode ? "Editando" : "Nuevo"}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      SKU: {sku || "--"}
-                    </p>
+                    {isEditMode && initialData?.productCode ? (
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Código: {initialData.productCode}
+                      </p>
+                    ) : null}
                     <p className="text-xs text-slate-500">
                       Categoría: {categoryName || "--"}
                     </p>
                   </div>
                 </div>
-              </div>
-
-              {/* Panel 3: Resumen del producto */}
-              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                <h3 className="mb-3 text-sm font-semibold text-slate-950">
-                  Resumen del producto
-                </h3>
-                {isLossOrZeroMargin ? (
-                  <div className="mb-3 flex items-start gap-1.5 rounded-lg border border-rose-200 bg-rose-50 p-3">
-                    <AlertTriangle className="mt-0.5 shrink-0 text-rose-600" size={14} />
-                    <p className="text-xs font-medium text-rose-800">
-                      El precio de venta es menor o igual al costo: esta venta generará pérdida o margen cero.
-                    </p>
-                  </div>
-                ) : null}
-                <dl className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <dt className="text-xs text-slate-500">Precio de compra</dt>
-                    <dd className="text-xs font-medium text-slate-950">
-                      AR$ {formatMoney(costNum)}
-                    </dd>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <dt className="text-xs text-slate-500">
-                      Margen de ganancia
-                    </dt>
-                    <dd className="text-xs font-semibold text-emerald-600">
-                      {marginNum.toFixed(1)}%
-                    </dd>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <dt className="text-xs text-slate-500">Precio de venta</dt>
-                    <dd className="text-xs font-semibold text-emerald-600">
-                      AR$ {formatMoney(saleNum)}
-                    </dd>
-                  </div>
-                  <div className="border-t border-slate-100 pt-2">
-                    <div className="flex items-center justify-between">
-                      <dt className="text-xs text-slate-500">
-                        Ganancia por unidad
-                      </dt>
-                      <dd
-                        className={`text-xs font-semibold ${
-                          profitPerUnit >= 0
-                            ? "text-emerald-600"
-                            : "text-rose-600"
-                        }`}
-                      >
-                        AR$ {formatMoney(profitPerUnit)}
-                      </dd>
-                    </div>
-                  </div>
-                </dl>
               </div>
 
               {/* Panel 4: Inventario */}

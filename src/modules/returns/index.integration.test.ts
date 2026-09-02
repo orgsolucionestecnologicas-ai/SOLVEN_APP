@@ -354,5 +354,6 @@ async function deleteReturnTestData() {
   await prisma.product.deleteMany({ where: { tenantId: { in: testTenantIds } } });
   await prisma.customer.deleteMany({ where: { tenantId: { in: testTenantIds } } });
   await prisma.cashRegisterSession.deleteMany({ where: { tenantId: { in: testTenantIds } } });
+  await prisma.productSkuCounter.deleteMany({ where: { tenantId: { in: testTenantIds } } });
   await prisma.tenant.deleteMany({ where: { id: { in: testTenantIds } } });
 }

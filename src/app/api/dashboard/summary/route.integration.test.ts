@@ -151,5 +151,9 @@ async function deleteDashboardSummaryApiData() {
   await prisma.product.deleteMany({ where: { id: { in: testProductIds } } });
   await prisma.customer.deleteMany({ where: { id: { in: testCustomerIds } } });
   await prisma.cashRegisterSession.deleteMany({ where: { cashierName: testCashierName } });
+  const testTenant = await prisma.tenant.findFirst({ where: { email: testTenantEmail }, select: { id: true } });
+  if (testTenant) {
+    await prisma.productSkuCounter.deleteMany({ where: { tenantId: testTenant.id } });
+  }
   await prisma.tenant.deleteMany({ where: { email: testTenantEmail } });
 }

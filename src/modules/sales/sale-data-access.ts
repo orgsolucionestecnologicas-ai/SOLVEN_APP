@@ -32,7 +32,7 @@ export type SaleWithCustomer = Sale & { customer: { name: string } | null };
 export type SaleListRecord = Sale & {
   customer: { name: string; phone: string | null; email: string | null } | null;
   items: (SaleItem & {
-    product: { name: string; costPrice: Prisma.Decimal; categoryName: string } | null;
+    product: { name: string; costPrice: Prisma.Decimal | null; categoryName: string } | null;
     service: { name: string } | null;
   })[];
   returnStatus: "NONE" | "PARTIAL" | "FULL";

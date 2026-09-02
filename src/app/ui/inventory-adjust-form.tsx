@@ -21,7 +21,7 @@ type ProductRecord = {
   id: string;
   name: string;
   categoryName: string;
-  costPrice: string;
+  costPrice: string | null;
   salePrice: string;
   stock: number;
 };
@@ -31,7 +31,7 @@ type AdjustItem = {
   productName: string;
   currentStock: number;
   quantity: number;
-  costPrice: number;
+  costPrice: number | null;
 };
 
 type MovementRecord = {
@@ -183,7 +183,7 @@ export function InventoryAdjustForm() {
         productName: product.name,
         currentStock: product.stock,
         quantity: 1,
-        costPrice: parseFloat(product.costPrice) || 0
+        costPrice: product.costPrice !== null ? parseFloat(product.costPrice) || 0 : null
       }
     ]);
     setSearchQuery("");
@@ -241,7 +241,7 @@ export function InventoryAdjustForm() {
     0
   );
   const costoTotal = adjustItems.reduce(
-    (sum, item) => sum + item.quantity * item.costPrice,
+    (sum, item) => sum + item.quantity * (item.costPrice ?? 0),
     0
   );
   const impuestos = costoTotal * 0.21;
@@ -655,13 +655,14 @@ export function InventoryAdjustForm() {
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className="text-sm text-slate-700">
-                                AR$ {moneyFmt.format(item.costPrice)}
+                                {item.costPrice !== null ? `AR$ ${moneyFmt.format(item.costPrice)}` : "—"}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className="text-sm font-medium text-rose-600">
-                                AR${" "}
-                                {moneyFmt.format(item.quantity * item.costPrice)}
+                                {item.costPrice !== null
+                                  ? `AR$ ${moneyFmt.format(item.quantity * item.costPrice)}`
+                                  : "—"}
                               </span>
                             </td>
                             <td className="px-3 py-3">

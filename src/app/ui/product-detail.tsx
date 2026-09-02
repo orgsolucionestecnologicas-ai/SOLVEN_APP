@@ -44,8 +44,8 @@ function formatDate(iso: string): string {
 }
 
 type PriceChangeMetadata = {
-  costPriceBefore: number;
-  costPriceAfter: number;
+  costPriceBefore: number | null;
+  costPriceAfter: number | null;
   salePriceBefore: number;
   salePriceAfter: number;
 };
@@ -63,6 +63,10 @@ const arsFormatter = new Intl.NumberFormat("es-AR", {
   style: "currency",
   currency: "ARS",
 });
+
+function formatCost(value: number | null): string {
+  return value !== null ? arsFormatter.format(value) : "Sin costo";
+}
 
 export function ProductPriceHistory({ productId }: { productId: string }) {
   const [entries, setEntries] = useState<PriceHistoryEntry[]>([]);
@@ -110,9 +114,9 @@ export function ProductPriceHistory({ productId }: { productId: string }) {
               </div>
               <div className="mt-2 flex flex-col gap-1 text-xs text-slate-500 sm:flex-row sm:gap-6">
                 <span>
-                  Costo: <strong className="text-slate-700">{arsFormatter.format(entry.metadata.costPriceBefore)}</strong>
+                  Costo: <strong className="text-slate-700">{formatCost(entry.metadata.costPriceBefore)}</strong>
                   <span className="text-slate-300"> → </span>
-                  <strong className="text-slate-700">{arsFormatter.format(entry.metadata.costPriceAfter)}</strong>
+                  <strong className="text-slate-700">{formatCost(entry.metadata.costPriceAfter)}</strong>
                 </span>
                 <span>
                   Venta: <strong className="text-slate-700">{arsFormatter.format(entry.metadata.salePriceBefore)}</strong>

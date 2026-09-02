@@ -32,7 +32,7 @@ export type ProductUnit = (typeof PRODUCT_UNITS)[number];
 export type CreateProductInput = {
   name: string;
   categoryName?: string;
-  costPrice: number;
+  costPrice?: number;
   salePrice: number;
   stock: number;
   minStock?: number;
@@ -41,12 +41,14 @@ export type CreateProductInput = {
   supplierId?: string | null;
   unit?: string;
   imageUrl?: string | null;
+  barcode?: string | null;
+  subcategoryName?: string;
 };
 
 export type ValidatedProductInput = {
   name: string;
   categoryName: string;
-  costPrice: number;
+  costPrice?: number;
   salePrice: number;
   stock: number;
   minStock: number;
@@ -55,6 +57,8 @@ export type ValidatedProductInput = {
   supplierId?: string | null;
   unit: string;
   imageUrl?: string | null;
+  barcode?: string | null;
+  subcategoryName?: string;
 };
 
 export class ProductValidationError extends Error {
@@ -75,7 +79,10 @@ export function validateCreateProductInput(
     validationErrors.push("Product name is required.");
   }
 
-  if (!isValidNonNegativeNumber(productInput.costPrice)) {
+  if (
+    productInput.costPrice !== undefined &&
+    !isValidNonNegativeNumber(productInput.costPrice)
+  ) {
     validationErrors.push("Cost price must be a non-negative number.");
   }
 
@@ -142,6 +149,18 @@ export function validateCreateProductInput(
     imageUrl = null;
   }
 
+  let barcode: string | null | undefined;
+  if (productInput.barcode !== undefined) {
+    const trimmed =
+      typeof productInput.barcode === "string" ? productInput.barcode.trim() : "";
+    barcode = trimmed.length > 0 ? trimmed : null;
+  }
+
+  const subcategoryName =
+    typeof productInput.subcategoryName === "string"
+      ? productInput.subcategoryName.trim()
+      : undefined;
+
   if (validationErrors.length > 0) {
     throw new ProductValidationError(validationErrors);
   }
@@ -157,7 +176,9 @@ export function validateCreateProductInput(
     ivaRate,
     supplierId,
     unit,
-    imageUrl
+    imageUrl,
+    barcode,
+    subcategoryName
   };
 }
 
@@ -166,9 +187,12 @@ function isValidNonNegativeNumber(value: number) {
 }
 
 export function getSalePriceBelowCostWarning(
-  costPrice: number,
+  costPrice: number | null,
   salePrice: number
 ): string | null {
+  if (costPrice === null) {
+    return null;
+  }
   return salePrice < costPrice
     ? "El precio de venta es menor al costo del producto."
     : null;
@@ -177,7 +201,7 @@ export function getSalePriceBelowCostWarning(
 export type UpdateProductInput = {
   name?: string;
   categoryName?: string;
-  costPrice?: number;
+  costPrice?: number | null;
   salePrice?: number;
   minStock?: number;
   maxStock?: number;
@@ -186,13 +210,31 @@ export type UpdateProductInput = {
   unit?: string;
   active?: boolean;
   imageUrl?: string | null;
+  barcode?: string | null;
+  subcategoryName?: string;
+};
+
+export type ValidatedUpdateProductInput = {
+  name?: string;
+  categoryName?: string;
+  costPrice?: number | null;
+  salePrice?: number;
+  minStock?: number;
+  maxStock?: number;
+  ivaRate?: number;
+  supplierId?: string | null;
+  unit?: string;
+  active?: boolean;
+  imageUrl?: string | null;
+  barcode?: string | null;
+  subcategoryName?: string;
 };
 
 export function validateUpdateProductInput(
   input: UpdateProductInput
-): { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string; active?: boolean; imageUrl?: string | null } {
+): ValidatedUpdateProductInput {
   const errors: string[] = [];
-  const result: { name?: string; categoryName?: string; costPrice?: number; salePrice?: number; minStock?: number; maxStock?: number; ivaRate?: number; supplierId?: string | null; unit?: string; active?: boolean; imageUrl?: string | null } = {};
+  const result: ValidatedUpdateProductInput = {};
 
   if (input.name !== undefined) {
     const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -205,7 +247,9 @@ export function validateUpdateProductInput(
   }
 
   if (input.costPrice !== undefined) {
-    if (!isValidNonNegativeNumber(input.costPrice)) {
+    if (input.costPrice === null) {
+      result.costPrice = null;
+    } else if (!isValidNonNegativeNumber(input.costPrice)) {
       errors.push("Cost price must be a non-negative number.");
     } else {
       result.costPrice = input.costPrice;
@@ -279,6 +323,16 @@ export function validateUpdateProductInput(
     } else {
       result.imageUrl = input.imageUrl;
     }
+  }
+
+  if (input.barcode !== undefined) {
+    const trimmed = typeof input.barcode === "string" ? input.barcode.trim() : "";
+    result.barcode = trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (input.subcategoryName !== undefined) {
+    result.subcategoryName =
+      typeof input.subcategoryName === "string" ? input.subcategoryName.trim() : "";
   }
 
   if (errors.length > 0) {

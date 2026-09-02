@@ -71,6 +71,7 @@ type ProductRecord = {
   id: string;
   name: string;
   productCode: string | null;
+  barcode: string | null;
   categoryName: string;
   salePrice: string;
   stock: number;
@@ -705,7 +706,8 @@ export function Pos() {
     const q = searchQuery.trim().toLowerCase();
     if (q) result = result.filter((p) =>
       p.name.toLowerCase().includes(q) ||
-      (p.productCode?.toLowerCase().includes(q) ?? false)
+      (p.productCode?.toLowerCase().includes(q) ?? false) ||
+      (p.barcode?.toLowerCase().includes(q) ?? false)
     );
     if (activeCategory !== "Todos") {
       result = result.filter((p) => p.categoryName === activeCategory);
@@ -720,7 +722,12 @@ export function Pos() {
   useEffect(() => {
     const q = searchQuery.trim();
     if (!q || cashRegisterStatus !== "open") return;
-    const exact = products.find((p) => p.productCode && p.productCode.toLowerCase() === q.toLowerCase());
+    const qLower = q.toLowerCase();
+    const exact = products.find(
+      (p) =>
+        (p.productCode && p.productCode.toLowerCase() === qLower) ||
+        (p.barcode && p.barcode.toLowerCase() === qLower)
+    );
     if (exact) {
       addToCart(exact);
       setSearchQuery("");

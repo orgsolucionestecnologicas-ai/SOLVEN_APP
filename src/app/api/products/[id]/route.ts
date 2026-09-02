@@ -33,7 +33,13 @@ export async function GET(
   try {
     const product = await getProductById(id, tenantId);
     if (!product) return errorResponse("Producto no encontrado.", 404);
-    return successResponse(product);
+    const subcategory = product.subcategoryId
+      ? await prisma.subcategory.findUnique({
+          where: { id: product.subcategoryId },
+          select: { name: true }
+        })
+      : null;
+    return successResponse({ ...product, subcategoryName: subcategory?.name ?? null });
   } catch {
     return errorResponse("No se pudo cargar el producto.");
   }
@@ -76,7 +82,10 @@ export async function PUT(
       entityId: product.id,
       metadata: { name: product.name }
     });
-    const warning = getSalePriceBelowCostWarning(Number(product.costPrice), Number(product.salePrice));
+    const warning = getSalePriceBelowCostWarning(
+      product.costPrice ? Number(product.costPrice) : null,
+      Number(product.salePrice)
+    );
     return successResponse(product, 200, warning ?? undefined);
   } catch (error) {
     if (error instanceof ProductValidationError) {

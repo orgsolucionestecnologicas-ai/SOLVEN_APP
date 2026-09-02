@@ -1,9 +1,9 @@
-import type { Product } from "@prisma/client";
+import type { Prisma, Product } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { generateCode } from "@/lib/generate-code";
 import { logAudit } from "@/modules/audit";
 
+import { generateProductSku } from "./product-sku";
 import {
   type CreateProductInput,
   ProductValidationError,
@@ -12,16 +12,41 @@ import {
   validateUpdateProductInput
 } from "./product-validation";
 
+async function resolveSubcategoryId(
+  client: Prisma.TransactionClient,
+  tenantId: string,
+  categoryName: string,
+  subcategoryName: string | undefined
+): Promise<string | null> {
+  if (!subcategoryName) {
+    return null;
+  }
+
+  const subcategory = await client.subcategory.findFirst({
+    where: { name: subcategoryName, category: { tenantId, name: categoryName } }
+  });
+
+  return subcategory?.id ?? null;
+}
+
 export async function createProduct(
   productInput: CreateProductInput,
   tenantId: string
 ): Promise<Product> {
   const validatedProduct = validateCreateProductInput(productInput);
-  const productCode = await generateCode("PROD");
+  const { subcategoryName, ...productData } = validatedProduct;
+  const productCode = await generateProductSku(tenantId, validatedProduct.categoryName);
 
   return prisma.$transaction(async (transaction) => {
+    const subcategoryId = await resolveSubcategoryId(
+      transaction,
+      tenantId,
+      validatedProduct.categoryName,
+      subcategoryName
+    );
+
     const product = await transaction.product.create({
-      data: { ...validatedProduct, productCode, tenantId }
+      data: { ...productData, productCode, subcategoryId, tenantId }
     });
 
     if (validatedProduct.stock > 0) {
@@ -68,18 +93,28 @@ export async function updateProduct(
   tenantId: string,
   userId: string
 ): Promise<Product> {
-  const data = validateUpdateProductInput(input);
+  const { subcategoryName, ...updateData } = validateUpdateProductInput(input);
 
   const existing = await prisma.product.findFirstOrThrow({ where: { id, tenantId } });
 
+  const subcategoryId =
+    subcategoryName !== undefined
+      ? await resolveSubcategoryId(
+          prisma,
+          tenantId,
+          updateData.categoryName ?? existing.categoryName,
+          subcategoryName
+        )
+      : undefined;
+
   const product = await prisma.product.update({
     where: { id, tenantId },
-    data
+    data: { ...updateData, ...(subcategoryId !== undefined ? { subcategoryId } : {}) }
   });
 
-  const costPriceBefore = existing.costPrice.toNumber();
+  const costPriceBefore = existing.costPrice ? existing.costPrice.toNumber() : null;
   const salePriceBefore = existing.salePrice.toNumber();
-  const costPriceAfter = product.costPrice.toNumber();
+  const costPriceAfter = product.costPrice ? product.costPrice.toNumber() : null;
   const salePriceAfter = product.salePrice.toNumber();
 
   if (costPriceBefore !== costPriceAfter || salePriceBefore !== salePriceAfter) {
@@ -128,11 +163,13 @@ export async function importProducts(
 
         if (existing) {
           const { productCode: _ignored, ...updateInput } = row;
-          const data = validateUpdateProductInput(updateInput as UpdateProductInput);
+          const { subcategoryName: _subcategoryName, ...data } = validateUpdateProductInput(
+            updateInput as UpdateProductInput
+          );
           await tx.product.update({ where: { id: existing.id, tenantId }, data });
           updated++;
         } else {
-          const data = validateCreateProductInput(row);
+          const { subcategoryName: _subcategoryName, ...data } = validateCreateProductInput(row);
           await tx.product.create({
             data: { ...data, productCode: productCode ?? null, tenantId }
           });

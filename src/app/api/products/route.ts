@@ -69,7 +69,10 @@ export async function POST(request: Request) {
       entityId: product.id,
       metadata: { name: product.name }
     });
-    const warning = getSalePriceBelowCostWarning(Number(product.costPrice), Number(product.salePrice));
+    const warning = getSalePriceBelowCostWarning(
+      product.costPrice ? Number(product.costPrice) : null,
+      Number(product.salePrice)
+    );
     return successResponse(product, 201, warning ?? undefined);
   } catch (error) {
     if (error instanceof ProductValidationError) {

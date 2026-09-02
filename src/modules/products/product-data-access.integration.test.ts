@@ -138,5 +138,6 @@ async function deleteProductDataAccessTestData() {
 
   await prisma.inventoryMovement.deleteMany({ where: { productId: { in: testProductIds } } });
   await prisma.product.deleteMany({ where: { id: { in: testProductIds } } });
+  await prisma.productSkuCounter.deleteMany({ where: { tenantId: { in: testTenantIds } } });
   await prisma.tenant.deleteMany({ where: { id: { in: testTenantIds } } });
 }
