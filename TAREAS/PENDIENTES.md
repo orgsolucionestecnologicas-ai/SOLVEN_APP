@@ -34,6 +34,10 @@ Flujo completo de venta (contado, crédito), inventario y promociones, probado a
 Venta → devolución parcial → verificar que el stock sube y la caja refleja la diferencia. Sesión manual, no orden de código. ~55 min.
 **Por qué importa:** con FIX-07 (selector de método de reintegro) ya en producción, conviene verificar también que el método elegido se refleje bien en caja.
 
+#### T19 — Probar PROMO-FIX-01/05 en vivo (segmento de cliente + liberación de cupo en devolución total)
+Verificado por el Ingeniero Líder (02-09-2026) sólo por lectura de código — el cableado del segmento (`sale-data-access.ts`/`apply/route.ts`) y la liberación de `PromotionUsage` en devolución total (`returns/index.ts`) quedaron sin test automatizado. Sesión manual: crear un cliente de segmento VIP (o Recurrente/Nuevo), una promoción restringida a ese segmento, vender con ese cliente y confirmar que el descuento se aplica; después hacer una devolución total de una venta con promoción de cupo limitado y confirmar que el cupo se libera (`PromotionUsage` de esa venta desaparece). ~20 min.
+**Por qué importa:** PROMO-FIX-01 era el hallazgo CRÍTICO del ciclo (promos de segmento nunca se aplicaban) — la lógica del motor ya tiene tests genuinos, pero el cableado real contra la base de producción todavía no se probó en vivo.
+
 ### 🟡 Medio
 
 #### [Devoluciones · UX] Mostrar detalle completo de la venta original antes de confirmar
