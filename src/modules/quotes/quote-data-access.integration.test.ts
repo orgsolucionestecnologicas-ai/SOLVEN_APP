@@ -135,11 +135,25 @@ describe("confirmQuote", () => {
     expect(sale.customerId).toBe(customer.id);
     expect(sale.sellerId).toBe(testUserId);
     expect(sale.sellerCode).toBe("QTS1");
+    expect(sale.paymentDetails).toEqual([{ method: "Efectivo", amount: 80 }]);
 
     const cashMovement = await prisma.cashMovement.findFirstOrThrow({
       where: { source: "SALE", referenceId: sale.id }
     });
     expect(cashMovement.amount.toString()).toBe("80");
+  });
+
+  it("records the chosen payment method on the sale's paymentDetails when confirmed with a non-cash method", async () => {
+    const product = await createTestProduct("PAYMENT_METHOD_TRACE", 60, 5);
+    const quote = await createQuote(
+      { customerName: testCustomerNamePrefix, items: [{ productId: product.id, quantity: 1 }] },
+      testTenantId,
+      testUserId
+    );
+
+    const sale = await confirmQuote(quote.id, testTenantId, "Tarjeta");
+
+    expect(sale.paymentDetails).toEqual([{ method: "Tarjeta", amount: 60 }]);
   });
 
   it("creates a Debt instead of a CashMovement when confirmed with the Credito method", async () => {
@@ -157,6 +171,7 @@ describe("confirmQuote", () => {
 
     expect(sale.paymentType).toBe("CREDIT");
     expect(sale.debtId).not.toBeNull();
+    expect(sale.paymentDetails).toBeNull();
 
     const debt = await prisma.debt.findUniqueOrThrow({ where: { id: sale.debtId as string } });
     expect(debt.remainingAmount.toString()).toBe("100");

@@ -316,6 +316,10 @@ export async function confirmQuote(
           sellerCode: quote.sellerCode,
           totalAmount,
           discountAmount,
+          paymentDetails:
+            method === "Credito"
+              ? Prisma.JsonNull
+              : ([{ method, amount: netTotal.toNumber() }] as Prisma.InputJsonValue),
         },
       });
 
