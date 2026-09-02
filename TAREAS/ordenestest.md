@@ -6,6 +6,363 @@
 > vacía entre ciclos como `REPORTE_DE_CAMBIOS.md` — es el historial completo
 > de todo lo auditado, para no repetir trabajo.
 
+## Promociones — auditado 02-09-2026
+
+> Diego pidió explícitamente máximo detalle en esta sección, "que todo
+> coincida a pleno". Por eso la verificación cruzó CUATRO archivos a la
+> vez línea por línea: `src/modules/promotions/promotion-engine.ts`
+> (motor de cálculo), `promotion-validation.ts`, `promotion-data-access.ts`
+> y los dos puntos donde el motor realmente se invoca con datos reales —
+> `src/app/api/promotions/apply/route.ts` (preview del carrito en el POS)
+> y `src/modules/sales/sale-data-access.ts:175` (el cálculo autoritativo
+> al confirmar la venta) — más `src/modules/returns/index.ts` para
+> confirmar qué pasa con una promoción usada cuando esa venta se
+> devuelve. Cada hallazgo de abajo está anclado a archivo:línea exacta y,
+> donde correspondía, a los DOS call-sites del motor a la vez (no alcanza
+> con mirar uno solo, porque pueden divergir entre sí).
+
+### Bugs confirmados — ORDEN para el agente ejecutor (VS Code)
+
+**PROMO-FIX-01 (CRÍTICO) — Las promociones restringidas por segmento de cliente (VIP, Recurrente, Nuevo) no se aplican NUNCA, a nadie**
+- Archivos: `src/app/api/promotions/apply/route.ts` (línea donde llama a
+  `applyPromotionsToCart`), `src/modules/sales/sale-data-access.ts:175`.
+- Qué pasa: `applyPromotionsToCart(cartItems, promotions, customerId?, customerSegment?)`
+  tiene un 4º parámetro, `customerSegment`, que es justamente lo que el
+  motor usa para decidir si una promoción restringida a un segmento
+  aplica (`promotion-engine.ts`: `if (promotion.customerSegment && promotion.customerSegment !== "NINGUNO" && promotion.customerSegment !== customerSegment) continue;`).
+  Los DOS ÚNICOS lugares del sistema que invocan esta función —el preview
+  del carrito en el POS (`apply/route.ts`) Y el cálculo real al confirmar
+  la venta (`sale-data-access.ts:175`)— llaman a
+  `applyPromotionsToCart(cartItems, promotions, customerId)`, sin un
+  cuarto argumento. `customerSegment` llega siempre `undefined`. Como el
+  chequeo es `promotion.customerSegment !== customerSegment` y
+  `customerSegment` nunca es otra cosa que `undefined`, CUALQUIER
+  promoción con un segmento configurado (VIP, Recurrente, Nuevo) queda
+  descartada para TODOS los clientes, incluido el cliente que sí
+  califica. No es que un cliente que no debería recibirla la reciba: es
+  que la promoción, tal cual está configurada hoy, jamás descuenta nada
+  para nadie, sin ningún error visible — el dueño la ve "activa" en el
+  listado, con fechas vigentes, y simplemente nunca se usa.
+- Qué hacer: antes de llamar a `applyPromotionsToCart` en
+  `sale-data-access.ts` (cuando hay `customerId`), traer el segmento real
+  con una consulta liviana
+  `const customer = customerId ? await transaction.customer.findFirst({ where: { id: customerId, tenantId }, select: { segment: true } }) : null;`
+  y pasar `customer?.segment` como 4º argumento. En
+  `apply/route.ts`, mismo criterio: si viene `body.customerId`, buscar el
+  cliente (scopeado por `tenantId`) y pasar su `segment` al motor. Ojo:
+  este fetch en `sale-data-access.ts` puede reusar el mismo `customer`
+  que ya se carga más abajo (línea ~242) para el chequeo de límite de
+  crédito en ventas a crédito — evaluar si conviene subir esa consulta
+  más arriba en la función en vez de duplicarla.
+
+**PROMO-FIX-02 (ALTO) — Dos promociones distintas y vigentes del mismo tipo compiten en silencio por el mismo producto, y el verificador de solapamiento no las detecta**
+- Archivo: `src/modules/promotions/promotion-engine.ts` (todas las
+  funciones `applyXPromotion`, vía `item.appliedTypes.has(type)` /
+  `item.appliedTypes.add(type)`), `src/modules/promotions/promotion-data-access.ts`,
+  función `findOverlappingPromotions`.
+- Qué pasa: el motor bloquea que un mismo ítem del carrito reciba una
+  segunda promoción del MISMO `PromotionType` (enum: PERCENTAGE,
+  FIXED_AMOUNT, TWO_FOR_ONE, etc.) usando un `Set<PromotionType>` por
+  ítem — no un `Set` de `promotion.id`. Si un comercio tiene, por
+  ejemplo, "10% en Lácteos" (CATEGORY, tipo PERCENTAGE) Y "5% en todo el
+  local" (ALL_PRODUCTS, tipo también PERCENTAGE) vigentes al mismo
+  tiempo, un producto de Lácteos solo recibe la PRIMERA de las dos que el
+  motor procese (según el orden en que llegan del array `promotions`, que
+  no tiene ningún criterio explícito de prioridad) — la segunda, aunque
+  100% válida y vigente, se descarta en silencio para ese ítem, sin
+  ningún error, log ni aviso en ningún lado. Esto sería relativamente
+  menor si el creador de la segunda promoción pudiera detectarlo al
+  crearla, pero el verificador de solapamiento
+  (`findOverlappingPromotions`, usado por `check-overlap/route.ts`) SOLO
+  compara promociones con el mismo `application` EXACTO: dos `CATEGORY`
+  de la misma categoría, o dos `SPECIFIC_PRODUCT` del mismo producto. NO
+  detecta el cruce entre `ALL_PRODUCTS` y `CATEGORY`, ni entre `CATEGORY`
+  y un `SPECIFIC_PRODUCT` que pertenece a esa categoría — que es
+  exactamente el caso del ejemplo de arriba. Resultado real: el dueño
+  crea la segunda promoción, el sistema le dice "no hay solapamiento", la
+  guarda, y nunca sabrá por qué esa promoción "no vende" hasta que
+  audite manualmente el ranking de uso.
+- Qué hacer: dos cambios independientes, los dos hacen falta:
+  1) En el motor, trackear por `promotion.id` en vez de por `type` si la
+     intención real es "una promoción no puede tocar el mismo ítem dos
+     veces a través de sí misma" — hoy ese chequeo por tipo no protege
+     nada dentro de una misma promoción (cada ítem se visita una sola vez
+     por promoción), así que en la práctica solo bloquea combinaciones
+     ENTRE promociones distintas del mismo tipo, algo que no parece ser
+     la intención real dado que el propio sistema tiene un verificador de
+     solapamiento separado para prevenir conflictos. Confirmar con Diego
+     si la política deseada es "combinar todas las promociones vigentes
+     que apliquen" o "la primera promoción que toca un ítem gana, las
+     demás no aplican a ese ítem" — y que el código refleje esa decisión
+     de forma explícita y documentada, no como efecto secundario de un
+     `Set<PromotionType>`.
+  2) En `findOverlappingPromotions`, ampliar la detección de solapamiento
+     para que compare TODAS las combinaciones de `application` que
+     pueden tocar el mismo producto, no solo la misma `application`
+     exacta: una promoción `ALL_PRODUCTS` solapa con cualquier `CATEGORY`
+     o `SPECIFIC_PRODUCT` vigente en el mismo rango de fechas; una
+     `CATEGORY` solapa con un `SPECIFIC_PRODUCT` vigente si ese producto
+     pertenece a esa categoría (requiere consultar `Product.categoryName`
+     del `productAId` en cuestión).
+
+**PROMO-FIX-03 (ALTO) — Se puede crear una promoción "fantasma" que queda activa pero nunca descuenta nada**
+- Archivos: `src/modules/promotions/promotion-validation.ts`, función
+  `validateCreatePromotion`.
+- Qué pasa: dos combinaciones inválidas pasan la validación sin ningún
+  error y quedan guardadas como promoción activa, pero el motor nunca las
+  aplica: (a) una promoción `type: SPECIAL_PRICE` con `application`
+  distinto de `SPECIFIC_PRODUCT` (por ejemplo `CATEGORY` o
+  `ALL_PRODUCTS`) — `applySpecialPricePromotion` en el motor exige
+  `promotion.application === "SPECIFIC_PRODUCT"` como condición dura, sin
+  excepción, así que cualquier otra combinación nunca hace nada; (b)
+  cualquier promoción con `application: SPECIFIC_PRODUCT` sin
+  `productAId` informado — la validación solo exige `categoryName`
+  cuando `application === "CATEGORY"`, y solo exige `productAId` cuando
+  `type === "BUNDLED_PRODUCTS"`, pero nunca exige `productAId` cuando
+  `application === "SPECIFIC_PRODUCT"` con cualquier otro `type` — el
+  motor compara `item.productId === promotion.productAId`, que con
+  `productAId` vacío nunca coincide con nada.
+- Qué hacer: agregar en `validateCreatePromotion` (y en
+  `validateUpdatePromotion`, para que tampoco se pueda editar una
+  promoción hacia un estado inválido): si `type === "SPECIAL_PRICE"`,
+  exigir `application === "SPECIFIC_PRODUCT"` explícitamente (mismo
+  criterio que ya se usa para bloquear combinaciones inválidas de
+  `BUNDLED_PRODUCTS`); si `application === "SPECIFIC_PRODUCT"` (con
+  cualquier `type`, no solo `SPECIAL_PRICE`), exigir `productAId` no
+  vacío, con el mismo mensaje de error que ya usa `categoryName` para
+  `CATEGORY`.
+
+**PROMO-FIX-04 (MEDIO) — Fecha de vencimiento de una promoción interpretada en UTC, no en horario argentino**
+- Archivo: `src/app/ui/promotions*.tsx` (el formulario de alta/edición de
+  promoción, construcción de `startsAt`/`endsAt` antes de enviar al
+  backend: `new Date(form.endsAt).toISOString()` a partir de una fecha
+  simple del datepicker, sin offset).
+- Qué pasa: mismo patrón de raíz que REPORTE-FIX-03 (reportes ARCA), acá
+  aplicado a promociones. Si el dueño configura "vence el 2 de
+  septiembre" en el formulario, `new Date("2026-09-02")` se interpreta
+  como medianoche UTC de esa fecha — que en horario argentino (UTC-3) es
+  las 21:00 del día ANTERIOR (1 de septiembre). La promoción deja de
+  aplicarse casi un día entero antes de lo que cualquier dueño esperaría
+  al leer "vence el 2/9". El mismo problema, en menor medida, corre para
+  `startsAt` (arranca 3 horas antes de la medianoche local, lo cual es
+  menos grave porque no le corta nada a nadie, pero es la misma causa
+  raíz).
+- Qué hacer: aplicar el offset fijo de Argentina al construir las fechas
+  en el formulario, igual que se resolvió en REPORTE-FIX-03:
+  `new Date(`${form.endsAt}T23:59:59.999-03:00`).toISOString()` para el
+  fin (inclusive todo el día elegido) y
+  `new Date(`${form.startsAt}T00:00:00-03:00`).toISOString()` para el
+  inicio.
+
+**PROMO-FIX-05 (MEDIO) — Una devolución no libera el uso consumido de una promoción**
+- Archivo: `src/modules/returns/index.ts` (no hay ninguna referencia a
+  `PromotionUsage` en todo el archivo).
+- Qué pasa: si una venta que usó una promoción con tope ("1 uso por
+  cliente" vía `maxUsagesPerCustomer`, o un tope global vía `maxUsages`)
+  se devuelve por completo, el registro en `PromotionUsage` queda
+  intacto. El cliente que devolvió su compra no puede volver a usar esa
+  promoción nunca más, aunque su compra original haya quedado totalmente
+  sin efecto — y si la promoción tenía un tope global de canjes, ese
+  cupo queda gastado para siempre en una venta que ya no existe.
+- Qué hacer: cuando `processReturn` procesa una devolución total de una
+  venta que tiene `PromotionUsage` asociados (vía `sale.id` ==
+  `PromotionUsage.saleId`), eliminar esos registros de `PromotionUsage`
+  dentro de la misma transacción de la devolución. Si la devolución es
+  PARCIAL (no se devuelven todos los ítems de la venta), es una decisión
+  de producto más fina — lo más simple y seguro es limitar este fix a
+  devoluciones totales por ahora, y dejar la devolución parcial con
+  promoción como pregunta de producto (ver Inconcluso).
+
+**PROMO-FIX-06 (BAJO-MEDIO) — Listado, historial de uso, ranking y "por vencer" de promociones sin control de rol**
+- Archivos: `src/app/api/promotions/route.ts` (`GET`),
+  `src/app/api/promotions/[id]/route.ts` (`GET`),
+  `src/app/api/promotions/[id]/usages/route.ts` (`GET`),
+  `src/app/api/promotions/ranking/route.ts` (`GET`),
+  `src/app/api/promotions/expiring/route.ts` (`GET`).
+- Qué pasa: los cinco usan solo `requireTenantId()`, mientras que
+  `POST`, `PUT`, `DELETE` y `duplicate` de este mismo módulo ya son
+  estrictamente `requireRole(["OWNER"])` — de hecho, promociones ya está
+  documentado como sección "OWNER-only" desde QA-FIX-02. Estos cinco
+  `GET` rompen esa consistencia: cualquier usuario autenticado del
+  comercio puede ver el ranking de descuentos otorgados, el historial de
+  uso por cliente y el detalle completo de cada promoción, sin importar
+  su rol. (`POST /api/promotions/apply`, el preview del carrito en el
+  POS, queda afuera de esta orden a propósito: ese sí necesita ser
+  accesible para cualquier cajero, es el cálculo en vivo del descuento
+  mientras arma la venta.)
+- Qué hacer: cambiar los cinco `GET` a `requireRole(["OWNER"])`, mismo
+  criterio que ya usa el resto del módulo.
+
+**PROMO-FIX-07 (BAJO) — Sin registro de auditoría en todo el módulo de promociones**
+- Archivo: `src/modules/promotions/promotion-data-access.ts`
+  (`createPromotion`, `updatePromotion`, `deletePromotion`,
+  `duplicatePromotion`).
+- Qué pasa: no hay ningún `logAudit(...)` en todo el módulo. Mismo patrón
+  ya encontrado y corregido en Devoluciones, Inventario, Deudas,
+  Cotizaciones y Facturación — acá con el agravante de que una promoción
+  mal configurada afecta directamente el margen de cada venta donde se
+  aplica.
+- Qué hacer: agregar `void logAudit({ tenantId, userId, action: "PROMOTION_CREATED" | "PROMOTION_UPDATED" | "PROMOTION_DELETED" | "PROMOTION_DUPLICATED", entityType: "Promotion", entityId: promotion.id, metadata: {...} })`
+  en las cuatro rutas correspondientes, que ya tienen `userId` disponible
+  vía `requireRole`.
+
+### Al terminar
+
+1. `npm run lint && npm run typecheck && npm test` — todo debe pasar antes
+   de commitear. Prestar particular atención a `promotion-engine.test.ts`
+   (ya existe una suite de 497 líneas): PROMO-FIX-01 y PROMO-FIX-02 tocan
+   la firma y el comportamiento interno del motor, así que es muy
+   probable que haya que sumar casos de test nuevos (segmento de cliente
+   real que sí debe calificar, dos promociones del mismo tipo que sí
+   deben poder combinarse) además de correr los existentes.
+2. Commit + push con mensaje descriptivo (ej.
+   `fix(promotions): segmento de cliente real, combinacion entre promos del mismo tipo, validacion de coherencia type/application`).
+3. Agregar una entrada corta a `TAREAS/REPORTELIDER.md` — no es necesario
+   redactarla en detalle, solo dejar constancia de qué se tocó.
+4. Entregable breve acá mismo: archivos modificados, resultado de
+   typecheck, hash de commit.
+5. No te autocertifiques como "verificado" — eso lo revisa el Ingeniero
+   Líder mirando el diff real. Dado el pedido explícito de Diego de
+   máximo detalle en esta sección, el Ingeniero Líder debería en lo
+   posible probar en vivo al menos un caso de PROMO-FIX-01 (una
+   promoción VIP real, con un cliente VIP real) contra Neon, no solo
+   confiar en los tests.
+
+### Verificado correcto (no ordenar fix)
+
+1. POS-FIX-02 sigue vigente en `sale-data-access.ts`: los `promotionIds`
+   que manda el cliente se revalidan siempre contra promociones reales,
+   activas y del tenant correcto (`where: { id: { in: promotionIds }, tenantId, isActive: true }`)
+   antes de pasarlas al motor — un `promotionId` inventado, de otro
+   tenant, o ya desactivado, no puede colarse desde el frontend.
+2. El motor (`applyPromotionsToCart`) vuelve a chequear internamente
+   vigencia de fechas (`isPromotionTimeValid`) y límites de uso
+   (`isUsageWithinLimits`) para cada promoción, incluso las que ya
+   vinieron filtradas por `isActive: true` desde la base — una promoción
+   vencida o con el cupo agotado no puede aplicarse aunque el filtro de
+   la consulta tuviera algún hueco.
+3. El reparto de "gratis" en promociones `TWO_FOR_ONE`/`THREE_FOR_TWO` le
+   da la unidad de MENOR precio al cliente gratis (orden ascendente por
+   precio) — es el criterio estándar/esperado en un comercio argentino
+   (el ítem más barato de los N llevados es el que sale gratis), no un
+   bug aunque a primera vista podría parecer sospechoso que no sea el más
+   caro.
+4. `MINIMUM_PURCHASE` aplica su descuento sobre el subtotal completo del
+   carrito sin restringirse por `application`/categoría — comportamiento
+   esperado para este tipo de promoción, que por naturaleza es sobre el
+   total de la compra, no sobre productos puntuales.
+5. `deletePromotion` bloquea el borrado si la promoción ya tiene usos
+   registrados (`PromotionHasUsagesError`) — mismo patrón correcto ya
+   visto en Categorías; no se puede borrar una promoción con historial
+   real, solo desactivarla.
+6. `findOverlappingPromotions`/`check-overlap` sí detecta correctamente
+   el caso más común y esperado: dos promociones con el mismo
+   `application` EXACTO (misma categoría, o mismo producto específico) y
+   fechas superpuestas. El gap real y confirmado es solo el cruce ENTRE
+   distintos valores de `application` (cubierto en PROMO-FIX-02), no una
+   ausencia total del verificador.
+7. `POST /api/promotions/apply` usa correctamente solo `requireTenantId()`
+   sin exigir rol de OWNER — a diferencia de los `GET` de PROMO-FIX-06,
+   este sí necesita ser accesible para cualquier cajero, porque es el
+   cálculo en vivo del descuento mientras arma una venta real en el POS.
+8. Todos los cálculos del motor usan `Prisma.Decimal` de punta a punta
+   (nunca `number`/`Math`), evitando el error de redondeo de punto
+   flotante típico de JavaScript — buena práctica ya aplicada de forma
+   consistente en todo `promotion-engine.ts`.
+
+### Inconcluso (necesita reproducción en vivo o decisión de producto)
+
+1. Cuál debería ser la política real de combinación entre promociones
+   vigentes que se solapan (¿todas se combinan siempre? ¿gana la de
+   mayor descuento para el cliente? ¿gana la más vieja/más nueva?) es una
+   decisión de producto que PROMO-FIX-02 necesita para saber cómo
+   reemplazar el `Set<PromotionType>` actual — dejé la recomendación
+   técnica (trackear por `promotion.id`) pero la política de prioridad
+   final la tiene que definir Diego.
+2. Qué hacer con `PromotionUsage` en una devolución PARCIAL (no toda la
+   venta, solo algunos ítems) de una venta que usó una promoción por
+   cantidad (`TWO_FOR_ONE`/`THREE_FOR_TWO`) — PROMO-FIX-05 cubre el caso
+   más simple y seguro (devolución total), pero el caso parcial requiere
+   decidir si corresponde recalcular el descuento proporcionalmente o
+   dejar el uso consumido como está. Queda pendiente de decisión de
+   producto.
+3. No encontré un caso concreto de descuadre de centavos en el
+   prorrateo de `MINIMUM_PURCHASE` con `minimumPurchaseDiscountType: "FIXED_AMOUNT"`
+   repartido entre ítems de precios muy dispares (la lógica usa
+   `Prisma.Decimal` correctamente), pero tampoco hice una prueba
+   exhaustiva de todas las combinaciones posibles de redondeo — lo dejo
+   anotado por si en algún momento se reporta una diferencia real de
+   centavos entre lo que muestra el ticket y lo que suma la caja.
+
+---
+
+## Reportes / Facturación (ARCA) — auditado 02-09-2026
+
+> Punto de partida: 20 escenarios hipotéticos de "día normal" para
+> Reportes y Facturación (ARCA/AFIP), discutidos con Diego antes de leer
+> código. Contrastados contra `src/modules/invoices`, `src/lib/arca`
+> completo (wsaa-client, wsfe-client, voucher-builder, token-cache,
+> cert-crypto) y las rutas de `src/app/api/invoices` y
+> `src/app/api/reports`. Punto de partida importante: FIX-08 (recalcular
+> items/total de la venta real, nunca confiar en el cliente) sigue vigente
+> y funcionando bien. Lo que encontramos ahora es distinto: no son bugs de
+> "el cliente manda datos falsos", son bugs de concurrencia y de huso
+> horario — plata real que AFIP ya cobró como comprobante pero que SOLVEN
+> puede llegar a no tener registrada, y reportes que pueden mostrarle al
+> dueño el día equivocado.
+
+### Bugs confirmados
+
+> Orden ya entregada al agente ejecutor (REPORTE-FIX-01 a 07) y removida de acá para que no se repita. Resultado real: ver commits + TAREAS/REPORTELIDER.md.
+
+### Verificado correcto (no ordenar fix)
+
+1. `emitInvoice` ya recalcula `items`/`total` desde la venta real cargada
+   de la base (`sale.totalAmount`, `sale.items`) y nunca confía en datos
+   que mande el cliente — FIX-08 sigue vigente y funcionando.
+2. `emitInvoice` carga la venta con `where: { id: saleId, tenantId }` —
+   aislamiento correcto por tenant para la venta que se factura (el gap de
+   tenant de esta sección está sólo en `getInvoiceBySaleId`, que ni
+   siquiera está conectada a una ruta).
+3. `POST /api/invoices` y `GET /api/invoices/test` usan correctamente
+   `requireRole` (`["OWNER", "CASHIER"]` y `["OWNER"]` respectivamente).
+4. Ya existe un guard básico contra la doble factura (`findUnique` +
+   restricción única de `saleId` en la base) — el problema de
+   REPORTE-FIX-01 es específicamente la ventana entre ese chequeo y la
+   llamada a AFIP, no la ausencia total de protección.
+5. `ARCATokenCache` está correctamente scopeado por `tenantId` (clave
+   única), no hay ningún riesgo de que el token de sesión de un comercio
+   se use para facturar en nombre de otro.
+6. `docTipo` se valida contra una lista cerrada (`[99, 96, 80]`) en
+   `POST /api/invoices` antes de llegar a `emitInvoice`.
+7. El ambiente de AFIP (homologación/producción) se lee de
+   `TenantARCAConfig.ambiente` por comercio, con un fallback seguro a
+   homologación si el valor guardado fuera inválido — ningún comercio
+   puede terminar apuntando por accidente al ambiente de otro.
+
+### Inconcluso (necesita reproducción en vivo o decisión de producto)
+
+1. Sigue sin existir ninguna integración con Nota de Crédito de ARCA para
+   las devoluciones (ya lo habíamos dejado anotado en la sección de
+   Devoluciones) — una devolución de una venta facturada no genera ningún
+   comprobante fiscal que la respalde ante AFIP, solo el registro interno
+   de SOLVEN. Se reconfirma acá que sigue así. Pregunta de producto para
+   Diego: ¿está dentro del alcance de SOLVEN emitir notas de crédito, o
+   es una limitación conocida y aceptada por ahora?
+2. `docNro` (CUIT/DNI) no tiene validación de formato/longitud en ningún
+   lado del lado de SOLVEN — hoy AFIP lo rechaza igual (no es un bug
+   silencioso, no se factura mal a nadie), pero el error que le llega al
+   cajero es el mensaje crudo de AFIP en vez de algo como "el CUIT debe
+   tener 11 dígitos". Es una mejora de UX, no un bug funcional; queda para
+   una decisión de prioridad de Diego.
+3. No existe ningún reporte de "ventas sin facturar" (comparar ventas del
+   período contra facturas efectivamente emitidas) para que el dueño
+   detecte huecos. Podría ser una feature útil dado que ARCA es opt-in y
+   la facturación es una acción manual separada de la venta, pero es
+   decisión de producto si vale la pena construirla.
+
+---
+
 ## Cotizaciones — auditado 01-09-2026
 
 > Punto de partida: 20 escenarios hipotéticos de "día normal" para
@@ -22,133 +379,9 @@
 > que "cotización confirmada" y "venta de POS" terminen siendo la misma
 > cosa por dentro, no dos caminos que casi coinciden.
 
-### Bugs confirmados — ORDEN para el agente ejecutor (VS Code)
+### Bugs confirmados
 
-**COT-FIX-01 (ALTO) — Confirmar una cotización no exige caja abierta**
-- Archivo: `src/modules/quotes/quote-data-access.ts`, función
-  `confirmQuote`.
-- Qué pasa: `confirmQuote` crea un `Sale` y un `CashMovement` (type IN,
-  source "SALE") sin pasar nunca por `requireOpenCashRegisterSession`, a
-  diferencia de `createSale` en `sale-data-access.ts` que sí la exige
-  (`SaleNoCashRegisterOpenError`). Se puede confirmar una cotización —y
-  que quede plata "cobrada" en el sistema— sin que haya ninguna caja
-  abierta ese día, rompiendo la reconciliación de cierre de caja.
-- Qué hacer: dentro de la transacción de `confirmQuote`, antes de crear el
-  `Sale`, llamar `await requireOpenCashRegisterSession(tenantId, tx)`
-  (mismo helper que ya usa `sale-data-access.ts` y
-  `debt-payment-data-access.ts`), y dejar que el `SaleNoCashRegisterOpenError`
-  se propague igual que en una venta común.
-
-**COT-FIX-02 (ALTO) — El movimiento de caja de una cotización confirmada cobra el monto bruto, no el neto de descuento**
-- Archivo: `src/modules/quotes/quote-data-access.ts`, función
-  `confirmQuote` (creación del `CashMovement`).
-- Qué pasa: `await tx.cashMovement.create({ data: { ..., amount: totalAmount, ... } })`
-  usa `quote.totalAmount`, que es el total BRUTO antes de descuento. El
-  propio `Sale` creado sí guarda `discountAmount` por separado, y en el
-  resto del sistema (`sale-data-access.ts`) el monto que realmente se
-  registra en caja es siempre `netTotal = totalAmount.minus(discountAmount)`
-  (variable `collectedNow`). Acá no: si la cotización tenía un descuento
-  de $10.000 sobre un total de $100.000, la caja registra un ingreso de
-  $100.000 en vez de $90.000 — el cajón queda esperando $10.000 de más al
-  cerrar.
-- Qué hacer: calcular `const netTotal = totalAmount.minus(discountAmount)`
-  igual que en `sale-data-access.ts` y usar `netTotal` como `amount` del
-  `CashMovement`. Ver también COT-FIX-05 (el `discountAmount` necesita un
-  tope) — sin ese tope, este cálculo podría dar negativo.
-
-**COT-FIX-03 (ALTO) — Toda cotización confirmada queda forzada como venta en efectivo**
-- Archivo: `src/modules/quotes/quote-data-access.ts` (`confirmQuote`),
-  `src/modules/quotes/quote-validation.ts` (`CreateQuoteInput`).
-- Qué pasa: `confirmQuote` crea el `Sale` con `paymentType: "CASH"` fijo,
-  siempre. Una cotización es, por naturaleza, el tipo de venta donde MÁS
-  común es que el cliente termine pagando por transferencia o a cuenta
-  corriente (crédito) — sobre todo en ventas B2B o de monto alto, que es
-  justamente para lo que existen las cotizaciones. Hoy el sistema no tiene
-  forma de capturarlo: siempre queda registrado como si hubiera entrado
-  efectivo real a la caja, aunque no haya sido así.
-- Qué hacer: seguir la misma mejor práctica ya aplicada en
-  `Return.refundMethod` / `Expense.method` / `DebtPayment.method` — que el
-  método real de pago se declare, no se asuma. Agregar un campo de método
-  de pago al confirmar la cotización (en el modal de confirmación del
-  frontend, con las mismas opciones que ya usa el POS: Efectivo,
-  Tarjeta, Transferencia, Crédito/Cuenta corriente), pasarlo a
-  `confirmQuote`, y sólo crear el `CashMovement` cuando el método elegido
-  sea Efectivo — igual que ya se resolvió en Devoluciones (RET-FIX de
-  refundMethod) y en Caja (CAJA-FIX-02). Si el método es crédito, seguir
-  el mismo camino que `createSale` para crédito (crear el `Debt`
-  correspondiente en vez de un `CashMovement`).
-
-**COT-FIX-04 (MEDIO) — La venta generada al confirmar pierde la asociación con el cliente de la cotización**
-- Archivo: `src/modules/quotes/quote-data-access.ts`, función
-  `confirmQuote`.
-- Qué pasa: el `Sale` se crea con `customerId: null` fijo, aunque
-  `quote.customerId` puede tener un cliente real asociado. La venta
-  resultante no aparece en el historial de compras de ese cliente
-  (`customer-detail.tsx`), y si en COT-FIX-03 se habilita el pago a
-  crédito, hace falta el cliente igual para poder generar la deuda.
-- Qué hacer: pasar `customerId: quote.customerId` al crear el `Sale` en
-  vez de `null`.
-
-**COT-FIX-05 (MEDIO) — El descuento de una cotización no tiene tope contra el total**
-- Archivo: `src/modules/quotes/quote-validation.ts`, función
-  `validateCreateQuoteInput` (o donde se resuelve `discountAmount` en
-  `quote-data-access.ts`, función `createQuote`).
-- Qué pasa: `discountAmount` solo se valida como `>= 0`, sin comparar
-  nunca contra el `total` calculado de los ítems. Se puede guardar una
-  cotización con un descuento mayor a su propio total. Hoy esto no se
-  nota (ver COT-FIX-02, el bug actual ignora el descuento al cobrar), pero
-  en cuanto se corrija COT-FIX-02 este caso generaría un `netTotal`
-  negativo — un "cobro" negativo en la caja.
-- Qué hacer: en `createQuote`, después de calcular `total` de los ítems,
-  acotar el descuento con
-  `Prisma.Decimal.min(discountAmountInput, total)` (mismo criterio que ya
-  usa `sale-data-access.ts` para el descuento global de una venta).
-
-**COT-FIX-06 (MEDIO) — La venta de una cotización confirmada queda sin vendedor asignado**
-- Archivo: `src/modules/quotes/quote-data-access.ts` (`confirmQuote`),
-  `prisma/schema.prisma` (modelo `Quote`, sin campo de vendedor).
-- Qué pasa: `Sale` tiene `sellerId`/`sellerCode` para saber quién hizo la
-  venta (usado en reportes/comisiones), pero `Quote` no tiene ningún campo
-  de vendedor, y `confirmQuote` no completa `sellerId`/`sellerCode` al
-  crear la venta. Una venta que nace de una cotización confirmada queda
-  sin vendedor, a diferencia de cualquier venta hecha directo en el POS.
-- Qué hacer: agregar `sellerId`/`sellerCode` a `Quote` (quién armó la
-  cotización), completarlos al crear la cotización (mismo dato que ya usa
-  el POS al armar una venta), y copiarlos al `Sale` dentro de
-  `confirmQuote`.
-
-**COT-FIX-07 (BAJO-MEDIO) — Listado y detalle de cotizaciones sin control de rol**
-- Archivos: `src/app/api/quotes/route.ts` (`GET`),
-  `src/app/api/quotes/[id]/route.ts` (`GET`).
-- Qué pasa: mismo patrón sistémico de siempre — ambos `GET` usan solo
-  `requireTenantId()` en vez de `requireRole(...)`, mientras que `POST`,
-  `DELETE` (cancelar), `confirm`, `duplicate` y `send-reminder` ya usan
-  correctamente `requireRole(["OWNER", "CASHIER"], "quotes")`.
-- Qué hacer: aplicar el mismo `requireRole(["OWNER", "CASHIER"], "quotes")`
-  a ambos `GET`, para consistencia con el resto de las rutas del módulo.
-
-**COT-FIX-08 (BAJO) — Sin registro de auditoría en todo el módulo de cotizaciones**
-- Archivos: `src/modules/quotes/quote-data-access.ts` (`createQuote`,
-  `confirmQuote`, `cancelQuote`).
-- Qué pasa: no hay ningún `logAudit(...)` en el módulo — ni al crear, ni
-  al confirmar, ni al cancelar una cotización. Mismo patrón ya encontrado
-  y corregido en Devoluciones, Inventario y Deudas.
-- Qué hacer: agregar `void logAudit({ tenantId, userId, action: "QUOTE_CREATED" | "QUOTE_CONFIRMED" | "QUOTE_CANCELLED", entityType: "Quote", entityId: quote.id, metadata: {...} })`
-  en las tres rutas correspondientes, que ya tienen `userId` disponible
-  vía `requireRole`.
-
-### Al terminar
-
-1. `npm run lint && npm run typecheck && npm test` — todo debe pasar antes
-   de commitear.
-2. Commit + push con mensaje descriptivo (ej.
-   `fix(quotes): caja abierta y monto neto al confirmar, método de pago real, cliente y vendedor asociados`).
-3. Agregar una entrada corta a `TAREAS/REPORTELIDER.md` — no es necesario
-   redactarla en detalle, solo dejar constancia de qué se tocó.
-4. Entregable breve acá mismo: archivos modificados, resultado de
-   typecheck, hash de commit.
-5. No te autocertifiques como "verificado" — eso lo revisa el Ingeniero
-   Líder mirando el diff real.
+> Orden ya entregada al agente ejecutor (COT-FIX-01 a 08) y removida de acá para que no se repita. Follow-up menor detectado durante la verificación (persistir el método de pago elegido en `paymentDetails` al confirmar) también resuelto y verificado. Resultado real: ver commits + TAREAS/REPORTELIDER.md.
 
 ### Verificado correcto (no ordenar fix)
 
