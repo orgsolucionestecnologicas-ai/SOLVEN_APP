@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { downloadCsv } from "@/lib/csv";
 import { formatARS as formatMoney } from "@/lib/format-currency";
 
 type CustomerRecord = {
@@ -174,13 +175,6 @@ function isBirthdaySoon(birthDate?: string | null): boolean {
   return diffDays >= 0 && diffDays <= 7;
 }
 
-function escapeCsvValue(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
 function exportCustomersToCsv(customers: CustomerRecord[], metrics: Record<string, CustomerMetrics>) {
   const header = ["Nombre", "Teléfono", "Email", "Código", "Segmento", "Dirección", "Fecha de cumpleaños"];
   const rows = customers.map((c) => [
@@ -192,19 +186,7 @@ function exportCustomersToCsv(customers: CustomerRecord[], metrics: Record<strin
     c.address ?? "",
     c.birthDate ? formatDate(c.birthDate) : ""
   ]);
-  const csvContent = [header, ...rows]
-    .map((row) => row.map(escapeCsvValue).join(","))
-    .join("\r\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `clientes-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadCsv(`clientes-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.csv`, header, rows);
 }
 
 export function CustomersList() {

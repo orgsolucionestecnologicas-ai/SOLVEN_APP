@@ -3,6 +3,7 @@
 import { Check, Copy, Eye, Printer, RotateCcw, Shuffle } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
+import { downloadCsv } from "@/lib/csv";
 import { formatARS } from "@/lib/format-currency";
 import { Pagination } from "./pagination";
 
@@ -1511,13 +1512,6 @@ function getSaleGrossProfit(
   return { profit, hasNonProductItems, hasUnknownCost };
 }
 
-function escapeCsvValue(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
 function exportSalesToCsv(sales: SaleRecord[]) {
   const header = ["Folio", "Fecha", "Vendedor", "Cliente", "Método de pago", "Total"];
   const rows = sales.map((sale) => [
@@ -1528,19 +1522,7 @@ function exportSalesToCsv(sales: SaleRecord[]) {
     getPaymentMethodLabel(sale),
     formatMoney(sale.totalAmount)
   ]);
-  const csvContent = [header, ...rows]
-    .map((row) => row.map(escapeCsvValue).join(","))
-    .join("\r\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `ventas_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadCsv(`ventas_${new Date().toISOString().slice(0, 10)}.csv`, header, rows);
 }
 
 const numberFormatter = new Intl.NumberFormat("es-419", {

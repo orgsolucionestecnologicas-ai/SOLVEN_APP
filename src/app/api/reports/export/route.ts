@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { forbiddenResponse, unauthorizedResponse } from "../../_shared/responses";
 import { ForbiddenError, UnauthorizedError, requireRole } from "@/lib/tenant";
 
+const CSV_BOM = String.fromCharCode(0xfeff);
+
 export async function GET(request: Request) {
   let tenantId: string;
   try {
@@ -57,7 +59,7 @@ export async function GET(request: Request) {
         return `"${fecha}","${folio}","${cliente}","${pago}","${productos.replace(/"/g, '""')}","${total}"`;
       });
 
-      const csv = [header, ...rows].join("\n");
+      const csv = CSV_BOM + [header, ...rows].join("\n");
       const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
       return new Response(csv, {
         status: 200,
@@ -79,10 +81,10 @@ export async function GET(request: Request) {
         const nombre = `"${p.name.replace(/"/g, '""')}"`;
         const codigo = p.productCode ?? "";
         const cat = p.categoryName ?? "";
-        return `${nombre},"${codigo}","${cat}",${p.costPrice},${p.salePrice},${p.stock},${p.minStock},${p.ivaRate}`;
+        return `${nombre},"${codigo}","${cat}",${p.costPrice?.toString() ?? ""},${p.salePrice},${p.stock},${p.minStock},${p.ivaRate}`;
       });
 
-      const csv = [header, ...rows].join("\n");
+      const csv = CSV_BOM + [header, ...rows].join("\n");
       const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
       return new Response(csv, {
         status: 200,

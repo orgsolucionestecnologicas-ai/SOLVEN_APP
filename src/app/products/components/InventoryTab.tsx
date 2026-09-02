@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { downloadCsv } from "@/lib/csv";
 import { formatARS } from "@/lib/format-currency";
 
 type ProductRecord = {
@@ -160,13 +161,6 @@ function formatReason(reason: string): string {
   return reason;
 }
 
-function escapeCsvValue(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
 function exportMovementsToCsv(movements: InventoryMovementRecord[]) {
   const header = ["Fecha", "Producto", "Tipo", "Motivo", "Cantidad"];
   const rows = movements.map((m) => [
@@ -176,19 +170,7 @@ function exportMovementsToCsv(movements: InventoryMovementRecord[]) {
     formatReason(m.reason),
     String(m.quantityChange)
   ]);
-  const csvContent = [header, ...rows]
-    .map((row) => row.map(escapeCsvValue).join(","))
-    .join("\r\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `movimientos_inventario_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadCsv(`movimientos_inventario_${new Date().toISOString().slice(0, 10)}.csv`, header, rows);
 }
 
 function getPageNumbers(current: number, total: number): (number | "...")[] {

@@ -5,7 +5,8 @@ import { NextResponse } from "next/server";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { ForbiddenError, UnauthorizedError, requireRole } from "@/lib/tenant";
-import { ReportPDFDocument } from "@/app/ui/report-pdf";
+import { formatARS } from "@/lib/format-currency";
+import { ReportPDFDocument, type ReportPDFColumn } from "@/app/ui/report-pdf";
 
 export async function GET(request: Request) {
   let tenantId: string;
@@ -53,6 +54,14 @@ export async function GET(request: Request) {
       });
 
       const headers = ["Fecha", "Folio", "Cliente", "Forma de pago", "Productos", "Total"];
+      const columns: ReportPDFColumn[] = [
+        { width: 1.1 },
+        { width: 0.7 },
+        { width: 1.5 },
+        { width: 1 },
+        { width: 3 },
+        { align: "right", width: 1 },
+      ];
       const rows = sales.map((s) => {
         const fecha = new Date(s.saleDate).toLocaleDateString("es-AR");
         const folio = String(s.folio ?? "");
@@ -60,8 +69,10 @@ export async function GET(request: Request) {
         const productos = s.items
           .map((i) => `${i.product?.name ?? i.service?.name ?? ""} x${i.quantity}`)
           .join(" | ");
-        return [fecha, folio, cliente, s.paymentType, productos, s.totalAmount.toString()];
+        return [fecha, folio, cliente, s.paymentType, productos, formatARS(Number(s.totalAmount))];
       });
+      const totalAmount = sales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+      const totalsRow = [null, null, null, null, `${sales.length} venta(s)`, formatARS(totalAmount)];
 
       const buffer = await renderToBuffer(
         React.createElement(ReportPDFDocument, {
@@ -70,6 +81,8 @@ export async function GET(request: Request) {
           rangeLabel,
           headers,
           rows,
+          columns,
+          totalsRow,
         }) as React.ReactElement<DocumentProps>
       );
 
@@ -89,16 +102,28 @@ export async function GET(request: Request) {
       });
 
       const headers = ["Nombre", "Código", "Categoría", "Precio costo", "Precio venta", "Stock", "Stock mínimo", "IVA"];
+      const columns: ReportPDFColumn[] = [
+        { width: 2.4 },
+        { width: 1 },
+        { width: 1.3 },
+        { align: "right", width: 1 },
+        { align: "right", width: 1 },
+        { align: "right", width: 0.8 },
+        { align: "right", width: 0.9 },
+        { align: "right", width: 0.7 },
+      ];
       const rows = products.map((p) => [
         p.name,
         p.productCode ?? "",
         p.categoryName ?? "",
-        p.costPrice?.toString() ?? "",
-        p.salePrice.toString(),
+        p.costPrice ? formatARS(Number(p.costPrice)) : "",
+        formatARS(Number(p.salePrice)),
         p.stock.toString(),
         p.minStock.toString(),
         p.ivaRate.toString(),
       ]);
+      const totalStock = products.reduce((sum, p) => sum + p.stock, 0);
+      const totalsRow = [`${products.length} producto(s)`, null, null, null, null, `${totalStock}`, null, null];
 
       const buffer = await renderToBuffer(
         React.createElement(ReportPDFDocument, {
@@ -107,6 +132,8 @@ export async function GET(request: Request) {
           rangeLabel,
           headers,
           rows,
+          columns,
+          totalsRow,
         }) as React.ReactElement<DocumentProps>
       );
 

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { downloadCsv } from "@/lib/csv";
 import { formatARS } from "@/lib/format-currency";
 
 function formatMoney(value: number | string): string {
@@ -2110,20 +2111,13 @@ function ProductosTab({ sales, products }: { sales: SaleRecord[]; products: Prod
 // ─── ServiciosTab ─────────────────────────────────────────────────────────────
 
 function exportServicesCsv(services: ServiceRecord[]) {
-  const header = "nombre,precio,estado";
-  const rows = services.map((s) => {
-    const name = `"${s.name.replace(/"/g, '""')}"`;
-    const status = s.isActive ? "Activo" : "Inactivo";
-    return `${name},${s.price},${status}`;
-  });
-  const csv = [header, ...rows].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "servicios.csv";
-  link.click();
-  URL.revokeObjectURL(url);
+  const header = ["nombre", "precio", "estado"];
+  const rows = services.map((s) => [
+    s.name,
+    String(s.price),
+    s.isActive ? "Activo" : "Inactivo",
+  ]);
+  downloadCsv("servicios.csv", header, rows);
 }
 
 function ServiciosTab({ services }: { services: ServiceRecord[] }) {

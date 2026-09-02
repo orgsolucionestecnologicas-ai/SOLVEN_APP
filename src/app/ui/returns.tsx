@@ -2,6 +2,7 @@
 
 import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileText, History, PackageX, RotateCcw, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { downloadCsv } from "@/lib/csv";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -893,13 +894,6 @@ function ReturnConfirmStep({
 
 // ─── CSV Export ───────────────────────────────────────────────────────────────
 
-function escapeCsvValue(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
 function exportReturnsToCsv(records: ReturnHistoryRecord[]) {
   const header = ["Fecha", "Venta origen", "Productos devueltos", "Cantidad", "Motivo", "Monto devuelto"];
   const rows = records.map((record) => {
@@ -916,19 +910,7 @@ function exportReturnsToCsv(records: ReturnHistoryRecord[]) {
       formatMoney(record.totalAmount)
     ];
   });
-  const csvContent = [header, ...rows]
-    .map((row) => row.map(escapeCsvValue).join(","))
-    .join("\r\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `devoluciones_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadCsv(`devoluciones_${new Date().toISOString().slice(0, 10)}.csv`, header, rows);
 }
 
 // ─── History Panel ────────────────────────────────────────────────────────────

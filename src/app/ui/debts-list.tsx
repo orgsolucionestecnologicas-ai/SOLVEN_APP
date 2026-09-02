@@ -19,6 +19,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import Link from "next/link";
+import { downloadCsv } from "@/lib/csv";
 import { getDateRangeParams } from "@/lib/date-filter";
 import { formatARS as formatMoney } from "@/lib/format-currency";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -91,13 +92,6 @@ function getAvatarColor(name: string): string {
   return AVATAR_COLORS[s % AVATAR_COLORS.length];
 }
 
-function escapeCsvValue(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
 function exportDebtsToCsv(debts: DebtRecord[]) {
   const header = ["Cliente", "Deuda total", "Saldo pendiente", "Estado", "Fecha de creación", "Fecha de vencimiento"];
   const rows = debts.map((d) => {
@@ -112,19 +106,7 @@ function exportDebtsToCsv(debts: DebtRecord[]) {
       d.dueDate ? formatDate(d.dueDate) : ""
     ];
   });
-  const csvContent = [header, ...rows]
-    .map((row) => row.map(escapeCsvValue).join(","))
-    .join("\r\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `deudas_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadCsv(`deudas_${new Date().toISOString().slice(0, 10)}.csv`, header, rows);
 }
 
 function getPageNumbers(current: number, total: number): (number | "...")[] {

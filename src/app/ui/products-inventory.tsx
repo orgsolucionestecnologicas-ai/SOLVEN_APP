@@ -21,6 +21,7 @@ import {
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InventoryTab } from "../products/components/InventoryTab";
+import { downloadCsv } from "@/lib/csv";
 import { IVA_RATES } from "@/modules/products/product-validation";
 
 type ProductRecord = {
@@ -208,26 +209,9 @@ function toImportRow(raw: Record<string, string>) {
   };
 }
 
-function escapeCsvValue(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
 function downloadProductImportTemplate() {
   const exampleRow = ["PROD-EJEMPLO", "Producto de ejemplo", "Otros", "100", "150", "0.21", "Unidad", "10", "2"];
-  const csvContent = [IMPORT_CSV_HEADERS, exampleRow]
-    .map((row) => row.map(escapeCsvValue).join(","))
-    .join("\r\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "plantilla_productos.csv";
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadCsv("plantilla_productos.csv", IMPORT_CSV_HEADERS, [exampleRow]);
 }
 
 export function ProductsInventory() {
