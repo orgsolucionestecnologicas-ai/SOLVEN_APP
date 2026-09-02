@@ -79,6 +79,9 @@ Anotado por INGENIERODETESTEO al auditar Caja (31-08-2026). `openingBreakdown`/`
 #### CAJA-TURNO — Cambio de turno sin cerrar caja, sin aviso al cajero entrante
 Anotado por INGENIERODETESTEO. `cashierName` es texto libre, no una relación a `User`, así que no se pudo determinar leyendo el backend si el cajero entrante ve alguna advertencia de que la sesión abierta es de otra persona. Requiere revisión de la UI en vivo (`app-shell.tsx` / pantalla de apertura de caja).
 
+#### TEST-FLAKY-STOCK-ADJ — `stock-adjustment.integration.test.ts` falla siempre por una condición de carrera en el propio test, no en la app
+Visto de forma independiente 3 veces (PROD-UX-01, CAJA-UX-01, y verificado por mí mismo corriendo el archivo aislado el 02-09-2026) — nunca es un efecto de lo que se estaba ordenando en esos ciclos, `src/modules/inventory/*` está fuera de alcance de ambas órdenes. Causa raíz confirmada por lectura de código: `adjustProductStock` (`src/modules/inventory/stock-adjustment.ts:74`) hace `void logAudit({...})` sin `await` — el `afterAll`/próximo `beforeEach` puede correr `deleteStockAdjustmentTestData()` (que borra `AuditLog` por `entityId` de producto, después `Product`, después `User`) antes de que ese `INSERT` de auditoría termine; si el insert llega tarde, deja una fila de `AuditLog` con `userId` apuntando a un `User` que el mismo cleanup está por borrar → `Foreign key constraint violated: AuditLog_userId_fkey`. Fix de una línea cuando alguien tenga autorización para tocar `src/modules/inventory/*`: `await logAudit(...)` en vez de `void logAudit(...)`, línea 74. Bajo riesgo, no bloquea nada — solo hace ruido en cada corrida completa de `npm test`.
+
 ### 🟡 Medio
 
 #### [Devoluciones · UX] Mostrar detalle completo de la venta original antes de confirmar
