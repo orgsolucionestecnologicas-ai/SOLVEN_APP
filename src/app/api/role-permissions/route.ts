@@ -14,13 +14,15 @@ import {
   successResponse,
   unauthorizedResponse
 } from "../_shared/responses";
-import { ForbiddenError, requireRole, requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function GET() {
   let tenantId: string;
   try {
-    tenantId = await requireTenantId();
+    ({ tenantId } = await requireRole(["OWNER"]));
   } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
     throw e;
   }
@@ -34,8 +36,9 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   let tenantId: string;
+  let userId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER"]));
+    ({ tenantId, userId } = await requireRole(["OWNER"]));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -58,6 +61,13 @@ export async function PATCH(request: Request) {
       (requestBody as { permissions: { role: string; section: string; canAccess: boolean }[] }).permissions
     );
     const permissions = await upsertRolePermissions(tenantId, validated);
+    void logAudit({
+      tenantId,
+      userId,
+      action: "ROLE_PERMISSIONS_UPDATED",
+      entityType: "RolePermission",
+      metadata: { changes: validated }
+    });
     return successResponse(permissions);
   } catch (error) {
     if (error instanceof RolePermissionValidationError) {

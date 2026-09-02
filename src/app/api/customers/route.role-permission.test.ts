@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGet } = vi.hoisted(() => ({ mockGet: vi.fn() }));
+const { mockGet, mockFindUnique } = vi.hoisted(() => ({
+  mockGet: vi.fn(),
+  mockFindUnique: vi.fn()
+}));
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn().mockResolvedValue({ get: mockGet })
@@ -14,6 +17,10 @@ vi.mock("@/modules/role-permissions", () => ({
   listRolePermissions: vi.fn()
 }));
 
+vi.mock("@/lib/prisma", () => ({
+  prisma: { user: { findUnique: mockFindUnique } }
+}));
+
 vi.mock("../../../modules/customers", () => ({
   createCustomer: vi.fn(),
   listCustomers: vi.fn()
@@ -21,6 +28,7 @@ vi.mock("../../../modules/customers", () => ({
 
 import { verifySession } from "@/lib/auth";
 import { listRolePermissions } from "@/modules/role-permissions";
+import { __resetSessionRevalidationCacheForTests } from "@/lib/tenant";
 import { createCustomer } from "../../../modules/customers";
 import { POST } from "./route";
 
@@ -37,6 +45,7 @@ function mockSession(role: string) {
     trialEndsAt: null,
     role
   });
+  mockFindUnique.mockResolvedValue({ active: true, role, tenantId: "tenant-1" });
 }
 
 function postRequest() {
@@ -49,6 +58,7 @@ function postRequest() {
 describe("POST /api/customers — real RolePermission enforcement (QA-FIX-02)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetSessionRevalidationCacheForTests();
   });
 
   it("returns 403 for a non-OWNER role when RolePermission blocks the 'customers' section", async () => {

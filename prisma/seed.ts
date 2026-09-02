@@ -7,6 +7,12 @@ const DEMO_TENANT_EMAIL = "demo@solven.app";
 const DEMO_TENANT_ID = "seed_tenant_demo";
 
 async function main() {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Seed de demo bloqueado: NODE_ENV=production. Este script crea credenciales públicas y nunca debe correr contra una base real."
+    );
+  }
+
   console.log("Seeding demo tenant, user and subscription...");
 
   const tenant = await prisma.tenant.upsert({
@@ -22,7 +28,7 @@ async function main() {
   const hashedPassword = await bcrypt.hash("demo1234", 10);
 
   await prisma.user.upsert({
-    where: { email: DEMO_TENANT_EMAIL },
+    where: { tenantId_email: { tenantId: tenant.id, email: DEMO_TENANT_EMAIL } },
     update: {},
     create: {
       email: DEMO_TENANT_EMAIL,

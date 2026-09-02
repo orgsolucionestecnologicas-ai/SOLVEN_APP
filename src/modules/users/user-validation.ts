@@ -40,6 +40,8 @@ export function validateCreateUserInput(
     typeof userInput.email === "string" ? userInput.email.trim().toLowerCase() : "";
   if (email.length === 0) {
     validationErrors.push("El email es requerido.");
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    validationErrors.push("El formato del email no es válido.");
   }
 
   const password = typeof userInput.password === "string" ? userInput.password : "";

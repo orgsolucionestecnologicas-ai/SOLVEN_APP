@@ -61,6 +61,15 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  if (pathname === "/api/auth/switch-cashier") {
+    if (!rateLimit(ip, "switch-cashier", 15, 60_000)) {
+      return new Response(JSON.stringify({ error: "Demasiados intentos. Esperá un momento." }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
+  }
+
   if (pathname.startsWith("/api/webhooks/rebill")) {
     if (!rateLimit(ip, "webhook-rebill", 100, 60_000)) {
       return new Response(JSON.stringify({ error: "Rate limit excedido." }), {

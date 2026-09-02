@@ -19,6 +19,10 @@ vi.mock("../../../../modules/users", () => ({
   }
 }));
 
+vi.mock("@/modules/audit", () => ({
+  logAudit: vi.fn().mockResolvedValue(undefined)
+}));
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -28,12 +32,14 @@ import {
   UserValidationError
 } from "../../../../modules/users";
 import { ForbiddenError, requireRole } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 import { DELETE, PATCH } from "./route";
 
 const mockedRequireRole = vi.mocked(requireRole);
 const mockedSetUserActive = vi.mocked(setUserActive);
 const mockedUpdateUserRole = vi.mocked(updateUserRole);
 const mockedDeleteUser = vi.mocked(deleteUser);
+const mockedLogAudit = vi.mocked(logAudit);
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) };
@@ -76,6 +82,15 @@ describe("users/[id] API route", () => {
 
       expect(response.status).toBe(200);
       expect(mockedSetUserActive).toHaveBeenCalledWith("user-1", false, "test-tenant-id", "owner-1");
+      expect(mockedLogAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "test-tenant-id",
+          userId: "owner-1",
+          action: "USER_DEACTIVATED",
+          entityType: "User",
+          entityId: "user-1"
+        })
+      );
     });
 
     it("calls updateUserRole when role is provided", async () => {
@@ -89,6 +104,16 @@ describe("users/[id] API route", () => {
         { role: "SUPERVISOR" },
         "test-tenant-id",
         "owner-1"
+      );
+      expect(mockedLogAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "test-tenant-id",
+          userId: "owner-1",
+          action: "USER_ROLE_CHANGED",
+          entityType: "User",
+          entityId: "user-1",
+          metadata: { newRole: "SUPERVISOR" }
+        })
       );
     });
 
@@ -144,6 +169,7 @@ describe("users/[id] API route", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ data: { deleted: false, salesCount: 3 } });
       expect(mockedDeleteUser).toHaveBeenCalledWith("user-1", "test-tenant-id", "owner-1", false);
+      expect(mockedLogAudit).not.toHaveBeenCalled();
     });
 
     it("deletes for real when confirm=true is passed", async () => {
@@ -154,6 +180,16 @@ describe("users/[id] API route", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ data: { deleted: true, salesCount: 3 } });
       expect(mockedDeleteUser).toHaveBeenCalledWith("user-1", "test-tenant-id", "owner-1", true);
+      expect(mockedLogAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "test-tenant-id",
+          userId: "owner-1",
+          action: "USER_DELETED",
+          entityType: "User",
+          entityId: "user-1",
+          metadata: { salesCount: 3 }
+        })
+      );
     });
   });
 });

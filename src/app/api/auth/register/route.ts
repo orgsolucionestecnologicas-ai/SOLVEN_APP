@@ -33,6 +33,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    return NextResponse.json(
+      { error: "El formato del email no es válido." },
+      { status: 400 }
+    );
+  }
+
   if (!password || password.length < 8) {
     return NextResponse.json(
       { error: "La contraseña debe tener al menos 8 caracteres." },
@@ -48,17 +55,6 @@ export async function POST(request: NextRequest) {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
-
-  const existing = await prisma.user.findUnique({
-    where: { email: normalizedEmail }
-  });
-
-  if (existing) {
-    return NextResponse.json(
-      { error: "Ya existe una cuenta con ese email." },
-      { status: 409 }
-    );
-  }
 
   const hashedPassword = await hashPassword(password);
 

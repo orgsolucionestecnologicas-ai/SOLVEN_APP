@@ -16,8 +16,15 @@ export async function verifyPassword(
   return bcrypt.compare(password, hash);
 }
 
+const MIN_SESSION_SECRET_LENGTH = 32;
+
 async function getHmacKey(): Promise<CryptoKey> {
-  const secret = process.env.SOLVEN_SESSION_SECRET ?? "";
+  const secret = process.env.SOLVEN_SESSION_SECRET;
+  if (!secret || secret.length < MIN_SESSION_SECRET_LENGTH) {
+    throw new Error(
+      "SOLVEN_SESSION_SECRET no está configurado o es demasiado corto (mínimo 32 caracteres)."
+    );
+  }
   return crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),
@@ -27,6 +34,8 @@ async function getHmacKey(): Promise<CryptoKey> {
   );
 }
 
+const VALID_ROLES = ["OWNER", "CASHIER", "INVENTORY", "READONLY", "SUPERVISOR"];
+
 export type SessionPayload = {
   userId: string;
   tenantId: string;
@@ -34,19 +43,28 @@ export type SessionPayload = {
   trialEndsAt: string | null;
   role: string;
   activeCashierId?: string | null;
+  iat?: number;
 };
 
 export async function createSession(
   userId: string,
   tenantId: string,
-  subscriptionStatus = "TRIAL",
-  trialEndsAt: string | null = null,
-  role = "OWNER",
+  subscriptionStatus: string,
+  trialEndsAt: string | null,
+  role: string,
   activeCashierId: string | null = null
 ): Promise<string> {
   const key = await getHmacKey();
   const payload = btoa(
-    JSON.stringify({ userId, tenantId, subscriptionStatus, trialEndsAt, role, activeCashierId } satisfies SessionPayload)
+    JSON.stringify({
+      userId,
+      tenantId,
+      subscriptionStatus,
+      trialEndsAt,
+      role,
+      activeCashierId,
+      iat: Date.now()
+    } satisfies SessionPayload)
   );
   const signature = await crypto.subtle.sign(
     "HMAC",
@@ -87,7 +105,10 @@ export async function verifySession(
 
   try {
     const parsed = JSON.parse(atob(payload)) as Partial<SessionPayload>;
-    return { ...parsed, role: parsed.role ?? "OWNER" } as SessionPayload;
+    if (!parsed.role || !VALID_ROLES.includes(parsed.role)) {
+      return null;
+    }
+    return parsed as SessionPayload;
   } catch {
     return null;
   }

@@ -17,6 +17,7 @@ import {
   unauthorizedResponse
 } from "../../_shared/responses";
 import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function PATCH(
   request: Request,
@@ -46,13 +47,38 @@ export async function PATCH(
 
   try {
     const body = requestBody as { role?: string; active?: boolean; avatarUrl?: string | null; pin?: string | null };
-    const user = typeof body.active === "boolean"
-      ? await setUserActive(id, body.active, tenantId, userId)
-      : typeof body.avatarUrl !== "undefined"
-        ? await updateUserAvatar(id, body.avatarUrl, tenantId)
-        : typeof body.pin !== "undefined"
-          ? await updateUserPin(id, body.pin, tenantId)
-          : await updateUserRole(id, { role: body.role ?? "" }, tenantId, userId);
+    let user;
+    if (typeof body.active === "boolean") {
+      user = await setUserActive(id, body.active, tenantId, userId);
+      void logAudit({
+        tenantId,
+        userId,
+        action: body.active ? "USER_ACTIVATED" : "USER_DEACTIVATED",
+        entityType: "User",
+        entityId: id
+      });
+    } else if (typeof body.avatarUrl !== "undefined") {
+      user = await updateUserAvatar(id, body.avatarUrl, tenantId);
+    } else if (typeof body.pin !== "undefined") {
+      user = await updateUserPin(id, body.pin, tenantId);
+      void logAudit({
+        tenantId,
+        userId,
+        action: "USER_PIN_CHANGED",
+        entityType: "User",
+        entityId: id
+      });
+    } else {
+      user = await updateUserRole(id, { role: body.role ?? "" }, tenantId, userId);
+      void logAudit({
+        tenantId,
+        userId,
+        action: "USER_ROLE_CHANGED",
+        entityType: "User",
+        entityId: id,
+        metadata: { newRole: user.role }
+      });
+    }
     return successResponse(user);
   } catch (error) {
     if (error instanceof UserValidationError) {
@@ -84,6 +110,16 @@ export async function DELETE(
 
   try {
     const result = await deleteUser(id, tenantId, userId, confirmed);
+    if (result.deleted) {
+      void logAudit({
+        tenantId,
+        userId,
+        action: "USER_DELETED",
+        entityType: "User",
+        entityId: id,
+        metadata: { salesCount: result.salesCount }
+      });
+    }
     return successResponse(result);
   } catch (error) {
     if (error instanceof UserValidationError) {

@@ -20,11 +20,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const user = await prisma.user.findUnique({
+  // El email es único por tenant, no global: puede haber más de un usuario
+  // con el mismo email en tenants distintos, así que se prueba la contraseña
+  // contra cada candidato hasta encontrar el que corresponda.
+  const candidates = await prisma.user.findMany({
     where: { email: email.trim().toLowerCase() }
   });
 
-  if (!user || !(await verifyPassword(password, user.password))) {
+  let user: (typeof candidates)[number] | null = null;
+  for (const candidate of candidates) {
+    if (await verifyPassword(password, candidate.password)) {
+      user = candidate;
+      break;
+    }
+  }
+
+  if (!user) {
     return NextResponse.json(
       { error: "Credenciales inválidas" },
       { status: 401 }

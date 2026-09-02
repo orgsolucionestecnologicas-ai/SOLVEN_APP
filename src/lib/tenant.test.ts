@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGet } = vi.hoisted(() => ({ mockGet: vi.fn() }));
+const { mockGet, mockFindUnique } = vi.hoisted(() => ({
+  mockGet: vi.fn(),
+  mockFindUnique: vi.fn()
+}));
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn().mockResolvedValue({ get: mockGet })
@@ -14,9 +17,18 @@ vi.mock("@/modules/role-permissions", () => ({
   listRolePermissions: vi.fn()
 }));
 
+vi.mock("./prisma", () => ({
+  prisma: { user: { findUnique: mockFindUnique } }
+}));
+
 import { verifySession } from "@/lib/auth";
 import { listRolePermissions } from "@/modules/role-permissions";
-import { ForbiddenError, requireRole, UnauthorizedError } from "./tenant";
+import {
+  __resetSessionRevalidationCacheForTests,
+  ForbiddenError,
+  requireRole,
+  UnauthorizedError
+} from "./tenant";
 
 const mockedVerifySession = vi.mocked(verifySession);
 const mockedListRolePermissions = vi.mocked(listRolePermissions);
@@ -30,11 +42,13 @@ function mockSession(role: string, tenantId = "tenant-1", userId = "user-1") {
     trialEndsAt: null,
     role
   });
+  mockFindUnique.mockResolvedValue({ active: true, role, tenantId });
 }
 
 describe("requireRole — RolePermission enforcement (QA-FIX-02)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetSessionRevalidationCacheForTests();
   });
 
   it("never blocks OWNER, even when a matching RolePermission row explicitly sets canAccess: false", async () => {
@@ -100,5 +114,42 @@ describe("requireRole — RolePermission enforcement (QA-FIX-02)", () => {
     mockGet.mockReturnValue(undefined);
 
     await expect(requireRole(["OWNER"], "pos")).rejects.toThrow(UnauthorizedError);
+  });
+});
+
+describe("requireRole — session revalidation against the database (USER-FIX-03)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    __resetSessionRevalidationCacheForTests();
+  });
+
+  it("throws UnauthorizedError when the user was deactivated after the session was issued", async () => {
+    mockSession("OWNER");
+    mockFindUnique.mockResolvedValue({ active: false, role: "OWNER", tenantId: "tenant-1" });
+
+    await expect(requireRole(["OWNER"])).rejects.toThrow(UnauthorizedError);
+  });
+
+  it("throws UnauthorizedError when the user's role in the database no longer matches the session", async () => {
+    mockSession("OWNER");
+    mockFindUnique.mockResolvedValue({ active: true, role: "CASHIER", tenantId: "tenant-1" });
+
+    await expect(requireRole(["OWNER"])).rejects.toThrow(UnauthorizedError);
+  });
+
+  it("throws UnauthorizedError when the user record no longer exists", async () => {
+    mockSession("OWNER");
+    mockFindUnique.mockResolvedValue(null);
+
+    await expect(requireRole(["OWNER"])).rejects.toThrow(UnauthorizedError);
+  });
+
+  it("does not re-hit the database on a second call within the TTL window", async () => {
+    mockSession("OWNER");
+
+    await requireRole(["OWNER"]);
+    await requireRole(["OWNER"]);
+
+    expect(mockFindUnique).toHaveBeenCalledTimes(1);
   });
 });

@@ -59,7 +59,9 @@ export async function createUser(
 ): Promise<UserSummary> {
   const validatedUser = validateCreateUserInput(userInput);
 
-  const existing = await prisma.user.findUnique({ where: { email: validatedUser.email } });
+  const existing = await prisma.user.findFirst({
+    where: { tenantId, email: validatedUser.email }
+  });
   if (existing) {
     throw new UserValidationError(["Ya existe un usuario con ese email."]);
   }
