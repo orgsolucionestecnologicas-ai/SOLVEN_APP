@@ -81,6 +81,58 @@ describe("processReturn — refundMethod", () => {
     expect(returnRecord.refundMethod).toBe("Tarjeta");
   });
 
+  it("rejects a refund method other than Tarjeta when the sale was paid with a card", async () => {
+    const product = await createTestProduct();
+    const sale = await createSale(
+      {
+        paymentType: "CASH",
+        items: [{ productId: product.id, quantity: 2 }],
+        paymentDetails: [{ method: "Tarjeta", amount: 50 }]
+      },
+      testTenantId
+    );
+
+    await expect(
+      processReturn(
+        sale.id,
+        [{ productId: product.id, quantity: 1 }],
+        testTenantId,
+        "OTRO",
+        undefined,
+        "Efectivo"
+      )
+    ).rejects.toThrow(ReturnValidationError);
+
+    const returnRecords = await prisma.return.findMany({ where: { saleId: sale.id } });
+    expect(returnRecords).toHaveLength(0);
+  });
+
+  it("accepts a Tarjeta refund with refundReference when the sale was paid with a card", async () => {
+    const product = await createTestProduct();
+    const sale = await createSale(
+      {
+        paymentType: "CASH",
+        items: [{ productId: product.id, quantity: 2 }],
+        paymentDetails: [{ method: "Tarjeta", amount: 50 }]
+      },
+      testTenantId
+    );
+
+    const result = await processReturn(
+      sale.id,
+      [{ productId: product.id, quantity: 1 }],
+      testTenantId,
+      "OTRO",
+      undefined,
+      "Tarjeta",
+      "000123456"
+    );
+
+    const returnRecord = await prisma.return.findUniqueOrThrow({ where: { id: result.returnId } });
+    expect(returnRecord.refundMethod).toBe("Tarjeta");
+    expect(returnRecord.refundReference).toBe("000123456");
+  });
+
   it("rejects a non-credit return that does not specify a refundMethod", async () => {
     const product = await createTestProduct();
     const sale = await createSale(

@@ -528,15 +528,16 @@ enum ReturnReasonCategory {
 }
 
 model Return {
-  id             String               @id @default(cuid())
-  saleId         String
-  sale           Sale                 @relation(fields: [saleId], references: [id])
-  items          ReturnItem[]
-  totalAmount    Decimal              @db.Decimal(12, 2)
-  reasonCategory ReturnReasonCategory @default(OTRO)
-  reasonNote     String?
-  refundMethod   String?
-  createdAt      DateTime             @default(now())
+  id              String               @id @default(cuid())
+  saleId          String
+  sale            Sale                 @relation(fields: [saleId], references: [id])
+  items           ReturnItem[]
+  totalAmount     Decimal              @db.Decimal(12, 2)
+  reasonCategory  ReturnReasonCategory @default(OTRO)
+  reasonNote      String?
+  refundMethod    String?
+  refundReference String?
+  createdAt       DateTime             @default(now())
 
   @@index([saleId])
 }

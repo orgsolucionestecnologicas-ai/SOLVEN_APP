@@ -97,6 +97,7 @@ export async function POST(request: Request) {
     reasonCategory?: unknown;
     reasonNote?: unknown;
     refundMethod?: unknown;
+    refundReference?: unknown;
   };
 
   if (typeof input.saleId !== "string" || input.saleId.trim().length === 0) {
@@ -124,6 +125,17 @@ export async function POST(request: Request) {
       !RETURN_REFUND_METHODS.includes(input.refundMethod as (typeof RETURN_REFUND_METHODS)[number]))
   ) {
     return errorResponse("El método de reintegro elegido no es válido.", 400);
+  }
+
+  if (input.refundReference !== undefined && typeof input.refundReference !== "string") {
+    return errorResponse("El número de operación debe ser texto.", 400);
+  }
+
+  if (
+    input.refundMethod === "Tarjeta" &&
+    (typeof input.refundReference !== "string" || input.refundReference.trim().length === 0)
+  ) {
+    return errorResponse("Debés indicar el número de operación o cupón de la tarjeta.", 400);
   }
 
   for (const item of input.items as unknown[]) {
@@ -157,7 +169,8 @@ export async function POST(request: Request) {
       tenantId,
       input.reasonCategory as ReturnReasonCategory,
       input.reasonNote as string | undefined,
-      input.refundMethod as string | undefined
+      input.refundMethod as string | undefined,
+      typeof input.refundReference === "string" ? input.refundReference.trim() || undefined : undefined
     );
     void logAudit({
       tenantId,

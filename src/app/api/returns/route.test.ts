@@ -92,6 +92,7 @@ describe("returns API route", () => {
       "test-tenant-id",
       "OTRO",
       undefined,
+      undefined,
       undefined
     );
   });
@@ -112,7 +113,8 @@ describe("returns API route", () => {
           saleId: "sale-1",
           items: [{ productId: "product-1", quantity: 1 }],
           reasonCategory: "OTRO",
-          refundMethod: "Tarjeta"
+          refundMethod: "Tarjeta",
+          refundReference: "000123456"
         })
       })
     );
@@ -124,7 +126,8 @@ describe("returns API route", () => {
       "test-tenant-id",
       "OTRO",
       undefined,
-      "Tarjeta"
+      "Tarjeta",
+      "000123456"
     );
   });
 
@@ -470,7 +473,8 @@ describe("returns API route", () => {
           saleId: "sale-1",
           items: [{ productId: "product-1", quantity: 1 }],
           reasonCategory: "OTRO",
-          refundMethod: "Tarjeta"
+          refundMethod: "Tarjeta",
+          refundReference: "000123456"
         })
       })
     );

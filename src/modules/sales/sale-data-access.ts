@@ -433,7 +433,8 @@ export async function listSales(
       ? {
           OR: [
             ...(queryAsFolio !== undefined ? [{ folio: queryAsFolio }] : []),
-            { customer: { name: { contains: trimmedQuery, mode: "insensitive" as const } } }
+            { customer: { name: { contains: trimmedQuery, mode: "insensitive" as const } } },
+            { customer: { taxId: { contains: trimmedQuery, mode: "insensitive" as const } } }
           ]
         }
       : {})
@@ -445,7 +446,7 @@ export async function listSales(
       take: limit,
       skip: (page - 1) * limit,
       include: {
-        customer: { select: { name: true, phone: true, email: true } },
+        customer: { select: { name: true, phone: true, email: true, taxId: true } },
         items: {
           include: {
             product: { select: { name: true, costPrice: true, categoryName: true } },

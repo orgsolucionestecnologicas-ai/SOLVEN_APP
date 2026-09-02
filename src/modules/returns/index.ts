@@ -223,6 +223,20 @@ export async function getReturnById(
   };
 }
 
+type SalePaymentDetail = { method: string; amount: number; reference?: string };
+
+function parsePaymentDetailsServerSide(value: unknown): SalePaymentDetail[] | null {
+  if (!Array.isArray(value)) return null;
+  const parsed = value.filter(
+    (v): v is SalePaymentDetail =>
+      typeof v === "object" &&
+      v !== null &&
+      typeof (v as SalePaymentDetail).method === "string" &&
+      typeof (v as SalePaymentDetail).amount === "number"
+  );
+  return parsed.length > 0 ? parsed : null;
+}
+
 function proratedUnitPrice(
   unitPrice: Prisma.Decimal,
   saleTotalAmount: Prisma.Decimal,
@@ -240,7 +254,8 @@ export async function processReturn(
   tenantId: string,
   reasonCategory: ReturnReasonCategory,
   reasonNote?: string,
-  refundMethod?: string
+  refundMethod?: string,
+  refundReference?: string
 ): Promise<ReturnResult> {
   if (!RETURN_REASON_CATEGORIES.includes(reasonCategory)) {
     throw new ReturnValidationError("El motivo de la devolución es inválido.");
@@ -258,6 +273,14 @@ export async function processReturn(
 
     if (sale.paymentType !== "CREDIT" && !refundMethod) {
       throw new ReturnValidationError("Debés indicar cómo se reintegra el dinero.");
+    }
+
+    const salePaidWithCard =
+      parsePaymentDetailsServerSide(sale.paymentDetails)?.some((p) => p.method === "Tarjeta") ?? false;
+    if (salePaidWithCard && refundMethod !== "Tarjeta") {
+      throw new ReturnValidationError(
+        "Esta venta se pagó con tarjeta — el reintegro debe hacerse con tarjeta."
+      );
     }
 
     const saleItemByProductId = new Map(
@@ -365,6 +388,7 @@ export async function processReturn(
         reasonCategory,
         reasonNote: reasonNote?.trim() || null,
         refundMethod: sale.paymentType === "CREDIT" ? null : refundMethod,
+        refundReference: sale.paymentType === "CREDIT" ? null : refundReference?.trim() || null,
         items: {
           create: items.map((item) => ({
             productId: item.productId,

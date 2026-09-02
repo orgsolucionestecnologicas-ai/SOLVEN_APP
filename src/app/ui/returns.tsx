@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileText, History, PackageX, RotateCcw, Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +37,22 @@ const REFUND_METHOD_OPTIONS: { value: RefundMethod; label: string }[] = [
   { value: "VentaWeb", label: "Venta web" },
   { value: "Otro", label: "Otro" }
 ];
+
+type SearchField = "folio" | "customer" | "document" | "date";
+
+const SEARCH_FIELD_OPTIONS: { value: SearchField; label: string }[] = [
+  { value: "folio", label: "N° de venta" },
+  { value: "customer", label: "Cliente" },
+  { value: "document", label: "Documento" },
+  { value: "date", label: "Fecha" }
+];
+
+const SEARCH_FIELD_PLACEHOLDERS: Record<SearchField, string> = {
+  folio: "Ej: 1024",
+  customer: "Nombre del cliente...",
+  document: "N° de documento...",
+  date: ""
+};
 
 function parsePaymentDetails(value: unknown): PaymentDetail[] | null {
   if (!Array.isArray(value)) return null;
@@ -165,6 +181,8 @@ export function Returns() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [searchField, setSearchField] = useState<SearchField | null>(null);
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
@@ -177,28 +195,48 @@ export function Returns() {
   const [reasonCategory, setReasonCategory] = useState<ReturnReasonCategory | "">("");
   const [reasonNote, setReasonNote] = useState("");
   const [refundMethod, setRefundMethod] = useState<RefundMethod | "">("");
+  const [refundReference, setRefundReference] = useState("");
 
   useEffect(() => {
-    fetch("/api/sales", { headers: { Accept: "application/json" } })
-      .then((res) => res.json())
-      .then((body: SalesResponse) => {
-        if (body.data) setSales(body.data);
-        else setLoadError("No se pudieron cargar las ventas.");
-      })
-      .catch(() => setLoadError("No se pudieron cargar las ventas."))
-      .finally(() => setLoading(false));
-  }, []);
+    const timeout = setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
 
-  const filteredSales = useMemo(() => {
-    if (!searchQuery.trim()) return sales;
-    const q = searchQuery.toLowerCase().trim();
-    return sales.filter(
-      (s) =>
-        s.id.toLowerCase().includes(q) ||
-        s.customer?.name.toLowerCase().includes(q) ||
-        formatDate(s.saleDate).includes(q)
-    );
-  }, [sales, searchQuery]);
+  const fetchSales = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const params = new URLSearchParams({ limit: "50" });
+      if (searchField && searchQuery) {
+        if (searchField === "date") {
+          params.set("from", `${searchQuery}T00:00:00`);
+          params.set("to", `${searchQuery}T23:59:59`);
+        } else {
+          params.set("q", searchQuery);
+        }
+      }
+      const res = await fetch(`/api/sales?${params.toString()}`, { headers: { Accept: "application/json" } });
+      const body = (await res.json()) as SalesResponse;
+      if (body.data) setSales(body.data);
+      else setLoadError("No se pudieron cargar las ventas.");
+    } catch {
+      setLoadError("No se pudieron cargar las ventas.");
+    } finally {
+      setLoading(false);
+    }
+  }, [searchField, searchQuery]);
+
+  useEffect(() => {
+    void fetchSales();
+  }, [fetchSales]);
+
+  function handleSearchFieldClick(field: SearchField) {
+    setSearchField(field);
+    setSearchInput("");
+    setSearchQuery("");
+  }
 
   function handleSelectSale(sale: Sale) {
     setSelectedSale(sale);
@@ -207,6 +245,7 @@ export function Returns() {
     setReasonCategory("");
     setReasonNote("");
     setRefundMethod("");
+    setRefundReference("");
     setFormStep("form");
     const initial: Record<string, number> = {};
     const initialRestock: Record<string, boolean> = {};
@@ -250,8 +289,17 @@ export function Returns() {
   const productItems = selectedSale?.items.filter((i) => i.productId) ?? [];
   const hasItemsToReturn = Object.values(returnQuantities).some((q) => q > 0);
   const requiresRefundMethod = selectedSale?.paymentType !== "CREDIT";
+  const salePaidWithCard =
+    parsePaymentDetails(selectedSale?.paymentDetails)?.some((p) => p.method === "Tarjeta") ?? false;
+  const refundMethodOptions = salePaidWithCard
+    ? REFUND_METHOD_OPTIONS.filter((option) => option.value === "Tarjeta")
+    : REFUND_METHOD_OPTIONS;
+  const requiresRefundReference = refundMethod === "Tarjeta";
   const canSubmit =
-    hasItemsToReturn && reasonCategory !== "" && (!requiresRefundMethod || refundMethod !== "");
+    hasItemsToReturn &&
+    reasonCategory !== "" &&
+    (!requiresRefundMethod || refundMethod !== "") &&
+    (!requiresRefundReference || refundReference.trim() !== "");
 
   const previewTotal = productItems.reduce((acc, item) => {
     const qty = returnQuantities[item.productId!] ?? 0;
@@ -281,7 +329,8 @@ export function Returns() {
           items,
           reasonCategory,
           reasonNote: reasonNote.trim() || undefined,
-          refundMethod: requiresRefundMethod ? refundMethod : undefined
+          refundMethod: requiresRefundMethod ? refundMethod : undefined,
+          refundReference: requiresRefundReference ? refundReference.trim() : undefined
         })
       });
       const body = (await res.json()) as ReturnResponse;
@@ -333,7 +382,7 @@ export function Returns() {
       {activeTab === "history" ? (
         <ReturnHistoryPanel />
       ) : (
-      <div className="mx-auto w-full max-w-screen-xl px-4 py-6 sm:px-6">
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
 
         {/* Success banner */}
         {returnResult ? (
@@ -363,20 +412,48 @@ export function Returns() {
             <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
               <div className="border-b border-slate-100 px-5 py-4">
                 <h2 className="text-sm font-semibold text-slate-900">Seleccioná una venta</h2>
-                <p className="mt-0.5 text-xs text-slate-500">Buscá por ID, cliente o fecha</p>
+                <p className="mt-0.5 text-xs text-slate-500">Buscá por N° de venta, cliente, documento o fecha</p>
               </div>
 
               <div className="px-4 py-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-violet-400 focus:outline-none"
-                    placeholder="Buscar venta..."
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+                <div className="flex gap-1.5 overflow-x-auto pb-3">
+                  {SEARCH_FIELD_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleSearchFieldClick(option.value)}
+                      className={
+                        searchField === option.value
+                          ? "flex-shrink-0 rounded-full bg-violet-600 px-3 py-1 text-xs font-medium text-white"
+                          : "flex-shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                      }
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
+
+                {searchField ? (
+                  searchField === "date" ? (
+                    <input
+                      className="w-full rounded-lg border border-slate-200 py-2 px-3 text-sm placeholder:text-slate-400 focus:border-violet-400 focus:outline-none"
+                      type="date"
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                    />
+                  ) : (
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-violet-400 focus:outline-none"
+                        placeholder={SEARCH_FIELD_PLACEHOLDERS[searchField]}
+                        type="text"
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                      />
+                    </div>
+                  )
+                ) : null}
               </div>
 
               <div className="max-h-[520px] overflow-y-auto divide-y divide-slate-100">
@@ -388,13 +465,13 @@ export function Returns() {
                   </div>
                 ) : loadError ? (
                   <p className="p-4 text-sm text-rose-600">{loadError}</p>
-                ) : filteredSales.length === 0 ? (
+                ) : sales.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <PackageX className="mb-2 h-8 w-8 text-slate-300" />
                     <p className="text-sm text-slate-500">No se encontraron ventas</p>
                   </div>
                 ) : (
-                  filteredSales.map((sale) => {
+                  sales.map((sale) => {
                     const isSelected = selectedSale?.id === sale.id;
                     const productCount = sale.items.filter((i) => i.productId).length;
                     return (
@@ -493,6 +570,7 @@ export function Returns() {
                     reasonCategory={reasonCategory}
                     reasonNote={reasonNote}
                     refundMethod={requiresRefundMethod ? refundMethod : null}
+                    refundReference={requiresRefundReference ? refundReference.trim() : null}
                     total={previewTotal}
                     isSubmitting={isSubmitting}
                     submitError={submitError}
@@ -605,12 +683,32 @@ export function Returns() {
                             onChange={(e) => setRefundMethod(e.target.value as RefundMethod)}
                           >
                             <option value="">Seleccioná un método...</option>
-                            {REFUND_METHOD_OPTIONS.map((option) => (
+                            {refundMethodOptions.map((option) => (
                               <option key={option.value} value={option.value}>
                                 {option.label}
                               </option>
                             ))}
                           </select>
+                          {salePaidWithCard ? (
+                            <p className="mt-1 text-xs text-slate-500">
+                              Esta venta se pagó con tarjeta — el reintegro debe ser con tarjeta.
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {requiresRefundReference ? (
+                        <div className="mb-3">
+                          <label className="mb-1 block text-xs font-medium text-slate-600">
+                            N° de operación / cupón de la tarjeta <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-violet-400 focus:outline-none"
+                            type="text"
+                            placeholder="Ej: 000123456"
+                            value={refundReference}
+                            onChange={(e) => setRefundReference(e.target.value)}
+                          />
                         </div>
                       ) : null}
 
@@ -655,6 +753,10 @@ export function Returns() {
                         <p className="mt-2 text-center text-xs text-slate-400">
                           Seleccioná cómo se reintegra el dinero para continuar
                         </p>
+                      ) : requiresRefundReference && refundReference.trim() === "" ? (
+                        <p className="mt-2 text-center text-xs text-slate-400">
+                          Ingresá el número de operación de la tarjeta para continuar
+                        </p>
                       ) : null}
                     </div>
                   </>
@@ -678,6 +780,7 @@ function ReturnConfirmStep({
   reasonCategory,
   reasonNote,
   refundMethod,
+  refundReference,
   total,
   isSubmitting,
   submitError,
@@ -690,6 +793,7 @@ function ReturnConfirmStep({
   reasonCategory: ReturnReasonCategory | "";
   reasonNote: string;
   refundMethod: RefundMethod | "" | null;
+  refundReference: string | null;
   total: number;
   isSubmitting: boolean;
   submitError: string | null;
@@ -743,6 +847,12 @@ function ReturnConfirmStep({
           <div className="flex justify-between">
             <dt className="text-slate-500">Reintegro</dt>
             <dd className="font-medium text-slate-900">{refundMethod}</dd>
+          </div>
+        ) : null}
+        {refundReference ? (
+          <div className="flex justify-between">
+            <dt className="text-slate-500">N° de operación</dt>
+            <dd className="font-medium text-slate-900">{refundReference}</dd>
           </div>
         ) : null}
         <div className="flex justify-between border-t border-slate-100 pt-2">
