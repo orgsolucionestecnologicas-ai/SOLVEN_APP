@@ -41,6 +41,16 @@ Verificado por el Ingeniero Líder (02-09-2026) sólo por lectura de código —
 #### T20 — Decisión de producto: ¿2 minutos es el TTL correcto para revalidar una sesión desactivada?
 `requireRole` (USER-FIX-03, 02-09-2026) revalida contra la DB si el usuario sigue activo/con el mismo rol, cacheado 2 minutos por `userId` para no pegarle a la base en cada request. En la práctica: un empleado que el OWNER desactiva puede seguir operando con su sesión ya abierta hasta 2 minutos más. La orden original sugería un rango de 2-3 min como razonable para un POS (no banca), y el valor implementado cae ahí, pero es una decisión de negocio, no algo que el código deba decidir solo. Si 2 minutos es demasiado (o muy poco), es un solo número para ajustar en `src/lib/tenant.ts` (`SESSION_REVALIDATE_TTL_MS`).
 
+#### T21 — Decisión de producto: ¿"Marca" (`brand`) merece una columna real en `Product`?
+Anotado durante PROD-UX-01 (02-09-2026, rediseño del formulario de producto). El formulario
+captura `brand` en pantalla, pero `Product` no tiene ninguna columna para persistirlo — hoy
+se descarta en silencio al guardar, igual que pasaba antes con `barcode`/`sku` (ya
+corregidos en esa misma orden). No implementado a propósito, por instrucción explícita de
+la orden: es una decisión de producto (¿vale la pena para el catálogo de SOLVEN?), no algo
+que el agente deba resolver solo. Si Diego confirma que sí, es un cambio chico y ya mapeado:
+columna nueva `Product.brand String?` + wirear el campo ya existente en
+`src/app/ui/product-form.tsx` (captura y muestra, pero no lo manda en el `payload`).
+
 #### ARCA-NC-01 — Sin Nota de Crédito AFIP para devoluciones de ventas ya facturadas
 Anotado por INGENIERODETESTEO al auditar Devoluciones (31-08-2026), reconfirmado al auditar Reportes/ARCA. Solo existe `src/app/ui/return-credit-note-pdf.tsx`, un comprobante interno impreso — ninguna llamada real a `src/lib/arca`/WSFE para emitir una Nota de Crédito fiscal. Para un negocio en producción que ya emite facturas reales a clientes reales, esto es un gap de cumplimiento: AFIP espera una Nota de Crédito real contra el comprobante original, no solo un PDF interno. No es un fix chico — es una feature completa (nuevo tipo de comprobante WSFE, análogo al flujo ya existente de `emitInvoice`). Pregunta de priorización para Diego, aparte del resto del backlog.
 
