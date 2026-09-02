@@ -38,6 +38,9 @@ Venta → devolución parcial → verificar que el stock sube y la caja refleja 
 Verificado por el Ingeniero Líder (02-09-2026) sólo por lectura de código — el cableado del segmento (`sale-data-access.ts`/`apply/route.ts`) y la liberación de `PromotionUsage` en devolución total (`returns/index.ts`) quedaron sin test automatizado. Sesión manual: crear un cliente de segmento VIP (o Recurrente/Nuevo), una promoción restringida a ese segmento, vender con ese cliente y confirmar que el descuento se aplica; después hacer una devolución total de una venta con promoción de cupo limitado y confirmar que el cupo se libera (`PromotionUsage` de esa venta desaparece). ~20 min.
 **Por qué importa:** PROMO-FIX-01 era el hallazgo CRÍTICO del ciclo (promos de segmento nunca se aplicaban) — la lógica del motor ya tiene tests genuinos, pero el cableado real contra la base de producción todavía no se probó en vivo.
 
+#### T20 — Decisión de producto: ¿2 minutos es el TTL correcto para revalidar una sesión desactivada?
+`requireRole` (USER-FIX-03, 02-09-2026) revalida contra la DB si el usuario sigue activo/con el mismo rol, cacheado 2 minutos por `userId` para no pegarle a la base en cada request. En la práctica: un empleado que el OWNER desactiva puede seguir operando con su sesión ya abierta hasta 2 minutos más. La orden original sugería un rango de 2-3 min como razonable para un POS (no banca), y el valor implementado cae ahí, pero es una decisión de negocio, no algo que el código deba decidir solo. Si 2 minutos es demasiado (o muy poco), es un solo número para ajustar en `src/lib/tenant.ts` (`SESSION_REVALIDATE_TTL_MS`).
+
 ### 🟡 Medio
 
 #### [Devoluciones · UX] Mostrar detalle completo de la venta original antes de confirmar
