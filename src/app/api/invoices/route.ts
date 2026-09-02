@@ -13,11 +13,13 @@ import {
   requireRole,
   UnauthorizedError,
 } from "@/lib/tenant";
+import { logAudit } from "@/modules/audit";
 
 export async function POST(request: Request) {
   let tenantId: string;
+  let userId: string;
   try {
-    ({ tenantId } = await requireRole(["OWNER", "CASHIER"], "pos"));
+    ({ tenantId, userId } = await requireRole(["OWNER", "CASHIER"], "pos"));
   } catch (e) {
     if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
@@ -53,6 +55,14 @@ export async function POST(request: Request) {
       docTipo,
       docNro: typeof docNro === "string" ? docNro : "",
       concepto: typeof concepto === "number" ? concepto : undefined,
+    });
+    void logAudit({
+      tenantId,
+      userId,
+      action: "INVOICE_EMITTED",
+      entityType: "Invoice",
+      entityId: invoice.id,
+      metadata: { saleId, cae: invoice.cae, voucherNumber: invoice.voucherNumber },
     });
 
     return successResponse(invoice, 201);

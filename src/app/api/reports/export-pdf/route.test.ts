@@ -1,5 +1,6 @@
 vi.mock("@/lib/tenant", () => ({
-  requireTenantId: vi.fn(),
+  requireRole: vi.fn(),
+  ForbiddenError: class ForbiddenError extends Error {},
   UnauthorizedError: class UnauthorizedError extends Error {}
 }));
 
@@ -22,10 +23,10 @@ vi.mock("@/app/ui/report-pdf", () => ({
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { prisma } from "@/lib/prisma";
-import { requireTenantId, UnauthorizedError } from "@/lib/tenant";
+import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 import { GET } from "./route";
 
-const mockedRequireTenantId = vi.mocked(requireTenantId);
+const mockedRequireRole = vi.mocked(requireRole);
 const mockedFindManySales = vi.mocked(prisma.sale.findMany);
 const mockedFindManyProducts = vi.mocked(prisma.product.findMany);
 const mockedFindStoreSettings = vi.mocked(prisma.storeSettings.findUnique);
@@ -37,19 +38,28 @@ function makeRequest(query: string) {
 describe("GET /api/reports/export-pdf", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockedRequireTenantId.mockResolvedValue("test-tenant-id");
+    mockedRequireRole.mockResolvedValue({ tenantId: "test-tenant-id", userId: "user-1", role: "OWNER" });
     mockedFindManySales.mockResolvedValue([]);
     mockedFindManyProducts.mockResolvedValue([]);
     mockedFindStoreSettings.mockResolvedValue({ businessName: "Mi Comercio" } as never);
   });
 
   it("returns 401 without a session", async () => {
-    mockedRequireTenantId.mockReset();
-    mockedRequireTenantId.mockRejectedValueOnce(new UnauthorizedError());
+    mockedRequireRole.mockReset();
+    mockedRequireRole.mockRejectedValueOnce(new UnauthorizedError());
 
     const response = await GET(makeRequest("?type=ventas"));
 
     expect(response.status).toBe(401);
+  });
+
+  it("returns 403 for a non-OWNER role", async () => {
+    mockedRequireRole.mockReset();
+    mockedRequireRole.mockRejectedValueOnce(new ForbiddenError());
+
+    const response = await GET(makeRequest("?type=ventas"));
+
+    expect(response.status).toBe(403);
   });
 
   it("returns 200 with a PDF for the tenant's sales", async () => {

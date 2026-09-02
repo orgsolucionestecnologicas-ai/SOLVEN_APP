@@ -1,14 +1,15 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
-import { unauthorizedResponse } from "../../_shared/responses";
-import { UnauthorizedError, requireTenantId } from "@/lib/tenant";
+import { forbiddenResponse, unauthorizedResponse } from "../../_shared/responses";
+import { ForbiddenError, UnauthorizedError, requireRole } from "@/lib/tenant";
 
 export async function GET(request: Request) {
   let tenantId: string;
   try {
-    tenantId = await requireTenantId();
+    ({ tenantId } = await requireRole(["OWNER"]));
   } catch (e) {
+    if (e instanceof ForbiddenError) return forbiddenResponse();
     if (e instanceof UnauthorizedError) return unauthorizedResponse();
     throw e;
   }
@@ -17,8 +18,8 @@ export async function GET(request: Request) {
   const type = searchParams.get("type") ?? "ventas";
   const fromParam = searchParams.get("from");
   const toParam = searchParams.get("to");
-  const from = fromParam ? new Date(`${fromParam}T00:00:00`) : undefined;
-  const to = toParam ? new Date(`${toParam}T23:59:59.999`) : undefined;
+  const from = fromParam ? new Date(`${fromParam}T00:00:00-03:00`) : undefined;
+  const to = toParam ? new Date(`${toParam}T23:59:59.999-03:00`) : undefined;
 
   try {
     if (type === "ventas") {

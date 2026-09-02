@@ -110,6 +110,24 @@ async function callWSAA(cms: string, url: string): Promise<ARCACredentials> {
   return { token, sign };
 }
 
+export type CertExpiryInfo = {
+  notAfter: Date;
+  daysRemaining: number;
+};
+
+/** Lee la fecha de vencimiento del certificado ARCA/AFIP del tenant. Null si no hay certificado cargado. */
+export async function getCertExpiryInfo(tenantId: string): Promise<CertExpiryInfo | null> {
+  const config = await prisma.tenantARCAConfig.findUnique({ where: { tenantId } });
+  if (!config?.certEncrypted) return null;
+
+  const certPem = decryptCert(config.certEncrypted);
+  const cert = forge.pki.certificateFromPem(certPem);
+  const notAfter = cert.validity.notAfter;
+  const daysRemaining = Math.ceil((notAfter.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+
+  return { notAfter, daysRemaining };
+}
+
 export async function getARCACredentials(tenantId: string): Promise<ARCACredentials> {
   // 1. Return cached token if still valid
   const cached = await getCachedToken(tenantId);

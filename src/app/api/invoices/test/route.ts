@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
 import { testWsfe, WSFE_URLS } from "@/lib/arca/wsfe-client";
-import { ARCAError } from "@/lib/arca";
+import { ARCAError, getCertExpiryInfo } from "@/lib/arca";
 import {
   errorResponse,
   forbiddenResponse,
@@ -31,12 +31,15 @@ export async function GET() {
 
     const wsfeUrl = WSFE_URLS[config.ambiente as "homo" | "prod"] ?? WSFE_URLS.homo;
     const result = await testWsfe(wsfeUrl);
+    const certExpiry = await getCertExpiryInfo(tenantId);
 
     return successResponse({
       ambiente: config.ambiente,
       wsfeUrl,
       hasCert: Boolean(config.certEncrypted && config.privateKeyEncrypted),
       wsfe: result,
+      certExpiresAt: certExpiry?.notAfter.toISOString() ?? null,
+      certDaysRemaining: certExpiry?.daysRemaining ?? null,
     });
   } catch (e) {
     if (e instanceof ARCAError) {

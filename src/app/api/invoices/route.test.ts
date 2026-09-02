@@ -4,10 +4,15 @@ vi.mock("@/lib/tenant", () => ({
   UnauthorizedError: class UnauthorizedError extends Error {}
 }));
 
+vi.mock("@/modules/audit", () => ({
+  logAudit: vi.fn()
+}));
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ARCAError } from "@/lib/arca";
 import { emitInvoice } from "@/modules/invoices";
+import { logAudit } from "@/modules/audit";
 import { ForbiddenError, requireRole, UnauthorizedError } from "@/lib/tenant";
 import { POST } from "./route";
 
@@ -17,6 +22,7 @@ vi.mock("@/modules/invoices", () => ({
 
 const mockedEmitInvoice = vi.mocked(emitInvoice);
 const mockedRequireRole = vi.mocked(requireRole);
+const mockedLogAudit = vi.mocked(logAudit);
 
 function makeRequest(body: unknown) {
   return new Request("http://localhost/api/invoices", {
@@ -149,6 +155,15 @@ describe("invoices API route", () => {
       docNro: "",
       concepto: undefined
     });
+    expect(mockedLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "test-tenant-id",
+        userId: "test-user-id",
+        action: "INVOICE_EMITTED",
+        entityType: "Invoice",
+        entityId: "invoice-1"
+      })
+    );
   });
 
   it("returns 422 with the ARCAError message when the sale does not belong to the tenant", async () => {

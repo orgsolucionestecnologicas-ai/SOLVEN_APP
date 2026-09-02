@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   getARCACredentials,
@@ -5,10 +6,15 @@ import {
   getLastVoucherNumber,
   requestCAE,
   ARCAConfigError,
+  ARCAEmissionError,
   ARCAError,
 } from "@/lib/arca";
 import { WSFE_URLS } from "@/lib/arca/wsfe-client";
-import type { CartItemForInvoice } from "@/lib/arca";
+import type { ARCAVoucherData, CartItemForInvoice } from "@/lib/arca";
+
+// AFIP WSFE: "el número de comprobante ya fue autorizado" — otro proceso
+// consumió ese número entre que lo consultamos y lo solicitamos.
+const AFIP_VOUCHER_NUMBER_TAKEN_CODE = "10016";
 
 export type EmitInvoiceInput = {
   tenantId: string;
@@ -68,43 +74,88 @@ export async function emitInvoice(input: EmitInvoiceInput): Promise<EmittedInvoi
     : config.condicionIVA === "MONO" ? 11
     : 6;
 
-  const lastNumber = await getLastVoucherNumber(
-    wsfeUrl,
-    credentials,
-    config.cuit,
-    config.puntoVenta,
-    voucherType
-  );
-  const nextNumber = lastNumber + 1;
+  async function buildNextVoucher(): Promise<ARCAVoucherData> {
+    const lastNumber = await getLastVoucherNumber(
+      wsfeUrl,
+      credentials,
+      config!.cuit,
+      config!.puntoVenta,
+      voucherType
+    );
+    return buildARCAVoucher(
+      items,
+      total,
+      input.docTipo,
+      input.docNro,
+      config!.puntoVenta,
+      lastNumber + 1,
+      config!.condicionIVA,
+      input.concepto ?? 1
+    );
+  }
 
-  // Build voucher
-  const voucher = buildARCAVoucher(
-    items,
-    total,
-    input.docTipo,
-    input.docNro,
-    config.puntoVenta,
-    nextNumber,
-    config.condicionIVA,
-    input.concepto ?? 1
-  );
+  let voucher = await buildNextVoucher();
 
-  // Request CAE from AFIP
-  const caeResult = await requestCAE(wsfeUrl, credentials, config.cuit, config.puntoVenta, voucher);
+  // Reserve the invoice row BEFORE calling AFIP: the unique saleId constraint
+  // rejects a concurrent second emission for this sale before it can spend a
+  // real CAE. The row is completed with AFIP's response afterward, or
+  // removed if the AFIP request fails.
+  let reserved;
+  try {
+    reserved = await prisma.invoice.create({
+      data: {
+        tenantId: input.tenantId,
+        saleId: input.saleId,
+        cae: "",
+        caeFchVto: "",
+        voucherNumber: voucher.cbteDesde,
+        voucherType: voucher.voucherType,
+        puntoVenta: config.puntoVenta,
+        docTipo: input.docTipo,
+        docNro: input.docNro,
+        impTotal: total,
+        impNeto: voucher.impNeto,
+        impIVA: voucher.impIVA,
+        impOpEx: voucher.impOpEx,
+      },
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const raced = await prisma.invoice.findUnique({ where: { saleId: input.saleId } });
+      throw new ARCAError(
+        `Esta venta ya tiene factura emitida${raced ? ` (CAE: ${raced.cae})` : ""}`
+      );
+    }
+    throw e;
+  }
 
-  // Persist invoice record
-  const invoice = await prisma.invoice.create({
+  let caeResult;
+  try {
+    try {
+      caeResult = await requestCAE(wsfeUrl, credentials, config.cuit, config.puntoVenta, voucher);
+    } catch (e) {
+      // El número de comprobante consultado ya fue usado por otro proceso:
+      // se reconsulta el último número real y se reintenta una sola vez.
+      if (e instanceof ARCAEmissionError && e.code === AFIP_VOUCHER_NUMBER_TAKEN_CODE) {
+        voucher = await buildNextVoucher();
+        caeResult = await requestCAE(wsfeUrl, credentials, config.cuit, config.puntoVenta, voucher);
+      } else {
+        throw e;
+      }
+    }
+  } catch (e) {
+    await prisma.invoice.delete({ where: { id: reserved.id } }).catch(() => {});
+    throw e;
+  }
+
+  // Complete the reserved row with AFIP's real response
+  const invoice = await prisma.invoice.update({
+    where: { id: reserved.id },
     data: {
-      tenantId: input.tenantId,
-      saleId: input.saleId,
       cae: caeResult.cae,
       caeFchVto: caeResult.caeFchVto,
       voucherNumber: caeResult.voucherNumber,
       voucherType: voucher.voucherType,
-      puntoVenta: config.puntoVenta,
-      docTipo: input.docTipo,
-      docNro: input.docNro,
-      impTotal: total,
       impNeto: voucher.impNeto,
       impIVA: voucher.impIVA,
       impOpEx: voucher.impOpEx,
@@ -124,8 +175,8 @@ export async function emitInvoice(input: EmitInvoiceInput): Promise<EmittedInvoi
   };
 }
 
-export async function getInvoiceBySaleId(saleId: string) {
-  return prisma.invoice.findUnique({ where: { saleId } });
+export async function getInvoiceBySaleId(saleId: string, tenantId: string) {
+  return prisma.invoice.findFirst({ where: { saleId, tenantId } });
 }
 
 export async function listInvoices(tenantId: string, page = 1, limit = 50) {

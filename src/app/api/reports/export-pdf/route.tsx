@@ -4,14 +4,17 @@ import React from "react";
 import { NextResponse } from "next/server";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
-import { UnauthorizedError, requireTenantId } from "@/lib/tenant";
+import { ForbiddenError, UnauthorizedError, requireRole } from "@/lib/tenant";
 import { ReportPDFDocument } from "@/app/ui/report-pdf";
 
 export async function GET(request: Request) {
   let tenantId: string;
   try {
-    tenantId = await requireTenantId();
+    ({ tenantId } = await requireRole(["OWNER"]));
   } catch (e) {
+    if (e instanceof ForbiddenError) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
     if (e instanceof UnauthorizedError) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -22,8 +25,8 @@ export async function GET(request: Request) {
   const type = searchParams.get("type") ?? "ventas";
   const fromParam = searchParams.get("from");
   const toParam = searchParams.get("to");
-  const from = fromParam ? new Date(`${fromParam}T00:00:00`) : undefined;
-  const to = toParam ? new Date(`${toParam}T23:59:59.999`) : undefined;
+  const from = fromParam ? new Date(`${fromParam}T00:00:00-03:00`) : undefined;
+  const to = toParam ? new Date(`${toParam}T23:59:59.999-03:00`) : undefined;
   const rangeLabel = from && to ? `${fromParam} a ${toParam}` : "Todo el período";
 
   const settings = await prisma.storeSettings.findUnique({ where: { tenantId } });
