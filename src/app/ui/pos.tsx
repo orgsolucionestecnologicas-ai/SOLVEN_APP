@@ -1792,7 +1792,7 @@ export function Pos() {
 
               {!productsLoading && !productsError && paginatedProducts.length > 0 ? (
                 <>
-                  <div className="space-y-1">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                     {paginatedProducts.map((product) => {
                       const cartItem = cartItems.find((item) => item.productId === product.id);
                       const inCartQty = cartItem?.quantity ?? 0;
@@ -1804,45 +1804,63 @@ export function Pos() {
                           key={product.id}
                           className={
                             isOutOfStock
-                              ? "flex items-center gap-2.5 rounded-lg border border-slate-100 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 px-3 py-1 opacity-50"
+                              ? "relative flex flex-col rounded-lg border border-slate-100 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 p-2 opacity-50"
                               : inCartQty > 0
-                                ? "flex items-center gap-2.5 rounded-lg border-2 border-violet-400 bg-violet-50 px-3 py-1"
-                                : "flex items-center gap-2.5 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 px-3 py-1 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600"
+                                ? "relative flex cursor-pointer flex-col rounded-lg border-2 border-violet-400 bg-violet-50 p-2"
+                                : "relative flex cursor-pointer flex-col rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 p-2 hover:border-slate-300 [.pos-dark_&]:hover:border-gray-600"
                           }
+                          onClick={() => {
+                            if (canAdd) addToCart(product);
+                          }}
                         >
+                          {inCartQty > 0 ? (
+                            <span className="absolute right-1.5 top-1.5 z-10 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-violet-600 text-[10px] font-bold text-white">
+                              {inCartQty}
+                            </span>
+                          ) : null}
                           {product.imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               alt={product.name}
-                              className="h-8 w-8 flex-shrink-0 rounded object-cover"
+                              className="mb-1.5 h-16 w-full flex-shrink-0 rounded object-cover"
                               src={product.imageUrl}
                             />
                           ) : (
-                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-slate-100 [.pos-dark_&]:bg-gray-700">
-                              <Package size={13} className="text-slate-400" />
+                            <div className="mb-1.5 flex h-16 w-full flex-shrink-0 items-center justify-center rounded bg-slate-100 [.pos-dark_&]:bg-gray-700">
+                              <Package size={22} className="text-slate-400" />
                             </div>
                           )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-slate-950 [.pos-dark_&]:text-slate-100">{product.name}</p>
-                            <p className="text-[10px] text-slate-400">{product.categoryName}</p>
-                          </div>
-                          <ProductStockBadge stock={product.stock} />
-                          <p className="flex-shrink-0 tabular-nums text-sm font-bold text-emerald-700">
-                            {formatMoney(product.salePrice)}
+                          <p className="line-clamp-2 min-h-[2.2em] text-xs font-medium leading-tight text-slate-950 [.pos-dark_&]:text-slate-100">
+                            {product.name}
                           </p>
-                          {inCartQty > 0 ? (
-                            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-violet-600 text-[10px] font-bold text-white">
-                              {inCartQty}
-                            </span>
-                          ) : null}
-                          <button
-                            className="flex-shrink-0 rounded-lg bg-violet-600 px-2 py-1 text-xs font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
-                            disabled={!canAdd}
-                            onClick={() => addToCart(product)}
-                            type="button"
-                          >
-                            Agregar
-                          </button>
+                          <div className="mt-1 flex items-center justify-between gap-1">
+                            <ProductStockBadge stock={product.stock} />
+                            <Link
+                              className="flex-shrink-0 rounded-full border border-slate-200 [.pos-dark_&]:border-gray-600 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 [.pos-dark_&]:text-slate-300 hover:border-violet-300 hover:text-violet-600"
+                              href={`/products/${product.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              rel="noopener noreferrer"
+                              target="_blank"
+                            >
+                              Detalle
+                            </Link>
+                          </div>
+                          <div className="mt-1.5 flex items-center justify-between gap-1">
+                            <p className="flex-shrink-0 tabular-nums text-sm font-bold text-emerald-700">
+                              {formatMoney(product.salePrice)}
+                            </p>
+                            <button
+                              className="flex-shrink-0 rounded-lg bg-violet-600 px-2 py-1 text-xs font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                              disabled={!canAdd}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addToCart(product);
+                              }}
+                              type="button"
+                            >
+                              Agregar
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
