@@ -41,18 +41,33 @@ export type LogAuditInput = {
   metadata?: Record<string, unknown>;
 };
 
+// La auditoria es fire-and-forget: casi todos los call sites la invocan con
+// `void logAudit(...)` despues de que la operacion de negocio ya commiteo. Si
+// el INSERT falla y el rechazo escapa, queda una unhandled promise rejection
+// (Node puede terminar el proceso) y, si el call site la esperara, una
+// operacion de negocio ya persistida terminaria devolviendo 500. Por eso el
+// error se contiene aca, en un solo lugar, en vez de en cada call site.
 export async function logAudit(input: LogAuditInput): Promise<void> {
-  await prisma.auditLog.create({
-    data: {
-      tenantId: input.tenantId,
-      userId: input.userId,
-      userCode: input.userCode ?? null,
+  try {
+    await prisma.auditLog.create({
+      data: {
+        tenantId: input.tenantId,
+        userId: input.userId,
+        userCode: input.userCode ?? null,
+        action: input.action,
+        entityType: input.entityType,
+        entityId: input.entityId ?? null,
+        metadata: (input.metadata as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull
+      }
+    });
+  } catch (error) {
+    console.error("[audit] no se pudo registrar la accion", {
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId ?? null,
-      metadata: (input.metadata as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull
-    }
-  });
+      error
+    });
+  }
 }
 
 export type AuditLogEntry = {
