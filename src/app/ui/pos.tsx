@@ -358,6 +358,7 @@ type InvoiceResult = {
 
 export function Pos() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("Venta actual");
+  const [returnPresetSaleId, setReturnPresetSaleId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [rolePermissions, setRolePermissions] = useState<Record<string, boolean> | null>(null);
 
@@ -366,9 +367,6 @@ export function Pos() {
   const [productsError, setProductsError] = useState<string | null>(null);
   const [productsRefreshKey, setProductsRefreshKey] = useState(0);
 
-  const [topProducts, setTopProducts] = useState<ProductRecord[]>([]);
-  const [topProductsLoading, setTopProductsLoading] = useState(true);
-  const [topProductsOpen, setTopProductsOpen] = useState(true);
 
   const [services, setServices] = useState<ServiceRecord[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
@@ -636,35 +634,6 @@ export function Pos() {
       isActive = false;
     };
   }, [productsRefreshKey]);
-
-  useEffect(() => {
-    let isActive = true;
-    setTopProductsLoading(true);
-
-    async function loadTopProducts() {
-      try {
-        const response = await fetch("/api/pos/top-products", {
-          headers: { Accept: "application/json" },
-        });
-        const body = (await response.json()) as ProductsResponse;
-
-        if (!isActive) return;
-
-        if (response.ok && body.data) {
-          setTopProducts(body.data);
-        }
-      } catch {
-        // el grid de más vendidos es un atajo opcional; si falla, no bloquea el POS
-      } finally {
-        if (isActive) setTopProductsLoading(false);
-      }
-    }
-
-    void loadTopProducts();
-    return () => {
-      isActive = false;
-    };
-  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -1550,9 +1519,17 @@ export function Pos() {
       </div>
 
       {activeTab === "Historial" ? (
-        <SalesList />
+        <SalesList
+          onReturnRequest={(sale) => {
+            setReturnPresetSaleId(sale.id);
+            setActiveTab("Devoluciones");
+          }}
+        />
       ) : activeTab === "Devoluciones" ? (
-        <Returns />
+        <Returns
+          onPresetConsumed={() => setReturnPresetSaleId(null)}
+          presetSaleId={returnPresetSaleId}
+        />
       ) : (
         <div
           className={`flex h-[calc(100vh-49px)] divide-x divide-slate-200 [.pos-dark_&]:divide-gray-700 bg-white [.pos-dark_&]:bg-gray-900 ${darkMode ? "pos-dark" : ""}`}
@@ -1719,68 +1696,6 @@ export function Pos() {
                 ))}
               </div>
             </div>
-
-            {/* Más vendidos */}
-            {!topProductsLoading && topProducts.length > 0 ? (
-              <div className="border-b border-slate-100 [.pos-dark_&]:border-gray-700 px-4 py-3 sm:px-5">
-                <button
-                  className="mb-2 flex w-full items-center justify-between"
-                  onClick={() => setTopProductsOpen((open) => !open)}
-                  type="button"
-                >
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Más vendidos
-                  </span>
-                  {topProductsOpen ? (
-                    <ChevronUp size={14} className="text-slate-400" />
-                  ) : (
-                    <ChevronDown size={14} className="text-slate-400" />
-                  )}
-                </button>
-                {topProductsOpen ? (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {topProducts.map((product) => {
-                      const isOutOfStock = product.stock === 0;
-                      const canAdd =
-                        !isOutOfStock && cashRegisterStatus === "open" && saleGateResult !== null;
-
-                      return (
-                        <button
-                          key={product.id}
-                          className={
-                            isOutOfStock
-                              ? "flex flex-col items-center gap-1 rounded-lg border border-slate-100 [.pos-dark_&]:border-gray-700 bg-slate-50 [.pos-dark_&]:bg-gray-800 p-2 opacity-50"
-                              : "flex flex-col items-center gap-1 rounded-lg border border-slate-200 [.pos-dark_&]:border-gray-700 bg-white [.pos-dark_&]:bg-gray-900 p-2 hover:border-violet-300 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
-                          }
-                          disabled={!canAdd}
-                          onClick={() => addToCart(product)}
-                          type="button"
-                        >
-                          {product.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              alt={product.name}
-                              className="h-9 w-9 flex-shrink-0 rounded object-cover"
-                              src={product.imageUrl}
-                            />
-                          ) : (
-                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-slate-100 [.pos-dark_&]:bg-gray-700">
-                              <Package size={15} className="text-slate-400" />
-                            </div>
-                          )}
-                          <p className="line-clamp-2 text-center text-[11px] font-medium leading-tight text-slate-950 [.pos-dark_&]:text-slate-100">
-                            {product.name}
-                          </p>
-                          <p className="text-[11px] font-bold text-emerald-700">
-                            {formatMoney(product.salePrice)}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
 
             {/* 3. Products area */}
             <div className="px-4 py-3 sm:px-5">

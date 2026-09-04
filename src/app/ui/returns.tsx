@@ -177,7 +177,13 @@ function formatDate(iso: string) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function Returns() {
+export function Returns({
+  presetSaleId,
+  onPresetConsumed
+}: {
+  presetSaleId?: string | null;
+  onPresetConsumed?: () => void;
+} = {}) {
   const [activeTab, setActiveTab] = useState<"new" | "history">("new");
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,6 +238,17 @@ export function Returns() {
   useEffect(() => {
     void fetchSales();
   }, [fetchSales]);
+
+  useEffect(() => {
+    if (!presetSaleId || loading) return;
+    const match = sales.find((s) => s.id === presetSaleId);
+    if (match) {
+      handleSelectSale(match);
+      setActiveTab("new");
+    }
+    onPresetConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetSaleId, sales, loading]);
 
   function handleSearchFieldClick(field: SearchField) {
     setSearchField(field);

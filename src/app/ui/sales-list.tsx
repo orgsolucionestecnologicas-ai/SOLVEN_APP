@@ -95,21 +95,11 @@ type SaleLineItem = {
   unitPrice: number;
 };
 
-type ReturnResponse = {
-  data?: { saleId: string; returnedItems: number; totalReturned: string };
-  error?: { message: string };
-};
-
-type ReturnItemState = {
-  productId: string;
-  productName: string;
-  maxQuantity: number;
-  unitPrice: string;
-  selected: boolean;
-  returnQuantity: number;
-};
-
-export function SalesList() {
+export function SalesList({
+  onReturnRequest
+}: {
+  onReturnRequest?: (sale: SaleRecord) => void;
+} = {}) {
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -117,7 +107,6 @@ export function SalesList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [viewingSale, setViewingSale] = useState<SaleRecord | null>(null);
-  const [returningSale, setReturningSale] = useState<SaleRecord | null>(null);
   const [showAllSales, setShowAllSales] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().slice(0, 10));
   const [page, setPage] = useState(1);
@@ -203,14 +192,6 @@ export function SalesList() {
     setPage(1);
     setRefreshKey((k) => k + 1);
     setSuccessMessage("Venta registrada exitosamente.");
-    setTimeout(() => setSuccessMessage(null), 4000);
-  }
-
-  function handleReturnSuccess() {
-    setReturningSale(null);
-    setPage(1);
-    setRefreshKey((k) => k + 1);
-    setSuccessMessage("Devolución procesada exitosamente.");
     setTimeout(() => setSuccessMessage(null), 4000);
   }
 
@@ -339,7 +320,7 @@ export function SalesList() {
                     </p>
                   </div>
                   <SaleCards
-                    onReturn={setReturningSale}
+                    onReturn={onReturnRequest}
                     onView={setViewingSale}
                     sales={group.sales}
                   />
@@ -348,7 +329,7 @@ export function SalesList() {
             </div>
           ) : (
             <SaleCards
-              onReturn={setReturningSale}
+              onReturn={onReturnRequest}
               onView={setViewingSale}
               sales={displayedSales}
             />
@@ -371,13 +352,6 @@ export function SalesList() {
         />
       ) : null}
 
-      {returningSale ? (
-        <ReturnModal
-          onClose={() => setReturningSale(null)}
-          onSuccess={handleReturnSuccess}
-          sale={returningSale}
-        />
-      ) : null}
     </section>
   );
 }
@@ -389,7 +363,7 @@ function SaleCards({
 }: {
   sales: SaleRecord[];
   onView: (sale: SaleRecord) => void;
-  onReturn: (sale: SaleRecord) => void;
+  onReturn?: (sale: SaleRecord) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -407,7 +381,7 @@ function SaleCard({
 }: {
   sale: SaleRecord;
   onView: (sale: SaleRecord) => void;
-  onReturn: (sale: SaleRecord) => void;
+  onReturn?: (sale: SaleRecord) => void;
 }) {
   const productSummary =
     sale.items.length > 0
@@ -500,14 +474,16 @@ function SaleCard({
             <Printer size={12} />
             Imprimir
           </button>
-          <button
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
-            onClick={() => onReturn(sale)}
-            type="button"
-          >
-            <RotateCcw size={12} />
-            Devolver
-          </button>
+          {onReturn ? (
+            <button
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+              onClick={() => onReturn(sale)}
+              type="button"
+            >
+              <RotateCcw size={12} />
+              Devolver
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -706,215 +682,6 @@ function SaleDetailModal({
               Cerrar
             </button>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ReturnModal({
-  sale,
-  onClose,
-  onSuccess
-}: {
-  sale: SaleRecord;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [returnItems, setReturnItems] = useState<ReturnItemState[]>(
-    sale.items
-      .filter((item): item is typeof item & { productId: string; product: { name: string; costPrice: string | null } } =>
-        item.productId !== null && item.product !== null
-      )
-      .map((item) => ({
-        productId: item.productId,
-        productName: item.product.name,
-        maxQuantity: item.quantity,
-        unitPrice: item.unitPrice,
-        selected: false,
-        returnQuantity: item.quantity
-      }))
-  );
-  const [returnMethod, setReturnMethod] = useState<
-    "Efectivo" | "Crédito a cuenta"
-  >("Efectivo");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const selectedItems = returnItems.filter((i) => i.selected);
-
-  function toggleItem(productId: string) {
-    setReturnItems((prev) =>
-      prev.map((i) =>
-        i.productId === productId ? { ...i, selected: !i.selected } : i
-      )
-    );
-  }
-
-  function updateQuantity(productId: string, quantity: number) {
-    setReturnItems((prev) =>
-      prev.map((i) =>
-        i.productId === productId
-          ? {
-              ...i,
-              returnQuantity: Math.max(1, Math.min(i.maxQuantity, quantity))
-            }
-          : i
-      )
-    );
-  }
-
-  async function handleConfirm() {
-    if (selectedItems.length === 0) {
-      setSubmitError("Seleccioná al menos un producto para devolver.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitError(null);
-
-    try {
-      const response = await fetch("/api/returns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          saleId: sale.id,
-          items: selectedItems.map((i) => ({
-            productId: i.productId,
-            quantity: i.returnQuantity
-          }))
-        })
-      });
-      const responseBody = (await response.json()) as ReturnResponse;
-
-      if (!response.ok || !responseBody.data) {
-        setSubmitError(
-          responseBody.error?.message ?? "No se pudo procesar la devolución."
-        );
-        return;
-      }
-
-      onSuccess();
-    } catch {
-      setSubmitError("No se pudo procesar la devolución.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-lg rounded-2xl bg-white shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <h2 className="text-sm font-semibold text-slate-950">
-            Devolución — Venta {formatFolio(sale.folio)}
-          </h2>
-          <button
-            className="text-slate-400 hover:text-slate-700"
-            onClick={onClose}
-            type="button"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="space-y-4 px-6 py-5">
-          {sale.items.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              Esta venta no tiene ítems para devolver.
-            </p>
-          ) : (
-            <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-              {returnItems.map((item) => (
-                <div
-                  className="flex items-center gap-3 px-4 py-3"
-                  key={item.productId}
-                >
-                  <input
-                    checked={item.selected}
-                    className="h-4 w-4 rounded border-slate-300 accent-slate-950"
-                    onChange={() => toggleItem(item.productId)}
-                    type="checkbox"
-                  />
-                  <span className="flex-1 text-sm text-slate-950">
-                    {item.productName}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    Vendido: {numberFormatter.format(item.maxQuantity)}
-                  </span>
-                  <input
-                    className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-center text-sm text-slate-950 focus:border-slate-500 focus:outline-none disabled:opacity-40"
-                    disabled={!item.selected || isSubmitting}
-                    max={item.maxQuantity}
-                    min={1}
-                    onChange={(e) =>
-                      updateQuantity(
-                        item.productId,
-                        parseInt(e.target.value, 10)
-                      )
-                    }
-                    step={1}
-                    type="number"
-                    value={item.returnQuantity}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">
-              Método de devolución
-            </p>
-            <div className="flex rounded-lg border border-slate-200 p-0.5">
-              {(["Efectivo", "Crédito a cuenta"] as const).map((method) => (
-                <button
-                  className={
-                    returnMethod === method
-                      ? "flex-1 rounded-lg px-4 py-1.5 text-sm font-medium bg-slate-950 text-white"
-                      : "flex-1 rounded-lg px-4 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-950"
-                  }
-                  disabled={isSubmitting}
-                  key={method}
-                  onClick={() => setReturnMethod(method)}
-                  type="button"
-                >
-                  {method}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {submitError ? (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
-              <p className="text-sm font-medium text-rose-900">{submitError}</p>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
-          <button
-            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-            disabled={isSubmitting}
-            onClick={onClose}
-            type="button"
-          >
-            Cancelar
-          </button>
-          <button
-            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
-            disabled={isSubmitting || selectedItems.length === 0}
-            onClick={handleConfirm}
-            type="button"
-          >
-            {isSubmitting ? "Procesando..." : "Confirmar devolución"}
-          </button>
         </div>
       </div>
     </div>
