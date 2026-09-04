@@ -7,6 +7,16 @@
 ---
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
+### 2026-09-04 — Sacar referencia de todos los medios de reintegro + arreglar coma decimal en el monto (CERRADO — Ingeniero Líder, directo, commit `bf0a7a7`)
+
+Diego pidió sacar el campo "N° de operación" del cuadro de cada medio de reintegro en Devoluciones (antes solo existía para Tarjeta) y reportó que el campo de monto no dejaba escribir un punto y después una coma, dando un número distinto al esperado. Arreglo directo, sin ciclo de agente VS Code, por tamaño chico y causa ya identificada.
+
+**Referencia sacada de todos lados.** `refundReferences` (estado), `handleRefundReferenceChange`, el input de texto que solo aparecía para Tarjeta, y la validación `refundCardReferencesOk` (frontend) — todo eliminado. En el backend, saqué el chequeo equivalente que exigía referencia para Tarjeta en `src/modules/returns/index.ts` (línea ~328) y `src/app/api/returns/route.ts` (línea ~145) — sin esto, todos los reintegros con Tarjeta hubieran empezado a fallar en el servidor apenas se sacó el campo del frontend. El campo `reference` sigue existiendo como opcional en el tipo/schema (nadie lo va a mandar más, pero no rompe nada dejarlo).
+
+**Bug real de parseo confirmado.** El input de monto era `type="number"`, que en la mayoría de los navegadores bloquea directamente la tecla "," (no la deja escribir) — así que un monto en formato argentino ("1.500,50") quedaba imposible de tipear bien, y `parseFloat` sobre lo que sí se lograba escribir cortaba en el primer carácter no numérico. Cambiado a `type="text"` + `inputMode="decimal"`, con una función nueva `parseAmountInput` que interpreta el separador que aparece más a la derecha como decimal (soporta "1500.50", "1500,50" y "1.500,50" indistintamente).
+
+`typecheck`/`lint` limpios. Verificado en clon aislado (`/tmp/verify-refund-fix`, ya borrado): 33/33 tests de `src/modules/returns/index.integration.test.ts` + `src/app/api/returns/route.test.ts` en verde, incluido el test que manda `reference` para Tarjeta (sigue aceptándose si viene, solo dejó de ser obligatorio). Commit `bf0a7a7` en `design/revision-uiux-sep-2026`.
+
 ### 2026-09-04 — POS-UX-02 verificado contra el diff real (rama design/revision-uiux-sep-2026, commit `ccce045`)
 
 Verificación directa (`git diff -w 2c44384 ccce045`): único archivo tocado `src/app/ui/pos.tsx`, sin scope creep. La grilla de tarjetas (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`), la cápsula "Detalle" (`Link` a `/products/{id}` en pestaña nueva, ya importado) y el badge de carrito `absolute` coinciden línea por línea con lo pedido y con lo reportado — incluida la justificación de reducir un breakpoint respecto al grid de referencia de "Más vendidos" (más contenido apilado por tarjeta). `stopPropagation` presente en la cápsula "Detalle" y en el botón "Agregar", `onClick` del contenedor gateado por `canAdd` (que ya incluía `cashRegisterStatus`/`saleGateResult`, sin tocar). `typecheck`/`lint` corridos de nuevo por mí, limpios.
