@@ -514,8 +514,10 @@ export function Returns({
           <div className="mb-6 flex items-start gap-3 rounded-xl border border-violet-200 bg-violet-50 p-4">
             <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0 text-violet-600" />
             <p className="flex-1 text-sm text-violet-800">
-              Para una devolución más ágil y efectiva, te recomendamos cobrar primero la venta nueva y, una vez
-              cobrada, devolver la totalidad de la anterior.
+              Para una devolución más ágil y efectiva: si la venta nueva es <span className="font-semibold">menor</span> a
+              lo que vas a devolver, cobrala primero y después devolvé la anterior en su totalidad. Si la venta nueva
+              es <span className="font-semibold">mayor</span>, conviene devolver la anterior como pago a cuenta y
+              cobrar solo la diferencia con el método que el cliente prefiera.
             </p>
             <button
               type="button"
