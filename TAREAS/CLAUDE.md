@@ -409,6 +409,33 @@ Para que quien lo valide pueda auditar rápido qué cambió y por qué, sin rele
 11. **Emails:** de 6 a 9 funciones reales en `email.ts`.
 12. **Rebill:** decisión explícita de Diego (2026-07-18) de tratar esta integración al final del proyecto — no es negligencia, es orden de prioridad deliberada.
 
+## 14. DECISIONES DE ARQUITECTURA REGISTRADAS (DA)
+
+Log numerado y compacto para citar rápido ("post-DA-10", "ver DA-13") en vez de
+repetir la explicación completa cada vez. Migrado desde `SOLVEN_CEREBRO_DEFINITIVO.pdf`
+v3.0 (22-07-2026) el 04-09-2026 — el PDF queda retirado como documento vivo,
+esta tabla es ahora la fuente de verdad para el log de decisiones. Agregar una
+DA-17+ acá cuando se tome una decisión de arquitectura nueva que valga citar por ID.
+
+| ID | Decisión | Detalle |
+|---|---|---|
+| DA-01 | Moneda única ARS | SOLVEN opera exclusivamente en Pesos Argentinos. Sin soporte USD/EUR/RD$. |
+| DA-02 | `ivaRate` como fracción AFIP | Alícuotas como decimales: `0, 0.105, 0.21, 0.27`. Nunca enteros. |
+| DA-03 | `SaleItem.ivaRate` histórico | Se preserva la alícuota al momento de venta para integridad financiera histórica. |
+| DA-04 | ARCA opt-in doble | Opt-in por tenant Y por venta. Ticket siempre disponible sin ARCA. `Sale.cae` nullable. |
+| DA-05 | Multi-tenancy shared DB | Todos los tenants comparten la misma DB Neon. Separación por columna `tenantId`, sin RLS. |
+| DA-06 | `ForbiddenError` vs `UnauthorizedError` | 403 = autenticado sin permisos. 401 = no autenticado. No intercambiarlos. |
+| DA-07 | Rebill para suscripciones | Cobros recurrentes Argentina. Webhooks actualizan `Subscription`. |
+| DA-08 | Auth por cookie JWT | Cookie `solven_session`. Nunca `localStorage` para sesión. |
+| DA-09 | NOA dual-instance | NOA externo (landing) no se toca. NOA interno fue removido — visión futura es NOA Operativo (sección 7). |
+| DA-10 | Confiar solo en el servidor para dinero | Cualquier endpoint que mueva dinero, stock o facturación recalcula desde la DB — nunca confía en el payload del cliente (post-FIX-08). |
+| DA-11 | Notion deprecado como backlog | Desde 18/22-07-2026, `TAREAS/PENDIENTES.md` es la única fuente de pendientes. Notion queda histórico, no activo. |
+| DA-12 | Verificar backlog contra código | Ningún ítem "Pendiente" de un backlog se reporta como abierto sin verificarlo primero contra el código real — se encontraron reiteradas tarjetas desactualizadas. |
+| DA-13 | Heredoc de bash para archivos a commitear | Escribir vía `cat > archivo << EOF` en vez del tool Write cuando el archivo se va a commitear en el mismo turno — desfase conocido entre ambos en este entorno. |
+| DA-14 | Rebill al final del proyecto | Decisión explícita de Diego (18-07-2026) de tratar el hardening de la integración Rebill al cierre del proyecto, no ahora. |
+| DA-15 | El agente ejecutor no se auto-verifica | Nunca escribe en su propio reporte que el Ingeniero Líder ya revisó/verificó su trabajo — ese veredicto lo agrega el Ingeniero Líder después, no antes. |
+| DA-16 | `TAREAS/CLAUDE.md` es la única fuente técnica viva | Decisión explícita de Diego (04-09-2026): se retira `SOLVEN_CEREBRO_DEFINITIVO.pdf` como documento a mantener; su contenido vigente se migró a este archivo y a `TAREAS/INGENIERO_LIDER.md`/`TAREAS/PENDIENTES.md`. La raíz del repo tiene un `README.md` que apunta acá — no hay, ni debe crearse, un segundo `CLAUDE.md`. |
+
 ## Cambios del ciclo 2026-09-02 (primer ciclo completo de auditoría proactiva INGENIERODETESTEO)
 
 Entre el 31-08-2026 y el 02-09-2026 se completó la primera pasada completa de auditoría proactiva de edge cases (rol **INGENIERODETESTEO**, metodología en `TAREAS/INGENIERODETESTEO.md` / skill `solven-edge-case-auditor`) sobre las 9 secciones de SOLVEN, en el mismo orden que `src/modules/`: POS, Devoluciones, Caja, Inventario, Deudas, Cotizaciones, Reportes/ARCA, Promociones, Usuarios/Permisos. Cada sección se auditó leyendo el código real contra escenarios de negocio no triviales (nunca hipotetizando sin verificar), y cada bug confirmado pasó por el ciclo normal de ejecución (agente de VS Code) + verificación (Ingeniero Líder contra el diff real, nunca contra el self-report). Resumen de lo que cambió respecto a la versión anterior de este documento:

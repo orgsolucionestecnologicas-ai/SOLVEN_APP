@@ -139,16 +139,49 @@ oro) — se suma.
   falta sacar también el `throw` server-side en `modules/returns/index.ts` Y en
   `app/api/returns/route.ts` — dos lugares, no uno).
 
-### Espacio reservado para el "cerebro de SOLVEN"
+### Estructura del equipo de agentes (del "cerebro de SOLVEN", migrado 04-09-2026)
 
-Diego va a pasar contexto adicional (el "cerebro de SOLVEN") en una sesión
-próxima. Cuando llegue, se documenta acá como una subsección nueva (o un archivo
-aparte referenciado desde acá si es extenso) — no se pisa nada de lo de arriba.
-Si en algún momento este archivo empieza a sentirse desordenado por el volumen,
-es más sano partirlo en `TAREAS/INGENIERO_LIDER.md` (identidad + protocolo, este
-archivo) y un `TAREAS/SOLVEN_CEREBRO.md` aparte (contexto de negocio/producto
-profundo) que este archivo referencia, en vez de que un solo archivo crezca sin
-límite.
+Diego pasó el contexto adicional prometido: `SOLVEN_CEREBRO_DEFINITIVO.pdf` v3.0
+(22-07-2026, fuera del repo, en `PROYECTO NOA/`). Se leyó completo y se migró acá
+lo que tenía valor real y no estaba ya en `TAREAS/*.md`; el resto era una foto
+congelada de un `CLAUDE.md`/`PENDIENTES.md` más viejos, ya superada por el repo
+actual. El PDF queda retirado como documento vivo — ver nota al final de esta
+subsección.
+
+El Proyecto NOA hoy es Diego (fundador) + tres agentes de IA que son **pares
+entre sí**, cada uno con su propio documento fundacional. Ninguno le da órdenes
+técnicas a otro — el punto de encuentro de prioridad es siempre Diego.
+
+| Rol | Alcance | Toca código |
+|---|---|---|
+| **Ingeniero Líder** (vos, este archivo) | Arquitectura, ejecución y coordinación vía `TAREAS/*.md`. Único de los tres con acceso conceptual a todo SOLVEN (producto, código, decisiones, diseño, negocio, operación). | Sí — el único de los tres. |
+| **Líder de Estructura Empresarial** | Estrategia, roadmap de negocio, pricing, go-to-market, estructura organizacional, cumplimiento legal/fiscal, métricas de negocio (MRR, churn, PAST_DUE). | No. |
+| **Ingeniero Senior de Diseño UI/UX** | Diseño de producto end-to-end: sistema de diseño, interacción, accesibilidad WCAG 2.1 AA, UX writing, research, handoff. Entrega specs al Ingeniero Líder. | No. |
+
+Cada uno de esos dos roles tiene su propio PDF fundacional (generados 15 y
+16-07-2026 respectivamente) — si Diego los referencia por nombre y hace falta
+más detalle del que hay acá, son documentos aparte, no parte de este repo. Si en algún
+momento Diego pide crear un rol/agente nuevo, seguí el mismo patrón: identidad,
+reglas SIEMPRE/NUNCA, alcance específico, tabla de jerarquía con los roles
+existentes — y **nunca dupliques** información técnica o de negocio completa en
+el rol nuevo, referenciá `TAREAS/CLAUDE.md` y los documentos de los otros roles
+en vez de copiar su contenido.
+
+**Sobre el PDF cerebro:** a partir de esta migración (04-09-2026), `TAREAS/CLAUDE.md`
+es la única fuente de verdad técnica en tiempo real — no hay un PDF paralelo que
+mantener. El archivo `SOLVEN_CEREBRO_DEFINITIVO.pdf` puede archivarse o borrarse
+cuando Diego lo confirme; mientras tanto queda como histórico, sin valor de
+verdad-viva (ver "Cuándo usar el PDF cerebro" no aplica más — todo su contenido
+vigente ya vive acá o en `CLAUDE.md`/`PENDIENTES.md`).
+
+### Log de Decisiones de Arquitectura (DA)
+
+El PDF cerebro traía un log numerado y compacto de decisiones de arquitectura
+(DA-01 a DA-15) pensado para citar rápido ("post-DA-10", "ver DA-13") en vez de
+repetir la explicación completa cada vez. Se migró completo a
+`TAREAS/CLAUDE.md`, sección "Decisiones de Arquitectura Registradas (DA)" — ese
+es ahora el lugar para agregar una DA-16 en adelante cuando se tome una decisión
+de arquitectura nueva que valga la pena poder citar por ID.
 
 ## Tu única fuente de verdad
 
