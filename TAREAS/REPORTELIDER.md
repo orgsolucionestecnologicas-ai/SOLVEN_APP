@@ -7,6 +7,16 @@
 ---
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
+### 2026-09-04 — 2 gaps de RET-UX-02 (CERRADO — Ingeniero Líder, directo, commit `8f8a8fc`)
+
+Diego pidió arreglar los 2 gaps encontrados al verificar RET-UX-02. Arreglo directo, sin pasar por el ciclo agente-VS Code, dado el tamaño chico y que ya se conocía la causa exacta de cada uno.
+
+**Preselección con fallback por id.** `GET /api/sales/[id]` no existía (mi verificación anterior asumió que sí — error mío, corregido acá); se agregó siguiendo el mismo patrón de `products/[id]/route.ts` y `sales/[id]/send-email/route.ts` (`requireRole(["OWNER","CASHIER"], "pos")`, reusa `getSaleById` ya existente en el módulo). En `returns.tsx`, el `useEffect` de preselección ahora pide la venta puntual por id cuando no está entre las últimas 50 sin filtro, en vez de rendirse en silencio.
+
+**Método de pago real en Devoluciones.** El badge fijo Efectivo/Crédito de la lista de ventas (Sección 4.1 de RET-UX-02, que había quedado sin hacer) ahora usa el método real vía `paymentDetails` (`formatPaymentMethodBadge`, nueva función). De paso saqué una línea binaria duplicada en el panel derecho que convivía con la línea "Pagado con" (ya correcta) y que para una venta MIXED con tarjeta podía mostrar "Crédito" contradiciendo la línea de al lado — no era solo un ítem sin hacer, era una inconsistencia visible.
+
+`typecheck`/`lint` limpios en clon aislado; 53/53 tests de `sales` (módulo + API) en verde — `returns.tsx` no tiene cobertura de tests por la limitación ya conocida de este repo (sin jsdom/RTL). Commit único `8f8a8fc` en `design/revision-uiux-sep-2026`.
+
 ### 2026-09-04 — RET-UX-02: verificado contra el diff real (rama design/revision-uiux-sep-2026, commits f61212c + e8f25fe + 1c514b9)
 
 Verificación en clon aislado (`/tmp/verify-ret-ux-02`): `typecheck` y `lint` limpios; `src/modules/returns/index.integration.test.ts` + `src/app/api/returns/route.test.ts` corridos de forma independiente, 33/33 verdes (incluye los 3 tests nuevos: reparto entre métodos reales, tope por método excedido, doble reintegro en devoluciones parciales sucesivas). Migración `20260904112338_add_return_refund_details` confirmada aplicada contra Neon real (`information_schema.columns` + `_prisma_migrations`, no solo el schema). `stock-adjustment.integration.test.ts` reproducido de nuevo, mismo root cause preexistente ya documentado (`TEST-FLAKY-STOCK-ADJ`), no relacionado.
