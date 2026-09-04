@@ -184,6 +184,16 @@ function formatPaymentDetailsSummary(sale: Sale) {
   return details.map((d) => `${d.method} ${formatMoney(d.amount)}`).join(" + ");
 }
 
+function formatPaymentMethodBadge(sale: Sale): { label: string; className: string } {
+  const details = parsePaymentDetails(sale.paymentDetails);
+  if (!details) {
+    return sale.paymentType === "CASH"
+      ? { label: "Efectivo", className: "text-emerald-600" }
+      : { label: "Crédito", className: "text-amber-600" };
+  }
+  return { label: details.map((d) => d.method).join(" + "), className: "text-slate-600" };
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("es-AR", {
     day: "2-digit",
@@ -261,12 +271,34 @@ export function Returns({
 
   useEffect(() => {
     if (!presetSaleId || loading) return;
+
     const match = sales.find((s) => s.id === presetSaleId);
     if (match) {
       handleSelectSale(match);
       setActiveTab("new");
+      onPresetConsumed?.();
+      return;
     }
-    onPresetConsumed?.();
+
+    // La venta preseleccionada no está entre las últimas 50 sin filtro
+    // (ej. viene de una búsqueda o una página más vieja del Historial) —
+    // se busca puntualmente por id antes de rendirse.
+    let cancelled = false;
+    fetch(`/api/sales/${presetSaleId}`, { headers: { Accept: "application/json" } })
+      .then((res) => res.json())
+      .then((body: { data?: Sale }) => {
+        if (cancelled || !body.data) return;
+        handleSelectSale(body.data);
+        setActiveTab("new");
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) onPresetConsumed?.();
+      });
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetSaleId, sales, loading]);
 
@@ -585,6 +617,7 @@ export function Returns({
                   sales.map((sale) => {
                     const isSelected = selectedSale?.id === sale.id;
                     const productCount = sale.items.filter((i) => i.productId).length;
+                    const paymentBadge = formatPaymentMethodBadge(sale);
                     return (
                       <button
                         key={sale.id}
@@ -611,8 +644,8 @@ export function Returns({
                           <div className="mt-0.5 flex items-center gap-2">
                             <p className="text-xs text-slate-500">{formatDate(sale.saleDate)}</p>
                             <span className="text-slate-300">·</span>
-                            <span className={`text-xs font-medium ${sale.paymentType === "CASH" ? "text-emerald-600" : "text-amber-600"}`}>
-                              {sale.paymentType === "CASH" ? "Efectivo" : "Crédito"}
+                            <span className={`text-xs font-medium ${paymentBadge.className}`}>
+                              {paymentBadge.label}
                             </span>
                             {sale.customer ? (
                               <>
@@ -651,10 +684,7 @@ export function Returns({
                         Venta #{selectedSale.id.slice(-8).toUpperCase()}
                       </h2>
                       <p className="mt-0.5 text-xs text-slate-500">
-                        {formatDate(selectedSale.saleDate)} · {selectedSale.paymentType === "CASH" ? "Efectivo" : "Crédito"}
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        Pagado con: {formatPaymentDetailsSummary(selectedSale)}
+                        {formatDate(selectedSale.saleDate)} · Pagado con: {formatPaymentDetailsSummary(selectedSale)}
                       </p>
                     </div>
                     <button
