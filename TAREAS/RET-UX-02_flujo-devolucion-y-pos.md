@@ -95,5 +95,13 @@ Actualizá los tests existentes de `processReturn` (buscá `processReturn` en ar
 
 ---
 
+## Sección 5 — Sugerencia visible: cobrar la venta nueva antes de devolver la anterior
+
+Diego pidió agregar una sugerencia chica y visible en la pestaña "Nueva devolución" (`returns.tsx`), con un texto en la línea de: **"Para una devolución más ágil y efectiva, te recomendamos cobrar primero la venta nueva y, una vez cobrada, devolver la totalidad de la anterior."** (el texto exacto puede pulirse en tono/voseo, pero la idea debe quedar clara). No es una validación ni un bloqueo — es solo una sugerencia informativa, el usuario puede devolver en el orden que quiera.
+
+Por qué importa (para que quede claro en el copy o en un tooltip si hace falta más contexto): cobrar la venta nueva primero deja el reintegro de la anterior como una operación limpia por el monto total, sin que el cajero tenga que calcular una diferencia neta a mano; y evita que el local quede expuesto a devolver dinero antes de que la venta nueva esté confirmada (tarjeta rechazada, cliente se arrepiente, etc.).
+
+Implementación sugerida: un banner informativo chico (no de error ni de éxito — usar una paleta neutra/informativa, ej. azul o violeta claro, con ícono `Lightbulb` o `Info` de `lucide-react`, mismo patrón visual que los banners de error/éxito ya existentes en `returns.tsx`/`pos.tsx` pero en tono informativo), visible en la parte superior del formulario de "Nueva devolución" — no hace falta que sea descartable/dismissible, pero si sumás esa opción con un `useState` local, mejor.
+
 ## Entregable
 Como siempre: typecheck + lint + tests en verde antes de comittear. Reportá en `TAREAS/REPORTE_DE_CAMBIOS.md` cada sección por separado (especialmente el resultado de la reproducción de la Sección 3, sea cual sea). Commit + push a la rama `design/revision-uiux-sep-2026` al terminar.
