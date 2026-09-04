@@ -540,6 +540,7 @@ model Return {
   reasonNote      String?
   refundMethod    String?
   refundReference String?
+  refundDetails   Json?
   createdAt       DateTime             @default(now())
 
   @@index([saleId])

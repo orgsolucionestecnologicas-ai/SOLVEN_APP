@@ -225,6 +225,8 @@ export async function getReturnById(
 
 type SalePaymentDetail = { method: string; amount: number; reference?: string };
 
+export type RefundDetailInput = { method: string; amount: number; reference?: string };
+
 function parsePaymentDetailsServerSide(value: unknown): SalePaymentDetail[] | null {
   if (!Array.isArray(value)) return null;
   const parsed = value.filter(
@@ -235,6 +237,34 @@ function parsePaymentDetailsServerSide(value: unknown): SalePaymentDetail[] | nu
       typeof (v as SalePaymentDetail).amount === "number"
   );
   return parsed.length > 0 ? parsed : null;
+}
+
+function parseRefundDetailsServerSide(value: unknown): RefundDetailInput[] | null {
+  if (!Array.isArray(value)) return null;
+  const parsed = value.filter(
+    (v): v is RefundDetailInput =>
+      typeof v === "object" &&
+      v !== null &&
+      typeof (v as RefundDetailInput).method === "string" &&
+      typeof (v as RefundDetailInput).amount === "number"
+  );
+  return parsed.length > 0 ? parsed : null;
+}
+
+type SaleRefundMethodBreakdown = { method: string; amount: number };
+
+function getSaleRefundMethods(
+  paymentType: string,
+  paymentDetails: unknown,
+  totalAmount: Prisma.Decimal,
+  discountAmount: Prisma.Decimal
+): SaleRefundMethodBreakdown[] {
+  const details = parsePaymentDetailsServerSide(paymentDetails);
+  if (details) return details.map((d) => ({ method: d.method, amount: d.amount }));
+  if (paymentType === "CASH") {
+    return [{ method: "Efectivo", amount: totalAmount.minus(discountAmount).toNumber() }];
+  }
+  return [];
 }
 
 function proratedUnitPrice(
@@ -254,8 +284,7 @@ export async function processReturn(
   tenantId: string,
   reasonCategory: ReturnReasonCategory,
   reasonNote?: string,
-  refundMethod?: string,
-  refundReference?: string
+  refundDetails?: RefundDetailInput[]
 ): Promise<ReturnResult> {
   if (!RETURN_REASON_CATEGORIES.includes(reasonCategory)) {
     throw new ReturnValidationError("El motivo de la devolución es inválido.");
@@ -271,16 +300,34 @@ export async function processReturn(
       throw new ReturnValidationError("La venta no fue encontrada.");
     }
 
-    if (sale.paymentType !== "CREDIT" && !refundMethod) {
+    const requiresRefund = sale.paymentType !== "CREDIT";
+    const saleRefundMethods = getSaleRefundMethods(
+      sale.paymentType,
+      sale.paymentDetails,
+      sale.totalAmount,
+      sale.discountAmount
+    );
+    const saleMethodAmountByName = new Map(saleRefundMethods.map((m) => [m.method, m.amount]));
+    const cleanRefundDetails = requiresRefund
+      ? (refundDetails ?? []).filter((d) => d.amount > 0)
+      : [];
+
+    if (requiresRefund && cleanRefundDetails.length === 0) {
       throw new ReturnValidationError("Debés indicar cómo se reintegra el dinero.");
     }
 
-    const salePaidWithCard =
-      parsePaymentDetailsServerSide(sale.paymentDetails)?.some((p) => p.method === "Tarjeta") ?? false;
-    if (salePaidWithCard && refundMethod !== "Tarjeta") {
-      throw new ReturnValidationError(
-        "Esta venta se pagó con tarjeta — el reintegro debe hacerse con tarjeta."
-      );
+    for (const detail of cleanRefundDetails) {
+      if (!RETURN_REFUND_METHODS.includes(detail.method as ReturnRefundMethod)) {
+        throw new ReturnValidationError(`El medio de reintegro "${detail.method}" es inválido.`);
+      }
+      if (!saleMethodAmountByName.has(detail.method)) {
+        throw new ReturnValidationError(
+          `Esta venta no se pagó con ${detail.method} — no se puede reintegrar por ese medio.`
+        );
+      }
+      if (detail.method === "Tarjeta" && !detail.reference?.trim()) {
+        throw new ReturnValidationError("Indicá el número de operación para el reintegro con tarjeta.");
+      }
     }
 
     const saleItemByProductId = new Map(
@@ -317,37 +364,77 @@ export async function processReturn(
     }
 
     let returnTotal = new Prisma.Decimal(0);
-
     for (const returnItem of items) {
       const saleItem = saleItemByProductId.get(returnItem.productId)!;
-
-      if (returnItem.restock !== false) {
-        const updatedProduct = await tx.product.update({
-          where: { id: returnItem.productId },
-          data: { stock: { increment: returnItem.quantity } },
-          select: { stock: true }
-        });
-
-        const newStock = updatedProduct.stock;
-        const previousStock = newStock - returnItem.quantity;
-
-        await tx.inventoryMovement.create({
-          data: {
-            tenantId,
-            productId: returnItem.productId,
-            reason: `RETURN:${saleId}`,
-            previousStock,
-            newStock,
-            quantityChange: returnItem.quantity
-          }
-        });
-      }
-
       const netUnitPrice = proratedUnitPrice(saleItem.unitPrice, sale.totalAmount, sale.discountAmount);
       returnTotal = returnTotal.plus(netUnitPrice.mul(returnItem.quantity));
     }
+    const roundedReturnTotal = new Prisma.Decimal(returnTotal.toFixed(2));
 
-    if (refundMethod === "Efectivo") {
+    if (requiresRefund) {
+      const totalRefundNow = cleanRefundDetails.reduce((sum, d) => sum + d.amount, 0);
+      if (Math.abs(totalRefundNow - roundedReturnTotal.toNumber()) > 0.005) {
+        throw new ReturnValidationError(
+          "La suma de los reintegros no coincide con el total a devolver."
+        );
+      }
+
+      const existingReturns = await tx.return.findMany({
+        where: { saleId },
+        select: { refundMethod: true, totalAmount: true, refundDetails: true }
+      });
+      const alreadyRefundedByMethod = new Map<string, number>();
+      for (const existing of existingReturns) {
+        const parsedDetails = parseRefundDetailsServerSide(existing.refundDetails);
+        if (parsedDetails) {
+          for (const d of parsedDetails) {
+            alreadyRefundedByMethod.set(d.method, (alreadyRefundedByMethod.get(d.method) ?? 0) + d.amount);
+          }
+        } else if (existing.refundMethod) {
+          alreadyRefundedByMethod.set(
+            existing.refundMethod,
+            (alreadyRefundedByMethod.get(existing.refundMethod) ?? 0) + existing.totalAmount.toNumber()
+          );
+        }
+      }
+
+      for (const detail of cleanRefundDetails) {
+        const alreadyRefunded = alreadyRefundedByMethod.get(detail.method) ?? 0;
+        const original = saleMethodAmountByName.get(detail.method) ?? 0;
+        if (alreadyRefunded + detail.amount > original + 0.005) {
+          throw new ReturnValidationError(
+            `El reintegro por ${detail.method} (${(alreadyRefunded + detail.amount).toFixed(2)}) supera lo pagado originalmente por ese medio (${original.toFixed(2)}).`
+          );
+        }
+      }
+    }
+
+    for (const returnItem of items) {
+      if (returnItem.restock === false) continue;
+
+      const updatedProduct = await tx.product.update({
+        where: { id: returnItem.productId },
+        data: { stock: { increment: returnItem.quantity } },
+        select: { stock: true }
+      });
+
+      const newStock = updatedProduct.stock;
+      const previousStock = newStock - returnItem.quantity;
+
+      await tx.inventoryMovement.create({
+        data: {
+          tenantId,
+          productId: returnItem.productId,
+          reason: `RETURN:${saleId}`,
+          previousStock,
+          newStock,
+          quantityChange: returnItem.quantity
+        }
+      });
+    }
+
+    const efectivoRefundAmount = cleanRefundDetails.find((d) => d.method === "Efectivo")?.amount ?? 0;
+    if (efectivoRefundAmount > 0) {
       const openSession = await tx.cashRegisterSession.findFirst({
         where: { status: "OPEN", tenantId }
       });
@@ -359,7 +446,7 @@ export async function processReturn(
         data: {
           tenantId,
           type: "OUT",
-          amount: returnTotal,
+          amount: new Prisma.Decimal(efectivoRefundAmount),
           source: "RETURN",
           referenceId: saleId
         }
@@ -387,8 +474,16 @@ export async function processReturn(
         totalAmount: returnTotal,
         reasonCategory,
         reasonNote: reasonNote?.trim() || null,
-        refundMethod: sale.paymentType === "CREDIT" ? null : refundMethod,
-        refundReference: sale.paymentType === "CREDIT" ? null : refundReference?.trim() || null,
+        refundMethod: null,
+        refundReference: null,
+        refundDetails:
+          cleanRefundDetails.length > 0
+            ? cleanRefundDetails.map((d) => ({
+                method: d.method,
+                amount: d.amount,
+                ...(d.reference?.trim() ? { reference: d.reference.trim() } : {})
+              }))
+            : Prisma.JsonNull,
         items: {
           create: items.map((item) => ({
             productId: item.productId,

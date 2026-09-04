@@ -8,7 +8,8 @@ import {
   RETURN_REASON_CATEGORIES,
   RETURN_REFUND_METHODS,
   ReturnValidationError,
-  type ReturnItemInput
+  type ReturnItemInput,
+  type RefundDetailInput
 } from "../../../modules/returns";
 import { SaleNoCashRegisterOpenError } from "../../../modules/sales";
 import {
@@ -96,8 +97,7 @@ export async function POST(request: Request) {
     items?: unknown;
     reasonCategory?: unknown;
     reasonNote?: unknown;
-    refundMethod?: unknown;
-    refundReference?: unknown;
+    refundDetails?: unknown;
   };
 
   if (typeof input.saleId !== "string" || input.saleId.trim().length === 0) {
@@ -119,23 +119,39 @@ export async function POST(request: Request) {
     return errorResponse("La nota del motivo debe ser texto.", 400);
   }
 
-  if (
-    input.refundMethod !== undefined &&
-    (typeof input.refundMethod !== "string" ||
-      !RETURN_REFUND_METHODS.includes(input.refundMethod as (typeof RETURN_REFUND_METHODS)[number]))
-  ) {
-    return errorResponse("El método de reintegro elegido no es válido.", 400);
-  }
+  const cleanRefundDetails: RefundDetailInput[] = [];
+  if (input.refundDetails !== undefined) {
+    if (!Array.isArray(input.refundDetails)) {
+      return errorResponse("El reintegro debe ser una lista.", 400);
+    }
+    for (const rawDetail of input.refundDetails as unknown[]) {
+      const detail = rawDetail as { method?: unknown; amount?: unknown; reference?: unknown };
 
-  if (input.refundReference !== undefined && typeof input.refundReference !== "string") {
-    return errorResponse("El número de operación debe ser texto.", 400);
-  }
+      if (
+        typeof detail.method !== "string" ||
+        !RETURN_REFUND_METHODS.includes(detail.method as (typeof RETURN_REFUND_METHODS)[number])
+      ) {
+        return errorResponse("El método de reintegro elegido no es válido.", 400);
+      }
 
-  if (
-    input.refundMethod === "Tarjeta" &&
-    (typeof input.refundReference !== "string" || input.refundReference.trim().length === 0)
-  ) {
-    return errorResponse("Debés indicar el número de operación o cupón de la tarjeta.", 400);
+      if (typeof detail.amount !== "number" || !Number.isFinite(detail.amount) || detail.amount <= 0) {
+        return errorResponse("El monto a reintegrar debe ser un número positivo.", 400);
+      }
+
+      if (detail.reference !== undefined && typeof detail.reference !== "string") {
+        return errorResponse("El número de operación debe ser texto.", 400);
+      }
+
+      if (detail.method === "Tarjeta" && (typeof detail.reference !== "string" || detail.reference.trim().length === 0)) {
+        return errorResponse("Debés indicar el número de operación o cupón de la tarjeta.", 400);
+      }
+
+      cleanRefundDetails.push({
+        method: detail.method,
+        amount: detail.amount,
+        reference: typeof detail.reference === "string" ? detail.reference.trim() : undefined
+      });
+    }
   }
 
   for (const item of input.items as unknown[]) {
@@ -169,8 +185,7 @@ export async function POST(request: Request) {
       tenantId,
       input.reasonCategory as ReturnReasonCategory,
       input.reasonNote as string | undefined,
-      input.refundMethod as string | undefined,
-      typeof input.refundReference === "string" ? input.refundReference.trim() || undefined : undefined
+      cleanRefundDetails
     );
     void logAudit({
       tenantId,
@@ -181,7 +196,7 @@ export async function POST(request: Request) {
       metadata: {
         saleId: result.saleId,
         totalReturned: result.totalReturned,
-        refundMethod: input.refundMethod as string | undefined
+        refundMethods: cleanRefundDetails.map((d) => d.method)
       }
     });
     return successResponse(result, 201);

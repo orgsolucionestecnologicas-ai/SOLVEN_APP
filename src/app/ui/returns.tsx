@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileText, History, PackageX, RotateCcw, Search } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { downloadCsv } from "@/lib/csv";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,6 +24,7 @@ type Sale = {
   saleDate: string;
   paymentType: "CASH" | "CREDIT";
   totalAmount: string;
+  discountAmount: string;
   customer: { name: string } | null;
   items: SaleItem[];
   paymentDetails: unknown;
@@ -31,13 +32,31 @@ type Sale = {
 
 type RefundMethod = "Efectivo" | "Tarjeta" | "Transferencia" | "VentaWeb" | "Otro";
 
-const REFUND_METHOD_OPTIONS: { value: RefundMethod; label: string }[] = [
-  { value: "Efectivo", label: "Efectivo" },
-  { value: "Tarjeta", label: "Tarjeta" },
-  { value: "Transferencia", label: "Transferencia" },
-  { value: "VentaWeb", label: "Venta web" },
-  { value: "Otro", label: "Otro" }
-];
+const REFUND_METHOD_LABELS: Record<RefundMethod, string> = {
+  Efectivo: "Efectivo",
+  Tarjeta: "Tarjeta",
+  Transferencia: "Transferencia",
+  VentaWeb: "Venta web",
+  Otro: "Otro"
+};
+
+type RefundLine = { method: RefundMethod; originalAmount: number };
+
+function getSaleRefundLines(sale: Sale): RefundLine[] {
+  const details = parsePaymentDetails(sale.paymentDetails);
+  if (details) {
+    return details.map((d) => ({ method: d.method as RefundMethod, originalAmount: d.amount }));
+  }
+  if (sale.paymentType === "CASH") {
+    return [
+      {
+        method: "Efectivo",
+        originalAmount: Number(sale.totalAmount) - Number(sale.discountAmount || 0)
+      }
+    ];
+  }
+  return [];
+}
 
 type SearchField = "folio" | "customer" | "document" | "date";
 
@@ -201,8 +220,8 @@ export function Returns({
   const [returnResult, setReturnResult] = useState<ReturnResult | null>(null);
   const [reasonCategory, setReasonCategory] = useState<ReturnReasonCategory | "">("");
   const [reasonNote, setReasonNote] = useState("");
-  const [refundMethod, setRefundMethod] = useState<RefundMethod | "">("");
-  const [refundReference, setRefundReference] = useState("");
+  const [refundAmounts, setRefundAmounts] = useState<Record<string, string>>({});
+  const [refundReferences, setRefundReferences] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -262,8 +281,8 @@ export function Returns({
     setSubmitError(null);
     setReasonCategory("");
     setReasonNote("");
-    setRefundMethod("");
-    setRefundReference("");
+    setRefundAmounts({});
+    setRefundReferences({});
     setFormStep("form");
     const initial: Record<string, number> = {};
     const initialRestock: Record<string, boolean> = {};
@@ -304,25 +323,71 @@ export function Returns({
     setRestockByProduct((prev) => ({ ...prev, [productId]: restock }));
   }
 
+  function handleRefundAmountChange(method: string, value: string) {
+    setRefundAmounts((prev) => ({ ...prev, [method]: value }));
+  }
+
+  function handleRefundReferenceChange(method: string, value: string) {
+    setRefundReferences((prev) => ({ ...prev, [method]: value }));
+  }
+
   const productItems = selectedSale?.items.filter((i) => i.productId) ?? [];
   const hasItemsToReturn = Object.values(returnQuantities).some((q) => q > 0);
   const requiresRefundMethod = selectedSale?.paymentType !== "CREDIT";
-  const salePaidWithCard =
-    parsePaymentDetails(selectedSale?.paymentDetails)?.some((p) => p.method === "Tarjeta") ?? false;
-  const refundMethodOptions = salePaidWithCard
-    ? REFUND_METHOD_OPTIONS.filter((option) => option.value === "Tarjeta")
-    : REFUND_METHOD_OPTIONS;
-  const requiresRefundReference = refundMethod === "Tarjeta";
-  const canSubmit =
-    hasItemsToReturn &&
-    reasonCategory !== "" &&
-    (!requiresRefundMethod || refundMethod !== "") &&
-    (!requiresRefundReference || refundReference.trim() !== "");
+
+  const saleRefundLines = useMemo(
+    () => (selectedSale ? getSaleRefundLines(selectedSale) : []),
+    [selectedSale]
+  );
 
   const previewTotal = productItems.reduce((acc, item) => {
     const qty = returnQuantities[item.productId!] ?? 0;
     return acc + qty * Number(item.unitPrice);
   }, 0);
+
+  useEffect(() => {
+    if (!requiresRefundMethod || saleRefundLines.length === 0) return;
+    const rounded = Math.round(previewTotal * 100) / 100;
+    if (rounded <= 0) {
+      setRefundAmounts({});
+      return;
+    }
+    const totalOriginal = saleRefundLines.reduce((acc, l) => acc + l.originalAmount, 0);
+    const next: Record<string, string> = {};
+    let assigned = 0;
+    saleRefundLines.forEach((line, index) => {
+      if (index === saleRefundLines.length - 1) {
+        next[line.method] = (rounded - assigned).toFixed(2);
+        return;
+      }
+      const share = totalOriginal > 0 ? (line.originalAmount / totalOriginal) * rounded : 0;
+      const roundedShare = Math.round(share * 100) / 100;
+      next[line.method] = roundedShare.toFixed(2);
+      assigned += roundedShare;
+    });
+    setRefundAmounts(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewTotal, selectedSale?.id, requiresRefundMethod]);
+
+  const refundEntries = saleRefundLines.map((line) => ({
+    method: line.method,
+    originalAmount: line.originalAmount,
+    amount: parseFloat(refundAmounts[line.method] || "0") || 0,
+    reference: refundReferences[line.method] ?? ""
+  }));
+  const hasAnyRefundAmount = refundEntries.some((e) => e.amount > 0);
+  const refundSum = refundEntries.reduce((acc, e) => acc + e.amount, 0);
+  const refundSumMatches = Math.abs(refundSum - previewTotal) < 0.01;
+  const refundCapsOk = refundEntries.every((e) => e.amount <= e.originalAmount + 0.005);
+  const refundCardReferencesOk = refundEntries.every(
+    (e) => e.method !== "Tarjeta" || e.amount <= 0 || e.reference.trim() !== ""
+  );
+
+  const canSubmit =
+    hasItemsToReturn &&
+    reasonCategory !== "" &&
+    (!requiresRefundMethod ||
+      (hasAnyRefundAmount && refundSumMatches && refundCapsOk && refundCardReferencesOk));
 
   async function handleSubmit() {
     if (!selectedSale || !canSubmit) return;
@@ -334,6 +399,16 @@ export function Returns({
         quantity: returnQuantities[item.productId!],
         restock: restockByProduct[item.productId!] ?? true
       }));
+
+    const refundDetails = requiresRefundMethod
+      ? refundEntries
+          .filter((e) => e.amount > 0)
+          .map((e) => ({
+            method: e.method,
+            amount: e.amount,
+            reference: e.method === "Tarjeta" ? e.reference.trim() || undefined : undefined
+          }))
+      : undefined;
 
     setIsSubmitting(true);
     setSubmitError(null);
@@ -347,8 +422,7 @@ export function Returns({
           items,
           reasonCategory,
           reasonNote: reasonNote.trim() || undefined,
-          refundMethod: requiresRefundMethod ? refundMethod : undefined,
-          refundReference: requiresRefundReference ? refundReference.trim() : undefined
+          refundDetails
         })
       });
       const body = (await res.json()) as ReturnResponse;
@@ -587,8 +661,13 @@ export function Returns({
                     restockByProduct={restockByProduct}
                     reasonCategory={reasonCategory}
                     reasonNote={reasonNote}
-                    refundMethod={requiresRefundMethod ? refundMethod : null}
-                    refundReference={requiresRefundReference ? refundReference.trim() : null}
+                    refundDetails={
+                      requiresRefundMethod
+                        ? refundEntries
+                            .filter((e) => e.amount > 0)
+                            .map((e) => ({ method: e.method, amount: e.amount, reference: e.reference.trim() || null }))
+                        : []
+                    }
                     total={previewTotal}
                     isSubmitting={isSubmitting}
                     submitError={submitError}
@@ -690,43 +769,51 @@ export function Returns({
                         </select>
                       </div>
 
-                      {requiresRefundMethod ? (
+                      {requiresRefundMethod && saleRefundLines.length > 0 ? (
                         <div className="mb-3">
                           <label className="mb-1 block text-xs font-medium text-slate-600">
                             ¿Cómo se reintegra este monto? <span className="text-rose-500">*</span>
                           </label>
-                          <select
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none"
-                            value={refundMethod}
-                            onChange={(e) => setRefundMethod(e.target.value as RefundMethod)}
-                          >
-                            <option value="">Seleccioná un método...</option>
-                            {refundMethodOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
+                          <div className="space-y-2">
+                            {refundEntries.map((entry) => (
+                              <div key={entry.method} className="rounded-lg border border-slate-200 p-2.5">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium text-slate-700">
+                                    {REFUND_METHOD_LABELS[entry.method]}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400">
+                                    Pagado: {formatMoney(entry.originalAmount)}
+                                  </span>
+                                </div>
+                                <input
+                                  className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-violet-400 focus:outline-none"
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={refundAmounts[entry.method] ?? ""}
+                                  onChange={(e) => handleRefundAmountChange(entry.method, e.target.value)}
+                                />
+                                {entry.method === "Tarjeta" && entry.amount > 0 ? (
+                                  <input
+                                    className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm placeholder:text-slate-400 focus:border-violet-400 focus:outline-none"
+                                    type="text"
+                                    placeholder="N° de operación / cupón"
+                                    value={refundReferences[entry.method] ?? ""}
+                                    onChange={(e) => handleRefundReferenceChange(entry.method, e.target.value)}
+                                  />
+                                ) : null}
+                              </div>
                             ))}
-                          </select>
-                          {salePaidWithCard ? (
-                            <p className="mt-1 text-xs text-slate-500">
-                              Esta venta se pagó con tarjeta — el reintegro debe ser con tarjeta.
+                          </div>
+                          {!refundSumMatches ? (
+                            <p className="mt-1 text-xs text-amber-600">
+                              La suma de los reintegros debe ser igual al total a devolver ({formatMoney(previewTotal)}).
+                            </p>
+                          ) : !refundCapsOk ? (
+                            <p className="mt-1 text-xs text-amber-600">
+                              Un reintegro no puede superar lo pagado originalmente por ese medio.
                             </p>
                           ) : null}
-                        </div>
-                      ) : null}
-
-                      {requiresRefundReference ? (
-                        <div className="mb-3">
-                          <label className="mb-1 block text-xs font-medium text-slate-600">
-                            N° de operación / cupón de la tarjeta <span className="text-rose-500">*</span>
-                          </label>
-                          <input
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-violet-400 focus:outline-none"
-                            type="text"
-                            placeholder="Ej: 000123456"
-                            value={refundReference}
-                            onChange={(e) => setRefundReference(e.target.value)}
-                          />
                         </div>
                       ) : null}
 
@@ -767,11 +854,19 @@ export function Returns({
                         <p className="mt-2 text-center text-xs text-slate-400">
                           Seleccioná un motivo para continuar
                         </p>
-                      ) : requiresRefundMethod && refundMethod === "" ? (
+                      ) : requiresRefundMethod && !hasAnyRefundAmount ? (
                         <p className="mt-2 text-center text-xs text-slate-400">
-                          Seleccioná cómo se reintegra el dinero para continuar
+                          Indicá cómo se reintegra el dinero para continuar
                         </p>
-                      ) : requiresRefundReference && refundReference.trim() === "" ? (
+                      ) : requiresRefundMethod && !refundSumMatches ? (
+                        <p className="mt-2 text-center text-xs text-slate-400">
+                          La suma de los reintegros debe igualar el total a devolver
+                        </p>
+                      ) : requiresRefundMethod && !refundCapsOk ? (
+                        <p className="mt-2 text-center text-xs text-slate-400">
+                          Un reintegro supera lo pagado originalmente por ese medio
+                        </p>
+                      ) : requiresRefundMethod && !refundCardReferencesOk ? (
                         <p className="mt-2 text-center text-xs text-slate-400">
                           Ingresá el número de operación de la tarjeta para continuar
                         </p>
@@ -797,8 +892,7 @@ function ReturnConfirmStep({
   restockByProduct,
   reasonCategory,
   reasonNote,
-  refundMethod,
-  refundReference,
+  refundDetails,
   total,
   isSubmitting,
   submitError,
@@ -810,8 +904,7 @@ function ReturnConfirmStep({
   restockByProduct: Record<string, boolean>;
   reasonCategory: ReturnReasonCategory | "";
   reasonNote: string;
-  refundMethod: RefundMethod | "" | null;
-  refundReference: string | null;
+  refundDetails: { method: RefundMethod; amount: number; reference: string | null }[];
   total: number;
   isSubmitting: boolean;
   submitError: string | null;
@@ -861,18 +954,15 @@ function ReturnConfirmStep({
             <dd className="text-right text-slate-700">{reasonNote.trim()}</dd>
           </div>
         ) : null}
-        {refundMethod ? (
-          <div className="flex justify-between">
-            <dt className="text-slate-500">Reintegro</dt>
-            <dd className="font-medium text-slate-900">{refundMethod}</dd>
+        {refundDetails.map((detail) => (
+          <div key={detail.method} className="flex justify-between">
+            <dt className="text-slate-500">
+              Reintegro {REFUND_METHOD_LABELS[detail.method]}
+              {detail.reference ? ` (N° ${detail.reference})` : ""}
+            </dt>
+            <dd className="font-medium text-slate-900">{formatMoney(detail.amount)}</dd>
           </div>
-        ) : null}
-        {refundReference ? (
-          <div className="flex justify-between">
-            <dt className="text-slate-500">N° de operación</dt>
-            <dd className="font-medium text-slate-900">{refundReference}</dd>
-          </div>
-        ) : null}
+        ))}
         <div className="flex justify-between border-t border-slate-100 pt-2">
           <dt className="font-medium text-slate-700">Total a devolver</dt>
           <dd className="text-base font-bold text-slate-900">{formatMoney(total)}</dd>

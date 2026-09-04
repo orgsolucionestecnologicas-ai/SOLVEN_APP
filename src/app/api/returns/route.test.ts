@@ -92,12 +92,11 @@ describe("returns API route", () => {
       "test-tenant-id",
       "OTRO",
       undefined,
-      undefined,
-      undefined
+      []
     );
   });
 
-  it("passes refundMethod through to processReturn", async () => {
+  it("passes refundDetails through to processReturn", async () => {
     const result = {
       returnId: "return-3",
       saleId: "sale-1",
@@ -113,8 +112,7 @@ describe("returns API route", () => {
           saleId: "sale-1",
           items: [{ productId: "product-1", quantity: 1 }],
           reasonCategory: "OTRO",
-          refundMethod: "Tarjeta",
-          refundReference: "000123456"
+          refundDetails: [{ method: "Tarjeta", amount: 15, reference: "000123456" }]
         })
       })
     );
@@ -126,12 +124,11 @@ describe("returns API route", () => {
       "test-tenant-id",
       "OTRO",
       undefined,
-      "Tarjeta",
-      "000123456"
+      [{ method: "Tarjeta", amount: 15, reference: "000123456" }]
     );
   });
 
-  it("returns 400 when refundMethod is not a known value", async () => {
+  it("returns 400 when a refundDetails method is not a known value", async () => {
     const response = await POST(
       new Request("http://localhost/api/returns", {
         method: "POST",
@@ -139,7 +136,7 @@ describe("returns API route", () => {
           saleId: "sale-1",
           items: [{ productId: "product-1", quantity: 1 }],
           reasonCategory: "OTRO",
-          refundMethod: "Bitcoin"
+          refundDetails: [{ method: "Bitcoin", amount: 15 }]
         })
       })
     );
@@ -428,7 +425,7 @@ describe("returns API route", () => {
           saleId: "sale-1",
           items: [{ productId: "product-1", quantity: 1 }],
           reasonCategory: "OTRO",
-          refundMethod: "Efectivo"
+          refundDetails: [{ method: "Efectivo", amount: 15 }]
         })
       })
     );
@@ -473,8 +470,7 @@ describe("returns API route", () => {
           saleId: "sale-1",
           items: [{ productId: "product-1", quantity: 1 }],
           reasonCategory: "OTRO",
-          refundMethod: "Tarjeta",
-          refundReference: "000123456"
+          refundDetails: [{ method: "Tarjeta", amount: 15, reference: "000123456" }]
         })
       })
     );
@@ -488,7 +484,7 @@ describe("returns API route", () => {
       metadata: {
         saleId: "sale-1",
         totalReturned: "15.00",
-        refundMethod: "Tarjeta"
+        refundMethods: ["Tarjeta"]
       }
     });
   });
