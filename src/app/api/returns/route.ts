@@ -142,10 +142,6 @@ export async function POST(request: Request) {
         return errorResponse("El número de operación debe ser texto.", 400);
       }
 
-      if (detail.method === "Tarjeta" && (typeof detail.reference !== "string" || detail.reference.trim().length === 0)) {
-        return errorResponse("Debés indicar el número de operación o cupón de la tarjeta.", 400);
-      }
-
       cleanRefundDetails.push({
         method: detail.method,
         amount: detail.amount,

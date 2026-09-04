@@ -42,6 +42,27 @@ const REFUND_METHOD_LABELS: Record<RefundMethod, string> = {
 
 type RefundLine = { method: RefundMethod; originalAmount: number };
 
+// Acepta "1500.50", "1500,50" y "1.500,50" (miles con punto, decimales con
+// coma, como se escribe habitualmente en la Argentina) — el separador
+// decimal real es el que aparece más a la derecha, el resto se descarta
+// como separador de miles.
+function parseAmountInput(raw: string): number {
+  const trimmed = raw.trim();
+  if (!trimmed) return 0;
+  const lastComma = trimmed.lastIndexOf(",");
+  const lastDot = trimmed.lastIndexOf(".");
+  let normalized: string;
+  if (lastComma !== -1 && lastComma > lastDot) {
+    normalized = trimmed.replace(/\./g, "").replace(",", ".");
+  } else if (lastDot !== -1 && lastComma !== -1) {
+    normalized = trimmed.replace(/,/g, "");
+  } else {
+    normalized = trimmed.replace(",", ".");
+  }
+  const parsed = parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function getSaleRefundLines(sale: Sale): RefundLine[] {
   const details = parsePaymentDetails(sale.paymentDetails);
   if (details) {
@@ -232,7 +253,6 @@ export function Returns({
   const [reasonCategory, setReasonCategory] = useState<ReturnReasonCategory | "">("");
   const [reasonNote, setReasonNote] = useState("");
   const [refundAmounts, setRefundAmounts] = useState<Record<string, string>>({});
-  const [refundReferences, setRefundReferences] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -315,7 +335,6 @@ export function Returns({
     setReasonCategory("");
     setReasonNote("");
     setRefundAmounts({});
-    setRefundReferences({});
     setFormStep("form");
     const initial: Record<string, number> = {};
     const initialRestock: Record<string, boolean> = {};
@@ -357,11 +376,10 @@ export function Returns({
   }
 
   function handleRefundAmountChange(method: string, value: string) {
-    setRefundAmounts((prev) => ({ ...prev, [method]: value }));
-  }
-
-  function handleRefundReferenceChange(method: string, value: string) {
-    setRefundReferences((prev) => ({ ...prev, [method]: value }));
+    // Solo dígitos, coma y punto — deja escribir "1.500,50" sin que el
+    // campo rechace la coma como pasaba con el input numérico nativo.
+    const sanitized = value.replace(/[^\d.,]/g, "");
+    setRefundAmounts((prev) => ({ ...prev, [method]: sanitized }));
   }
 
   const productItems = selectedSale?.items.filter((i) => i.productId) ?? [];
@@ -405,22 +423,18 @@ export function Returns({
   const refundEntries = saleRefundLines.map((line) => ({
     method: line.method,
     originalAmount: line.originalAmount,
-    amount: parseFloat(refundAmounts[line.method] || "0") || 0,
-    reference: refundReferences[line.method] ?? ""
+    amount: parseAmountInput(refundAmounts[line.method] || "0")
   }));
   const hasAnyRefundAmount = refundEntries.some((e) => e.amount > 0);
   const refundSum = refundEntries.reduce((acc, e) => acc + e.amount, 0);
   const refundSumMatches = Math.abs(refundSum - previewTotal) < 0.01;
   const refundCapsOk = refundEntries.every((e) => e.amount <= e.originalAmount + 0.005);
-  const refundCardReferencesOk = refundEntries.every(
-    (e) => e.method !== "Tarjeta" || e.amount <= 0 || e.reference.trim() !== ""
-  );
 
   const canSubmit =
     hasItemsToReturn &&
     reasonCategory !== "" &&
     (!requiresRefundMethod ||
-      (hasAnyRefundAmount && refundSumMatches && refundCapsOk && refundCardReferencesOk));
+      (hasAnyRefundAmount && refundSumMatches && refundCapsOk));
 
   async function handleSubmit() {
     if (!selectedSale || !canSubmit) return;
@@ -436,11 +450,7 @@ export function Returns({
     const refundDetails = requiresRefundMethod
       ? refundEntries
           .filter((e) => e.amount > 0)
-          .map((e) => ({
-            method: e.method,
-            amount: e.amount,
-            reference: e.method === "Tarjeta" ? e.reference.trim() || undefined : undefined
-          }))
+          .map((e) => ({ method: e.method, amount: e.amount }))
       : undefined;
 
     setIsSubmitting(true);
@@ -714,9 +724,7 @@ export function Returns({
                     reasonNote={reasonNote}
                     refundDetails={
                       requiresRefundMethod
-                        ? refundEntries
-                            .filter((e) => e.amount > 0)
-                            .map((e) => ({ method: e.method, amount: e.amount, reference: e.reference.trim() || null }))
+                        ? refundEntries.filter((e) => e.amount > 0).map((e) => ({ method: e.method, amount: e.amount }))
                         : []
                     }
                     total={previewTotal}
@@ -838,21 +846,11 @@ export function Returns({
                                 </div>
                                 <input
                                   className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-violet-400 focus:outline-none"
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
+                                  type="text"
+                                  inputMode="decimal"
                                   value={refundAmounts[entry.method] ?? ""}
                                   onChange={(e) => handleRefundAmountChange(entry.method, e.target.value)}
                                 />
-                                {entry.method === "Tarjeta" && entry.amount > 0 ? (
-                                  <input
-                                    className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm placeholder:text-slate-400 focus:border-violet-400 focus:outline-none"
-                                    type="text"
-                                    placeholder="N° de operación / cupón"
-                                    value={refundReferences[entry.method] ?? ""}
-                                    onChange={(e) => handleRefundReferenceChange(entry.method, e.target.value)}
-                                  />
-                                ) : null}
                               </div>
                             ))}
                           </div>
@@ -917,10 +915,6 @@ export function Returns({
                         <p className="mt-2 text-center text-xs text-slate-400">
                           Un reintegro supera lo pagado originalmente por ese medio
                         </p>
-                      ) : requiresRefundMethod && !refundCardReferencesOk ? (
-                        <p className="mt-2 text-center text-xs text-slate-400">
-                          Ingresá el número de operación de la tarjeta para continuar
-                        </p>
                       ) : null}
                     </div>
                   </>
@@ -955,7 +949,7 @@ function ReturnConfirmStep({
   restockByProduct: Record<string, boolean>;
   reasonCategory: ReturnReasonCategory | "";
   reasonNote: string;
-  refundDetails: { method: RefundMethod; amount: number; reference: string | null }[];
+  refundDetails: { method: RefundMethod; amount: number }[];
   total: number;
   isSubmitting: boolean;
   submitError: string | null;
@@ -1007,10 +1001,7 @@ function ReturnConfirmStep({
         ) : null}
         {refundDetails.map((detail) => (
           <div key={detail.method} className="flex justify-between">
-            <dt className="text-slate-500">
-              Reintegro {REFUND_METHOD_LABELS[detail.method]}
-              {detail.reference ? ` (N° ${detail.reference})` : ""}
-            </dt>
+            <dt className="text-slate-500">Reintegro {REFUND_METHOD_LABELS[detail.method]}</dt>
             <dd className="font-medium text-slate-900">{formatMoney(detail.amount)}</dd>
           </div>
         ))}

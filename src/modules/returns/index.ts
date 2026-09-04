@@ -325,9 +325,6 @@ export async function processReturn(
           `Esta venta no se pagó con ${detail.method} — no se puede reintegrar por ese medio.`
         );
       }
-      if (detail.method === "Tarjeta" && !detail.reference?.trim()) {
-        throw new ReturnValidationError("Indicá el número de operación para el reintegro con tarjeta.");
-      }
     }
 
     const saleItemByProductId = new Map(
