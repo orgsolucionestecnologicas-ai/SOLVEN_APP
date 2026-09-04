@@ -7,6 +7,14 @@
 ---
 
 <!-- El agente irá agregando entradas acá debajo, del más reciente al más antiguo -->
+### 2026-09-04 — POS-UX-02 verificado contra el diff real (rama design/revision-uiux-sep-2026, commit `ccce045`)
+
+Verificación directa (`git diff -w 2c44384 ccce045`): único archivo tocado `src/app/ui/pos.tsx`, sin scope creep. La grilla de tarjetas (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`), la cápsula "Detalle" (`Link` a `/products/{id}` en pestaña nueva, ya importado) y el badge de carrito `absolute` coinciden línea por línea con lo pedido y con lo reportado — incluida la justificación de reducir un breakpoint respecto al grid de referencia de "Más vendidos" (más contenido apilado por tarjeta). `stopPropagation` presente en la cápsula "Detalle" y en el botón "Agregar", `onClick` del contenedor gateado por `canAdd` (que ya incluía `cashRegisterStatus`/`saleGateResult`, sin tocar). `typecheck`/`lint` corridos de nuevo por mí, limpios.
+
+Confirmado también el "punto de atención" del reporte: `app-shell.tsx` no tiene `hiddenForRoles` en el ítem "Productos" y `src/app/products/[id]/page.tsx` no aplica `requireRole` — un `CASHIER` ya podía llegar a `ProductEditView` desde el menú antes de esta orden, POS-UX-02 solo suma una segunda vía. Anotado como `PROD-FORM-RO` en `PENDIENTES.md` para una orden aparte, no era parte del alcance de esta.
+
+Cerrado. Orden `TAREAS/POS-UX-02_grilla-productos-y-detalle.md` archivada (borrada, ya ejecutada y verificada). `REPORTE_DE_CAMBIOS.md` vaciado.
+
 ### 2026-09-04 — 2 gaps de RET-UX-02 (CERRADO — Ingeniero Líder, directo, commit `8f8a8fc`)
 
 Diego pidió arreglar los 2 gaps encontrados al verificar RET-UX-02. Arreglo directo, sin pasar por el ciclo agente-VS Code, dado el tamaño chico y que ya se conocía la causa exacta de cada uno.

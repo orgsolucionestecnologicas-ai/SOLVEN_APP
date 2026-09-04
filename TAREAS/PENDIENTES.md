@@ -61,6 +61,9 @@ Anotado por INGENIERODETESTEO. `cashierName` es texto libre, no una relación a 
 
 ### 🟡 Medio
 
+#### PROD-FORM-RO — `ProductForm` sin modo de solo lectura consciente del rol del viewer
+Confirmado al ejecutar POS-UX-02 (04-09-2026): un rol `CASHIER` ya puede llegar hoy a `ProductEditView` (`src/app/products/[id]/product-edit-view.tsx`) tanto desde el menú "Productos" (`src/app/ui/app-shell.tsx` no tiene `hiddenForRoles` en ese ítem) como, desde POS-UX-02, desde la cápsula "Detalle" de cada tarjeta en el POS. `src/app/products/[id]/page.tsx` no aplica ningún `requireRole`, y `ProductForm` renderiza el formulario de edición completo sin importar el rol — solo el `PUT` del lado servidor está bloqueado a `OWNER`/`INVENTORY`, así que un `CASHIER` puede editar todos los campos en pantalla y recién falla al guardar. No es un bug nuevo, pero POS-UX-02 le agregó una segunda vía de acceso más frecuente al mismo problema preexistente. Arreglo: modo de solo lectura en `ProductForm` según rol del viewer.
+
 #### [Devoluciones · UX] Mostrar detalle completo de la venta original antes de confirmar
 Mejora de UX en el flujo de devoluciones. Sin archivos específicos anotados en Notion.
 
