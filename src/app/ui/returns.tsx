@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileText, History, PackageX, RotateCcw, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileText, History, Lightbulb, PackageX, RotateCcw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { downloadCsv } from "@/lib/csv";
 
@@ -218,6 +218,7 @@ export function Returns({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [returnResult, setReturnResult] = useState<ReturnResult | null>(null);
+  const [showChargeFirstHint, setShowChargeFirstHint] = useState(true);
   const [reasonCategory, setReasonCategory] = useState<ReturnReasonCategory | "">("");
   const [reasonNote, setReasonNote] = useState("");
   const [refundAmounts, setRefundAmounts] = useState<Record<string, string>>({});
@@ -475,6 +476,24 @@ export function Returns({
         <ReturnHistoryPanel />
       ) : (
       <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+
+        {/* Informative hint: charge the new sale before returning the previous one */}
+        {showChargeFirstHint ? (
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-violet-200 bg-violet-50 p-4">
+            <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0 text-violet-600" />
+            <p className="flex-1 text-sm text-violet-800">
+              Para una devolución más ágil y efectiva, te recomendamos cobrar primero la venta nueva y, una vez
+              cobrada, devolver la totalidad de la anterior.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowChargeFirstHint(false)}
+              className="text-violet-400 hover:text-violet-600"
+            >
+              ✕
+            </button>
+          </div>
+        ) : null}
 
         {/* Success banner */}
         {returnResult ? (
