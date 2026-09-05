@@ -14,11 +14,14 @@
 
 ## 1. Seguridad — esto es lo más urgente y lo más caro si se pospone
 
-- [ ] **Rotar la contraseña de la base de datos en Neon.** [CEO] `.env.production.example`
+- [x] **Rotar la contraseña de la base de datos en Neon.** [CEO] `.env.production.example`
       está trackeado en git y hay un commit viejo llamado "sanitiza credenciales de
       ejemplo" — sanitizar no borra el historial, la versión anterior sigue viva en
       git. No es "por las dudas": el CEO lo marca como el riesgo más caro de todo el
       proyecto ahora mismo.
+      ✅ **Resuelto 05-09-2026** — contraseña rotada en Neon (rol `neondb_owner`), propagada
+      automáticamente a Vercel por la integración nativa, redeploy y verificación en
+      producción sin errores. Detalle completo en `4_REPORTE_DE_CAMBIOS.md`.
 - [ ] **Rotar el token de GitHub expuesto.** [Backlog: T3] `github.com/settings/tokens`
       → revocar el actual → generar uno nuevo con permisos `repo` → actualizarlo donde
       se use. ~30 min.
