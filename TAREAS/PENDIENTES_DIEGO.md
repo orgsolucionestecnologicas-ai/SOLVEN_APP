@@ -25,12 +25,18 @@
 - [ ] **Rotar el token de GitHub expuesto.** [Backlog: T3] `github.com/settings/tokens`
       → revocar el actual → generar uno nuevo con permisos `repo` → actualizarlo donde
       se use. ~30 min.
-- [ ] **Configurar SSH en vez de token para hacer `git push`.** [Backlog: T5] Esto
+- [x] **Configurar SSH en vez de token para hacer `git push`.** [Backlog: T5] Esto
       además destraba que las sesiones de Claude puedan pushear solas sin que tengas
       que copiar comandos vos — hoy ninguna sesión en la nube puede hacer `git push`
       porque no hay ninguna credencial configurada ahí. `ssh-keygen -t ed25519` →
       agregar la clave pública en GitHub → `git remote set-url origin git@github.com:...`
       → probar con `git push`. ~45 min.
+      ✅ **Resuelto 05-09-2026** — SSH configurado y probado (`ssh -T git@github.com` OK) con
+      una clave generada en tu propia terminal de Windows. Push diario desde tu compu ya no
+      depende del token. Nota: el entorno puente de este asistente (esta sesión) todavía no
+      tiene su propia clave autorizada — ver decisión pendiente en la sección 3. Detalle
+      completo, incluida la aclaración sobre la clave que el CEO técnico marcó como
+      sospechosa, en `4_REPORTE_DE_CAMBIOS.md`.
 - [ ] **Confirmar que `SOLVEN_SESSION_SECRET` en Vercel es un valor random de 32+
       caracteres**, y no algo débil o de prueba. [Backlog: T2]
 - [ ] **Cargar en Vercel las variables de entorno que faltan:** `REBILL_WEBHOOK_SECRET`,
@@ -60,6 +66,14 @@
 - [ ] **¿Confirmás la nueva regla de `3_REPORTELIDER.md`?** Se archiva en
       `TAREAS/historial/` y se vacía cada vez que supera ~80 líneas, en vez de
       crecer para siempre. [CEO]
+- [ ] **¿Autorizamos también la clave SSH de este asistente (entorno puente) en GitHub,
+      para que pueda pushear cambios como este sin que vos tengas que hacerlo desde tu
+      compu?** Es la misma clave que el CEO técnico marcó como sospechosa el 05-09-2026
+      — resultó legítima (generada por esta sesión en tu compu), pero de una ubicación
+      que su búsqueda no alcanzó. Fingerprint: `SHA256:fb4Jpq95YSQc5LKlbuBYaBPVDvWoW2Hi1G8LzLqPNfE`.
+      Si preferís no agregarla, no hace falta nada de tu parte: este asistente sigue
+      dejando los cambios committeados localmente y vos los pusheás cuando quieras
+      desde tu terminal o GitHub Desktop. [Arquitecto]
 - [ ] **T20 — ¿2 minutos está bien** como el tiempo que tarda en aplicarse que
       desactivaste a un empleado? Hoy puede seguir operando hasta 2 min más con la
       sesión que ya tenía abierta. [Backlog]

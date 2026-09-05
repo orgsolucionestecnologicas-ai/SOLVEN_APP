@@ -13,6 +13,21 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### 2026-09-05 — Configurar SSH para GitHub (T5) + aclaración sobre clave "sospechosa"
+
+**Qué se pidió:** reemplazar el push por token (que fallaba desde el entorno puente de esta sesión) por autenticación SSH.
+
+**Qué pasó:**
+- Esta sesión generó un par de claves SSH dentro de su propio entorno puente (Cowork bridge, la VM de Linux ligada a la compu de Diego, fuera de la carpeta del proyecto) y pidió agregar la clave pública a GitHub.
+- El agente CEO técnico, al no encontrar el archivo `.pub` correspondiente ni en el contenedor cloud ni en la carpeta del proyecto conectada, marcó la clave como de origen no verificable y correctamente no la agregó. No hubo intento de intrusión: la clave era legítima (generada por esta sesión en la compu de Diego), pero vivía en una tercera ubicación que esa búsqueda no cubría, y esta sesión no comunicó ese origen con suficiente claridad al pedirla. Aprendizaje para la próxima vez: aclarar explícitamente dónde vive cualquier credencial antes de pedir que se agregue a una cuenta externa.
+- Diego generó una clave nueva directamente en su terminal de Windows (`C:\Users\SOLVEN\.ssh\`), la agregó a GitHub (`github.com/settings/keys`, verificada por fingerprint y por código de confirmación de identidad), cambió el remoto del repo a `git@github.com:orgsolucionestecnologicas-ai/SOLVEN_APP.git` y confirmó `ssh -T git@github.com` exitoso.
+
+**Estado real verificado:**
+- Push por SSH funciona correctamente desde la terminal nativa de Diego (Windows). El token de GitHub deja de ser necesario para su uso diario.
+- Push **todavía no funciona** desde este entorno puente (esta sesión / Cowork bridge): su propia clave (fingerprint `SHA256:fb4Jpq95YSQc5LKlbuBYaBPVDvWoW2Hi1G8LzLqPNfE`, generada el mismo día, nunca agregada a GitHub) no está autorizada. Queda como decisión abierta de Diego — ver `PENDIENTES_DIEGO.md`, sección 3.
+
+---
+
 ### 2026-09-05 — Rotación de contraseña de base de datos en Neon (SEGURIDAD)
 
 **Ejecutado por:** Diego, vía agente de navegador (Claude en Chrome), guiado por su asistente personal de tareas.
