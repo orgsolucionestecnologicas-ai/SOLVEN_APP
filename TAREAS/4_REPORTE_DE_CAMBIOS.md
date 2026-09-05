@@ -13,6 +13,20 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### 2026-09-05 — Rotar token de GitHub expuesto (T3)
+
+**Qué se pidió:** revocar el token de GitHub personal marcado como expuesto en el incidente original de credenciales.
+
+**Investigación previa:** no se encontró ningún uso del token en el código ni en el historial de git (ninguna GitHub Action depende de un token personal; la única workflow, `claude-orden.yml`, usa el `GITHUB_TOKEN` automático de Actions). Se pidió inventario de solo lectura antes de borrar nada.
+
+**Hallazgo:** un único token clásico, `SOLVEN_APP`, con permisos extremadamente amplios (`admin:enterprise`, `admin:org`, `delete_repo`, `admin:repo_hook`, etc. — muchos más de los necesarios para `git push`, que solo requiere `repo`). Ya estaba vencido desde el 01-08-2026, es decir inutilizable de por sí. No había tokens de grano fino.
+
+**Qué se hizo:** se decidió revocarlo y **no generar uno de reemplazo** — el push diario ya lo cubre SSH (T5) y no se encontró ningún otro uso activo. Si en el futuro hace falta un token para algo puntual, generarlo de tipo fine-grained, acotado al repo y con el permiso mínimo necesario, no un token clásico con alcance de administrador.
+
+**Verificación:** Diego eliminó el token desde `github.com/settings/tokens` (confirmó el diálogo "no se puede deshacer"). Refrescó la página: "No personal access token created" — no quedan tokens clásicos ni de grano fino en la cuenta.
+
+---
+
 ### 2026-09-05 — Configurar SSH para GitHub (T5) + aclaración sobre clave "sospechosa"
 
 **Qué se pidió:** reemplazar el push por token (que fallaba desde el entorno puente de esta sesión) por autenticación SSH.

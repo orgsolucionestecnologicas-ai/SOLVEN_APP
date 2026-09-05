@@ -22,9 +22,13 @@
       ✅ **Resuelto 05-09-2026** — contraseña rotada en Neon (rol `neondb_owner`), propagada
       automáticamente a Vercel por la integración nativa, redeploy y verificación en
       producción sin errores. Detalle completo en `4_REPORTE_DE_CAMBIOS.md`.
-- [ ] **Rotar el token de GitHub expuesto.** [Backlog: T3] `github.com/settings/tokens`
+- [x] **Rotar el token de GitHub expuesto.** [Backlog: T3] `github.com/settings/tokens`
       → revocar el actual → generar uno nuevo con permisos `repo` → actualizarlo donde
       se use. ~30 min.
+      ✅ **Resuelto 05-09-2026** — token clásico `SOLVEN_APP` eliminado (ya estaba vencido
+      desde el 01-08-2026 y tenía permisos de administrador muy por encima de lo necesario).
+      No se generó reemplazo: el push diario ya lo cubre SSH (T5). Cuenta verificada sin
+      tokens clásicos ni de grano fino. Detalle en `4_REPORTE_DE_CAMBIOS.md`.
 - [x] **Configurar SSH en vez de token para hacer `git push`.** [Backlog: T5] Esto
       además destraba que las sesiones de Claude puedan pushear solas sin que tengas
       que copiar comandos vos — hoy ninguna sesión en la nube puede hacer `git push`
