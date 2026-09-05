@@ -11,6 +11,83 @@
 
 ---
 
+## 2026-09-05 — Al verificar el ciclo de seguridad: dos cosas que no puedo dar por cerradas
+
+Verifiqué el reporte de cambios de los 7 commits del ciclo de seguridad (todo docs, sin código —
+confirmado contra el diff). Tres de los cuatro ítems 🔴 que venía reclamando desde julio quedaron
+cerrados en un día: password de Neon rotada, token de GitHub revocado, SSH de Diego configurado.
+Eso saca de la mesa el riesgo más caro del proyecto. Dicho eso, salieron dos cosas nuevas.
+
+### 🔴 La clave `sk_live_...` guardada como `SOLVEN_SESSION_SECRET` no está resuelta
+
+El valor que había en Vercel como secreto de sesión tenía el formato exacto de una **clave secreta
+live de Stripe**. Confirmé por mi lado que SOLVEN no tiene ninguna integración con Stripe:
+`grep -rin "stripe" src/ package.json prisma/` da cero resultados. La pasarela real es Rebill.
+
+Se reemplazó el valor en Vercel. **Eso no resuelve nada de lo importante**, y quiero ser claro
+sobre por qué, porque la decisión registrada fue "no investigar":
+
+1. **Reemplazar un valor en Vercel no revoca la clave donde vive.** Si esa clave es real, sigue
+   siendo válida en la cuenta de Stripe que la emitió, y da acceso a mover dinero en esa cuenta.
+   Se revoca en el panel de Stripe, en ningún otro lado.
+2. **Hay dos escenarios y los dos requieren acción.** Si la cuenta de Stripe es tuya (de otro
+   proyecto, de una prueba vieja), revocá esa clave hoy: estuvo pegada en la UI de Vercel de un
+   proyecto en producción. Si **no** tenés cuenta de Stripe, entonces la pregunta es cómo llegó
+   una clave live ajena a una variable de entorno de tu proyecto — y esa pregunta es más grave que
+   la clave misma.
+3. **Consecuencia hacia atrás, sobre SOLVEN.** Ese string era, hasta ayer, la clave con la que se
+   firmaban todas las cookies de sesión. Cualquiera que conociera ese valor podía **forjar una
+   sesión OWNER de cualquier tenant** — es exactamente el ataque de `USER-FIX-01/02`. Una clave de
+   Stripe es un valor que circula: se pega en paneles, en `.env`, en chats de soporte. No es un
+   random que solo vos viste. Rotarla fue correcto y urgente; lo que falta es asumir que el
+   secreto anterior pudo estar en manos de terceros.
+
+"SOLVEN no va a usar Stripe" resuelve la pregunta de producto, no la de seguridad. Son dos cosas
+distintas y la segunda sigue abierta.
+
+### 🟠 Las decisiones 1 y "pausar variables de Rebill" se contradicen
+
+Decidiste (decisión 1) que el webhook de Rebill debe **rechazar** cuando falta el secreto, y en el
+mismo ciclo se pausó la carga de `REBILL_WEBHOOK_SECRET` en Vercel hasta definir si vas a usar esa
+plataforma. Implementadas en ese orden, **todos** los webhooks de Rebill empiezan a rechazarse y
+las suscripciones dejan de actualizarse solas.
+
+El orden correcto es: primero cargar `REBILL_WEBHOOK_SECRET` en Vercel (Producción y Vista previa),
+después invertir el `return`. Si preferís no cargarla todavía, la alternativa es dejar el fail-open
+como está y anotarlo como riesgo aceptado — pero no hacer el cambio de código a ciegas.
+
+### Un hallazgo del reporte que corrijo: las sesiones sí se invalidan
+
+El reporte marcaba como sospechoso que una sesión abierta antes de la rotación siguiera
+funcionando. Leí `src/lib/auth.ts`: `getHmacKey()` lee la variable de entorno en cada llamada, sin
+cache, y `verifySession` hace la verificación HMAC real en cada request; el cache de `requireRole`
+corre después de eso y no lo saltea. Una cookie firmada con el secreto viejo no puede pasar. Lo más
+probable es que la observación venga de una página ya renderizada en el cliente o de un login
+posterior al redeploy. Antes de abrirlo como bug hace falta una prueba limpia: con la cookie vieja
+y sin volver a loguearse, pegarle a `/api/dashboard/summary` — tiene que dar 401. No lo doy por
+confirmado.
+
+### Sobre las 12 decisiones de producto — tres no son ajustes chicos
+
+Gracias por resolverlas, eso destraba el backlog. Tres necesitan aviso antes de convertirse en orden:
+
+- **Decisión 10 (varias cajas por comercio):** hoy hay un índice único parcial en Postgres
+  (`CashRegisterSession_tenantId_open_unique`, de `CAJA-FIX-01`) que impide por diseño más de una
+  caja abierta por tenant, y `requireOpenCashRegisterSession` se usa en ventas, gastos, pagos de
+  deuda, devoluciones y cotizaciones. Soportar varias cajas simultáneas es cambio de modelo de
+  datos, migración sobre una tabla con datos reales, y tocar todos esos flujos. No es un ajuste:
+  es la orden más grande del backlog actual.
+- **Decisión 7 (bloquear cliente duplicado):** tiene que ser duplicado **dentro del mismo tenant**,
+  nunca global. Un chequeo global haría que el cliente de un comercio bloquee la carga en otro —
+  el mismo bug que ya arreglamos en `Customer.customerCode`, `Product.productCode` y `User.email`.
+- **Decisión 8 (reserva real de stock por cotización):** cambia el significado del stock disponible
+  en POS, inventario y confirmación de cotizaciones a la vez, y necesita definir qué pasa cuando la
+  cotización vence o se cancela (liberar la reserva). Tampoco es chica.
+
+Las otras nueve sí son órdenes acotadas y las voy a ir convirtiendo en ese orden.
+
+---
+
 ## 2026-09-04 — Auditoría de estado inicial y primeras correcciones
 
 Leí completo `2_INGENIERO_LIDER.md`, `1_CLAUDE.md`, `PENDIENTES.md` y las 225 líneas de
