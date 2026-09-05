@@ -13,6 +13,25 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### 2026-09-05 — Sección 3 de PENDIENTES_DIEGO.md: 12 decisiones rápidas de producto resueltas
+
+Diego resolvió las 12 decisiones rápidas pendientes. Van tal cual, para convertir en órdenes de código donde corresponda — ninguna se implementó en esta sesión:
+
+1. **Rebill fail-open:** el webhook debe **rechazar (401)** cuando falta el secreto configurado, no aceptar cualquier firma.
+2. **Tests jsdom + Testing Library:** **sí**, agregar cobertura de render para `pos.tsx`, `returns.tsx` y `cash-register-close.tsx`.
+3. **Regla de `3_REPORTELIDER.md`:** **confirmada** — archivar en `TAREAS/historial/` y vaciar cada ~80 líneas.
+4. **T20 (demora desactivación de empleado):** **sin cambios**, 2 minutos está bien.
+5. **T21 (campo Marca):** **sí**, agregarlo como campo real y guardado (requiere migración). Recomendación del asistente, Diego no objetó.
+6. **Vencimiento de deuda a crédito:** **hacerlo configurable** (por tenant o por venta) — deja de ser fijo en 30 días.
+7. **Cliente duplicado (teléfono/email/CUIT):** **bloquear la carga**, no solo avisar.
+8. **Stock reservado por cotización pendiente:** **reserva de verdad** — debe descontar del stock disponible, no quedar solo informativo.
+9. **Desglose de billetes/monedas en caja:** **validar contra el monto declarado**.
+10. **Una sola caja por comercio:** **no alcanza** — Diego necesita soportar varias cajas físicas simultáneas por comercio. Esto es más grande que un ajuste chico, probablemente cambio de modelo de datos (relación caja↔comercio deja de ser 1:1 activa).
+11. **Anular venta ya cobrada:** **sí**, agregar función de anulación directa, además de Devoluciones.
+12. **`PromotionUsage` en devolución parcial:** **liberar cupo proporcional** al monto devuelto.
+
+---
+
 ### 2026-09-05 — Decisión de Diego: aprobar y mergear `design/revision-uiux-sep-2026`
 
 **Contexto:** el CEO técnico pidió esta decisión en `5_NOTICIAS_CEO.md` (sección "La rama de diseño ya no es una rama de diseño") y la puso como ítem #3 de su lista de prioridades.

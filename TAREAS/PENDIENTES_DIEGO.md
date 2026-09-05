@@ -75,16 +75,19 @@
 
 ## 3. Decisiones rápidas — 5 a 10 minutos cada una, no requieren que hagas nada vos mismo
 
-- [ ] **Rebill "fail-open":** ¿autorizás que el webhook rechace (en vez de aceptar
+- [x] **Rebill "fail-open":** ¿autorizás que el webhook rechace (en vez de aceptar
       cualquier firma) cuando falta el secreto configurado? Es una línea de código,
       nada de alcance nuevo. [CEO] — decís que sí y el CEO lo hace.
-- [ ] **¿Agregamos tests de render (jsdom + Testing Library) para `pos.tsx`,
+      ✅ **Decidido 05-09-2026** — Sí, que rechace (401).
+- [x] **¿Agregamos tests de render (jsdom + Testing Library) para `pos.tsx`,
       `returns.tsx` y `cash-register-close.tsx`?** Son las tres pantallas que tocan
       plata y hoy no tienen ninguna cobertura de ese tipo — ya hubo un bug ahí que
       typecheck/lint no vieron (`FIX-14`). [CEO]
-- [ ] **¿Confirmás la nueva regla de `3_REPORTELIDER.md`?** Se archiva en
+      ✅ **Decidido 05-09-2026** — Sí, agregarlos.
+- [x] **¿Confirmás la nueva regla de `3_REPORTELIDER.md`?** Se archiva en
       `TAREAS/historial/` y se vacía cada vez que supera ~80 líneas, en vez de
       crecer para siempre. [CEO]
+      ✅ **Decidido 05-09-2026** — Confirmado.
 - [ ] **¿Autorizamos también la clave SSH de este asistente (entorno puente) en GitHub,
       para que pueda pushear cambios como este sin que vos tengas que hacerlo desde tu
       compu?** Es la misma clave que el CEO técnico marcó como sospechosa el 05-09-2026
@@ -93,28 +96,40 @@
       Si preferís no agregarla, no hace falta nada de tu parte: este asistente sigue
       dejando los cambios committeados localmente y vos los pusheás cuando quieras
       desde tu terminal o GitHub Desktop. [Arquitecto]
-- [ ] **T20 — ¿2 minutos está bien** como el tiempo que tarda en aplicarse que
+- [x] **T20 — ¿2 minutos está bien** como el tiempo que tarda en aplicarse que
       desactivaste a un empleado? Hoy puede seguir operando hasta 2 min más con la
       sesión que ya tenía abierta. [Backlog]
-- [ ] **T21 — ¿"Marca" merece ser un campo real y guardado** en la ficha de
+      ✅ **Decidido 05-09-2026** — Sí, 2 minutos está bien, sin cambios.
+- [x] **T21 — ¿"Marca" merece ser un campo real y guardado** en la ficha de
       producto? Hoy se escribe en el formulario y se descarta en silencio al
       guardar. [Backlog]
-- [ ] **Vencimiento de deuda a crédito, fijo en 30 días — ¿lo dejamos así o lo
+      ✅ **Decidido 05-09-2026** — Sí, agregarlo como campo real (recomendación del
+      asistente, sin objeción de Diego).
+- [x] **Vencimiento de deuda a crédito, fijo en 30 días — ¿lo dejamos así o lo
       hacemos configurable** (por tenant o por venta)? [Backlog]
-- [ ] **Cliente duplicado (mismo teléfono/email/CUIT) — ¿bloqueamos la carga,
+      ✅ **Decidido 05-09-2026** — Hacerlo configurable.
+- [x] **Cliente duplicado (mismo teléfono/email/CUIT) — ¿bloqueamos la carga,
       avisamos, o lo dejamos como está?** Hoy se puede crear dos veces la misma
       persona y su historial de deuda queda partido en dos. [Backlog]
-- [ ] **Stock reservado por una cotización pendiente — ¿reserva de verdad, o
+      ✅ **Decidido 05-09-2026** — Bloquear la carga.
+- [x] **Stock reservado por una cotización pendiente — ¿reserva de verdad, o
       sigue siendo solo informativo** (dos cotizaciones pueden "prometer" la misma
       última unidad)? [Backlog]
-- [ ] **Desglose de billetes/monedas al abrir o cerrar caja — ¿lo validamos contra
+      ✅ **Decidido 05-09-2026** — Reserva de verdad (descuenta del disponible).
+- [x] **Desglose de billetes/monedas al abrir o cerrar caja — ¿lo validamos contra
       el monto declarado, o lo dejamos libre** a propósito? [Backlog]
-- [ ] **¿Una sola caja abierta por comercio está bien,** o alguno va a operar con
+      ✅ **Decidido 05-09-2026** — Validar contra el monto declarado.
+- [x] **¿Una sola caja abierta por comercio está bien,** o alguno va a operar con
       más de una caja física al mismo tiempo? [Backlog]
-- [ ] **¿Hace falta una función para anular una venta ya cobrada** (hoy la única
+      ✅ **Decidido 05-09-2026** — No, Diego necesita permitir varias cajas simultáneas
+      por comercio. Cambia el alcance: es un cambio de modelo de datos más grande, no
+      un ajuste chico.
+- [x] **¿Hace falta una función para anular una venta ya cobrada** (hoy la única
       forma de revertir algo es Devoluciones)? [Backlog]
-- [ ] **`PromotionUsage` en una devolución parcial (no total) — ¿libera cupo
+      ✅ **Decidido 05-09-2026** — Sí, agregar anulación directa.
+- [x] **`PromotionUsage` en una devolución parcial (no total) — ¿libera cupo
       proporcional o no toca nada?** [Backlog]
+      ✅ **Decidido 05-09-2026** — Liberar cupo proporcional.
 
 ## 4. Integraciones externas — para ir armando cuando tengas tiempo
 
