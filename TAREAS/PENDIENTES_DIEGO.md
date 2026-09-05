@@ -61,13 +61,17 @@
 
 ## 2. La rama de diseño — decisión de esta semana
 
-- [ ] **Revisar el preview de Vercel de `design/revision-uiux-sep-2026` y decidir:
+- [x] **Revisar el preview de Vercel de `design/revision-uiux-sep-2026` y decidir:
       aprobar y mergear a `main`, o decir puntualmente qué falta.** [CEO] Ya no es
       solo un rediseño visual — tiene migraciones de Prisma, `schema.prisma` tocado
       y `returns/index.ts` reescrito casi entero. Mientras siga separada de `main`,
       cada orden nueva que toque esos mismos archivos (`SALE-TENANT-SCOPE`,
       `ARCA-NC-01`) corre el riesgo de un conflicto feo de mergear más adelante. El
       CEO recomienda cerrarla esta semana, no lo digo yo solo.
+      ✅ **Decidido 05-09-2026** — Diego aprueba el preview. Las correcciones pendientes
+      se resuelven sobre la marcha, después del merge, sin bloquearlo. Falta que el CEO
+      técnico ejecute el merge a `main` (migraciones + conflictos con SALE-TENANT-SCOPE
+      y ARCA-NC-01) — queda anotado en `4_REPORTE_DE_CAMBIOS.md` para esa sesión.
 
 ## 3. Decisiones rápidas — 5 a 10 minutos cada una, no requieren que hagas nada vos mismo
 

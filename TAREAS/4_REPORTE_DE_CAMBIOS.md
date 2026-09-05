@@ -13,6 +13,16 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### 2026-09-05 — Decisión de Diego: aprobar y mergear `design/revision-uiux-sep-2026`
+
+**Contexto:** el CEO técnico pidió esta decisión en `5_NOTICIAS_CEO.md` (sección "La rama de diseño ya no es una rama de diseño") y la puso como ítem #3 de su lista de prioridades.
+
+**Decisión de Diego (comunicada en esta sesión, no ejecutada acá):** los cambios visuales del preview de Vercel ya estaban aprobados. Hay correcciones pendientes, pero Diego prefiere hacerlas sobre la marcha (después del merge), no bloquear el cierre de la rama por eso.
+
+**Acción esperada — le corresponde al CEO técnico / agente ejecutor, no a esta sesión:** mergear `design/revision-uiux-sep-2026` a `main`, manejando la migración de Prisma y los conflictos ya anunciados con `SALE-TENANT-SCOPE` y `ARCA-NC-01` (`returns/index.ts`, `sale-data-access.ts`). Esta sesión no tocó el repo para esto — es código/arquitectura, fuera de su alcance.
+
+---
+
 ### 2026-09-05 — T31 (parcial): DATABASE_URL/migraciones — es un tema de código, no de Vercel
 
 **Qué se pidió:** confirmar que `DATABASE_URL` usa la URL directa de Neon (sin `-pooler`) para que las migraciones no fallen.
