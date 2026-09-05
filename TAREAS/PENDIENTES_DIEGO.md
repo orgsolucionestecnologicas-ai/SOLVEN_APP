@@ -41,8 +41,13 @@
       tiene su propia clave autorizada — ver decisión pendiente en la sección 3. Detalle
       completo, incluida la aclaración sobre la clave que el CEO técnico marcó como
       sospechosa, en `4_REPORTE_DE_CAMBIOS.md`.
-- [ ] **Confirmar que `SOLVEN_SESSION_SECRET` en Vercel es un valor random de 32+
+- [x] **Confirmar que `SOLVEN_SESSION_SECRET` en Vercel es un valor random de 32+
       caracteres**, y no algo débil o de prueba. [Backlog: T2]
+      ✅ **Resuelto 05-09-2026** — el valor real resultó sospechoso (formato de clave live
+      de Stripe, sin ningún uso legítimo en el código de SOLVEN). Se reemplazó por un valor
+      random real (`openssl rand -hex 32`) y se verificó login en producción. Queda un
+      hallazgo abierto para el CEO técnico: las sesiones que ya estaban abiertas no se
+      cerraron solas al rotar el secreto — detalle en `4_REPORTE_DE_CAMBIOS.md`.
 - [ ] **Cargar en Vercel las variables de entorno que faltan:** `REBILL_WEBHOOK_SECRET`,
       `REBILL_API_KEY`, `RESEND_API_KEY`, `ANTHROPIC_API_KEY`. De paso confirmar que
       `DATABASE_URL` usa la URL directa de Neon (sin `-pooler`) para que las

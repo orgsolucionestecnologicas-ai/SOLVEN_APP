@@ -13,6 +13,20 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### 2026-09-05 — Rotar SOLVEN_SESSION_SECRET (T2) + hallazgo: sesiones no se invalidan al rotar
+
+**Qué se pidió:** confirmar que `SOLVEN_SESSION_SECRET` en Vercel es un valor aleatorio fuerte (no una prueba/valor débil).
+
+**Hallazgo durante la verificación (más grave que la tarea original):** el valor real en Vercel no era un session secret cualquiera — su preview visible en la UI de Vercel era `sk_live_a12...`, el formato exacto de una clave secreta live de Stripe. Se revisó el código completo (`src/`, `package.json`): SOLVEN no tiene ninguna integración con Stripe en ningún lado — la pasarela real es Rebill. No hay ninguna razón legítima para que ese valor estuviera ahí. Diego decidió no investigar el origen/vigencia de esa clave — SOLVEN no va a usar Stripe bajo ninguna circunstancia — así que no se tocó nada en Stripe, solo se reemplazó el valor en Vercel.
+
+**Qué se hizo:** se generó un valor nuevo con `openssl rand -hex 32` (64 caracteres, aleatorio real) y se reemplazó en Vercel (entrada única, compartida entre Producción y Vista previa). Redeploy manual, status Ready en ~2 min.
+
+**Verificación:** login funcionando con la clave nueva (usuario demo, dashboard con datos reales, sin errores de consola).
+
+**⚠️ Hallazgo adicional para el CEO técnico (no resuelto acá, es código):** después del redeploy con el secreto nuevo, la sesión que ya estaba abierta ANTES de la rotación (cookie firmada con el secreto viejo) siguió autenticando con normalidad — no pidió login de nuevo hasta que se cerró sesión manualmente. Si `verifySession`/`getHmacKey()` leen `process.env.SOLVEN_SESSION_SECRET` en cada verificación (como sugiere `src/lib/auth.ts`), una cookie firmada con la clave vieja debería fallar la verificación HMAC contra la clave nueva. Vale la pena confirmar si hay algún camino de verificación que no revalida la firma en cada request (por ejemplo el cache de revalidación de `requireRole` de USER-FIX-01..09) — si rotar el secreto no fuerza el cierre de sesiones viejas, pierde buena parte de su valor como respuesta ante una fuga real.
+
+---
+
 ### 2026-09-05 — Rotar token de GitHub expuesto (T3)
 
 **Qué se pidió:** revocar el token de GitHub personal marcado como expuesto en el incidente original de credenciales.
