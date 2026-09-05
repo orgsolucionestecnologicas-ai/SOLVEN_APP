@@ -49,9 +49,15 @@
       hallazgo abierto para el CEO técnico: las sesiones que ya estaban abiertas no se
       cerraron solas al rotar el secreto — detalle en `4_REPORTE_DE_CAMBIOS.md`.
 - [ ] **Cargar en Vercel las variables de entorno que faltan:** `REBILL_WEBHOOK_SECRET`,
-      `REBILL_API_KEY`, `RESEND_API_KEY`, `ANTHROPIC_API_KEY`. De paso confirmar que
-      `DATABASE_URL` usa la URL directa de Neon (sin `-pooler`) para que las
-      migraciones no fallen. [Backlog: T31]
+      `REBILL_API_KEY`, `RESEND_API_KEY`, `ANTHROPIC_API_KEY`. [Backlog: T31]
+      ⏸️ **En pausa (05-09-2026)** — decisión de Diego: todavía no define si usa Rebill
+      (cobros), Resend (mails) y un chatbot de Claude; espera unos días antes de decidir.
+      No es un tema de seguridad, es de negocio.
+      ✅ **Sub-ítem de `DATABASE_URL`/migraciones investigado (05-09-2026)** — no es una
+      variable de Vercel para tocar: el build de Vercel no corre migraciones, y el
+      problema real es que falta un `directUrl` en `prisma/schema.prisma` (código) y que
+      el `.env` local tiene la contraseña vieja de Neon. Flageado para el CEO técnico en
+      `4_REPORTE_DE_CAMBIOS.md` — no requiere acción tuya.
 
 ## 2. La rama de diseño — decisión de esta semana
 

@@ -13,6 +13,23 @@
 
 <!-- El agente irá agregando reportes aquí debajo, del más reciente al más antiguo -->
 
+### 2026-09-05 — T31 (parcial): DATABASE_URL/migraciones — es un tema de código, no de Vercel
+
+**Qué se pidió:** confirmar que `DATABASE_URL` usa la URL directa de Neon (sin `-pooler`) para que las migraciones no fallen.
+
+**Investigación:** el `build` de Vercel es solo `next build` (`package.json`) — no corre `prisma migrate deploy` en el pipeline de deploy, así que el `DATABASE_URL` de Vercel no es lo que ejecuta migraciones. Lo que sí importa es de dónde se corren las migraciones manualmente: el `.env` local del repo tiene `DATABASE_URL` apuntando a la conexión **pooled** de Neon (host con `-pooler`), y `prisma/schema.prisma` no define `directUrl` — no hay ninguna separación entre la URL de runtime (donde pooled es lo correcto, por el límite de conexiones en serverless) y una URL directa para migrar (que sí lo necesita, por los locks de sesión que usa `prisma migrate`).
+
+**Hallazgo adicional:** ese mismo `.env` local no se modificó desde el 01-06-2026 — tiene la contraseña de Neon anterior a la rotación de hoy (05-09-2026), ya inválida. Quien intente correr la app o migraciones localmente con ese archivo va a fallar por autenticación hasta que se actualice.
+
+**Para el CEO técnico (código, no acción de Diego):**
+1. Agregar `directUrl` en el datasource de `prisma/schema.prisma`, apuntando a una variable de entorno separada con la conexión directa de Neon (sin `-pooler`).
+2. Definir esa variable (p. ej. `DIRECT_DATABASE_URL`) tanto en Vercel como en `.env.example`/`.env.production.example`.
+3. Avisar a Diego qué valor pegar en su `.env` local (contraseña actualizada + variante directa) para que pueda volver a correr la app/migraciones localmente.
+
+**No incluido en esta tarea** (quedan deferidos por decisión de Diego, no son de seguridad): `REBILL_WEBHOOK_SECRET`, `REBILL_API_KEY`, `RESEND_API_KEY`, `ANTHROPIC_API_KEY` — pendientes de que defina si usa esas plataformas.
+
+---
+
 ### 2026-09-05 — Rotar SOLVEN_SESSION_SECRET (T2) + hallazgo: sesiones no se invalidan al rotar
 
 **Qué se pidió:** confirmar que `SOLVEN_SESSION_SECRET` en Vercel es un valor aleatorio fuerte (no una prueba/valor débil).
